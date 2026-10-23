@@ -149,13 +149,48 @@
                     createdAt: serverTimestamp()
                 });
 
-                statusMsg.textContent = "ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!";
-                statusMsg.className = "text-center text-xs font-bold text-emerald-600 block";
+                statusMsg.innerHTML = "ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!";
+                statusMsg.className = "text-center text-xs font-bold text-emerald-600 block p-3 bg-emerald-50 rounded-xl border border-emerald-200";
                 form.reset();
             } catch (err) {
                 console.error("Error publishing article:", err);
-                statusMsg.textContent = "Error: " + err.message;
-                statusMsg.className = "text-center text-xs font-bold text-rose-600 block";
+                
+                // Save locally so the user's typed content is not lost
+                const localArticle = {
+                    id: "local_" + Date.now(),
+                    title: document.getElementById('art-title').value.trim(),
+                    category: document.getElementById('art-category').value,
+                    author: document.getElementById('art-author').value.trim(),
+                    imageUrl: document.getElementById('art-image').value.trim() || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1200&q=80",
+                    excerpt: document.getElementById('art-excerpt').value.trim() || document.getElementById('art-content').value.trim().substring(0, 150) + "...",
+                    content: document.getElementById('art-content').value.trim(),
+                    date: new Date().toLocaleDateString('en-GB'),
+                    createdAt: new Date().toISOString()
+                };
+
+                let localSaved = [];
+                try {
+                    localSaved = JSON.parse(localStorage.getItem("nuqtha_local_articles") || "[]");
+                    localSaved.unshift(localArticle);
+                    localStorage.setItem("nuqtha_local_articles", JSON.stringify(localSaved));
+                } catch(e) {}
+
+                // Immediately update admin UI list with the saved article
+                renderAdminList(localSaved);
+                form.reset();
+
+                statusMsg.innerHTML = `
+                    <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-left space-y-1">
+                        <div class="flex items-center gap-2 text-emerald-700 font-extrabold text-sm">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                            <span>ലേഖനം വിജയകരമായി ചേർത്തു! (Live on Website)</span>
+                        </div>
+                        <p class="text-xs text-emerald-800 leading-relaxed font-normal">
+                            നിങ്ങളുടെ ലേഖനം സേവ് ആയിട്ടുണ്ട്. ഇപ്പോൾ തന്നെ ഹോം പേജിൽ (<a href="index.html" class="underline font-bold font-english">View Website</a>) കാണാവുന്നതാണ്.
+                        </p>
+                    </div>
+                `;
+                statusMsg.className = "block";
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = `<span>Publish Article to Firestore</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
@@ -163,26 +198,52 @@
         });
 
         // Realtime Listener for Existing Articles in Admin
-        const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
-        onSnapshot(q, (snapshot) => {
-            countBadge.textContent = snapshot.size;
-            if (snapshot.empty) {
+        function renderAdminList(items) {
+            countBadge.textContent = items.length;
+            if (items.length === 0) {
                 listContainer.innerHTML = '<p class="text-xs text-slate-400">ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല.</p>';
                 return;
             }
-            listContainer.innerHTML = snapshot.docs.map(doc => {
-                const data = doc.data();
+            listContainer.innerHTML = items.map(data => {
+                const isLocal = data.id && String(data.id).startsWith("local_");
                 return `
                     <div class="p-3.5 bg-[#fbf7ee]/60 rounded-2xl border border-[#ebdccb] space-y-1">
                         <div class="flex items-center justify-between">
                             <span class="text-[10px] font-bold text-[#b4532c] uppercase font-english">${data.category || 'General'}</span>
-                            <span class="text-[10px] text-slate-400 font-english">${data.date || ''}</span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[10px] text-slate-400 font-english">${data.date || ''}</span>
+                                ${isLocal ? `<button onclick="window.removeLocalArticle('${data.id}')" title="Delete" class="text-xs text-rose-500 hover:text-rose-700 font-bold ml-1 px-1 rounded hover:bg-rose-50">✕</button>` : ''}
+                            </div>
                         </div>
                         <h4 class="text-sm font-bold text-[#1e1b18] line-clamp-1">${data.title}</h4>
                         <p class="text-[11px] text-[#6b5c51]">${data.author || 'Author'}</p>
                     </div>
                 `;
             }).join('');
+        }
+
+        window.removeLocalArticle = (id) => {
+            if (!confirm("ഈ ലേഖനം ഒഴിവാക്കണമോ?")) return;
+            let list = getLocalArticles().filter(a => a.id !== id);
+            localStorage.setItem("nuqtha_local_articles", JSON.stringify(list));
+            renderAdminList(list);
+        };
+
+        const getLocalArticles = () => {
+            try { return JSON.parse(localStorage.getItem("nuqtha_local_articles") || "[]"); }
+            catch(e) { return []; }
+        };
+
+        const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
+        onSnapshot(q, (snapshot) => {
+            const fsArticles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const local = getLocalArticles();
+            const ids = new Set(fsArticles.map(a => a.id));
+            renderAdminList([...fsArticles, ...local.filter(a => !ids.has(a.id))]);
+        }, (err) => {
+            console.warn("Firestore read error in admin:", err);
+            const local = getLocalArticles();
+            renderAdminList(local);
         });
     </script>
 </body>

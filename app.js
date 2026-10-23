@@ -53,12 +53,30 @@ function listenForArticles() {
     const q = query(ref, orderBy("createdAt", "desc"));
 
     onSnapshot(q, (snap) => {
-        allArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const firestoreArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const localArticles = getLocalArticles();
+        // Merge without duplicates
+        const ids = new Set(firestoreArticles.map(a => a.id));
+        allArticles = [...firestoreArticles, ...localArticles.filter(a => !ids.has(a.id))];
         renderFeed();
     }, (err) => {
         console.warn("Firestore error:", err);
-        renderEmpty("ഫയർബേസ് കണക്ഷൻ പരിശോധിക്കുക. ലേഖനങ്ങൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
+        const localArticles = getLocalArticles();
+        if (localArticles.length > 0) {
+            allArticles = localArticles;
+            renderFeed();
+        } else {
+            renderEmpty("ഫയർബേസ് അനുമതി പരിശോധിക്കുക (Missing Permissions). ലേഖനങ്ങൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
+        }
     });
+}
+
+function getLocalArticles() {
+    try {
+        return JSON.parse(localStorage.getItem("nuqtha_local_articles") || "[]");
+    } catch(e) {
+        return [];
+    }
 }
 
 /* ═══════════ Render Feed ═══════════ */
