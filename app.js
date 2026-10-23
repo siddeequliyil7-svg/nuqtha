@@ -113,14 +113,20 @@ function buildCard(art) {
 
     return `
     <article class="article-glass-card" data-id="${art.id}">
+        ${art.imageUrl ? `
+            <div class="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-[#ebdccb]">
+                <img src="${art.imageUrl}" alt="${art.title}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105">
+            </div>
+        ` : ''}
+
         <!-- Preview (always visible) -->
-        <div class="article-preview p-7 sm:p-8 space-y-3">
+        <div class="article-preview p-6 sm:p-8 space-y-3">
             <div class="flex items-center justify-between gap-4">
                 <span class="category-badge font-english">${art.category || "GENERAL"}</span>
                 <span class="text-[11px] font-semibold text-[#8c7a6b] font-english tracking-wide">${dateStr}</span>
             </div>
 
-            <h2 class="text-xl sm:text-2xl font-extrabold text-[#1e1b18] leading-snug tracking-tight">
+            <h2 class="text-xl sm:text-2xl font-black text-[#1e1b18] leading-snug tracking-tight">
                 ${art.title}
             </h2>
 
@@ -128,19 +134,20 @@ function buildCard(art) {
                 ${preview}
             </p>
 
-            <div class="flex items-center justify-between pt-2">
+            <div class="flex items-center justify-between pt-3 border-t border-[#ebdccb]/60">
                 <span class="text-xs font-semibold text-[#8c7a6b]">${art.author || "NUQTHA"}</span>
                 <div class="flex items-center gap-3">
                     <!-- Option 1: Dedicated Page Link -->
-                    <a href="article.html?id=${art.id}" onclick="event.stopPropagation();" class="text-xs font-bold text-[#b4532c] hover:underline font-english bg-[#b4532c]/10 px-2.5 py-1 rounded-lg transition" title="Open full dedicated page">
+                    <a href="article.html?id=${art.id}" onclick="event.stopPropagation();" class="text-xs font-bold text-[#b4532c] hover:underline font-english bg-[#b4532c]/10 px-3 py-1.5 rounded-lg transition" title="Open full dedicated page">
                         Full Page &rarr;
                     </a>
                     <!-- Option 2: Full Screen Reader Overlay -->
-                    <button onclick="event.stopPropagation(); window.openFullScreenReader('${art.id}');" class="text-xs font-bold text-[#1e1b18] hover:text-[#b4532c] font-english bg-white/70 px-2.5 py-1 rounded-lg border border-[#ebdccb] transition" title="Open full-screen reader">
+                    <button onclick="event.stopPropagation(); window.openFullScreenReader('${art.id}');" class="text-xs font-bold text-[#1e1b18] hover:text-[#b4532c] font-english bg-white/70 px-3 py-1.5 rounded-lg border border-[#ebdccb] transition" title="Open full-screen reader">
                         Full Screen &uarr;
                     </button>
                 </div>
             </div>
+        </div>
         </div>
 
         <!-- Full Content (hidden, expands inline) -->
