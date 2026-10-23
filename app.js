@@ -146,83 +146,49 @@ function buildCard(art) {
         .join("");
 
     return `
-    <article class="article-glass-card" data-id="${art.id}">
-        ${art.imageUrl ? `
-            <div class="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-[#ebdccb]">
-                <img src="${art.imageUrl}" alt="${art.title}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105">
-            </div>
-        ` : ''}
+    <article class="article-glass-card cursor-pointer hover:shadow-xl transition-all duration-300" data-id="${art.id}">
+        <a href="article.html?id=${art.id}" class="block">
+            ${art.imageUrl ? `
+                <div class="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-[#ebdccb]">
+                    <img src="${art.imageUrl}" alt="${art.title}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105">
+                </div>
+            ` : ''}
 
-        <!-- Preview (always visible) -->
-        <div class="article-preview p-6 sm:p-8 space-y-3">
-            <div class="flex items-center justify-between gap-4">
-                <span class="category-badge font-english">${art.category || "GENERAL"}</span>
-                <span class="text-[11px] font-semibold text-[#8c7a6b] font-english tracking-wide">${dateStr}</span>
-            </div>
+            <!-- Preview Content -->
+            <div class="article-preview p-6 sm:p-8 space-y-3">
+                <div class="flex items-center justify-between gap-4">
+                    <span class="category-badge font-english">${art.category || "GENERAL"}</span>
+                    <span class="text-[11px] font-semibold text-[#8c7a6b] font-english tracking-wide">${dateStr}</span>
+                </div>
 
-            <h2 class="text-xl sm:text-2xl font-black leading-snug tracking-tight" ${titleStyle || 'style="color: #1e1b18;"'}>
-                ${art.title}
-            </h2>
+                <h2 class="text-xl sm:text-2xl font-black leading-snug tracking-tight hover:text-[#b4532c] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
+                    ${art.title}
+                </h2>
 
-            <p class="text-sm leading-relaxed line-clamp-3" ${contentStyle || 'style="color: #6b5c51;"'}>
-                ${preview}
-            </p>
+                <p class="text-sm leading-relaxed line-clamp-3" ${contentStyle || 'style="color: #6b5c51;"'}>
+                    ${preview}
+                </p>
 
-            <div class="flex items-center justify-between pt-3 border-t border-[#ebdccb]/60">
-                <span class="text-xs font-semibold text-[#8c7a6b]">${art.author || "NUQTHA"}</span>
-                <div class="flex items-center gap-3">
-                    <!-- Option 1: Dedicated Page Link -->
-                    <a href="article.html?id=${art.id}" onclick="event.stopPropagation();" class="text-xs font-bold text-[#b4532c] hover:underline font-english bg-[#b4532c]/10 px-3 py-1.5 rounded-lg transition" title="Open full dedicated page">
-                        Full Page &rarr;
-                    </a>
-                    <!-- Option 2: Full Screen Reader Overlay -->
-                    <button onclick="event.stopPropagation(); window.openFullScreenReader('${art.id}');" class="text-xs font-bold text-[#1e1b18] hover:text-[#b4532c] font-english bg-white/70 px-3 py-1.5 rounded-lg border border-[#ebdccb] transition" title="Open full-screen reader">
-                        Full Screen &uarr;
-                    </button>
+                <div class="flex items-center justify-between pt-4 border-t border-[#ebdccb]/60">
+                    <span class="text-xs font-semibold text-[#8c7a6b]">${art.author || "NUQTHA"}</span>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[#b4532c] hover:text-[#923e1b] font-english transition">
+                        <span>വായിക്കുക (Read)</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </span>
                 </div>
             </div>
-        </div>
-        </div>
-
-        <!-- Full Content (hidden, expands inline) -->
-        <div class="article-full-content">
-            <div class="px-7 sm:px-8 pb-8 space-y-5">
-                <div class="w-full h-px bg-gradient-to-r from-transparent via-[#ebdccb] to-transparent"></div>
-                <div class="space-y-4">
-                    ${fullContent || '<p class="text-sm text-[#8c7a6b] italic">ലേഖന ഉള്ളടക്കം ലഭ്യമല്ല.</p>'}
-                </div>
-                <div class="pt-4 flex justify-center">
-                    <button class="collapse-btn font-english" onclick="event.stopPropagation(); this.closest('.article-glass-card').click();">
-                        ↑ ചുരുക്കുക (Collapse)
-                    </button>
-                </div>
-            </div>
-        </div>
+        </a>
     </article>`;
 }
 
-/* ═══════════ Attach Click → Expand / Collapse ═══════════ */
+/* ═══════════ Attach Click → Direct Navigation ═══════════ */
 function attachCardListeners() {
     document.querySelectorAll(".article-glass-card").forEach(card => {
         card.addEventListener("click", function (e) {
-            // Don't toggle if clicking a link inside
-            if (e.target.closest("a")) return;
-
-            const wasExpanded = this.classList.contains("expanded");
-
-            // Collapse all others first
-            document.querySelectorAll(".article-glass-card.expanded").forEach(c => {
-                if (c !== this) c.classList.remove("expanded");
-            });
-
-            // Toggle self
-            this.classList.toggle("expanded");
-
-            // Smooth scroll to card when expanding
-            if (!wasExpanded) {
-                setTimeout(() => {
-                    this.scrollIntoView({ behavior: "smooth", block: "start" });
-                }, 80);
+            // Direct navigation to article.html
+            const id = this.dataset.id;
+            if (id && !e.target.closest("button")) {
+                window.location.href = `article.html?id=${id}`;
             }
         });
     });

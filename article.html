@@ -81,9 +81,9 @@
         </div>
     </footer>
 
-    <!-- Script to load article details from Firestore -->
+    <!-- Script to load article details from Firestore or LocalStorage -->
     <script type="module">
-        import { db, collection, getDocs } from "./firebase-config.js";
+        import { db, collection, getDocs, doc, onSnapshot } from "./firebase-config.js";
 
         const urlParams = new URLSearchParams(window.location.search);
         const articleId = urlParams.get('id');
@@ -94,44 +94,67 @@
                 return;
             }
 
+            let article = null;
+
+            // 1. Try Local Storage first if it's a local draft/article
             try {
-                const snap = await getDocs(collection(db, "articles"));
-                let article = null;
-                snap.forEach(doc => {
-                    if (doc.id === articleId) {
-                        article = { id: doc.id, ...doc.data() };
-                    }
-                });
+                const localArticles = JSON.parse(localStorage.getItem("nuqtha_local_articles") || "[]");
+                article = localArticles.find(a => a.id === articleId);
+            } catch(e) {}
 
-                if (article) {
-                    document.title = `${article.title} | NUQTHA`;
-                    document.getElementById('art-title').textContent = article.title;
-                    if (article.titleColor) {
-                        document.getElementById('art-title').style.color = article.titleColor;
-                    }
-                    document.getElementById('art-category').textContent = article.category || "GENERAL";
-                    document.getElementById('art-author').textContent = article.author || "NUQTHA";
-                    document.getElementById('art-date').textContent = article.date || "Recent";
-                    
-                    if (article.imageUrl && !article.imageUrl.includes("placeholder")) {
-                        const img = document.getElementById('art-image');
-                        img.src = article.imageUrl;
-                        document.getElementById('art-image-wrapper').classList.remove('hidden');
-                    }
-
-                    const contentEl = document.getElementById('art-content');
-                    const contentColorStyle = article.contentColor ? `style="color: ${article.contentColor};"` : '';
-                    contentEl.innerHTML = (article.content || article.excerpt || "")
-                        .split('\n\n')
-                        .filter(p => p.trim())
-                        .map(p => `<p ${contentColorStyle}>${p}</p>`)
-                        .join('');
-                } else {
-                    document.getElementById('art-title').textContent = "ലേഖനം നിലവിലില്ല";
+            // 2. Fetch from Firestore if not found in local
+            if (!article) {
+                try {
+                    const snap = await getDocs(collection(db, "articles"));
+                    snap.forEach(docSnap => {
+                        if (docSnap.id === articleId) {
+                            article = { id: docSnap.id, ...docSnap.data() };
+                        }
+                    });
+                } catch (e) {
+                    console.error("Firestore read error:", e);
                 }
-            } catch (e) {
-                console.error(e);
-                document.getElementById('art-title').textContent = "ലോഡ് ചെയ്യുന്നതിൽ പിശക്";
+            }
+
+            if (article) {
+                document.title = `${article.title} | NUQTHA`;
+                
+                const titleEl = document.getElementById('art-title');
+                titleEl.textContent = article.title;
+                if (article.titleColor) {
+                    titleEl.style.color = article.titleColor;
+                }
+
+                document.getElementById('art-category').textContent = article.category || "GENERAL";
+                document.getElementById('art-author').textContent = article.author || "NUQTHA";
+                document.getElementById('art-date').textContent = article.date || "Recent";
+                
+                if (article.imageUrl && !article.imageUrl.includes("placeholder")) {
+                    const img = document.getElementById('art-image');
+                    img.src = article.imageUrl;
+                    document.getElementById('art-image-wrapper').classList.remove('hidden');
+                }
+
+                // Reading time estimate
+                const words = (article.content || "").length;
+                const min = Math.max(1, Math.round(words / 400));
+                document.getElementById('reading-time').textContent = `${min} min read`;
+
+                const contentEl = document.getElementById('art-content');
+                const contentColorStyle = article.contentColor ? `style="color: ${article.contentColor};"` : '';
+                contentEl.innerHTML = (article.content || article.excerpt || "")
+                    .split('\n\n')
+                    .filter(p => p.trim())
+                    .map(p => `<p ${contentColorStyle}>${p}</p>`)
+                    .join('');
+            } else {
+                document.getElementById('art-title').textContent = "ലേഖനം കണ്ടെത്താനായില്ല";
+                document.getElementById('art-content').innerHTML = `
+                    <div class="p-6 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-center space-y-2">
+                        <p class="font-bold">ഈ ലേഖനം നിലവിലില്ല അല്ലെങ്കിൽ നീക്കം ചെയ്തിരിക്കുന്നു.</p>
+                        <a href="index.html" class="inline-block mt-2 text-xs font-bold text-[#b4532c] underline font-english">ഹോം പേജിലേക്ക് മടങ്ങുക</a>
+                    </div>
+                `;
             }
         }
 
