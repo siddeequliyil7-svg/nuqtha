@@ -86,9 +86,9 @@ body.dark-mode .dropdown-item:hover {
 }
 
 body.dark-mode .category-badge {
-    color: #e2e8f0;
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.15);
+    color: #f1f5f9 !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 body.dark-mode .more-dots-btn {
@@ -97,10 +97,67 @@ body.dark-mode .more-dots-btn {
     color: #e2e8f0;
 }
 
+body.dark-mode .more-dots-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* Dark Mode Typography - High Contrast & Crystal Clear */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode .text-\[\#1e1b18\] {
+    color: #ffffff !important;
+}
+
+body.dark-mode p,
+body.dark-mode .text-\[\#6b5c51\],
+body.dark-mode .text-\[\#2b2118\] {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .text-\[\#8c7a6b\],
+body.dark-mode .text-\[\#4a3c33\] {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode header,
+body.dark-mode header.sticky {
+    background-color: rgba(15, 17, 26, 0.95) !important;
+    border-color: #262933 !important;
+}
+
+body.dark-mode header a,
+body.dark-mode header span {
+    color: #f1f5f9 !important;
+}
+
+body.dark-mode .article-preview h2 {
+    color: #ffffff !important;
+}
+
+body.dark-mode .article-preview p {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .article-body p {
+    color: #f1f5f9 !important;
+}
+
+body.dark-mode main article h1 {
+    color: #ffffff !important;
+}
+
 body.dark-mode footer {
-    background-color: var(--footer-bg);
-    border-color: #1e222d;
-    color: var(--footer-text);
+    background-color: #050608 !important;
+    border-color: #1e222d !important;
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .border-\[\#ebdccb\],
+body.dark-mode .border-\[\#ebdccb\]\/60 {
+    border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 body.dark-mode #fullscreen-reader-overlay {
@@ -109,7 +166,7 @@ body.dark-mode #fullscreen-reader-overlay {
 }
 
 body.dark-mode #fullscreen-reader-overlay > div:first-child {
-    background-color: rgba(9, 10, 15, 0.9);
+    background-color: rgba(9, 10, 15, 0.95);
     border-color: #262933;
 }
 
