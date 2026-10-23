@@ -130,10 +130,16 @@ function buildCard(art) {
 
             <div class="flex items-center justify-between pt-2">
                 <span class="text-xs font-semibold text-[#8c7a6b]">${art.author || "NUQTHA"}</span>
-                <span class="read-indicator text-xs font-bold text-[#b4532c] font-english flex items-center gap-1 transition-transform">
-                    വായിക്കുക
-                    <svg class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
-                </span>
+                <div class="flex items-center gap-3">
+                    <!-- Option 1: Dedicated Page Link -->
+                    <a href="article.html?id=${art.id}" onclick="event.stopPropagation();" class="text-xs font-bold text-[#b4532c] hover:underline font-english bg-[#b4532c]/10 px-2.5 py-1 rounded-lg transition" title="Open full dedicated page">
+                        Full Page &rarr;
+                    </a>
+                    <!-- Option 2: Full Screen Reader Overlay -->
+                    <button onclick="event.stopPropagation(); window.openFullScreenReader('${art.id}');" class="text-xs font-bold text-[#1e1b18] hover:text-[#b4532c] font-english bg-white/70 px-2.5 py-1 rounded-lg border border-[#ebdccb] transition" title="Open full-screen reader">
+                        Full Screen &uarr;
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -198,7 +204,35 @@ function renderEmpty(message) {
     </div>`;
 }
 
-/* ═══════════ Date Helper ═══════════ */
+/* ═══════════ Option 2: Full Screen Reader Overlay ═══════════ */
+window.openFullScreenReader = function(id) {
+    const art = allArticles.find(a => a.id === id);
+    if (!art) return;
+
+    const overlay = document.getElementById("fullscreen-reader-overlay");
+    if (!overlay) return;
+
+    document.getElementById("reader-title").textContent = art.title;
+    document.getElementById("reader-category").textContent = art.category || "GENERAL";
+    document.getElementById("reader-author").textContent = art.author || "NUQTHA";
+    document.getElementById("reader-date").textContent = art.date || formatDate(art.createdAt);
+
+    const fullContent = (art.content || art.excerpt || "")
+        .split("\n\n")
+        .filter(p => p.trim())
+        .map(p => `<p class="text-lg leading-relaxed text-[#2b2118] mb-6">${p}</p>`)
+        .join("");
+
+    document.getElementById("reader-content").innerHTML = fullContent;
+    overlay.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+};
+
+window.closeFullScreenReader = function() {
+    const overlay = document.getElementById("fullscreen-reader-overlay");
+    if (overlay) overlay.classList.add("hidden");
+    document.body.style.overflow = "auto";
+};
 function formatDate(ts) {
     if (!ts) return "";
     try {

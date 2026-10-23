@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUQTHA | Article Reader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .article-body p {
+            margin-bottom: 1.5rem;
+            line-height: 2;
+            font-size: 1.125rem;
+            color: #2b2118;
+        }
+    </style>
+</head>
+<body class="bg-[#fbf7ee] text-[#1e1b18] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col justify-between">
+
+    <!-- Top Minimal Sticky Header -->
+    <header class="sticky top-0 z-40 bg-[#fbf7ee]/90 backdrop-blur-md border-b border-[#ebdccb]">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <a href="index.html" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#b4532c] hover:text-[#923e1b] transition font-english">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                <span>Back to Home</span>
+            </a>
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white">
+                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-1.5V9a3 3 0 00-3-3h-3.379a3 3 0 01-2.121-.879L8.379 4.043A3 3 0 006.257 3.164H4.5A3 3 0 001.5 6.164V18a3 3 0 003 3h15z"/></svg>
+                </div>
+                <span class="font-extrabold text-sm tracking-tight font-english">NUQTHA</span>
+            </div>
+            <span id="reading-time" class="text-xs text-[#8c7a6b] font-english">Reading</span>
+        </div>
+    </header>
+
+    <!-- Main Article Container -->
+    <main class="max-w-3xl mx-auto px-4 sm:px-6 py-12 flex-1 w-full">
+        <!-- Article Header -->
+        <article class="space-y-8">
+            <div class="space-y-4 text-center sm:text-left">
+                <span id="art-category" class="category-badge font-english">General</span>
+                <h1 id="art-title" class="text-3xl sm:text-5xl font-black text-[#1e1b18] leading-tight tracking-tight">
+                    ലോഡ് ചെയ്യുന്നു...
+                </h1>
+                
+                <div class="flex items-center gap-4 pt-2 border-b border-[#ebdccb] pb-6 text-xs text-[#8c7a6b] font-english">
+                    <div class="w-9 h-9 rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center font-bold text-sm">
+                        N
+                    </div>
+                    <div>
+                        <p id="art-author" class="font-bold text-[#1e1b18] text-sm font-sans">NUQTHA</p>
+                        <p id="art-date">Date</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Optional Article Cover Image -->
+            <div id="art-image-wrapper" class="hidden rounded-3xl overflow-hidden border border-[#ebdccb] shadow-sm">
+                <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[450px]">
+            </div>
+
+            <!-- Full Article Body -->
+            <div id="art-content" class="article-body font-sans text-lg pt-4">
+                <p class="text-slate-400">ലേഖനം ലോഡ് ചെയ്യുന്നു...</p>
+            </div>
+
+            <!-- Article Footer Back Link -->
+            <div class="pt-10 border-t border-[#ebdccb] flex justify-center">
+                <a href="index.html" class="px-6 py-3 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
+                    &larr; Back to all stories
+                </a>
+            </div>
+        </article>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#241711] text-[#cbbba9] border-t border-[#3d2c22] py-8 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs font-english tracking-wider">
+            &copy; 2026 NUQTHA. All rights reserved.
+        </div>
+    </footer>
+
+    <!-- Script to load article details from Firestore -->
+    <script type="module">
+        import { db, collection, getDocs } from "./firebase-config.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const articleId = urlParams.get('id');
+
+        async function loadArticle() {
+            if (!articleId) {
+                document.getElementById('art-title').textContent = "ലേഖനം കണ്ടെത്താനായില്ല";
+                return;
+            }
+
+            try {
+                const snap = await getDocs(collection(db, "articles"));
+                let article = null;
+                snap.forEach(doc => {
+                    if (doc.id === articleId) {
+                        article = { id: doc.id, ...doc.data() };
+                    }
+                });
+
+                if (article) {
+                    document.title = `${article.title} | NUQTHA`;
+                    document.getElementById('art-title').textContent = article.title;
+                    document.getElementById('art-category').textContent = article.category || "GENERAL";
+                    document.getElementById('art-author').textContent = article.author || "NUQTHA";
+                    document.getElementById('art-date').textContent = article.date || "Recent";
+                    
+                    if (article.imageUrl && !article.imageUrl.includes("placeholder")) {
+                        const img = document.getElementById('art-image');
+                        img.src = article.imageUrl;
+                        document.getElementById('art-image-wrapper').classList.remove('hidden');
+                    }
+
+                    const contentEl = document.getElementById('art-content');
+                    contentEl.innerHTML = (article.content || article.excerpt || "")
+                        .split('\n\n')
+                        .filter(p => p.trim())
+                        .map(p => `<p>${p}</p>`)
+                        .join('');
+                } else {
+                    document.getElementById('art-title').textContent = "ലേഖനം നിലവിലില്ല";
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('art-title').textContent = "ലോഡ് ചെയ്യുന്നതിൽ പിശക്";
+            }
+        }
+
+        loadArticle();
+    </script>
+</body>
+</html>

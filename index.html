@@ -94,6 +94,44 @@
 
     </main>
 
+    <!-- ═══════════ FULL SCREEN READING INTERFACE (OPTION 2) ═══════════ -->
+    <div id="fullscreen-reader-overlay" class="fixed inset-0 z-50 bg-[#fbf7ee] overflow-y-auto hidden">
+        <!-- Top Reader Navbar -->
+        <div class="sticky top-0 bg-[#fbf7ee]/90 backdrop-blur-md border-b border-[#ebdccb] px-6 py-4 flex items-center justify-between z-10">
+            <button onclick="closeFullScreenReader()" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#b4532c] hover:text-[#923e1b] transition font-english">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                <span>Close Reader</span>
+            </button>
+            <span class="text-xs font-bold text-[#8c7a6b] font-english uppercase tracking-widest">NUQTHA Reader</span>
+        </div>
+
+        <!-- Article Reader View -->
+        <div class="max-w-3xl mx-auto px-6 py-12 space-y-8">
+            <div class="space-y-4">
+                <span id="reader-category" class="category-badge font-english">General</span>
+                <h1 id="reader-title" class="text-3xl sm:text-5xl font-extrabold text-[#1e1b18] leading-tight">
+                    Article Title
+                </h1>
+                <div class="flex items-center gap-3 text-xs text-[#8c7a6b] font-english border-b border-[#ebdccb] pb-4">
+                    <span id="reader-author" class="font-bold text-[#1e1b18] text-sm">Author</span>
+                    <span>•</span>
+                    <span id="reader-date">Date</span>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div id="reader-content" class="text-[#2b2118] leading-relaxed pt-2">
+                <!-- Injected via JS -->
+            </div>
+
+            <div class="pt-10 border-t border-[#ebdccb] text-center">
+                <button onclick="closeFullScreenReader()" class="px-6 py-3 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase font-english hover:bg-[#923e1b] transition">
+                    &larr; Back to Feed
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ═══════════ FOOTER ═══════════ -->
     <footer class="flex-shrink-0 bg-[#241711] text-[#cbbba9] border-t border-[#3d2c22] py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-english tracking-wider">
