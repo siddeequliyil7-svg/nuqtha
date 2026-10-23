@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUQTHA | Beyond Obvious - വായനയുടെ പുതിയ ബിന്ദു</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-[#fbf7ee] text-[#1e1b18] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col">
+
+    <!-- ═══════════ TOP CANOPY & FLOATING GLASS NAVIGATION ═══════════ -->
+    <header class="relative w-full z-40 flex-shrink-0">
+        <div class="top-canopy-band w-full"></div>
+
+        <div class="max-w-2xl mx-auto px-4 -mt-20">
+            <div class="pro-floating-glass-card px-8 py-7 sm:px-10 sm:py-8 flex flex-col items-center justify-center text-center relative">
+                
+                <!-- 3-Dots Button (Top-Right of Glass Header) -->
+                <div class="absolute right-5 top-5">
+                    <button id="dots-menu-btn" class="more-dots-btn" title="More Options" aria-label="More Options">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="5" r="2" />
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="12" cy="19" r="2" />
+                        </svg>
+                    </button>
+
+                    <!-- Glassmorphism Dropdown Menu -->
+                    <div id="dots-dropdown" class="hidden absolute right-0 mt-2 w-56 glass-dropdown-menu p-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+                        <div class="px-3 py-2 border-b border-[#ebdccb]/60 mb-1">
+                            <p class="text-[10px] font-extrabold uppercase tracking-widest text-[#8c7a6b] font-english">Administration</p>
+                        </div>
+                        <a href="admin.html" class="dropdown-item">
+                            <div class="w-7 h-7 rounded-lg bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            </div>
+                            <div>
+                                <span class="font-english">Admin Dashboard</span>
+                                <p class="text-[10px] text-[#8c7a6b] font-normal">Publish & Manage</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Brand Logo & Title -->
+                <div class="flex items-center justify-center gap-3.5 mb-5 sm:mb-6">
+                    <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-md shadow-blue-500/25 flex items-center justify-center p-2.5 flex-shrink-0">
+                        <svg class="w-full h-full text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z" />
+                        </svg>
+                    </div>
+                    <span class="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#1e1b18] font-english uppercase">
+                        NUQTHA
+                    </span>
+                </div>
+
+                <!-- Category Tabs -->
+                <nav id="category-nav" class="flex items-center justify-center flex-wrap gap-7 sm:gap-10 w-full font-english tracking-wider text-xs sm:text-sm font-bold uppercase">
+                    <a href="#" data-category="ALL" class="nav-category-link active">HOME</a>
+                    <a href="#" data-category="HISTORY" class="nav-category-link">HISTORY</a>
+                    <a href="#" data-category="STUDY" class="nav-category-link">STUDY</a>
+                    <a href="#" data-category="STORY" class="nav-category-link">STORY</a>
+                </nav>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══════════ MAIN FEED / BLOG-ROLL ═══════════ -->
+    <main class="flex-grow w-full max-w-2xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+        
+        <!-- Feed Container -->
+        <div id="feed-container" class="space-y-6">
+            <!-- Skeleton loading cards (replaced by JS) -->
+            <div class="article-glass-card p-7 space-y-4">
+                <div class="skeleton-pulse h-3 w-20"></div>
+                <div class="skeleton-pulse h-6 w-3/4"></div>
+                <div class="skeleton-pulse h-3 w-full"></div>
+                <div class="skeleton-pulse h-3 w-5/6"></div>
+            </div>
+            <div class="article-glass-card p-7 space-y-4">
+                <div class="skeleton-pulse h-3 w-16"></div>
+                <div class="skeleton-pulse h-6 w-2/3"></div>
+                <div class="skeleton-pulse h-3 w-full"></div>
+                <div class="skeleton-pulse h-3 w-4/6"></div>
+            </div>
+            <div class="article-glass-card p-7 space-y-4">
+                <div class="skeleton-pulse h-3 w-24"></div>
+                <div class="skeleton-pulse h-6 w-1/2"></div>
+                <div class="skeleton-pulse h-3 w-full"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ═══════════ FOOTER ═══════════ -->
+    <footer class="flex-shrink-0 bg-[#241711] text-[#cbbba9] border-t border-[#3d2c22] py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-english tracking-wider">
+            <span>&copy; 2026 NUQTHA. All rights reserved.</span>
+            <a href="admin.html" class="text-[#e2936c] hover:underline font-bold">Admin Portal &rarr;</a>
+        </div>
+    </footer>
+
+    <!-- App Module -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+/**
+ * NUQTHA — Frosted Glass Feed Engine
+ * Realtime Firestore → Vertical Blog-Roll with Inline Expansion
+ */
+import { db, collection, query, orderBy, onSnapshot } from "./firebase-config.js";
+
+let allArticles = [];
+let currentCategory = "ALL";
+
+document.addEventListener("DOMContentLoaded", () => {
+    setupCategoryNav();
+    setupDotsMenu();
+    listenForArticles();
+});
+
+/* ═══════════ 3-Dots Dropdown Menu ═══════════ */
+function setupDotsMenu() {
+    const dotsBtn = document.getElementById("dots-menu-btn");
+    const dropdown = document.getElementById("dots-dropdown");
+
+    if (dotsBtn && dropdown) {
+        dotsBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle("hidden");
+        });
+
+        // Close dropdown when tapping anywhere outside
+        document.addEventListener("click", (e) => {
+            if (!dropdown.contains(e.target) && e.target !== dotsBtn) {
+                dropdown.classList.add("hidden");
+            }
+        });
+    }
+}
+
+/* ═══════════ Category Tab Switching ═══════════ */
+function setupCategoryNav() {
+    const links = document.querySelectorAll("#category-nav .nav-category-link");
+    links.forEach(link => {
+        link.addEventListener("click", (e) => {
+            e.preventDefault();
+            links.forEach(l => l.classList.remove("active"));
+            link.classList.add("active");
+            currentCategory = link.dataset.category;
+            renderFeed();
+        });
+    });
+}
+
+/* ═══════════ Firestore Realtime Listener ═══════════ */
+function listenForArticles() {
+    const ref = collection(db, "articles");
+    const q = query(ref, orderBy("createdAt", "desc"));
+
+    onSnapshot(q, (snap) => {
+        allArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderFeed();
+    }, (err) => {
+        console.warn("Firestore error:", err);
+        renderEmpty("ഫയർബേസ് കണക്ഷൻ പരിശോധിക്കുക. ലേഖനങ്ങൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
+    });
+}
+
+/* ═══════════ Render Feed ═══════════ */
+function renderFeed() {
+    const container = document.getElementById("feed-container");
+    if (!container) return;
+
+    const filtered = currentCategory === "ALL"
+        ? allArticles
+        : allArticles.filter(a => (a.category || "").toUpperCase() === currentCategory);
+
+    if (filtered.length === 0) {
+        renderEmpty(
+            currentCategory === "ALL"
+                ? "ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം."
+                : `${currentCategory} വിഭാഗത്തിൽ ലേഖനങ്ങൾ ഇപ്പോൾ ലഭ്യമല്ല.`
+        );
+        return;
+    }
+
+    container.innerHTML = filtered.map(art => buildCard(art)).join("");
+    attachCardListeners();
+}
+
+/* ═══════════ Build a Single Frosted Glass Card ═══════════ */
+function buildCard(art) {
+    const dateStr = art.date || formatDate(art.createdAt);
+    const preview = art.excerpt || (art.content ? art.content.substring(0, 180) + "…" : "");
+    const fullContent = (art.content || "")
+        .split("\n\n")
+        .filter(p => p.trim())
+        .map(p => `<p class="text-base leading-relaxed text-[#2b2118]">${p}</p>`)
+        .join("");
+
+    return `
+    <article class="article-glass-card" data-id="${art.id}">
+        <!-- Preview (always visible) -->
+        <div class="article-preview p-7 sm:p-8 space-y-3">
+            <div class="flex items-center justify-between gap-4">
+                <span class="category-badge font-english">${art.category || "GENERAL"}</span>
+                <span class="text-[11px] font-semibold text-[#8c7a6b] font-english tracking-wide">${dateStr}</span>
+            </div>
+
+            <h2 class="text-xl sm:text-2xl font-extrabold text-[#1e1b18] leading-snug tracking-tight">
+                ${art.title}
+            </h2>
+
+            <p class="text-sm text-[#6b5c51] leading-relaxed line-clamp-3">
+                ${preview}
+            </p>
+
+            <div class="flex items-center justify-between pt-2">
+                <span class="text-xs font-semibold text-[#8c7a6b]">${art.author || "NUQTHA"}</span>
+                <span class="read-indicator text-xs font-bold text-[#b4532c] font-english flex items-center gap-1 transition-transform">
+                    വായിക്കുക
+                    <svg class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                </span>
+            </div>
+        </div>
+
+        <!-- Full Content (hidden, expands inline) -->
+        <div class="article-full-content">
+            <div class="px-7 sm:px-8 pb-8 space-y-5">
+                <div class="w-full h-px bg-gradient-to-r from-transparent via-[#ebdccb] to-transparent"></div>
+                <div class="space-y-4">
+                    ${fullContent || '<p class="text-sm text-[#8c7a6b] italic">ലേഖന ഉള്ളടക്കം ലഭ്യമല്ല.</p>'}
+                </div>
+                <div class="pt-4 flex justify-center">
+                    <button class="collapse-btn font-english" onclick="event.stopPropagation(); this.closest('.article-glass-card').click();">
+                        ↑ ചുരുക്കുക (Collapse)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </article>`;
+}
+
+/* ═══════════ Attach Click → Expand / Collapse ═══════════ */
+function attachCardListeners() {
+    document.querySelectorAll(".article-glass-card").forEach(card => {
+        card.addEventListener("click", function (e) {
+            // Don't toggle if clicking a link inside
+            if (e.target.closest("a")) return;
+
+            const wasExpanded = this.classList.contains("expanded");
+
+            // Collapse all others first
+            document.querySelectorAll(".article-glass-card.expanded").forEach(c => {
+                if (c !== this) c.classList.remove("expanded");
+            });
+
+            // Toggle self
+            this.classList.toggle("expanded");
+
+            // Smooth scroll to card when expanding
+            if (!wasExpanded) {
+                setTimeout(() => {
+                    this.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 80);
+            }
+        });
+    });
+}
+
+/* ═══════════ Empty State ═══════════ */
+function renderEmpty(message) {
+    const container = document.getElementById("feed-container");
+    if (!container) return;
+    container.innerHTML = `
+    <div class="article-glass-card p-10 sm:p-14 text-center cursor-default hover:transform-none" style="cursor: default;">
+        <div class="w-14 h-14 rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center mx-auto mb-5">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+        </div>
+        <p class="text-lg font-bold text-[#4a3b32] mb-2">${message}</p>
+        <a href="admin.html" class="inline-flex items-center gap-2 mt-3 px-5 py-2.5 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
+            Admin Dashboard
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </a>
+    </div>`;
+}
+
+/* ═══════════ Date Helper ═══════════ */
+function formatDate(ts) {
+    if (!ts) return "";
+    try {
+        const d = ts.toDate ? ts.toDate() : new Date(ts);
+        return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    } catch { return ""; }
+}

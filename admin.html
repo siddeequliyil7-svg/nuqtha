@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUQTHA | Admin Publishing Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-[#fbf7ee] text-[#1e1b18] antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- Top Admin Header -->
+    <header class="bg-[#241711] text-[#fbf7ee] border-b border-white/10 sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="index.html" class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-1.5V9a3 3 0 00-3-3h-3.379a3 3 0 01-2.121-.879L8.379 4.043A3 3 0 006.257 3.164H4.5A3 3 0 001.5 6.164V18a3 3 0 003 3h15z"/></svg>
+                    </div>
+                    <span class="text-xl font-black uppercase font-english text-white tracking-tight">NUQTHA</span>
+                </a>
+                <span class="text-[11px] bg-[#b4532c]/20 text-[#e2936c] border border-[#b4532c]/30 px-2.5 py-0.5 rounded-full font-bold uppercase font-english">
+                    Admin Portal
+                </span>
+            </div>
+            <a href="index.html" class="inline-flex items-center gap-2 text-xs font-bold uppercase font-english text-[#cbbba9] hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                <span>View Website</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Admin Container -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
+        
+        <!-- Welcome Banner -->
+        <div class="bg-gradient-to-r from-[#b4532c] to-[#923e1b] text-white rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-white/80 font-english mb-1 block">Live Firestore Connected</span>
+                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">ലേഖനങ്ങൾ പ്രസിദ്ധീകരിക്കാം (Publish to Firestore)</h1>
+                <p class="text-white/80 text-xs md:text-sm mt-1">ഇവിടെ ലേഖനം ചേർക്കുമ്പോൾ അത് തത്സമയം NUQTHA ഫ്രണ്ട് എൻഡിൽ അപ്‌ഡേറ്റ് ആകും.</p>
+            </div>
+            <div class="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-400/40 rounded-full text-white text-xs font-semibold font-english">
+                <span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+                <span>Firestore: articles</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left Form: Add Article (7 Cols) -->
+            <div class="lg:col-span-7 bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-6">
+                <div class="border-b border-[#f0e6d6] pb-4">
+                    <h2 class="text-lg font-extrabold text-[#1e1b18]">പുതിയ ലേഖനം ചേർക്കുക (New Article)</h2>
+                    <p class="text-xs text-[#8c7a6b]">ലേഖനത്തിന്റെ വിവരങ്ങൾ താഴെ നൽകി Publish ചെയ്യുക</p>
+                </div>
+
+                <form id="add-article-form" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">ലേഖനത്തിന്റെ തലക്കെട്ട് (Title)</label>
+                        <input id="art-title" type="text" required placeholder="ലേഖനത്തിന്റെ പേര് നൽകുക..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">വിഭാഗം (Category)</label>
+                            <select id="art-category" class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-english font-semibold">
+                                <option value="HISTORY">HISTORY (ചരിത്രം)</option>
+                                <option value="STUDY">STUDY (പഠനം)</option>
+                                <option value="STORY">STORY (കഥ / അനുഭവം)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">എഴുത്തുകാരൻ (Author)</label>
+                            <input id="art-author" type="text" required placeholder="പേര് നൽകുക..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">കവർ ചിത്രം (Image URL)</label>
+                        <input id="art-image" type="url" placeholder="https://images.unsplash.com/..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition font-english bg-[#fbf7ee]/40">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">ലേഖനത്തിന്റെ ചുരുക്കം (Excerpt)</label>
+                        <textarea id="art-excerpt" rows="2" placeholder="ഹോം പേജിൽ കാണിക്കേണ്ട 2-3 വരി ചുരുക്കം..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">പൂർണ്ണ ലേഖനം (Full Content)</label>
+                        <textarea id="art-content" rows="6" required placeholder="ലേഖനത്തിന്റെ പൂർണ്ണ രൂപം ഇവിടെ നൽകുക..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40"></textarea>
+                    </div>
+
+                    <button type="submit" id="submit-btn" class="w-full py-4 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
+                        <span>Publish Article to Firestore</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </button>
+                    <div id="status-msg" class="text-center text-xs font-bold hidden"></div>
+                </form>
+            </div>
+
+            <!-- Right Column: Live List of Articles from Firestore (5 Cols) -->
+            <div class="lg:col-span-5 bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-[#f0e6d6]">
+                    <h2 class="text-base font-extrabold text-[#1e1b18]">പ്രസിദ്ധീകരിച്ചവ (Live Articles)</h2>
+                    <span id="article-count" class="text-xs font-bold font-english text-[#b4532c] bg-[#b4532c]/10 px-2.5 py-0.5 rounded-full">0</span>
+                </div>
+                <div id="admin-articles-list" class="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                    <p class="text-xs text-slate-400">ലോഡ് ചെയ്യുന്നു...</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Admin Firebase Logic -->
+    <script type="module">
+        import { db, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
+
+        const form = document.getElementById('add-article-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const statusMsg = document.getElementById('status-msg');
+        const listContainer = document.getElementById('admin-articles-list');
+        const countBadge = document.getElementById('article-count');
+
+        // Form Submit -> Add to Firestore
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Publishing...';
+
+            try {
+                const title = document.getElementById('art-title').value.trim();
+                const category = document.getElementById('art-category').value;
+                const author = document.getElementById('art-author').value.trim();
+                const imageUrl = document.getElementById('art-image').value.trim();
+                const excerpt = document.getElementById('art-excerpt').value.trim();
+                const content = document.getElementById('art-content').value.trim();
+
+                await addDoc(collection(db, "articles"), {
+                    title,
+                    category,
+                    author,
+                    imageUrl: imageUrl || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1200&q=80",
+                    excerpt: excerpt || content.substring(0, 150) + "...",
+                    content,
+                    date: new Date().toLocaleDateString('en-GB'),
+                    createdAt: serverTimestamp()
+                });
+
+                statusMsg.textContent = "ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!";
+                statusMsg.className = "text-center text-xs font-bold text-emerald-600 block";
+                form.reset();
+            } catch (err) {
+                console.error("Error publishing article:", err);
+                statusMsg.textContent = "Error: " + err.message;
+                statusMsg.className = "text-center text-xs font-bold text-rose-600 block";
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<span>Publish Article to Firestore</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+            }
+        });
+
+        // Realtime Listener for Existing Articles in Admin
+        const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
+        onSnapshot(q, (snapshot) => {
+            countBadge.textContent = snapshot.size;
+            if (snapshot.empty) {
+                listContainer.innerHTML = '<p class="text-xs text-slate-400">ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല.</p>';
+                return;
+            }
+            listContainer.innerHTML = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return `
+                    <div class="p-3.5 bg-[#fbf7ee]/60 rounded-2xl border border-[#ebdccb] space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-[#b4532c] uppercase font-english">${data.category || 'General'}</span>
+                            <span class="text-[10px] text-slate-400 font-english">${data.date || ''}</span>
+                        </div>
+                        <h4 class="text-sm font-bold text-[#1e1b18] line-clamp-1">${data.title}</h4>
+                        <p class="text-[11px] text-[#6b5c51]">${data.author || 'Author'}</p>
+                    </div>
+                `;
+            }).join('');
+        });
+    </script>
+</body>
+</html>

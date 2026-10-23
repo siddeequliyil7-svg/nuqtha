@@ -1,0 +1,231 @@
+@import url('https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --terracotta: #b4532c;
+    --terracotta-dark: #923e1b;
+    --bg-cream: #fbf7ee;
+    --text-primary: #1e1b18;
+    --text-muted: #6b5c51;
+    --border-warm: #ebdccb;
+    --card-glass-bg: rgba(255, 255, 255, 0.55);
+    --card-glass-border: rgba(255, 255, 255, 0.75);
+}
+
+* { box-sizing: border-box; }
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', 'Anek Malayalam', -apple-system, sans-serif;
+    color: var(--text-primary);
+    background-color: var(--bg-cream);
+    -webkit-font-smoothing: antialiased;
+}
+
+.font-english {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* ═══════════ Top Canopy Band ═══════════ */
+.top-canopy-band {
+    background: linear-gradient(180deg, #b8542c 0%, #aa4923 100%);
+    height: 110px;
+    border-bottom-left-radius: 40px;
+    border-bottom-right-radius: 40px;
+    box-shadow: 0 10px 30px -5px rgba(170, 73, 35, 0.2);
+}
+
+/* ═══════════ More Options (3-Dot) Menu & Dropdown ═══════════ */
+.more-dots-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4a3c33;
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    transition: all 0.2s ease;
+}
+
+.more-dots-btn:hover {
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--terracotta);
+    box-shadow: 0 4px 12px rgba(80, 40, 20, 0.08);
+}
+
+.glass-dropdown-menu {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 16px 40px -8px rgba(80, 40, 20, 0.18),
+                0 4px 12px -2px rgba(80, 40, 20, 0.06),
+                inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    color: #2b2118;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.dropdown-item:hover {
+    background: rgba(180, 83, 44, 0.08);
+    color: var(--terracotta);
+}
+
+/* ═══════════ Floating Glass Nav Card ═══════════ */
+.pro-floating-glass-card {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 28px;
+    box-shadow: 0 24px 50px -12px rgba(80, 40, 20, 0.16),
+                0 4px 16px -2px rgba(80, 40, 20, 0.06),
+                inset 0 1px 2px rgba(255, 255, 255, 0.9);
+}
+
+/* ═══════════ Category Link Styling ═══════════ */
+.nav-category-link {
+    position: relative;
+    font-size: 15px;
+    font-weight: 600;
+    color: #4a3c33;
+    transition: all 0.2s ease;
+    padding-bottom: 6px;
+    cursor: pointer;
+}
+
+.nav-category-link:hover {
+    color: var(--terracotta);
+}
+
+.nav-category-link.active {
+    color: var(--terracotta);
+}
+
+.nav-category-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    right: 10%;
+    height: 2.5px;
+    background: var(--terracotta);
+    border-radius: 9999px;
+}
+
+/* ═══════════ Frosted Glass Article Cards ═══════════ */
+.article-glass-card {
+    background: rgba(255, 255, 255, 0.48);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 24px;
+    box-shadow: 0 8px 32px -8px rgba(80, 40, 20, 0.08),
+                inset 0 1px 1px rgba(255, 255, 255, 0.8);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.article-glass-card:hover {
+    background: rgba(255, 255, 255, 0.62);
+    box-shadow: 0 12px 40px -8px rgba(80, 40, 20, 0.14),
+                inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+}
+
+.article-glass-card.expanded {
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: 0 16px 48px -8px rgba(80, 40, 20, 0.18),
+                inset 0 1px 2px rgba(255, 255, 255, 1);
+    transform: none;
+    cursor: default;
+}
+
+/* ═══════════ Expand / Collapse Content ═══════════ */
+.article-full-content {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.4s ease 0.1s;
+}
+
+.article-glass-card.expanded .article-full-content {
+    max-height: 3000px;
+    opacity: 1;
+}
+
+/* ═══════════ Collapse Button ═══════════ */
+.collapse-btn {
+    background: rgba(180, 83, 44, 0.08);
+    border: 1px solid rgba(180, 83, 44, 0.2);
+    border-radius: 12px;
+    padding: 8px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--terracotta);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.collapse-btn:hover {
+    background: var(--terracotta);
+    color: white;
+    border-color: var(--terracotta);
+}
+
+/* ═══════════ Category Badge ═══════════ */
+.category-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--terracotta);
+    background: rgba(180, 83, 44, 0.08);
+    border: 1px solid rgba(180, 83, 44, 0.15);
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+
+/* ═══════════ Loading Skeleton Pulse ═══════════ */
+@keyframes shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+.skeleton-pulse {
+    background: linear-gradient(90deg, rgba(235, 220, 203, 0.3) 25%, rgba(235, 220, 203, 0.6) 50%, rgba(235, 220, 203, 0.3) 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 12px;
+}
+
+/* ═══════════ Custom Scrollbar ═══════════ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4c4b0; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #b4a08a; }
+
+/* ═══════════ Line Clamp ═══════════ */
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
