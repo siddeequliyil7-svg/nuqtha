@@ -8,10 +8,41 @@ let allArticles = [];
 let currentCategory = "ALL";
 
 document.addEventListener("DOMContentLoaded", () => {
+    setupThemeToggle();
     setupCategoryNav();
     setupDotsMenu();
     listenForArticles();
 });
+
+/* ═══════════ Light / Dark Mode Toggle ═══════════ */
+function setupThemeToggle() {
+    const themeBtn = document.getElementById("theme-toggle-btn");
+    const sunIcon = document.getElementById("sun-icon");
+    const moonIcon = document.getElementById("moon-icon");
+
+    // Check saved preference or system preference
+    const savedTheme = localStorage.getItem("nuqtha_theme");
+    if (savedTheme === "dark") {
+        document.body.classList.add("dark-mode");
+        if (sunIcon) sunIcon.classList.remove("hidden");
+        if (moonIcon) moonIcon.classList.add("hidden");
+    }
+
+    if (themeBtn) {
+        themeBtn.addEventListener("click", () => {
+            const isDark = document.body.classList.toggle("dark-mode");
+            localStorage.setItem("nuqtha_theme", isDark ? "dark" : "light");
+
+            if (isDark) {
+                if (sunIcon) sunIcon.classList.remove("hidden");
+                if (moonIcon) moonIcon.classList.add("hidden");
+            } else {
+                if (sunIcon) sunIcon.classList.add("hidden");
+                if (moonIcon) moonIcon.classList.remove("hidden");
+            }
+        });
+    }
+}
 
 /* ═══════════ 3-Dots Dropdown Menu ═══════════ */
 function setupDotsMenu() {

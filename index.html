@@ -16,8 +16,21 @@
         <div class="max-w-2xl mx-auto px-4 -mt-20">
             <div class="pro-floating-glass-card px-8 py-7 sm:px-10 sm:py-8 flex flex-col items-center justify-center text-center relative">
                 
-                <!-- 3-Dots Button (Top-Right of Glass Header) -->
-                <div class="absolute right-5 top-5">
+                <!-- Actions (Dark Mode Toggle & 3-Dots Button) -->
+                <div class="absolute right-4 sm:right-6 top-4 sm:top-5 flex items-center gap-2">
+                    <!-- Light / Dark Mode Toggle Button -->
+                    <button id="theme-toggle-btn" class="more-dots-btn" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+                        <!-- Sun Icon (shown in dark mode) -->
+                        <svg id="sun-icon" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <!-- Moon Icon (shown in light mode) -->
+                        <svg id="moon-icon" class="w-4 h-4 text-[#4a3c33]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+
+                    <!-- 3-Dots Button -->
                     <button id="dots-menu-btn" class="more-dots-btn" title="More Options" aria-label="More Options">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                             <circle cx="12" cy="5" r="2" />
@@ -27,7 +40,7 @@
                     </button>
 
                     <!-- Glassmorphism Dropdown Menu -->
-                    <div id="dots-dropdown" class="hidden absolute right-0 mt-2 w-56 glass-dropdown-menu p-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+                    <div id="dots-dropdown" class="hidden absolute right-0 mt-12 w-56 glass-dropdown-menu p-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
                         <div class="px-3 py-2 border-b border-[#ebdccb]/60 mb-1">
                             <p class="text-[10px] font-extrabold uppercase tracking-widest text-[#8c7a6b] font-english">Administration</p>
                         </div>
