@@ -107,8 +107,44 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">പൂർണ്ണ ലേഖനം (Full Content)</label>
-                        <textarea id="art-content" rows="6" required placeholder="ലേഖനത്തിന്റെ പൂർണ്ണ രൂപം ഇവിടെ നൽകുക..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40"></textarea>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english">പൂർണ്ണ ലേഖനം (Full Content)</label>
+                            <span class="text-[11px] text-[#8c7a6b]">ഫോർമാറ്റിംഗ് ടൂളുകൾ ഉപയോഗിക്കുക:</span>
+                        </div>
+
+                        <!-- Rich Formatting Toolbar -->
+                        <div class="flex flex-wrap items-center gap-1.5 p-2 bg-[#fbf7ee] border border-[#ebdccb] rounded-t-xl border-b-0">
+                            <!-- Bold Button -->
+                            <button type="button" id="tool-bold-btn" class="px-2.5 py-1 text-xs font-black bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-sm" title="Bold Text (**വാക്ക്**)">
+                                <span class="font-bold">B</span>
+                                <span class="text-[10px] font-normal">ബോൾഡ്</span>
+                            </button>
+
+                            <!-- Highlight Button -->
+                            <button type="button" id="tool-highlight-btn" class="px-2.5 py-1 text-xs font-bold bg-amber-100 hover:bg-amber-400 hover:text-black rounded-lg border border-amber-300 transition flex items-center gap-1 shadow-sm text-amber-900" title="Highlight (==വാക്ക്==)">
+                                <span>🖍️</span>
+                                <span class="text-[10px]">ഹൈലൈറ്റ്</span>
+                            </button>
+
+                            <!-- Subheading / Title inside text -->
+                            <button type="button" id="tool-heading-btn" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-sm" title="Subheading (## തലക്കെട്ട്)">
+                                <span class="font-bold">H2</span>
+                                <span class="text-[10px] font-normal">ഉപതലക്കെട്ട്</span>
+                            </button>
+
+                            <!-- Inline Image Button -->
+                            <button type="button" id="tool-inline-img-btn" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-sm text-[#b4532c]" title="Insert Image between paragraphs">
+                                <span>🖼️</span>
+                                <span class="text-[10px] font-normal">ചിത്രം ചേർക്കുക</span>
+                            </button>
+                            <input type="file" id="inline-img-file-input" accept="image/*" class="hidden">
+                        </div>
+
+                        <textarea id="art-content" rows="8" required placeholder="ലേഖനത്തിന്റെ പൂർണ്ണ രൂപം ഇവിടെ നൽകുക... ടെക്സ്റ്റ് സെലക്ട് ചെയ്ത ശേഷം മുകളിലെ ബോൾഡ് / ഹൈലൈറ്റ് ബട്ടണുകൾ ഉപയോഗിക്കാം." class="w-full text-sm p-3.5 rounded-b-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-sans leading-relaxed"></textarea>
+                        
+                        <p class="text-[11px] text-[#8c7a6b] mt-1.5 flex items-center gap-2">
+                            <span>💡 സൂചന: സെലക്ട് ചെയ്ത വാക്ക് <b>ബോൾഡ്</b> ആക്കാൻ <code>**വാക്ക്**</code> എന്നും, <mark class="bg-amber-200 px-1 rounded">ഹൈലൈറ്റ്</mark> ആക്കാൻ <code>==വാക്ക്==</code> എന്നും ചേർക്കാം.</span>
+                        </p>
                     </div>
 
                     <!-- Color Customization Options (തലക്കെട്ട് & ലേഖനം കളർ മാറ്റാനുള്ള ഓപ്ഷൻ) -->
@@ -203,6 +239,68 @@
         let selectedBase64Image = "";
         let editingArticleId = null; // null = new article mode, string = edit mode
         let currentArticlesList = [];
+
+        // Rich Text Formatting Tools Logic
+        const contentTextarea = document.getElementById('art-content');
+        const toolBoldBtn = document.getElementById('tool-bold-btn');
+        const toolHighlightBtn = document.getElementById('tool-highlight-btn');
+        const toolHeadingBtn = document.getElementById('tool-heading-btn');
+        const toolInlineImgBtn = document.getElementById('tool-inline-img-btn');
+        const inlineImgFileInput = document.getElementById('inline-img-file-input');
+
+        function wrapSelectedText(prefix, suffix) {
+            const start = contentTextarea.selectionStart;
+            const end = contentTextarea.selectionEnd;
+            const text = contentTextarea.value;
+            const selected = text.substring(start, end) || "ഇവിടെ ടെക്സ്റ്റ് നൽകുക";
+            const replacement = prefix + selected + suffix;
+            contentTextarea.value = text.substring(0, start) + replacement + text.substring(end);
+            contentTextarea.focus();
+            contentTextarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+        }
+
+        toolBoldBtn.addEventListener('click', () => wrapSelectedText('**', '**'));
+        toolHighlightBtn.addEventListener('click', () => wrapSelectedText('==', '=='));
+        toolHeadingBtn.addEventListener('click', () => wrapSelectedText('\n\n### ', '\n\n'));
+
+        // Handle Inline Image Upload
+        toolInlineImgBtn.addEventListener('click', () => inlineImgFileInput.click());
+        inlineImgFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const maxDim = 800;
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > height && width > maxDim) {
+                        height = Math.round((height * maxDim) / width);
+                        width = maxDim;
+                    } else if (height > maxDim) {
+                        width = Math.round((width * maxDim) / height);
+                        height = maxDim;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const base64Img = canvas.toDataURL('image/jpeg', 0.75);
+                    const insertTag = `\n\n![ചിത്രം](${base64Img})\n\n`;
+                    
+                    const start = contentTextarea.selectionStart;
+                    const text = contentTextarea.value;
+                    contentTextarea.value = text.substring(0, start) + insertTag + text.substring(start);
+                    inlineImgFileInput.value = '';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
 
         // Handle Image File Selection & Compression
         fileInput.addEventListener('change', function(e) {

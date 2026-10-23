@@ -132,6 +132,38 @@ function renderFeed() {
     attachCardListeners();
 }
 
+/* ═══════════ Format Markdown/Rich Text (Bold, Highlight, Subheadings, Inline Images) ═══════════ */
+function formatRichContent(rawText, contentStyle) {
+    if (!rawText) return "";
+    return rawText
+        .split("\n\n")
+        .filter(p => p.trim())
+        .map(paragraph => {
+            const p = paragraph.trim();
+            // Subheading: ### Title
+            if (p.startsWith("### ")) {
+                return `<h3 class="text-xl font-bold my-4 text-[#1e1b18]">${p.replace("### ", "")}</h3>`;
+            }
+            // Inline Image: ![caption](url)
+            const imgMatch = p.match(/^!\[(.*?)\]\((.*?)\)$/);
+            if (imgMatch) {
+                return `
+                    <div class="my-6 rounded-2xl overflow-hidden border border-[#ebdccb] shadow-sm">
+                        <img src="${imgMatch[2]}" alt="${imgMatch[1]}" class="w-full h-auto object-cover max-h-[500px]">
+                        ${imgMatch[1] && imgMatch[1] !== "ചിത്രം" ? `<p class="text-xs text-center text-[#8c7a6b] p-2 bg-white/40 italic">${imgMatch[1]}</p>` : ''}
+                    </div>
+                `;
+            }
+            // Parse bold (**text**) and highlight (==text==)
+            let formatted = p
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18]">$1</strong>')
+                .replace(/==(.*?)=/g, '<mark class="bg-amber-200/80 px-1.5 py-0.5 rounded text-[#2b2118] font-semibold">$1</mark>');
+
+            return `<p class="text-base sm:text-lg leading-relaxed mb-4" ${contentStyle}>${formatted}</p>`;
+        })
+        .join("");
+}
+
 /* ═══════════ Build a Single Frosted Glass Card ═══════════ */
 function buildCard(art) {
     const dateStr = art.date || formatDate(art.createdAt);
@@ -139,11 +171,7 @@ function buildCard(art) {
     const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
     const contentStyle = art.contentColor ? `style="color: ${art.contentColor};"` : '';
 
-    const fullContent = (art.content || "")
-        .split("\n\n")
-        .filter(p => p.trim())
-        .map(p => `<p class="text-base leading-relaxed" ${contentStyle || 'style="color: #2b2118;"'}>${p}</p>`)
-        .join("");
+    const fullContent = formatRichContent(art.content, contentStyle);
 
     return `
     <article class="article-glass-card cursor-pointer hover:shadow-xl transition-all duration-300" data-id="${art.id}">

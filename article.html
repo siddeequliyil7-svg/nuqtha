@@ -30,7 +30,18 @@
                 </div>
                 <span class="font-extrabold text-sm tracking-tight font-english">NUQTHA</span>
             </div>
-            <span id="reading-time" class="text-xs text-[#8c7a6b] font-english">Reading</span>
+            <div class="flex items-center gap-3">
+                <span id="reading-time" class="text-xs text-[#8c7a6b] font-english">Reading</span>
+                <!-- Theme Toggle Button -->
+                <button id="theme-toggle-btn" class="more-dots-btn w-8 h-8 rounded-full flex items-center justify-center" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+                    <svg id="sun-icon" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <svg id="moon-icon" class="w-4 h-4 text-[#4a3c33]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -142,10 +153,33 @@
 
                 const contentEl = document.getElementById('art-content');
                 const contentColorStyle = article.contentColor ? `style="color: ${article.contentColor};"` : '';
+                
                 contentEl.innerHTML = (article.content || article.excerpt || "")
                     .split('\n\n')
                     .filter(p => p.trim())
-                    .map(p => `<p ${contentColorStyle}>${p}</p>`)
+                    .map(paragraph => {
+                        const p = paragraph.trim();
+                        // Subheading
+                        if (p.startsWith("### ")) {
+                            return `<h3 class="text-2xl font-bold my-6 text-[#1e1b18]">${p.replace("### ", "")}</h3>`;
+                        }
+                        // Inline Image
+                        const imgMatch = p.match(/^!\[(.*?)\]\((.*?)\)$/);
+                        if (imgMatch) {
+                            return `
+                                <div class="my-8 rounded-3xl overflow-hidden border border-[#ebdccb] shadow-md">
+                                    <img src="${imgMatch[2]}" alt="${imgMatch[1]}" class="w-full h-auto object-cover max-h-[550px]">
+                                    ${imgMatch[1] && imgMatch[1] !== "ചിത്രം" ? `<p class="text-xs text-center text-[#8c7a6b] p-3 bg-[#ebdccb]/30 italic">${imgMatch[1]}</p>` : ''}
+                                </div>
+                            `;
+                        }
+                        // Bold and Highlight
+                        let formatted = p
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18]">$1</strong>')
+                            .replace(/==(.*?)=/g, '<mark class="bg-amber-200/90 px-1.5 py-0.5 rounded text-[#2b2118] font-semibold">$1</mark>');
+
+                        return `<p ${contentColorStyle}>${formatted}</p>`;
+                    })
                     .join('');
             } else {
                 document.getElementById('art-title').textContent = "ലേഖനം കണ്ടെത്താനായില്ല";
