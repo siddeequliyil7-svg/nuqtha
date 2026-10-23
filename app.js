@@ -105,10 +105,13 @@ function renderFeed() {
 function buildCard(art) {
     const dateStr = art.date || formatDate(art.createdAt);
     const preview = art.excerpt || (art.content ? art.content.substring(0, 180) + "…" : "");
+    const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
+    const contentStyle = art.contentColor ? `style="color: ${art.contentColor};"` : '';
+
     const fullContent = (art.content || "")
         .split("\n\n")
         .filter(p => p.trim())
-        .map(p => `<p class="text-base leading-relaxed text-[#2b2118]">${p}</p>`)
+        .map(p => `<p class="text-base leading-relaxed" ${contentStyle || 'style="color: #2b2118;"'}>${p}</p>`)
         .join("");
 
     return `
@@ -126,11 +129,11 @@ function buildCard(art) {
                 <span class="text-[11px] font-semibold text-[#8c7a6b] font-english tracking-wide">${dateStr}</span>
             </div>
 
-            <h2 class="text-xl sm:text-2xl font-black text-[#1e1b18] leading-snug tracking-tight">
+            <h2 class="text-xl sm:text-2xl font-black leading-snug tracking-tight" ${titleStyle || 'style="color: #1e1b18;"'}>
                 ${art.title}
             </h2>
 
-            <p class="text-sm text-[#6b5c51] leading-relaxed line-clamp-3">
+            <p class="text-sm leading-relaxed line-clamp-3" ${contentStyle || 'style="color: #6b5c51;"'}>
                 ${preview}
             </p>
 
@@ -219,15 +222,24 @@ window.openFullScreenReader = function(id) {
     const overlay = document.getElementById("fullscreen-reader-overlay");
     if (!overlay) return;
 
-    document.getElementById("reader-title").textContent = art.title;
+    const readerTitleEl = document.getElementById("reader-title");
+    readerTitleEl.textContent = art.title;
+    if (art.titleColor) {
+        readerTitleEl.style.color = art.titleColor;
+    } else {
+        readerTitleEl.style.color = '';
+    }
+
     document.getElementById("reader-category").textContent = art.category || "GENERAL";
     document.getElementById("reader-author").textContent = art.author || "NUQTHA";
     document.getElementById("reader-date").textContent = art.date || formatDate(art.createdAt);
 
+    const contentColorStyle = art.contentColor ? `style="color: ${art.contentColor};"` : 'style="color: #2b2118;"';
+
     const fullContent = (art.content || art.excerpt || "")
         .split("\n\n")
         .filter(p => p.trim())
-        .map(p => `<p class="text-lg leading-relaxed text-[#2b2118] mb-6">${p}</p>`)
+        .map(p => `<p class="text-lg leading-relaxed mb-6" ${contentColorStyle}>${p}</p>`)
         .join("");
 
     document.getElementById("reader-content").innerHTML = fullContent;

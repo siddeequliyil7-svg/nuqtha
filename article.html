@@ -106,6 +106,9 @@
                 if (article) {
                     document.title = `${article.title} | NUQTHA`;
                     document.getElementById('art-title').textContent = article.title;
+                    if (article.titleColor) {
+                        document.getElementById('art-title').style.color = article.titleColor;
+                    }
                     document.getElementById('art-category').textContent = article.category || "GENERAL";
                     document.getElementById('art-author').textContent = article.author || "NUQTHA";
                     document.getElementById('art-date').textContent = article.date || "Recent";
@@ -117,10 +120,11 @@
                     }
 
                     const contentEl = document.getElementById('art-content');
+                    const contentColorStyle = article.contentColor ? `style="color: ${article.contentColor};"` : '';
                     contentEl.innerHTML = (article.content || article.excerpt || "")
                         .split('\n\n')
                         .filter(p => p.trim())
-                        .map(p => `<p>${p}</p>`)
+                        .map(p => `<p ${contentColorStyle}>${p}</p>`)
                         .join('');
                 } else {
                     document.getElementById('art-title').textContent = "ലേഖനം നിലവിലില്ല";

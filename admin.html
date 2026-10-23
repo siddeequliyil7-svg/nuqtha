@@ -106,6 +106,46 @@
                         <textarea id="art-content" rows="6" required placeholder="ലേഖനത്തിന്റെ പൂർണ്ണ രൂപം ഇവിടെ നൽകുക..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40"></textarea>
                     </div>
 
+                    <!-- Color Customization Options (തലക്കെട്ട് & ലേഖനം കളർ മാറ്റാനുള്ള ഓപ്ഷൻ) -->
+                    <div class="p-4 bg-[#fbf7ee]/70 border border-[#ebdccb] rounded-2xl space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english flex items-center gap-1.5">
+                                🎨 കളർ കസ്റ്റമൈസേഷൻ (Color Styling)
+                            </span>
+                            <button type="button" id="reset-colors-btn" class="text-[11px] font-bold text-[#b4532c] hover:underline font-english">
+                                Reset Default
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-[#8c7a6b]">ലേഖനത്തിന്റെ ഹെഡിങ്ങിനും (Heading) ഉള്ളടക്കത്തിനും (Content Text) ഇഷ്ടമുള്ള നിറങ്ങൾ നൽകാം:</p>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            <!-- Title Color -->
+                            <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-[#ebdccb]">
+                                <div>
+                                    <label for="art-title-color" class="block text-xs font-bold text-[#1e1b18]">ഹെഡിങ് കളർ (Heading)</label>
+                                    <span id="title-color-hex" class="text-[10px] text-[#8c7a6b] font-mono">#1e1b18</span>
+                                </div>
+                                <input type="color" id="art-title-color" value="#1e1b18" class="w-8 h-8 rounded-lg cursor-pointer border border-[#ebdccb] p-0 bg-transparent">
+                            </div>
+
+                            <!-- Content Text Color -->
+                            <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-[#ebdccb]">
+                                <div>
+                                    <label for="art-content-color" class="block text-xs font-bold text-[#1e1b18]">ലേഖന കളർ (Body Text)</label>
+                                    <span id="content-color-hex" class="text-[10px] text-[#8c7a6b] font-mono">#2b2118</span>
+                                </div>
+                                <input type="color" id="art-content-color" value="#2b2118" class="w-8 h-8 rounded-lg cursor-pointer border border-[#ebdccb] p-0 bg-transparent">
+                            </div>
+                        </div>
+
+                        <!-- Live Color Preview -->
+                        <div class="mt-2 p-3 rounded-xl border border-[#ebdccb] bg-white space-y-1">
+                            <p class="text-[10px] uppercase font-bold text-[#8c7a6b] font-english">Preview:</p>
+                            <h4 id="preview-title" class="text-sm font-extrabold" style="color: #1e1b18;">ലേഖനത്തിന്റെ ഹെഡിങ് സാമ്പിൾ</h4>
+                            <p id="preview-body" class="text-xs" style="color: #2b2118;">ഇവിടെ നിങ്ങൾ തിരഞ്ഞെടുക്കുന്ന കളറിൽ ലേഖനത്തിന്റെ ഉള്ളടക്കം വായനക്കാർക്ക് കാണാൻ സാധിക്കും.</p>
+                        </div>
+                    </div>
+
                     <button type="submit" id="submit-btn" class="w-full py-4 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
                         <span>Publish Article to Firestore</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
@@ -193,6 +233,37 @@
             uploadPlaceholder.classList.remove('hidden');
         });
 
+        const titleColorInput = document.getElementById('art-title-color');
+        const contentColorInput = document.getElementById('art-content-color');
+        const titleColorHex = document.getElementById('title-color-hex');
+        const contentColorHex = document.getElementById('content-color-hex');
+        const previewTitle = document.getElementById('preview-title');
+        const previewBody = document.getElementById('preview-body');
+        const resetColorsBtn = document.getElementById('reset-colors-btn');
+
+        // Color change handlers
+        titleColorInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            titleColorHex.textContent = val;
+            previewTitle.style.color = val;
+        });
+
+        contentColorInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            contentColorHex.textContent = val;
+            previewBody.style.color = val;
+        });
+
+        resetColorsBtn.addEventListener('click', () => {
+            titleColorInput.value = '#1e1b18';
+            titleColorHex.textContent = '#1e1b18';
+            previewTitle.style.color = '#1e1b18';
+
+            contentColorInput.value = '#2b2118';
+            contentColorHex.textContent = '#2b2118';
+            previewBody.style.color = '#2b2118';
+        });
+
         // Form Submit -> Add to Firestore
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -205,6 +276,8 @@
                 const author = document.getElementById('art-author').value.trim();
                 const excerpt = document.getElementById('art-excerpt').value.trim();
                 const content = document.getElementById('art-content').value.trim();
+                const titleColor = titleColorInput.value || "#1e1b18";
+                const contentColor = contentColorInput.value || "#2b2118";
 
                 await addDoc(collection(db, "articles"), {
                     title,
@@ -213,6 +286,8 @@
                     imageUrl: selectedBase64Image || "",
                     excerpt: excerpt || content.substring(0, 150) + "...",
                     content,
+                    titleColor,
+                    contentColor,
                     date: new Date().toLocaleDateString('en-GB'),
                     createdAt: serverTimestamp()
                 });
@@ -220,6 +295,7 @@
                 statusMsg.innerHTML = "ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!";
                 statusMsg.className = "text-center text-xs font-bold text-emerald-600 block p-3 bg-emerald-50 rounded-xl border border-emerald-200";
                 form.reset();
+                resetColorsBtn.click();
                 removeImgBtn.click();
             } catch (err) {
                 console.error("Error publishing article:", err);
@@ -230,9 +306,11 @@
                     title: document.getElementById('art-title').value.trim(),
                     category: document.getElementById('art-category').value,
                     author: document.getElementById('art-author').value.trim(),
-                    imageUrl: document.getElementById('art-image').value.trim() || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1200&q=80",
+                    imageUrl: selectedBase64Image || "",
                     excerpt: document.getElementById('art-excerpt').value.trim() || document.getElementById('art-content').value.trim().substring(0, 150) + "...",
                     content: document.getElementById('art-content').value.trim(),
+                    titleColor: titleColorInput.value || "#1e1b18",
+                    contentColor: contentColorInput.value || "#2b2118",
                     date: new Date().toLocaleDateString('en-GB'),
                     createdAt: new Date().toISOString()
                 };
