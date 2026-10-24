@@ -363,6 +363,114 @@ h1, h2, h3, h4, h5, h6 {
     display: none;
 }
 
+/* ═══════════ Featured Article Card (Reference Design) ═══════════ */
+.featured-article-card {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(24px) saturate(170%);
+    -webkit-backdrop-filter: blur(24px) saturate(170%);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 28px;
+    box-shadow: 0 12px 36px -8px rgba(70, 35, 15, 0.12),
+                inset 0 1px 1px rgba(255, 255, 255, 0.95);
+    overflow: hidden;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.featured-article-card:hover {
+    background: rgba(255, 255, 255, 0.85);
+    transform: translateY(-3px);
+    box-shadow: 0 20px 48px -10px rgba(70, 35, 15, 0.18);
+}
+
+.featured-cover-container {
+    border-top-left-radius: 27px;
+    border-top-right-radius: 27px;
+}
+
+.featured-category-pill {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(180, 83, 44, 0.1);
+    color: var(--terracotta);
+    border: 1px solid rgba(180, 83, 44, 0.2);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 9999px;
+    font-family: 'Noto Sans Malayalam', sans-serif;
+}
+
+.featured-title {
+    font-family: 'Manjari', 'Noto Sans Malayalam', sans-serif;
+    letter-spacing: -0.015em;
+}
+
+.featured-excerpt {
+    font-family: 'Noto Sans Malayalam', sans-serif;
+}
+
+.featured-read-btn {
+    background: #b4532c;
+    color: #ffffff;
+    font-family: 'Noto Sans Malayalam', sans-serif;
+}
+
+.featured-read-btn:hover {
+    background: #923e1b;
+}
+
+/* ═══════════ Compact Recent Articles List ═══════════ */
+.compact-recent-card {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 20px;
+    box-shadow: 0 4px 18px -4px rgba(70, 35, 15, 0.06);
+    overflow: hidden;
+    transition: all 0.25s ease;
+}
+
+.compact-recent-card:hover {
+    background: rgba(255, 255, 255, 0.85);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(70, 35, 15, 0.12);
+}
+
+.compact-thumbnail-wrap {
+    border: 1px solid rgba(235, 220, 203, 0.6);
+}
+
+/* Dark Mode Overrides for Featured & Recent Cards */
+body.dark-mode .featured-article-card {
+    background: rgba(18, 20, 29, 0.75);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.6);
+}
+
+body.dark-mode .featured-article-card:hover {
+    background: rgba(26, 30, 43, 0.9);
+}
+
+body.dark-mode .featured-category-pill {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f1f5f9;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.dark-mode .featured-title {
+    color: #f8fafc !important;
+}
+
+body.dark-mode .compact-recent-card {
+    background: rgba(18, 20, 29, 0.65);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .compact-recent-card:hover {
+    background: rgba(26, 30, 43, 0.85);
+}
+
 /* ═══════════ Frosted Glass Article Cards ═══════════ */
 .article-glass-card {
     background: rgba(255, 255, 255, 0.48);

@@ -132,7 +132,32 @@ function renderFeed() {
         return;
     }
 
-    container.innerHTML = filtered.map(art => buildCard(art)).join("");
+    // 1st article: Main Featured Article Card
+    const featuredArticle = filtered[0];
+    const recentArticles = filtered.slice(1);
+
+    let html = buildFeaturedCard(featuredArticle);
+
+    // If there are more articles, show Recent Articles list below
+    if (recentArticles.length > 0) {
+        html += `
+            <div class="recent-articles-section pt-6 sm:pt-8 space-y-4">
+                <div class="flex items-center justify-between pb-1 px-1">
+                    <h3 class="text-base sm:text-lg font-black text-[#1e1b18] dark:text-white font-['Manjari']">
+                        പുതിയ ലേഖനങ്ങൾ
+                    </h3>
+                    <span class="text-xs font-bold text-[#b4532c] hover:underline cursor-pointer font-['Noto_Sans_Malayalam']">
+                        എല്ലാം കാണുക
+                    </span>
+                </div>
+                <div class="space-y-3">
+                    ${recentArticles.map(art => buildCompactRecentCard(art)).join("")}
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
     attachCardListeners();
 }
 
@@ -187,49 +212,132 @@ function formatRichContent(rawText, contentStyle) {
         .join("");
 }
 
-/* ═══════════ Build a Single Frosted Glass Card ═══════════ */
-function buildCard(art) {
+/* ═══════════ 1. Featured Article Card (Reference Design) ═══════════ */
+function buildFeaturedCard(art) {
     const dateStr = art.date || formatDate(art.createdAt);
-    const preview = art.excerpt || (art.content ? art.content.substring(0, 180) + "…" : "");
+    const words = (art.content || "").length;
+    const readMin = Math.max(1, Math.round(words / 400));
+    const preview = art.excerpt || (art.content ? art.content.substring(0, 160) + "…" : "");
     const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
     const contentStyle = art.contentColor ? `style="color: ${art.contentColor};"` : '';
 
-    const fullContent = formatRichContent(art.content, contentStyle);
+    const authorName = art.author || "NUQTHA";
+    const authorInitial = authorName.trim().charAt(0) || "N";
+
+    // Category in Malayalam label
+    const categoryMalayalam = {
+        "HISTORY": "ചരിത്രം",
+        "STUDY": "പഠനം",
+        "STORY": "കഥ"
+    }[art.category] || art.category || "ലേഖനം";
 
     return `
-    <article class="article-glass-card cursor-pointer hover:shadow-xl transition-all duration-300" data-id="${art.id}">
+    <article class="featured-article-card group cursor-pointer hover:shadow-2xl transition-all duration-300" data-id="${art.id}">
         <a href="article.html?id=${art.id}" class="block">
-            ${art.imageUrl ? `
-                <div class="w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-[#ebdccb]">
-                    <img src="${art.imageUrl}" alt="${art.title}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105">
-                </div>
-            ` : ''}
+            <!-- Large Top Cover Image Container -->
+            <div class="featured-cover-container relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#b8542c] via-[#aa4923] to-[#803113]">
+                ${art.imageUrl ? `
+                    <img src="${art.imageUrl}" alt="${art.title}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                ` : `
+                    <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90">
+                        <span class="text-sm font-semibold tracking-wide text-white/75">[ലേഖന ചിത്രം ഇവിടെ]</span>
+                    </div>
+                `}
+            </div>
 
-            <!-- Preview Content -->
-            <div class="article-preview p-6 sm:p-8 space-y-3">
-                <div class="flex items-center justify-between gap-4">
-                    <span class="category-badge font-english">${art.category || "GENERAL"}</span>
-                    <span class="text-[11px] font-semibold text-[#8c7a6b] font-english tracking-wide">${dateStr}</span>
+            <!-- Content Details Area -->
+            <div class="featured-card-body p-6 sm:p-8 space-y-4">
+                <!-- Category Pill & Date / Read Time Row -->
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <span class="featured-category-pill">
+                        ${categoryMalayalam}
+                    </span>
+                    <span class="text-xs text-[#8c7a6b] dark:text-[#a0aec0] font-medium font-['Noto_Sans_Malayalam']">
+                        ${dateStr} &bull; ${readMin} മിനിറ്റ് വായന
+                    </span>
                 </div>
 
-                <h2 class="text-xl sm:text-2xl font-black leading-snug tracking-tight hover:text-[#b4532c] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
+                <!-- Bold Title -->
+                <h2 class="featured-title text-2xl sm:text-3xl font-black leading-snug tracking-tight hover:text-[#b4532c] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
                     ${art.title}
                 </h2>
 
-                <p class="text-sm leading-relaxed line-clamp-3" ${contentStyle || 'style="color: #6b5c51;"'}>
+                <!-- Excerpt text -->
+                <p class="featured-excerpt text-sm sm:text-base leading-relaxed line-clamp-3 text-[#5a4b41] dark:text-[#cbd5e1]" ${contentStyle}>
                     ${preview}
                 </p>
 
-                <div class="flex items-center justify-between pt-4 border-t border-[#ebdccb]/60">
-                    <span class="text-xs font-semibold text-[#8c7a6b]">${art.author || "NUQTHA"}</span>
-                    <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[#b4532c] hover:text-[#923e1b] font-english transition">
-                        <span>വായിക്കുക (Read)</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                    </span>
+                <!-- Bottom Row: Author profile & Sleek 'വായിക്കുക →' Button -->
+                <div class="featured-bottom-row flex items-center justify-between pt-4 border-t border-[#ebdccb]/60 dark:border-white/10 gap-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center">
+                            ${authorInitial}
+                        </div>
+                        <span class="text-xs font-bold text-[#4a3c33] dark:text-[#e2e8f0] font-['Noto_Sans_Malayalam']">
+                            ${authorName}
+                        </span>
+                    </div>
+
+                    <div class="featured-read-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#b4532c] text-white text-xs sm:text-sm font-bold shadow-md hover:bg-[#923e1b] transition-all group-hover:shadow-lg">
+                        <span>വായിക്കുക</span>
+                        <span class="text-base">&rarr;</span>
+                    </div>
                 </div>
             </div>
         </a>
-    </article>`;
+    </article>
+    `;
+}
+
+/* ═══════════ 2. Compact Horizontal Recent Article Card ═══════════ */
+function buildCompactRecentCard(art) {
+    const dateStr = art.date || formatDate(art.createdAt);
+    const words = (art.content || "").length;
+    const readMin = Math.max(1, Math.round(words / 400));
+    const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
+
+    const categoryMalayalam = {
+        "HISTORY": "ചരിത്രം",
+        "STUDY": "പഠനം",
+        "STORY": "കഥ"
+    }[art.category] || art.category || "ലേഖനം";
+
+    return `
+    <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300" data-id="${art.id}">
+        <a href="article.html?id=${art.id}" class="flex items-center p-3 sm:p-4 gap-3.5 sm:gap-4 w-full">
+            <!-- Left Thumbnail -->
+            <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#b8542c] to-[#803113]">
+                ${art.imageUrl ? `
+                    <img src="${art.imageUrl}" alt="${art.title}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                ` : `
+                    <div class="w-full h-full flex items-center justify-center text-white/70 text-[10px]">
+                        ചിത്രം
+                    </div>
+                `}
+            </div>
+
+            <!-- Right Details -->
+            <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
+                <span class="text-[11px] font-bold text-[#b4532c] dark:text-[#f87171] uppercase font-['Noto_Sans_Malayalam'] tracking-wide">
+                    [${categoryMalayalam}]
+                </span>
+
+                <h4 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[#b4532c] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
+                    ${art.title}
+                </h4>
+
+                <p class="text-[11px] sm:text-xs text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
+                    ${dateStr} &bull; ${readMin} മിനിറ്റ് വായന
+                </p>
+            </div>
+        </a>
+    </article>
+    `;
+}
+
+/* ═══════════ Backward Compatibility buildCard ═══════════ */
+function buildCard(art) {
+    return buildFeaturedCard(art);
 }
 
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
