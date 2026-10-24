@@ -304,6 +304,7 @@
         const contentTextarea = document.getElementById('art-content');
         const toolBoldBtn = document.getElementById('tool-bold-btn');
         const toolHighlightBtn = document.getElementById('tool-highlight-btn');
+        const toolRemoveHighlightBtn = document.getElementById('tool-remove-highlight-btn');
         const toolHighlightCardBtn = document.getElementById('tool-highlight-card-btn');
         const toolH2Btn = document.getElementById('tool-h2-btn');
         const toolH3Btn = document.getElementById('tool-h3-btn');
@@ -328,8 +329,69 @@
             contentTextarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
         }
 
+        // Toggle or apply inline highlight (==വാക്ക്==)
+        function toggleInlineHighlight() {
+            const start = contentTextarea.selectionStart;
+            const end = contentTextarea.selectionEnd;
+            const text = contentTextarea.value;
+            const selected = text.substring(start, end);
+
+            if (selected) {
+                // If already highlighted within selection (e.g. ==text==)
+                if (selected.startsWith("==") && selected.endsWith("==") && selected.length >= 4) {
+                    const unwrapped = selected.substring(2, selected.length - 2);
+                    contentTextarea.value = text.substring(0, start) + unwrapped + text.substring(end);
+                    contentTextarea.focus();
+                    contentTextarea.setSelectionRange(start, start + unwrapped.length);
+                    return;
+                }
+                
+                // If cursor is right inside ==...==
+                const before2 = text.substring(Math.max(0, start - 2), start);
+                const after2 = text.substring(end, end + 2);
+                if (before2 === "==" && after2 === "==") {
+                    contentTextarea.value = text.substring(0, start - 2) + selected + text.substring(end + 2);
+                    contentTextarea.focus();
+                    contentTextarea.setSelectionRange(start - 2, start - 2 + selected.length);
+                    return;
+                }
+
+                // Wrap selection in ==...==
+                wrapSelectedText('==', '==');
+            } else {
+                wrapSelectedText('==', '==', 'ഹൈലൈറ്റ് വാക്ക്');
+            }
+        }
+
+        // Quick remove highlights (from selection or whole document)
+        function quickRemoveHighlights() {
+            const start = contentTextarea.selectionStart;
+            const end = contentTextarea.selectionEnd;
+            const text = contentTextarea.value;
+
+            if (start !== end) {
+                // Selection exists: strip == from selected portion
+                const selected = text.substring(start, end);
+                const stripped = selected.replace(/==/g, '');
+                contentTextarea.value = text.substring(0, start) + stripped + text.substring(end);
+                contentTextarea.focus();
+                contentTextarea.setSelectionRange(start, start + stripped.length);
+            } else {
+                // No selection: check if document has highlights and ask to strip all
+                if (text.includes("==")) {
+                    if (confirm("ലേഖനത്തിലെ എല്ലാ ഹൈലൈറ്റുകളും (==) മാറ്റണമോ? (Remove all highlights from text?)")) {
+                        contentTextarea.value = text.replace(/==/g, '');
+                        contentTextarea.focus();
+                    }
+                } else {
+                    alert("മാറ്റാൻ ഹൈലൈറ്റുകളൊന്നും കണ്ടെത്തിയില്ല (No highlights found to remove).");
+                }
+            }
+        }
+
         toolBoldBtn.addEventListener('click', () => wrapSelectedText('**', '**'));
-        toolHighlightBtn.addEventListener('click', () => wrapSelectedText('==', '=='));
+        toolHighlightBtn.addEventListener('click', toggleInlineHighlight);
+        toolRemoveHighlightBtn.addEventListener('click', quickRemoveHighlights);
         toolH2Btn.addEventListener('click', () => wrapSelectedText('\n\n## ', '\n\n', "പ്രധാന ഉപതലക്കെട്ട് (H2)"));
         toolH3Btn.addEventListener('click', () => wrapSelectedText('\n\n### ', '\n\n', "ഉപതലക്കെട്ട് (H3)"));
         

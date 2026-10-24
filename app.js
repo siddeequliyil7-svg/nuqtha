@@ -150,7 +150,7 @@ function formatRichContent(rawText, contentStyle) {
                 const inner = p.replace(/^:::highlight\s*/, "").replace(/\s*:::$/, "").trim();
                 const formattedInner = inner
                     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
-                    .replace(/==(.*?)=/g, '<mark class="bg-amber-200/90 px-1 rounded">$1</mark>');
+                    .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
                 return `<div class="highlight-glass-card"><p>${formattedInner}</p></div>`;
             }
 
@@ -180,7 +180,7 @@ function formatRichContent(rawText, contentStyle) {
             // Parse bold (**text**) and highlight (==text==)
             let formatted = p
                 .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18] dark:text-white">$1</strong>')
-                .replace(/==(.*?)=/g, '<mark class="bg-amber-200/80 px-1.5 py-0.5 rounded text-[#2b2118] font-semibold">$1</mark>');
+                .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
 
             return `<p class="text-base sm:text-lg leading-relaxed mb-4" ${contentStyle}>${formatted}</p>`;
         })

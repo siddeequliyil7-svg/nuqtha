@@ -225,8 +225,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .feed-main-wrapper {
-    padding-top: 14px !important;
-    padding-bottom: 40px !important;
+    padding-top: 36px !important;
+    padding-bottom: 50px !important;
 }
 
 /* ═══════════ Top Canopy Band ═══════════ */
@@ -485,8 +485,8 @@ h1, h2, h3, h4, h5, h6 {
         margin-top: -24px;
     }
     .feed-main-wrapper {
-        padding-top: 12px !important;
-        padding-bottom: 32px !important;
+        padding-top: 32px !important;
+        padding-bottom: 44px !important;
     }
     .pro-floating-glass-card {
         border-radius: 20px;
@@ -587,6 +587,28 @@ body.dark-mode .highlight-glass-card {
 
 body.dark-mode .highlight-glass-card p {
     color: #fde68a !important;
+}
+
+/* ═══════════ Inline Text Marker Highlight (🖍️ വാക്ക് ഹൈലൈറ്റ്) ═══════════ */
+mark,
+.text-marker {
+    background: linear-gradient(104deg, rgba(254, 240, 138, 0.95) 0.9%, rgba(253, 224, 71, 0.85) 98.4%);
+    color: #26160c !important;
+    font-weight: 600;
+    padding: 0.15em 0.4em;
+    margin: 0 0.1em;
+    border-radius: 4px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    box-shadow: 0 1px 2px rgba(234, 179, 8, 0.2);
+    display: inline;
+}
+
+body.dark-mode mark,
+body.dark-mode .text-marker {
+    background: linear-gradient(104deg, rgba(234, 179, 8, 0.35) 0.9%, rgba(202, 138, 4, 0.45) 98.4%);
+    color: #fef08a !important;
+    box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.3);
 }
 
 /* Article Heading Typography */
