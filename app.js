@@ -145,6 +145,9 @@ async function listenForArticles() {
                         content: f.content?.stringValue || "",
                         titleColor: f.titleColor?.stringValue || "#1e1b18",
                         contentColor: f.contentColor?.stringValue || "#2b2118",
+                        placement: f.placement?.stringValue || "AUTO",
+                        priority: f.priority ? (parseInt(f.priority.integerValue || f.priority.doubleValue || f.priority.stringValue, 10) || 10) : 10,
+                        playlistName: f.playlistName?.stringValue || "",
                         date: f.date?.stringValue || "",
                         createdAt: f.createdAt?.timestampValue || doc.createTime
                     };
@@ -204,27 +207,86 @@ function renderFeed() {
     setupCarousel();
 }
 
-/* ─── HOME: Hero card from global latest + per-category sections ─── */
+/* ─── HOME: Layout Manager Aware (Hero, Carousel, Playlist Series, Category Feed) ─── */
 function renderHomeFeed(container) {
     if (allArticles.length === 0) {
         renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
         return;
     }
 
-    // Global hero: the single latest article across all categories (sorted createdAt desc)
-    let html = buildFeaturedCard(allArticles[0]);
+    // Helper: priority comparator (lower priority number = first; tiebreak by creation time desc)
+    const comparePriority = (a, b) => {
+        const pA = (a.priority !== undefined && a.priority !== null && !isNaN(a.priority)) ? a.priority : 10;
+        const pB = (b.priority !== undefined && b.priority !== null && !isNaN(b.priority)) ? b.priority : 10;
+        if (pA !== pB) return pA - pB;
+        return 0; // maintain latest-first sorted order
+    };
 
-    // Horizontal swipe carousel: up to 10 latest articles after the hero
-    if (allArticles.length > 1) {
-        html += buildCarouselSection(allArticles.slice(1, 11));
+    // 1. Group articles by explicit Placement or AUTO
+    const explicitHero = allArticles.filter(a => a.placement === "HERO").sort(comparePriority);
+    const explicitCarousel = allArticles.filter(a => a.placement === "CAROUSEL").sort(comparePriority);
+    const explicitFeed = allArticles.filter(a => a.placement === "FEED").sort(comparePriority);
+    const autoArticles = allArticles.filter(a => !a.placement || a.placement === "AUTO");
+
+    // Determine Hero Article: explicit HERO (highest priority), otherwise top AUTO article
+    let heroArticle = null;
+    let usedIds = new Set();
+
+    if (explicitHero.length > 0) {
+        heroArticle = explicitHero[0];
+        usedIds.add(heroArticle.id);
+    } else if (autoArticles.length > 0) {
+        heroArticle = autoArticles[0];
+        usedIds.add(heroArticle.id);
+    } else {
+        heroArticle = allArticles[0];
+        usedIds.add(heroArticle.id);
     }
 
-    // Discover all unique categories present in the articles (preserving CATEGORY_ORDER first)
+    let html = buildFeaturedCard(heroArticle);
+
+    // 2. Determine Carousel Articles:
+    // Any remaining explicit HERO (if multiple), plus all explicit CAROUSEL, plus top AUTOs to make a rich scroll
+    const carouselPool = [
+        ...explicitHero.filter(a => !usedIds.has(a.id)),
+        ...explicitCarousel.filter(a => !usedIds.has(a.id)),
+        ...autoArticles.filter(a => !usedIds.has(a.id))
+    ];
+    carouselPool.sort(comparePriority);
+
+    const carouselSelection = carouselPool.slice(0, 10);
+    carouselSelection.forEach(a => usedIds.add(a.id));
+
+    if (carouselSelection.length > 0) {
+        html += buildCarouselSection(carouselSelection);
+    }
+
+    // 3. Playlist / Article Series Section (Group 3-4 articles into named series widget)
+    const playlistsMap = {};
+    allArticles.forEach(a => {
+        if (a.playlistName && a.playlistName.trim()) {
+            const key = a.playlistName.trim();
+            if (!playlistsMap[key]) playlistsMap[key] = [];
+            playlistsMap[key].push(a);
+        }
+    });
+
+    // Render interactive playlist widget for any playlist with 2+ articles
+    Object.keys(playlistsMap).forEach(pName => {
+        const pArticles = playlistsMap[pName].sort(comparePriority);
+        if (pArticles.length >= 2) {
+            html += buildPlaylistWidget(pName, pArticles);
+        }
+    });
+
+    // 4. Category Feed: Standard categorized list with remaining articles
+    // Discover all unique categories present across articles
     const existingCats = new Set(allArticles.map(a => (a.category || "").toUpperCase()).filter(Boolean));
     const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c))];
 
     orderedCats.forEach(cat => {
-        const catArticles = allArticles.filter(a => (a.category || "").toUpperCase() === cat);
+        // Collect articles for this category that can appear in the feed
+        const catArticles = allArticles.filter(a => (a.category || "").toUpperCase() === cat).sort(comparePriority);
         if (catArticles.length === 0) return;
 
         // Show up to 4 compact cards per section under each category
@@ -241,7 +303,7 @@ function renderHomeFeed(container) {
 
     // If no categorized articles exist, list remaining articles in a default section
     if (orderedCats.length === 0 && allArticles.length > 1) {
-        const rest = allArticles.slice(1);
+        const rest = allArticles.filter(a => a.id !== heroArticle.id);
         html += buildCategorySectionHeader("ALL", false);
         html += `<div class="category-cards-list space-y-3 mt-3">`;
         rest.forEach(art => { html += buildCompactRecentCard(art); });
@@ -622,9 +684,68 @@ function setupCarousel() {
     track.addEventListener('scroll', updateDots, { passive: true });
 }
 
+/* ═══════════ Interactive Playlist / Article Series Widget ═══════════ */
+function buildPlaylistWidget(seriesName, articles) {
+    if (!articles || articles.length === 0) return '';
+    const totalCount = articles.length;
+    const leadArticle = articles[0];
+
+    const itemsHtml = articles.map((art, idx) => {
+        const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
+        const dateStr = art.date || formatDate(art.createdAt);
+        return `
+        <a href="article.html?id=${art.id}" class="playlist-item-row group/row" data-id="${art.id}">
+            <div class="playlist-index-badge">
+                <span>0${idx + 1}</span>
+            </div>
+            <div class="playlist-item-info min-w-0 flex-1">
+                <h5 class="playlist-item-title line-clamp-1 group-hover/row:text-[#b4532c] dark:group-hover/row:text-[#f87171] transition-colors" ${titleStyle}>
+                    ${art.title}
+                </h5>
+                <div class="flex items-center gap-2 text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
+                    <span>${categoryLabel(art.category)}</span>
+                    <span>•</span>
+                    <span>${dateStr}</span>
+                </div>
+            </div>
+            <div class="playlist-play-icon text-[#b4532c] dark:text-[#f87171] opacity-70 group-hover/row:opacity-100 group-hover/row:translate-x-1 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+            </div>
+        </a>
+        `;
+    }).join('');
+
+    return `
+    <div class="playlist-glass-card mt-7 mb-3 overflow-hidden" data-playlist="${seriesName}">
+        <!-- Playlist Header Banner -->
+        <div class="playlist-header flex items-center justify-between p-4 sm:p-5 border-b border-[#ebdccb]/60 dark:border-white/10">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-[#b4532c]/10 dark:bg-white/10 text-[#b4532c] dark:text-[#f87171] flex items-center justify-center flex-shrink-0 font-black">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                </div>
+                <div>
+                    <span class="text-[10px] font-black tracking-widest uppercase font-english text-[#b4532c] dark:text-[#f87171]">SERIES PLAYLIST</span>
+                    <h3 class="text-base sm:text-lg font-black text-[#1e1b18] dark:text-[#f8fafc] font-['Manjari',sans-serif] leading-tight">
+                        ${seriesName}
+                    </h3>
+                </div>
+            </div>
+            <div class="playlist-count-pill font-english text-xs font-bold px-3 py-1 rounded-full bg-white/70 dark:bg-white/10 text-[#b4532c] dark:text-[#f87171] border border-[#ebdccb] dark:border-white/15">
+                ${totalCount} Articles
+            </div>
+        </div>
+
+        <!-- Articles List Container -->
+        <div class="playlist-items-list p-3 sm:p-4 space-y-2">
+            ${itemsHtml}
+        </div>
+    </div>
+    `;
+}
+
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
 function attachCardListeners() {
-    document.querySelectorAll(".featured-article-card, .compact-recent-card, .article-glass-card").forEach(card => {
+    document.querySelectorAll(".featured-article-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card").forEach(card => {
         card.addEventListener("click", function (e) {
             // Direct navigation to article.html
             const id = this.dataset.id;

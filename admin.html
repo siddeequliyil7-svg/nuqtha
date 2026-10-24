@@ -247,6 +247,69 @@
                         </div>
                     </div>
 
+                    <!-- ═══════════ Article Layout & Positioning Manager ═══════════ -->
+                    <div class="p-4 sm:p-5 bg-gradient-to-br from-[#fbf7ee] to-[#f4ede0] border-2 border-[#ebdccb] rounded-2xl space-y-4 shadow-sm">
+                        <div class="flex items-center justify-between border-b border-[#ebdccb] pb-2.5">
+                            <span class="text-xs font-black uppercase tracking-wider text-[#b4532c] font-english flex items-center gap-2">
+                                <span class="text-base">📌</span> Article Layout & Positioning Manager
+                            </span>
+                            <span class="text-[10px] font-bold text-[#8c7a6b] bg-white px-2.5 py-1 rounded-full border border-[#ebdccb] font-english">
+                                Home Feed Control
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-[#6b5c51] leading-relaxed">
+                            ഹോം പേജിൽ ഈ ലേഖനം എവിടെ, ഏത് മുൻഗണനയിൽ (priority) പ്രത്യക്ഷപ്പെടണം എന്ന് ഇവിടെ നിശ്ചയിക്കാം:
+                        </p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <!-- Placement Selection Dropdown -->
+                            <div class="space-y-1.5">
+                                <label for="art-placement" class="block text-xs font-bold text-[#1e1b18] flex items-center gap-1 font-english">
+                                    <span>🎯 Placement Selection</span>
+                                </label>
+                                <select id="art-placement" class="w-full text-xs p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white font-medium text-[#1e1b18] shadow-sm">
+                                    <option value="AUTO">Automatic (Based on Latest Time)</option>
+                                    <option value="HERO">⭐ Hero Featured (Top Main Banner)</option>
+                                    <option value="CAROUSEL">🎠 Horizontal Carousel (Side-Scrolling Showcase)</option>
+                                    <option value="FEED">📰 Category Feed (Standard Category List)</option>
+                                </select>
+                                <p class="text-[10px] text-[#8c7a6b]">ഏറ്റവും പ്രധാനപ്പെട്ട ലേഖനങ്ങൾ 'Hero Featured'-ൽ വെയ്ക്കാം.</p>
+                            </div>
+
+                            <!-- Display Priority/Order Number -->
+                            <div class="space-y-1.5">
+                                <label for="art-priority" class="block text-xs font-bold text-[#1e1b18] flex items-center gap-1 font-english">
+                                    <span>🔢 Display Priority / Order</span>
+                                </label>
+                                <input type="number" id="art-priority" min="1" max="999" value="10" placeholder="e.g. 1, 2, 3..." class="w-full text-xs p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white font-bold text-[#b4532c] shadow-sm">
+                                <p class="text-[10px] text-[#8c7a6b]">ചെറിയ നമ്പർ (Priority 1, 2, 3) ആദ്യം പ്രദർശിപ്പിക്കപ്പെടും.</p>
+                            </div>
+                        </div>
+
+                        <!-- Playlist / Article Series Option -->
+                        <div class="pt-3 border-t border-[#ebdccb]/80 space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <label for="art-playlist-name" class="text-xs font-bold text-[#1e1b18] flex items-center gap-1.5 font-english">
+                                    <span>📚 Playlist / Article Series</span>
+                                    <span class="text-[10px] font-normal text-[#8c7a6b] font-sans">(3-4 അനുബന്ധ ലേഖനങ്ങൾ ഒന്നിച്ച് കാണിക്കാൻ)</span>
+                                </label>
+                                <span class="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-english">Optional</span>
+                            </div>
+                            <div class="relative">
+                                <input type="text" id="art-playlist-name" list="playlist-suggestions" placeholder="e.g. മലബാർ സമരം, Special Series, സാഹിത്യ പഠനങ്ങൾ..." class="w-full text-xs p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white text-[#1e1b18] shadow-sm">
+                                <datalist id="playlist-suggestions">
+                                    <option value="Special Series">
+                                    <option value="Featured Collection">
+                                    <option value="ചരിത്ര വീഥികൾ">
+                                    <option value="സാഹിത്യ പഠനം">
+                                </datalist>
+                            </div>
+                            <p class="text-[10px] text-[#8c7a6b]">
+                                ഒരേ Playlist/Series പേര് നൽകുന്ന ലേഖനങ്ങൾ ഹോം പേജിൽ മനോഹരമായ <b>Interactive Playlist Card Widget</b> ആയി ഒന്നിച്ചു പ്രദർശിപ്പിക്കപ്പെടും!
+                            </p>
+                        </div>
+                    </div>
+
                     <button type="submit" id="submit-btn" class="w-full py-4 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
                         <span>Publish Article to Firestore</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
@@ -540,6 +603,9 @@
             form.reset();
             resetColorsBtn.click();
             removeImgBtn.click();
+            document.getElementById('art-placement').value = "AUTO";
+            document.getElementById('art-priority').value = "10";
+            document.getElementById('art-playlist-name').value = "";
             formHeading.textContent = "പുതിയ ലേഖനം ചേർക്കുക (New Article)";
             formSubheading.textContent = "ലേഖനത്തിന്റെ വിവരങ്ങൾ നൽകി Publish ചെയ്യുക";
             cancelEditBtn.classList.add('hidden');
@@ -561,6 +627,12 @@
             const titleColor = titleColorInput.value || "#1e1b18";
             const contentColor = contentColorInput.value || "#2b2118";
 
+            // Layout & Positioning Manager Fields
+            const placement = document.getElementById('art-placement').value || "AUTO";
+            const priorityVal = parseInt(document.getElementById('art-priority').value, 10);
+            const priority = isNaN(priorityVal) ? 10 : priorityVal;
+            const playlistName = document.getElementById('art-playlist-name').value.trim();
+
             if (editingArticleId) {
                 // EDIT / UPDATE EXISTING ARTICLE
                 try {
@@ -573,6 +645,9 @@
                         content,
                         titleColor,
                         contentColor,
+                        placement,
+                        priority,
+                        playlistName,
                         updatedAt: serverTimestamp()
                     };
                     if (selectedBase64Image) {
@@ -602,14 +677,15 @@
                     content,
                     titleColor,
                     contentColor,
+                    placement,
+                    priority,
+                    playlistName,
                     date: new Date().toLocaleDateString('en-GB'),
                     createdAt: serverTimestamp()
                 });
 
                 showSuccessMessage("ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! (Firestore Live)");
-                form.reset();
-                resetColorsBtn.click();
-                removeImgBtn.click();
+                exitEditMode();
             } catch (err) {
                 console.error("Error publishing article to Firestore:", err);
                 showErrorMessage("ലേഖനം പ്രസിദ്ധീകരിക്കാൻ കഴിഞ്ഞില്ല! Firebase Rules-ൽ 'allow read, write: if true;' നൽകി Publish ചെയ്തിട്ടുണ്ടോ എന്ന് പരിശോധിക്കുക. (" + (err.message || err) + ")");
@@ -655,6 +731,11 @@
             document.getElementById('art-author').value = art.author || "";
             document.getElementById('art-excerpt').value = art.excerpt || "";
             document.getElementById('art-content').value = art.content || "";
+
+            // Layout & Positioning Manager Fill
+            document.getElementById('art-placement').value = art.placement || "AUTO";
+            document.getElementById('art-priority').value = (art.priority !== undefined && art.priority !== null) ? art.priority : 10;
+            document.getElementById('art-playlist-name').value = art.playlistName || "";
 
             // Colors
             const tColor = art.titleColor || "#1e1b18";
@@ -714,13 +795,21 @@
             }
             listContainer.innerHTML = items.map(data => {
                 const titleCol = data.titleColor || "#1e1b18";
+                const placementLabel = data.placement === 'HERO' ? '⭐ HERO' : data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
+                const priorityBadge = (data.priority !== undefined && data.priority !== null) ? `P${data.priority}` : '';
+                const playlistBadge = data.playlistName ? `📚 ${data.playlistName}` : '';
                 return `
                     <div class="p-3.5 bg-[#fbf7ee]/60 rounded-2xl border border-[#ebdccb] space-y-2 hover:border-[#b4532c]/50 transition">
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between gap-1 flex-wrap">
                             <span class="text-[10px] font-bold text-[#b4532c] uppercase font-english">${data.category || 'General'}</span>
-                            <span class="text-[10px] text-slate-400 font-english">${data.date || ''}</span>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white border border-[#ebdccb] text-[#4a3c33] font-english">${placementLabel}</span>
+                                ${priorityBadge ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 font-mono">${priorityBadge}</span>` : ''}
+                                <span class="text-[10px] text-slate-400 font-english">${data.date || ''}</span>
+                            </div>
                         </div>
                         <h4 class="text-sm font-bold line-clamp-1" style="color: ${titleCol};">${data.title}</h4>
+                        ${playlistBadge ? `<div class="inline-block text-[10px] font-bold text-amber-900 bg-amber-100/70 border border-amber-300 px-2 py-0.5 rounded-md">${playlistBadge}</div>` : ''}
                         <div class="flex items-center justify-between pt-1 border-t border-[#ebdccb]/50">
                             <p class="text-[11px] text-[#6b5c51]">${data.author || 'Author'}</p>
                             <div class="flex items-center gap-1.5">
