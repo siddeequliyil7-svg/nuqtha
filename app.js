@@ -81,29 +81,52 @@ function setupCategoryNav() {
 /* ═══════════ Firestore Realtime Listener ═══════════ */
 function listenForArticles() {
     const ref = collection(db, "articles");
-    // Listen to shared articles in real-time
-    const q = query(ref, orderBy("createdAt", "desc"));
 
-    onSnapshot(q, (snap) => {
-        allArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderFeed();
-    }, (err) => {
-        console.error("Firestore realtime listener error:", err);
-        // Fallback retry without orderBy in case index or field timestamp is syncing
-        onSnapshot(ref, (snap) => {
-            allArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // Client-side sort by createdAt or date
-            allArticles.sort((a, b) => {
-                const timeA = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-                const timeB = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-                return timeB - timeA;
-            });
-            renderFeed();
-        }, (fallbackErr) => {
-            console.error("Firestore fallback read error:", fallbackErr);
-            renderEmpty("ഫയർബേസ് അനുമതി പരിശോധിക്കുക (Firestore Permissions). Firestore Rules-ൽ 'allow read, write: if true;' നൽകി Publish ചെയ്യുക.");
+    function updateArticles(fsArticles) {
+        const local = getLocalArticles();
+        // Merge Firestore and LocalStorage (so locally saved drafts/articles also show immediately)
+        const ids = new Set(fsArticles.map(a => a.id));
+        allArticles = [...fsArticles, ...local.filter(a => !ids.has(a.id))];
+
+        // Sort by createdAt or date
+        allArticles.sort((a, b) => {
+            const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+            const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+            return timeB - timeA;
         });
-    });
+
+        renderFeed();
+    }
+
+    // Try ordered query first
+    try {
+        const q = query(ref, orderBy("createdAt", "desc"));
+        onSnapshot(q, (snap) => {
+            const fsArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateArticles(fsArticles);
+        }, (err) => {
+            console.warn("Firestore ordered query listener error, falling back to direct collection:", err);
+            // Fallback to direct collection query without orderBy index requirement
+            onSnapshot(ref, (snap) => {
+                const fsArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateArticles(fsArticles);
+            }, (fallbackErr) => {
+                console.error("Firestore collection listener fallback error:", fallbackErr);
+                const local = getLocalArticles();
+                if (local.length > 0) {
+                    allArticles = local;
+                    renderFeed();
+                } else {
+                    renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
+                }
+            });
+        });
+    } catch(e) {
+        onSnapshot(ref, (snap) => {
+            const fsArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateArticles(fsArticles);
+        });
+    }
 }
 
 function getLocalArticles() {
