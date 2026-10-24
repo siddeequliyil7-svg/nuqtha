@@ -2,7 +2,7 @@
  * NUQTHA — Frosted Glass Feed Engine
  * Realtime Firestore → Vertical Blog-Roll with Inline Expansion
  */
-import { db, collection, query, orderBy, onSnapshot } from "./firebase-config.js";
+import { db, collection, getDocs, doc, query, orderBy, onSnapshot } from "./firebase-config.js";
 
 let allArticles = [];
 let currentCategory = "ALL";
@@ -80,53 +80,48 @@ function setupCategoryNav() {
 
 /* ═══════════ Firestore Realtime Listener ═══════════ */
 function listenForArticles() {
-    const ref = collection(db, "articles");
+    const articlesCol = collection(db, "articles");
 
-    function updateArticles(fsArticles) {
-        const local = getLocalArticles();
-        // Merge Firestore and LocalStorage (so locally saved drafts/articles also show immediately)
-        const ids = new Set(fsArticles.map(a => a.id));
-        allArticles = [...fsArticles, ...local.filter(a => !ids.has(a.id))];
+    function renderWithData(fsList) {
+        const localList = getLocalArticles();
+        const ids = new Set(fsList.map(a => a.id));
+        allArticles = [...fsList, ...localList.filter(a => !ids.has(a.id))];
 
-        // Sort by createdAt or date
+        // Safe timestamp sorting
         allArticles.sort((a, b) => {
-            const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-            const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-            return timeB - timeA;
+            const getMillis = (item) => {
+                if (item.createdAt?.toMillis) return item.createdAt.toMillis();
+                if (item.createdAt?.seconds) return item.createdAt.seconds * 1000;
+                if (item.createdAt) return new Date(item.createdAt).getTime();
+                return 0;
+            };
+            return getMillis(b) - getMillis(a);
         });
 
         renderFeed();
     }
 
-    // Try ordered query first
-    try {
-        const q = query(ref, orderBy("createdAt", "desc"));
-        onSnapshot(q, (snap) => {
-            const fsArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            updateArticles(fsArticles);
-        }, (err) => {
-            console.warn("Firestore ordered query listener error, falling back to direct collection:", err);
-            // Fallback to direct collection query without orderBy index requirement
-            onSnapshot(ref, (snap) => {
-                const fsArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                updateArticles(fsArticles);
-            }, (fallbackErr) => {
-                console.error("Firestore collection listener fallback error:", fallbackErr);
-                const local = getLocalArticles();
-                if (local.length > 0) {
-                    allArticles = local;
-                    renderFeed();
-                } else {
-                    renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
-                }
-            });
-        });
-    } catch(e) {
-        onSnapshot(ref, (snap) => {
-            const fsArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            updateArticles(fsArticles);
-        });
-    }
+    // Direct listener on articles collection - works in 100% of Firestore configs
+    onSnapshot(articlesCol, (snapshot) => {
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderWithData(items);
+    }, async (err) => {
+        console.warn("Realtime listener failed, attempting one-time getDocs:", err);
+        try {
+            const snap = await getDocs(articlesCol);
+            const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderWithData(items);
+        } catch(fallbackErr) {
+            console.error("Firestore getDocs failed:", fallbackErr);
+            const local = getLocalArticles();
+            if (local.length > 0) {
+                allArticles = local;
+                renderFeed();
+            } else {
+                renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
+            }
+        }
+    });
 }
 
 function getLocalArticles() {
