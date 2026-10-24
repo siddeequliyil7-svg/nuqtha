@@ -12,69 +12,113 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-[#fbf7ee] text-[#1e1b18] antialiased min-h-screen flex flex-col justify-between">
+<body class="bg-[#fbf7ee] text-[#1e1b18] antialiased min-h-screen flex flex-col justify-between selection:bg-[#b4532c] selection:text-white">
 
-    <!-- Top Admin Header -->
-    <header class="bg-[#241711] text-[#fbf7ee] border-b border-white/10 sticky top-0 z-30">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+    <!-- ═══════════ TOP ADMIN HEADER ═══════════ -->
+    <header class="bg-[#241711] text-[#fbf7ee] border-b border-white/10 sticky top-0 z-40 backdrop-blur-md bg-opacity-95">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <a href="index.html" class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white">
+                    <div class="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-1.5V9a3 3 0 00-3-3h-3.379a3 3 0 01-2.121-.879L8.379 4.043A3 3 0 006.257 3.164H4.5A3 3 0 001.5 6.164V18a3 3 0 003 3h15z"/></svg>
                     </div>
                     <span class="text-xl font-black uppercase font-english text-white tracking-tight">NUQTHA</span>
                 </a>
-                <span class="text-[11px] bg-[#b4532c]/20 text-[#e2936c] border border-[#b4532c]/30 px-2.5 py-0.5 rounded-full font-bold uppercase font-english">
+                <span class="text-[11px] bg-[#b4532c]/25 text-[#f4a261] border border-[#b4532c]/40 px-2.5 py-0.5 rounded-full font-bold uppercase font-english tracking-wide">
                     Admin Portal
                 </span>
             </div>
-            <a href="index.html" class="inline-flex items-center gap-2 text-xs font-bold uppercase font-english text-[#cbbba9] hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                <span>View Website</span>
-            </a>
+            
+            <div class="flex items-center gap-2.5">
+                <a href="index.html" class="inline-flex items-center gap-2 text-xs font-bold uppercase font-english text-[#cbbba9] hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full transition shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    <span>View Website</span>
+                </a>
+            </div>
         </div>
     </header>
 
-    <!-- Main Admin Container -->
-    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-8">
+    <!-- ═══════════ MAIN ADMIN CONTAINER ═══════════ -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-8 flex-1 w-full space-y-6">
         
         <!-- Welcome Banner -->
-        <div class="bg-gradient-to-r from-[#b4532c] to-[#923e1b] text-white rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-                <span class="text-xs font-bold uppercase tracking-wider text-white/80 font-english mb-1 block">Live Firestore Connected</span>
-                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">ലേഖനങ്ങൾ പ്രസിദ്ധീകരിക്കാം (Publish to Firestore)</h1>
-                <p class="text-white/80 text-xs md:text-sm mt-1">ഇവിടെ ലേഖനം ചേർക്കുമ്പോൾ അത് തത്സമയം NUQTHA ഫ്രണ്ട് എൻഡിൽ അപ്‌ഡേറ്റ് ആകും.</p>
+        <div class="bg-gradient-to-r from-[#b4532c] via-[#9e431f] to-[#7f2f11] text-white rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+            <div class="space-y-1 relative z-10">
+                <span class="text-xs font-bold uppercase tracking-wider text-amber-200 font-english block">Live Firestore Connected</span>
+                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">ലേഖന കൺട്രോൾ പാനൽ (Admin Dashboard)</h1>
+                <p class="text-white/85 text-xs md:text-sm max-w-2xl">പുതിയ ലേഖനം രചിക്കാനും, ലേഔട്ടും പ്ലേലിസ്റ്റുകളും ക്രമീകരിക്കാനും, പ്രസിദ്ധീകരിച്ചവ നിയന്ത്രിക്കാനും താഴെയുള്ള ടാബുകൾ ഉപയോഗിക്കുക.</p>
             </div>
-            <div class="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-400/40 rounded-full text-white text-xs font-semibold font-english">
-                <span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+            <div class="flex items-center gap-2 px-4 py-2 bg-emerald-500/25 border border-emerald-400/40 rounded-full text-white text-xs font-semibold font-english relative z-10 flex-shrink-0">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>Firestore: articles</span>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            <!-- Left Form: Add Article (7 Cols) -->
-            <div class="lg:col-span-7 bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-6">
-                <div class="border-b border-[#f0e6d6] pb-4 flex items-center justify-between">
-                    <div>
-                        <h2 id="form-heading" class="text-lg font-extrabold text-[#1e1b18]">പുതിയ ലേഖനം ചേർക്കുക (New Article)</h2>
-                        <p id="form-subheading" class="text-xs text-[#8c7a6b]">ലേഖനത്തിന്റെ വിവരങ്ങൾ നൽകി Publish ചെയ്യുക</p>
-                    </div>
-                    <button type="button" id="cancel-edit-btn" class="hidden text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl border border-rose-200 transition font-english">
-                        ✕ Cancel Edit
-                    </button>
-                </div>
+        <!-- Global Status / Notification Message -->
+        <div id="admin-global-status" class="hidden"></div>
 
-                <form id="add-article-form" class="space-y-5">
+        <!-- ═══════════ 3-FOLDER NAVIGATION TABS ═══════════ -->
+        <nav class="admin-tabs-nav w-full max-w-4xl mx-auto shadow-md">
+            <button type="button" class="admin-tab-btn active flex-1 justify-center" data-tab="create">
+                <span class="tab-icon">📁</span>
+                <span class="truncate">പുതിയ ലേഖനം (Create & Editor)</span>
+            </button>
+            <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="layout">
+                <span class="tab-icon">📚</span>
+                <span class="truncate">ലേഔട്ട് & പ്ലേലിസ്റ്റ് (Layout & Series)</span>
+            </button>
+            <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="published">
+                <span class="tab-icon">📑</span>
+                <span class="truncate">പ്രസിദ്ധീകരിച്ചവ (Published)</span>
+                <span id="tab-published-badge" class="tab-badge">0</span>
+            </button>
+        </nav>
+
+        <!-- ═══════════ SINGLE UNIFIED FORM FOR TAB 1 & TAB 2 ═══════════ -->
+        <form id="add-article-form">
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 TAB 1: പുതിയ ലേഖനം (CREATE & EDITOR)
+                 ═══════════════════════════════════════════════════════════ -->
+            <div class="admin-tab-pane active" data-pane="create">
+                <div class="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-6">
+                    
+                    <!-- Edit Mode Notice Banner -->
+                    <div id="edit-notice-banner" class="hidden p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-center justify-between gap-3 animate-in fade-in">
+                        <div class="flex items-center gap-2.5 text-xs text-amber-900 font-bold">
+                            <span class="text-base">✏️</span>
+                            <div>
+                                <span>എഡിറ്റ് മോഡ് സജീവം: </span>
+                                <span id="edit-title-display" class="font-black text-[#b4532c]">...</span>
+                            </div>
+                        </div>
+                        <button type="button" id="cancel-edit-btn" class="text-xs font-bold text-rose-600 hover:text-rose-700 bg-white hover:bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-300 transition font-english flex-shrink-0">
+                            ✕ Cancel Edit
+                        </button>
+                    </div>
+
+                    <!-- Header -->
+                    <div class="border-b border-[#f0e6d6] pb-4 flex items-center justify-between">
+                        <div>
+                            <h2 id="form-heading" class="text-xl font-extrabold text-[#1e1b18]">പുതിയ ലേഖനം രചിക്കുക (New Article)</h2>
+                            <p id="form-subheading" class="text-xs text-[#8c7a6b] mt-0.5">ലേഖനത്തിന്റെ പ്രധാന വിവരങ്ങൾ, ഫോർമാറ്റിംഗ്, കളർ ശൈലി എന്നിവ നൽകുക</p>
+                        </div>
+                        <span class="text-xs font-bold font-english text-[#b4532c] bg-[#b4532c]/10 px-3 py-1 rounded-full">
+                            Folder 1 / 3
+                        </span>
+                    </div>
+
+                    <!-- Title -->
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">ലേഖനത്തിന്റെ തലക്കെട്ട് (Title)</label>
-                        <input id="art-title" type="text" required placeholder="ലേഖനത്തിന്റെ പേര് നൽകുക..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40">
+                        <input id="art-title" type="text" required placeholder="ലേഖനത്തിന്റെ പേര് നൽകുക..." class="w-full text-base sm:text-lg font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 text-[#1e1b18]">
                     </div>
 
+                    <!-- Category & Author Row -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">വിഭാഗം (Category)</label>
-                            <select id="art-category" class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-english font-semibold">
+                            <select id="art-category" class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-english font-bold text-[#1e1b18]">
                                 <option value="HISTORY">HISTORY (ചരിത്രം)</option>
                                 <option value="STUDY">STUDY (പഠനം)</option>
                                 <option value="STORY">STORY (കഥ / അനുഭവം)</option>
@@ -82,107 +126,109 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">എഴുത്തുകാരൻ (Author)</label>
-                            <input id="art-author" type="text" required placeholder="പേര് നൽകുക..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40">
+                            <input id="art-author" type="text" required placeholder="എഴുത്തുകാരന്റെ പേര്..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40">
                         </div>
                     </div>
 
-                    <!-- Photo Upload with Preview -->
+                    <!-- Cover Photo Upload with Preview -->
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">കവർ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക (Upload Cover Photo)</label>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">കവർ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക (Cover Photo)</label>
                         <div class="border-2 border-dashed border-[#ebdccb] hover:border-[#b4532c] rounded-2xl p-5 text-center bg-[#fbf7ee]/40 transition cursor-pointer relative group">
                             <input id="art-file-input" type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                             <div id="upload-placeholder" class="space-y-2">
                                 <div class="w-12 h-12 mx-auto rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center group-hover:scale-110 transition-transform">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                 </div>
-                                <p class="text-xs font-bold text-[#1e1b18]">ഇവിടെ ക്ലിക്ക് ചെയ്ത് ഫോട്ടോ തിരഞ്ഞെടുക്കുക</p>
-                                <p class="text-[10px] text-[#8c7a6b]">PNG, JPG, WebP (Max 2MB)</p>
+                                <p class="text-xs font-bold text-[#1e1b18]">ഇവിടെ ക്ലിക്ക് ചെയ്ത് കവർ ഫോട്ടോ തിരഞ്ഞെടുക്കുക</p>
+                                <p class="text-[10px] text-[#8c7a6b]">PNG, JPG, WebP (Max 2MB — സ്വയമേവ ഒപ്റ്റിമൈസ് ചെയ്യപ്പെടും)</p>
                             </div>
-                            <div id="image-preview-container" class="hidden relative rounded-xl overflow-hidden max-h-48">
+                            <div id="image-preview-container" class="hidden relative rounded-xl overflow-hidden max-h-56">
                                 <img id="image-preview" src="" alt="Preview" class="w-full h-full object-cover">
-                                <button type="button" id="remove-img-btn" class="absolute top-2 right-2 bg-black/60 hover:bg-black text-white p-1.5 rounded-full text-xs z-20">✕ മാറ്റുക</button>
+                                <button type="button" id="remove-img-btn" class="absolute top-2 right-2 bg-black/70 hover:bg-black text-white px-3 py-1 rounded-full text-xs font-bold z-20 transition">✕ മാറ്റുക</button>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Excerpt -->
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">ലേഖനത്തിന്റെ ചുരുക്കം (Excerpt)</label>
-                        <textarea id="art-excerpt" rows="2" placeholder="ഹോം പേജിൽ കാണിക്കേണ്ട 2-3 വരി ചുരുക്കം..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40"></textarea>
+                        <textarea id="art-excerpt" rows="2" placeholder="ഹോം പേജിൽ കാർഡുകളിൽ കാണിക്കേണ്ട 2-3 വരി ചുരുക്കം..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40"></textarea>
                     </div>
 
+                    <!-- Full Content with Rich Formatting Toolbar -->
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english">പൂർണ്ണ ലേഖനം (Full Content)</label>
-                            <span class="text-[11px] text-[#8c7a6b]">ഫോർമാറ്റിംഗ് ടൂളുകൾ ഉപയോഗിക്കുക:</span>
+                            <span class="text-[11px] text-[#8c7a6b]">വാക്കുകൾ സെലക്ട് ചെയ്തു ടൂളുകൾ ഉപയോഗിക്കാം:</span>
                         </div>
 
                         <!-- Rich Formatting Toolbar -->
-                        <div class="flex flex-wrap items-center gap-1.5 p-2 bg-[#fbf7ee] border border-[#ebdccb] rounded-t-xl border-b-0">
-                            <!-- Bold Button -->
+                        <div class="flex flex-wrap items-center gap-1.5 p-2.5 bg-[#fbf7ee] border border-[#ebdccb] rounded-t-2xl border-b-0 shadow-inner">
+                            <!-- Bold -->
                             <button type="button" id="tool-bold-btn" class="px-2.5 py-1 text-xs font-black bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-sm" title="Bold Text (**വാക്ക്**)">
                                 <span class="font-bold">B</span>
                                 <span class="text-[10px] font-normal">ബോൾഡ്</span>
                             </button>
 
-                            <!-- Highlight Button (Inline Marker) -->
-                            <button type="button" id="tool-highlight-btn" class="px-2.5 py-1 text-xs font-bold bg-amber-100 hover:bg-amber-300 hover:text-black rounded-lg border border-amber-300 transition flex items-center gap-1 shadow-sm text-amber-900" title="Highlight selected words (==വാക്ക്==) - മാർക്കർ ഇഫക്റ്റ്">
+                            <!-- Inline Marker Highlight -->
+                            <button type="button" id="tool-highlight-btn" class="px-2.5 py-1 text-xs font-bold bg-amber-100 hover:bg-amber-300 hover:text-black rounded-lg border border-amber-300 transition flex items-center gap-1 shadow-sm text-amber-900" title="Highlight selected words (==വാക്ക്==) - യെല്ലോ മാർക്കർ ഇഫക്റ്റ്">
                                 <span>🖍️</span>
                                 <span class="text-[10px]">ഹൈലൈറ്റ്</span>
                             </button>
 
-                            <!-- Quick Remove Highlight Button -->
-                            <button type="button" id="tool-remove-highlight-btn" class="px-2 py-1 text-xs font-bold bg-rose-50 hover:bg-rose-500 hover:text-white rounded-lg border border-rose-200 transition flex items-center gap-1 shadow-sm text-rose-700" title="ഹൈലൈറ്റ് ഒഴിവാക്കുക (Quick Remove Highlight from selected or all text)">
+                            <!-- Quick Remove Highlight -->
+                            <button type="button" id="tool-remove-highlight-btn" class="px-2.5 py-1 text-xs font-bold bg-rose-50 hover:bg-rose-500 hover:text-white rounded-lg border border-rose-200 transition flex items-center gap-1 shadow-sm text-rose-700" title="ഹൈലൈറ്റ് ഒഴിവാക്കുക (Quick Remove Highlight)">
                                 <span>🧹</span>
                                 <span class="text-[10px]">ഹൈലൈറ്റ് മാറ്റുക</span>
                             </button>
 
-                            <!-- Dedicated Highlight Card Button -->
+                            <!-- Highlight Card Callout -->
                             <button type="button" id="tool-highlight-card-btn" class="px-2.5 py-1 text-xs font-bold bg-[#b4532c]/10 text-[#b4532c] hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#b4532c]/30 transition flex items-center gap-1 shadow-sm" title="Insert Glassmorphism Highlight Card">
                                 <span>✨</span>
                                 <span class="text-[10px]">Highlight Card</span>
                             </button>
 
-                            <!-- H2 Heading Button -->
-                            <button type="button" id="tool-h2-btn" class="px-2 py-1 text-xs font-black bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-0.5 shadow-sm" title="Main Section Subheading (## ഹെഡിംഗ്)">
+                            <!-- H2 Heading -->
+                            <button type="button" id="tool-h2-btn" class="px-2.5 py-1 text-xs font-black bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-0.5 shadow-sm" title="Main Section Subheading (## ഹെഡിംഗ്)">
                                 <span class="font-extrabold">H2</span>
                                 <span class="text-[10px] font-normal">ഹെഡിംഗ്</span>
                             </button>
 
-                            <!-- H3 Subheading Button -->
-                            <button type="button" id="tool-h3-btn" class="px-2 py-1 text-xs font-bold bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-0.5 shadow-sm" title="Sub-subheading (### ഉപതലക്കെട്ട്)">
+                            <!-- H3 Subheading -->
+                            <button type="button" id="tool-h3-btn" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-0.5 shadow-sm" title="Sub-subheading (### ഉപതലക്കെട്ട്)">
                                 <span class="font-bold">H3</span>
                                 <span class="text-[10px] font-normal">ഉപതലക്കെട്ട്</span>
                             </button>
 
-                            <!-- Inline Image Button with Layout Modal -->
-                            <button type="button" id="tool-inline-img-btn" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-sm text-[#b4532c]" title="Insert Image with custom size/alignment">
+                            <!-- Inline Image -->
+                            <button type="button" id="tool-inline-img-btn" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-sm text-[#b4532c]" title="Insert Image between paragraphs">
                                 <span>🖼️</span>
                                 <span class="text-[10px] font-normal">ചിത്രം ചേർക്കുക</span>
                             </button>
                             <input type="file" id="inline-img-file-input" accept="image/*" class="hidden">
                         </div>
 
-                        <!-- Image Insert Modal / Popup for Size & Caption Selection -->
-                        <div id="img-options-modal" class="hidden p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl mb-2 space-y-3">
+                        <!-- Image Insert Modal -->
+                        <div id="img-options-modal" class="hidden p-4 bg-amber-50/95 border border-amber-300 rounded-xl mb-2 space-y-3 shadow-md">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-bold text-[#b4532c] flex items-center gap-1.5">
-                                    <span>📐</span> ചിത്രത്തിന്റെ വലിപ്പവും അലൈൻമെന്റും (Image Layout)
+                                    <span>📐</span> ചിത്രത്തിന്റെ വലിപ്പം തിരഞ്ഞെടുക്കുക (Image Layout)
                                 </span>
                                 <button type="button" id="cancel-img-modal-btn" class="text-xs text-rose-600 font-bold hover:underline">✕ ഒഴിവാക്കുക</button>
                             </div>
                             
                             <div class="grid grid-cols-3 gap-2 text-xs">
-                                <label class="border border-amber-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-[#b4532c] transition flex flex-col items-center text-center gap-1">
+                                <label class="border border-amber-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-[#b4532c] transition flex flex-col items-center text-center gap-1 shadow-sm">
                                     <input type="radio" name="img-size-option" value="small" class="text-[#b4532c]">
                                     <span class="font-bold">Small</span>
                                     <span class="text-[10px] text-[#8c7a6b]">340px Centered</span>
                                 </label>
-                                <label class="border border-amber-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-[#b4532c] transition flex flex-col items-center text-center gap-1">
+                                <label class="border border-amber-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-[#b4532c] transition flex flex-col items-center text-center gap-1 shadow-sm">
                                     <input type="radio" name="img-size-option" value="medium" checked class="text-[#b4532c]">
                                     <span class="font-bold">Medium</span>
                                     <span class="text-[10px] text-[#8c7a6b]">620px Centered</span>
                                 </label>
-                                <label class="border border-amber-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-[#b4532c] transition flex flex-col items-center text-center gap-1">
+                                <label class="border border-amber-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-[#b4532c] transition flex flex-col items-center text-center gap-1 shadow-sm">
                                     <input type="radio" name="img-size-option" value="full" class="text-[#b4532c]">
                                     <span class="font-bold">Full Width</span>
                                     <span class="text-[10px] text-[#8c7a6b]">Full Container</span>
@@ -190,25 +236,19 @@
                             </div>
 
                             <div class="flex items-center gap-2">
-                                <input id="img-modal-caption" type="text" placeholder="ചിത്രത്തിന്റെ അടിക്കുറിപ്പ് (Caption) - ഓപ്ഷണൽ" class="flex-1 text-xs p-2 rounded-lg border border-amber-200 focus:outline-none focus:border-[#b4532c] bg-white">
-                                <button type="button" id="confirm-insert-img-btn" class="px-4 py-2 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-lg transition shadow-sm font-english">
-                                    Insert
+                                <input id="img-modal-caption" type="text" placeholder="ചിത്രത്തിന്റെ അടിക്കുറിപ്പ് (Caption) - ഓപ്ഷണൽ" class="flex-1 text-xs p-2.5 rounded-lg border border-amber-200 focus:outline-none focus:border-[#b4532c] bg-white">
+                                <button type="button" id="confirm-insert-img-btn" class="px-4 py-2.5 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-lg transition shadow-sm font-english">
+                                    Insert Image
                                 </button>
                             </div>
                         </div>
 
-                        <textarea id="art-content" rows="8" required placeholder="ലേഖനത്തിന്റെ പൂർണ്ണ രൂപം ഇവിടെ നൽകുക... ടെക്സ്റ്റ് സെലക്ട് ചെയ്ത ശേഷം മുകളിലെ ബോൾഡ് / ഹൈലൈറ്റ് / ഹെഡിംഗ് ബട്ടണുകൾ ഉപയോഗിക്കാം." class="w-full text-sm p-3.5 rounded-b-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-sans leading-relaxed"></textarea>
-                        
-                        <p class="text-[11px] text-[#8c7a6b] mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <span>💡 <b>ബോൾഡ്:</b> <code>**വാക്ക്**</code></span>
-                            <span>🖍️ <b>ഹൈലൈറ്റ്:</b> <code>==വാക്ക്==</code></span>
-                            <span>✨ <b>Highlight Card:</b> പ്രത്യേക ഗ്ലാസ്മോർഫിസം ബോക്സ്</span>
-                            <span>📑 <b>H2/H3:</b> സബ് ഹെഡിംഗുകൾ</span>
-                        </p>
+                        <!-- Content Textarea -->
+                        <textarea id="art-content" rows="10" required placeholder="ലേഖനത്തിന്റെ ഉള്ളടക്കം ഇവിടെ നൽകുക... ഫോർമാറ്റ് ചെയ്യാൻ മുകളിലെ ടൂളുകൾ ഉപയോഗിക്കാം." class="w-full text-base p-4 rounded-b-2xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-sans leading-relaxed"></textarea>
                     </div>
 
-                    <!-- Color Customization Options (തലക്കെട്ട് & ലേഖനം കളർ മാറ്റാനുള്ള ഓപ്ഷൻ) -->
-                    <div class="p-4 bg-[#fbf7ee]/70 border border-[#ebdccb] rounded-2xl space-y-3">
+                    <!-- Color Styling Customizer -->
+                    <div class="p-4 sm:p-5 bg-[#fbf7ee]/70 border border-[#ebdccb] rounded-2xl space-y-3">
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english flex items-center gap-1.5">
                                 🎨 കളർ കസ്റ്റമൈസേഷൻ (Color Styling)
@@ -217,630 +257,244 @@
                                 Reset Default
                             </button>
                         </div>
-                        <p class="text-[11px] text-[#8c7a6b]">ലേഖനത്തിന്റെ ഹെഡിങ്ങിനും (Heading) ഉള്ളടക്കത്തിനും (Content Text) ഇഷ്ടമുള്ള നിറങ്ങൾ നൽകാം:</p>
+                        <p class="text-[11px] text-[#8c7a6b]">ലേഖനത്തിന്റെ ഹെഡിങ്ങിനും ഉള്ളടക്കത്തിനും ഇഷ്ടമുള്ള നിറങ്ങൾ നൽകാം:</p>
                         
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                            <!-- Title Color -->
-                            <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-[#ebdccb]">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                            <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-[#ebdccb]">
                                 <div>
-                                    <label for="art-title-color" class="block text-xs font-bold text-[#1e1b18]">ഹെഡിങ് കളർ (Heading)</label>
+                                    <label for="art-title-color" class="block text-xs font-bold text-[#1e1b18]">ഹെഡിങ് കളർ</label>
                                     <span id="title-color-hex" class="text-[10px] text-[#8c7a6b] font-mono">#1e1b18</span>
                                 </div>
-                                <input type="color" id="art-title-color" value="#1e1b18" class="w-8 h-8 rounded-lg cursor-pointer border border-[#ebdccb] p-0 bg-transparent">
+                                <input type="color" id="art-title-color" value="#1e1b18" class="w-9 h-9 rounded-lg cursor-pointer border border-[#ebdccb] p-0 bg-transparent">
                             </div>
 
-                            <!-- Content Text Color -->
-                            <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-[#ebdccb]">
+                            <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-[#ebdccb]">
                                 <div>
-                                    <label for="art-content-color" class="block text-xs font-bold text-[#1e1b18]">ലേഖന കളർ (Body Text)</label>
+                                    <label for="art-content-color" class="block text-xs font-bold text-[#1e1b18]">ലേഖന കളർ</label>
                                     <span id="content-color-hex" class="text-[10px] text-[#8c7a6b] font-mono">#2b2118</span>
                                 </div>
-                                <input type="color" id="art-content-color" value="#2b2118" class="w-8 h-8 rounded-lg cursor-pointer border border-[#ebdccb] p-0 bg-transparent">
+                                <input type="color" id="art-content-color" value="#2b2118" class="w-9 h-9 rounded-lg cursor-pointer border border-[#ebdccb] p-0 bg-transparent">
                             </div>
                         </div>
 
                         <!-- Live Color Preview -->
-                        <div class="mt-2 p-3 rounded-xl border border-[#ebdccb] bg-white space-y-1">
-                            <p class="text-[10px] uppercase font-bold text-[#8c7a6b] font-english">Preview:</p>
+                        <div class="mt-2 p-3.5 rounded-xl border border-[#ebdccb] bg-white space-y-1 shadow-inner">
+                            <p class="text-[10px] uppercase font-bold text-[#8c7a6b] font-english">Color Preview:</p>
                             <h4 id="preview-title" class="text-sm font-extrabold" style="color: #1e1b18;">ലേഖനത്തിന്റെ ഹെഡിങ് സാമ്പിൾ</h4>
-                            <p id="preview-body" class="text-xs" style="color: #2b2118;">ഇവിടെ നിങ്ങൾ തിരഞ്ഞെടുക്കുന്ന കളറിൽ ലേഖനത്തിന്റെ ഉള്ളടക്കം വായനക്കാർക്ക് കാണാൻ സാധിക്കും.</p>
+                            <p id="preview-body" class="text-xs" style="color: #2b2118;">ഇവിടെ നിങ്ങൾ തിരഞ്ഞെടുക്കുന്ന കളറിൽ ലേഖനത്തിന്റെ ഉള്ളടക്കം വായനക്കാർക്ക് ദൃശ്യമാകും.</p>
                         </div>
                     </div>
 
-                    <!-- ═══════════ Article Layout & Positioning Manager ═══════════ -->
-                    <div class="p-4 sm:p-5 bg-gradient-to-br from-[#fbf7ee] to-[#f4ede0] border-2 border-[#ebdccb] rounded-2xl space-y-4 shadow-sm">
-                        <div class="flex items-center justify-between border-b border-[#ebdccb] pb-2.5">
-                            <span class="text-xs font-black uppercase tracking-wider text-[#b4532c] font-english flex items-center gap-2">
-                                <span class="text-base">📌</span> Article Layout & Positioning Manager
-                            </span>
-                            <span class="text-[10px] font-bold text-[#8c7a6b] bg-white px-2.5 py-1 rounded-full border border-[#ebdccb] font-english">
-                                Home Feed Control
+                    <!-- Bottom Action Controls on Tab 1 -->
+                    <div class="pt-4 border-t border-[#f0e6d6] flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <button type="button" data-switch-tab="layout" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition">
+                            <span>അടുത്തത്: ലേഔട്ട് & പ്ലേലിസ്റ്റ് (Next: Layout & Series)</span>
+                            <span>&rarr;</span>
+                        </button>
+
+                        <button type="submit" class="submit-article-btn w-full sm:w-auto px-7 py-3.5 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
+                            <span>Publish Article to Firestore</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 TAB 2: ലേഔട്ട് & പ്ലേലിസ്റ്റ് (LAYOUT & SERIES MANAGER)
+                 ═══════════════════════════════════════════════════════════ -->
+            <div class="admin-tab-pane" data-pane="layout">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    
+                    <!-- Main Card -->
+                    <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-6">
+                        
+                        <!-- Header -->
+                        <div class="border-b border-[#f0e6d6] pb-4 flex items-center justify-between">
+                            <div>
+                                <h2 class="text-xl font-extrabold text-[#1e1b18]">ലേഔട്ട് & പ്ലേലിസ്റ്റ് മാനേജർ (Layout & Series Manager)</h2>
+                                <p class="text-xs text-[#8c7a6b] mt-0.5">ഹോം പേജിൽ ലേഖനത്തിന്റെ സ്ഥാനം, മുൻഗണന, പ്രത്യേക പരമ്പരകൾ എന്നിവ നിശ്ചയിക്കുക</p>
+                            </div>
+                            <span class="text-xs font-bold font-english text-amber-700 bg-amber-100 px-3 py-1 rounded-full">
+                                Folder 2 / 3
                             </span>
                         </div>
-                        <p class="text-[11px] text-[#6b5c51] leading-relaxed">
-                            ഹോം പേജിൽ ഈ ലേഖനം എവിടെ, ഏത് മുൻഗണനയിൽ (priority) പ്രത്യക്ഷപ്പെടണം എന്ന് ഇവിടെ നിശ്ചയിക്കാം:
-                        </p>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            <!-- Placement Selection Dropdown -->
-                            <div class="space-y-1.5">
-                                <label for="art-placement" class="block text-xs font-bold text-[#1e1b18] flex items-center gap-1 font-english">
-                                    <span>🎯 Placement Selection</span>
-                                </label>
-                                <select id="art-placement" class="w-full text-xs p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white font-medium text-[#1e1b18] shadow-sm">
-                                    <option value="AUTO">Automatic (Based on Latest Time)</option>
-                                    <option value="HERO">⭐ Hero Featured (Top Main Banner)</option>
-                                    <option value="CAROUSEL">🎠 Horizontal Carousel (Side-Scrolling Showcase)</option>
-                                    <option value="FEED">📰 Category Feed (Standard Category List)</option>
-                                </select>
-                                <p class="text-[10px] text-[#8c7a6b]">ഏറ്റവും പ്രധാനപ്പെട്ട ലേഖനങ്ങൾ 'Hero Featured'-ൽ വെയ്ക്കാം.</p>
+                        <!-- ═══════════ SPECIAL HIGHLIGHT: PLAYLIST / ARTICLE SERIES CARD ═══════════ -->
+                        <div class="playlist-featured-card space-y-4">
+                            <div class="flex items-center justify-between border-b border-amber-300/60 pb-3 flex-wrap gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-9 h-9 rounded-2xl bg-amber-500/25 border border-amber-400 text-amber-800 flex items-center justify-center text-lg shadow-sm">
+                                        📚
+                                    </span>
+                                    <div>
+                                        <h3 class="text-sm font-extrabold text-[#78350f]">പ്രത്യേക പ്ലേലിസ്റ്റ് / ലേഖന പരമ്പര (Article Series)</h3>
+                                        <p class="text-[11px] text-amber-900/80">3-4 അനുബന്ധ ലേഖനങ്ങൾ ഒന്നിച്ച് ഹോം പേജ് കാർഡ് വിജറ്റിൽ കാണിക്കാം</p>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-black tracking-wider uppercase bg-gradient-to-r from-amber-600 to-[#b4532c] text-white px-3 py-1 rounded-full shadow-sm font-english">
+                                    ⭐ Featured Series Tool
+                                </span>
                             </div>
 
-                            <!-- Display Priority/Order Number -->
-                            <div class="space-y-1.5">
-                                <label for="art-priority" class="block text-xs font-bold text-[#1e1b18] flex items-center gap-1 font-english">
-                                    <span>🔢 Display Priority / Order</span>
-                                </label>
-                                <input type="number" id="art-priority" min="1" max="999" value="10" placeholder="e.g. 1, 2, 3..." class="w-full text-xs p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white font-bold text-[#b4532c] shadow-sm">
-                                <p class="text-[10px] text-[#8c7a6b]">ചെറിയ നമ്പർ (Priority 1, 2, 3) ആദ്യം പ്രദർശിപ്പിക്കപ്പെടും.</p>
-                            </div>
-                        </div>
-
-                        <!-- Playlist / Article Series Option -->
-                        <div class="pt-3 border-t border-[#ebdccb]/80 space-y-2.5">
-                            <div class="flex items-center justify-between">
-                                <label for="art-playlist-name" class="text-xs font-bold text-[#1e1b18] flex items-center gap-1.5 font-english">
-                                    <span>📚 Playlist / Article Series</span>
-                                    <span class="text-[10px] font-normal text-[#8c7a6b] font-sans">(3-4 അനുബന്ധ ലേഖനങ്ങൾ ഒന്നിച്ച് കാണിക്കാൻ)</span>
-                                </label>
-                                <span class="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-english">Optional</span>
-                            </div>
-                            <div class="relative">
-                                <input type="text" id="art-playlist-name" list="playlist-suggestions" placeholder="e.g. മലബാർ സമരം, Special Series, സാഹിത്യ പഠനങ്ങൾ..." class="w-full text-xs p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white text-[#1e1b18] shadow-sm">
-                                <datalist id="playlist-suggestions">
-                                    <option value="Special Series">
-                                    <option value="Featured Collection">
-                                    <option value="ചരിത്ര വീഥികൾ">
-                                    <option value="സാഹിത്യ പഠനം">
-                                </datalist>
-                            </div>
-                            <p class="text-[10px] text-[#8c7a6b]">
-                                ഒരേ Playlist/Series പേര് നൽകുന്ന ലേഖനങ്ങൾ ഹോം പേജിൽ മനോഹരമായ <b>Interactive Playlist Card Widget</b> ആയി ഒന്നിച്ചു പ്രദർശിപ്പിക്കപ്പെടും!
+                            <p class="text-xs text-[#78350f] leading-relaxed">
+                                ഒരേ പരമ്പരയിലെ ലേഖനങ്ങൾക്ക് ഒരേ Playlist പേര് നൽകുക. ഇത് ഹോം പേജിൽ വായനക്കാർക്ക് പരമ്പര മുഴുവൻ ക്രമമായി വായിക്കാൻ സഹായിക്കുന്ന <b>Interactive Playlist Card Widget</b> ആയി തനിയെ മാറും!
                             </p>
+
+                            <!-- Input with Datalist -->
+                            <div class="space-y-2">
+                                <label for="art-playlist-name" class="block text-xs font-bold text-[#78350f] uppercase tracking-wide font-english">
+                                    Playlist / Series Name
+                                </label>
+                                <div class="relative">
+                                    <input type="text" id="art-playlist-name" list="playlist-suggestions" placeholder="e.g. മലബാർ സമരം, Special Series, ചരിത്ര പഠനങ്ങൾ..." class="w-full text-sm font-bold p-3.5 rounded-xl border-2 border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18] shadow-sm">
+                                    <datalist id="playlist-suggestions">
+                                        <option value="മലബാർ സമരം">
+                                        <option value="Special Series">
+                                        <option value="ചരിത്ര വീഥികൾ">
+                                        <option value="സാഹിത്യ പഠനം">
+                                        <option value="ശാസ്ത്ര വിചാരം">
+                                        <option value="Featured Collection">
+                                    </datalist>
+                                </div>
+                            </div>
+
+                            <!-- Clickable Preset Chips -->
+                            <div class="space-y-2 pt-1">
+                                <span class="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
+                                    <span>💡</span> പെട്ടെന്ന് തിരഞ്ഞെടുക്കാൻ നിർദ്ദേശങ്ങൾ (Click to Select):
+                                </span>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" class="playlist-preset-chip" data-name="മലബാർ സമരം">+ മലബാർ സമരം</button>
+                                    <button type="button" class="playlist-preset-chip" data-name="Special Series">+ Special Series</button>
+                                    <button type="button" class="playlist-preset-chip" data-name="ചരിത്ര വീഥികൾ">+ ചരിത്ര വീഥികൾ</button>
+                                    <button type="button" class="playlist-preset-chip" data-name="സാഹിത്യ പഠനം">+ സാഹിത്യ പഠനം</button>
+                                    <button type="button" class="playlist-preset-chip" data-name="ശാസ്ത്ര വിചാരം">+ ശാസ്ത്ര വിചാരം</button>
+                                </div>
+                            </div>
+
+                            <!-- Active Playlists Live Overview -->
+                            <div class="pt-3 border-t border-amber-300/50 space-y-2">
+                                <span class="text-xs font-bold text-amber-950 flex items-center justify-between">
+                                    <span>📊 നിലവിൽ സജീവമായ പരമ്പരകൾ (Active Playlists):</span>
+                                    <span class="text-[10px] text-amber-800 font-normal">തത്സമയം അപ്‌ഡേറ്റ് ആകുന്നു</span>
+                                </span>
+                                <div id="active-playlists-overview" class="space-y-2 max-h-44 overflow-y-auto pr-1">
+                                    <p class="text-[11px] text-amber-800/70">പരിശോധിക്കുന്നു...</p>
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- ═══════════ PLACEMENT & PRIORITY CONTROLS ═══════════ -->
+                        <div class="p-5 bg-gradient-to-br from-[#fbf7ee] to-[#f4ede0] border border-[#ebdccb] rounded-2xl space-y-4 shadow-sm">
+                            <div class="flex items-center justify-between border-b border-[#ebdccb] pb-2.5">
+                                <span class="text-xs font-black uppercase tracking-wider text-[#b4532c] font-english flex items-center gap-2">
+                                    <span class="text-base">🎯</span> Placement & Display Priority
+                                </span>
+                                <span class="text-[10px] font-bold text-[#8c7a6b] bg-white px-2.5 py-1 rounded-full border border-[#ebdccb] font-english">
+                                    Home Feed Placement
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <!-- Placement -->
+                                <div class="space-y-1.5">
+                                    <label for="art-placement" class="block text-xs font-bold text-[#1e1b18] font-english">
+                                        Placement Selection
+                                    </label>
+                                    <select id="art-placement" class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white text-[#1e1b18] shadow-sm">
+                                        <option value="AUTO">⚡ Automatic (Based on Latest Time)</option>
+                                        <option value="HERO">⭐ Hero Featured (Top Main Banner)</option>
+                                        <option value="CAROUSEL">🎠 Horizontal Carousel (Side-Scrolling)</option>
+                                        <option value="FEED">📰 Category Feed (Standard List)</option>
+                                    </select>
+                                    <p class="text-[10px] text-[#8c7a6b]">ഏറ്റവും പ്രധാനപ്പെട്ട ലേഖനങ്ങൾ 'Hero Featured' അല്ലെങ്കിൽ 'Carousel' നൽകാം.</p>
+                                </div>
+
+                                <!-- Display Priority -->
+                                <div class="space-y-1.5">
+                                    <label for="art-priority" class="block text-xs font-bold text-[#1e1b18] font-english">
+                                        Display Priority / Order Number
+                                    </label>
+                                    <input type="number" id="art-priority" min="1" max="999" value="10" placeholder="e.g. 1, 2, 3..." class="w-full text-xs font-black p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white text-[#b4532c] shadow-sm">
+                                    <p class="text-[10px] text-[#8c7a6b]">കുറഞ്ഞ നമ്പർ (Priority 1, 2, 3) ഹോം പേജിൽ മുൻഗണനയോടെ ആദ്യം കാണിക്കും.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Action Controls on Tab 2 -->
+                        <div class="pt-4 border-t border-[#f0e6d6] flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <button type="button" data-switch-tab="create" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 transition">
+                                <span>&larr;</span>
+                                <span>തിരികെ ലേഖനത്തിലേക്ക് (Back to Editor)</span>
+                            </button>
+
+                            <button type="submit" class="submit-article-btn w-full sm:w-auto px-7 py-3.5 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
+                                <span>Publish Article to Firestore</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </form>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TAB 3: പ്രസിദ്ധീകരിച്ചവ (PUBLISHED LIVE ARTICLES)
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="admin-tab-pane" data-pane="published">
+            <div class="max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-6">
+                
+                <!-- Header & Counters -->
+                <div class="border-b border-[#f0e6d6] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <h2 class="text-xl font-extrabold text-[#1e1b18]">പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങൾ (Published Live Articles)</h2>
+                            <span id="article-count" class="text-xs font-black font-english text-[#b4532c] bg-[#b4532c]/10 px-3 py-0.5 rounded-full">0</span>
+                        </div>
+                        <p class="text-xs text-[#8c7a6b] mt-0.5">തത്സമയം Firestore-ൽ ലഭ്യമായ ലേഖനങ്ങൾ എഡിറ്റ് ചെയ്യുകയോ നീക്കം ചെയ്യുകയോ ചെയ്യാം</p>
                     </div>
 
-                    <button type="submit" id="submit-btn" class="w-full py-4 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
-                        <span>Publish Article to Firestore</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    <button type="button" onclick="window.switchAdminTab('create')" class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-xl shadow transition self-start sm:self-auto font-english">
+                        <span>+ Create Article</span>
                     </button>
-                    <div id="status-msg" class="text-center text-xs font-bold hidden"></div>
-                </form>
-            </div>
-
-            <!-- Right Column: Live List of Articles from Firestore (5 Cols) -->
-            <div class="lg:col-span-5 bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
-                <div class="flex items-center justify-between pb-3 border-b border-[#f0e6d6]">
-                    <h2 class="text-base font-extrabold text-[#1e1b18]">പ്രസിദ്ധീകരിച്ചവ (Live Articles)</h2>
-                    <span id="article-count" class="text-xs font-bold font-english text-[#b4532c] bg-[#b4532c]/10 px-2.5 py-0.5 rounded-full">0</span>
                 </div>
-                <div id="admin-articles-list" class="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-                    <p class="text-xs text-slate-400">ലോഡ് ചെയ്യുന്നു...</p>
-                </div>
-            </div>
 
+                <!-- Filter & Search Toolbar -->
+                <div class="flex flex-col sm:flex-row items-center gap-3">
+                    <div class="relative w-full sm:flex-1">
+                        <input type="text" id="search-published-input" placeholder="ലേഖനം, എഴുത്തുകാരൻ, പ്ലേലിസ്റ്റ് എന്നിവ തിരയുക..." class="w-full text-xs p-3 pl-9 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40">
+                        <span class="absolute left-3 top-3 text-slate-400 text-xs">🔍</span>
+                    </div>
+                    <div class="w-full sm:w-48">
+                        <select id="filter-published-category" class="w-full text-xs font-bold p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white text-[#1e1b18]">
+                            <option value="ALL">എല്ലാ വിഭാഗങ്ങളും (All)</option>
+                            <option value="HISTORY">HISTORY (ചരിത്രം)</option>
+                            <option value="STUDY">STUDY (പഠനം)</option>
+                            <option value="STORY">STORY (കഥ)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Articles Cards List -->
+                <div id="admin-articles-list" class="space-y-3.5">
+                    <p class="text-xs text-slate-400 p-4 text-center">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
+                </div>
+
+            </div>
         </div>
+
     </main>
 
-    <!-- Admin Firebase Logic -->
-    <script type="module">
-        import { db, collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
+    <!-- Footer -->
+    <footer class="bg-[#241711] text-[#cbbba9] text-xs text-center py-4 border-t border-white/10 font-english mt-8">
+        NUQTHA Admin Dashboard &bull; Connected to Shared Realtime Firestore
+    </footer>
 
-        const form = document.getElementById('add-article-form');
-        const submitBtn = document.getElementById('submit-btn');
-        const statusMsg = document.getElementById('status-msg');
-        const listContainer = document.getElementById('admin-articles-list');
-        const countBadge = document.getElementById('article-count');
-        const fileInput = document.getElementById('art-file-input');
-        const uploadPlaceholder = document.getElementById('upload-placeholder');
-        const imagePreviewContainer = document.getElementById('image-preview-container');
-        const imagePreview = document.getElementById('image-preview');
-        const removeImgBtn = document.getElementById('remove-img-btn');
-
-        const formHeading = document.getElementById('form-heading');
-        const formSubheading = document.getElementById('form-subheading');
-        const cancelEditBtn = document.getElementById('cancel-edit-btn');
-
-        const titleColorInput = document.getElementById('art-title-color');
-        const contentColorInput = document.getElementById('art-content-color');
-        const titleColorHex = document.getElementById('title-color-hex');
-        const contentColorHex = document.getElementById('content-color-hex');
-        const previewTitle = document.getElementById('preview-title');
-        const previewBody = document.getElementById('preview-body');
-        const resetColorsBtn = document.getElementById('reset-colors-btn');
-
-        let selectedBase64Image = "";
-        let editingArticleId = null; // null = new article mode, string = edit mode
-        let currentArticlesList = [];
-
-        // Rich Text Formatting Tools Logic
-        const contentTextarea = document.getElementById('art-content');
-        const toolBoldBtn = document.getElementById('tool-bold-btn');
-        const toolHighlightBtn = document.getElementById('tool-highlight-btn');
-        const toolRemoveHighlightBtn = document.getElementById('tool-remove-highlight-btn');
-        const toolHighlightCardBtn = document.getElementById('tool-highlight-card-btn');
-        const toolH2Btn = document.getElementById('tool-h2-btn');
-        const toolH3Btn = document.getElementById('tool-h3-btn');
-        const toolInlineImgBtn = document.getElementById('tool-inline-img-btn');
-        const inlineImgFileInput = document.getElementById('inline-img-file-input');
-
-        const imgOptionsModal = document.getElementById('img-options-modal');
-        const cancelImgModalBtn = document.getElementById('cancel-img-modal-btn');
-        const confirmInsertImgBtn = document.getElementById('confirm-insert-img-btn');
-        const imgModalCaption = document.getElementById('img-modal-caption');
-
-        let pendingInlineBase64 = "";
-
-        function wrapSelectedText(prefix, suffix, defaultPlaceholder = "ഇവിടെ ടെക്സ്റ്റ് നൽകുക") {
-            const start = contentTextarea.selectionStart;
-            const end = contentTextarea.selectionEnd;
-            const text = contentTextarea.value;
-            const selected = text.substring(start, end) || defaultPlaceholder;
-            const replacement = prefix + selected + suffix;
-            contentTextarea.value = text.substring(0, start) + replacement + text.substring(end);
-            contentTextarea.focus();
-            contentTextarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
-        }
-
-        // Toggle or apply inline highlight (==വാക്ക്==)
-        function toggleInlineHighlight() {
-            const start = contentTextarea.selectionStart;
-            const end = contentTextarea.selectionEnd;
-            const text = contentTextarea.value;
-            const selected = text.substring(start, end);
-
-            if (selected) {
-                // If already highlighted within selection (e.g. ==text==)
-                if (selected.startsWith("==") && selected.endsWith("==") && selected.length >= 4) {
-                    const unwrapped = selected.substring(2, selected.length - 2);
-                    contentTextarea.value = text.substring(0, start) + unwrapped + text.substring(end);
-                    contentTextarea.focus();
-                    contentTextarea.setSelectionRange(start, start + unwrapped.length);
-                    return;
-                }
-                
-                // If cursor is right inside ==...==
-                const before2 = text.substring(Math.max(0, start - 2), start);
-                const after2 = text.substring(end, end + 2);
-                if (before2 === "==" && after2 === "==") {
-                    contentTextarea.value = text.substring(0, start - 2) + selected + text.substring(end + 2);
-                    contentTextarea.focus();
-                    contentTextarea.setSelectionRange(start - 2, start - 2 + selected.length);
-                    return;
-                }
-
-                // Wrap selection in ==...==
-                wrapSelectedText('==', '==');
-            } else {
-                wrapSelectedText('==', '==', 'ഹൈലൈറ്റ് വാക്ക്');
-            }
-        }
-
-        // Quick remove highlights (from selection or whole document)
-        function quickRemoveHighlights() {
-            const start = contentTextarea.selectionStart;
-            const end = contentTextarea.selectionEnd;
-            const text = contentTextarea.value;
-
-            if (start !== end) {
-                // Selection exists: strip == from selected portion
-                const selected = text.substring(start, end);
-                const stripped = selected.replace(/==/g, '');
-                contentTextarea.value = text.substring(0, start) + stripped + text.substring(end);
-                contentTextarea.focus();
-                contentTextarea.setSelectionRange(start, start + stripped.length);
-            } else {
-                // No selection: check if document has highlights and ask to strip all
-                if (text.includes("==")) {
-                    if (confirm("ലേഖനത്തിലെ എല്ലാ ഹൈലൈറ്റുകളും (==) മാറ്റണമോ? (Remove all highlights from text?)")) {
-                        contentTextarea.value = text.replace(/==/g, '');
-                        contentTextarea.focus();
-                    }
-                } else {
-                    alert("മാറ്റാൻ ഹൈലൈറ്റുകളൊന്നും കണ്ടെത്തിയില്ല (No highlights found to remove).");
-                }
-            }
-        }
-
-        toolBoldBtn.addEventListener('click', () => wrapSelectedText('**', '**'));
-        toolHighlightBtn.addEventListener('click', toggleInlineHighlight);
-        toolRemoveHighlightBtn.addEventListener('click', quickRemoveHighlights);
-        toolH2Btn.addEventListener('click', () => wrapSelectedText('\n\n## ', '\n\n', "പ്രധാന ഉപതലക്കെട്ട് (H2)"));
-        toolH3Btn.addEventListener('click', () => wrapSelectedText('\n\n### ', '\n\n', "ഉപതലക്കെട്ട് (H3)"));
-        
-        // Dedicated Highlight Card callout
-        toolHighlightCardBtn.addEventListener('click', () => {
-            wrapSelectedText('\n\n:::highlight\n', '\n:::\n\n', "പ്രത്യേകം ശ്രദ്ധിക്കേണ്ട പ്രധാന വരികൾ അല്ലെങ്കിൽ ഉദ്ധരണി ഇവിടെ നൽകുക.");
-        });
-
-        // Handle Inline Image Upload & Layout Selection Modal
-        toolInlineImgBtn.addEventListener('click', () => inlineImgFileInput.click());
-
-        inlineImgFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const maxDim = 1000;
-                    let width = img.width;
-                    let height = img.height;
-                    if (width > height && width > maxDim) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    } else if (height > maxDim) {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    pendingInlineBase64 = canvas.toDataURL('image/jpeg', 0.8);
-                    imgModalCaption.value = '';
-                    imgOptionsModal.classList.remove('hidden');
-                    imgOptionsModal.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    inlineImgFileInput.value = '';
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-
-        cancelImgModalBtn.addEventListener('click', () => {
-            pendingInlineBase64 = "";
-            imgOptionsModal.classList.add('hidden');
-        });
-
-        confirmInsertImgBtn.addEventListener('click', () => {
-            if (!pendingInlineBase64) return;
-            const selectedSizeEl = document.querySelector('input[name="img-size-option"]:checked');
-            const size = selectedSizeEl ? selectedSizeEl.value : 'medium';
-            const caption = imgModalCaption.value.trim() || 'ചിത്രം';
-
-            const insertTag = `\n\n![${caption}|${size}](${pendingInlineBase64})\n\n`;
-
-            const start = contentTextarea.selectionStart;
-            const text = contentTextarea.value;
-            contentTextarea.value = text.substring(0, start) + insertTag + text.substring(start);
-            
-            pendingInlineBase64 = "";
-            imgOptionsModal.classList.add('hidden');
-            contentTextarea.focus();
-        });
-
-        // Handle Image File Selection & Compression
-        fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const maxDim = 1000;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height && width > maxDim) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    } else if (height > maxDim) {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    selectedBase64Image = canvas.toDataURL('image/jpeg', 0.8);
-                    imagePreview.src = selectedBase64Image;
-                    uploadPlaceholder.classList.add('hidden');
-                    imagePreviewContainer.classList.remove('hidden');
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // Remove Selected Image
-        removeImgBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            selectedBase64Image = "";
-            fileInput.value = "";
-            imagePreview.src = "";
-            imagePreviewContainer.classList.add('hidden');
-            uploadPlaceholder.classList.remove('hidden');
-        });
-
-        // Color change handlers
-        titleColorInput.addEventListener('input', (e) => {
-            const val = e.target.value;
-            titleColorHex.textContent = val;
-            previewTitle.style.color = val;
-        });
-
-        contentColorInput.addEventListener('input', (e) => {
-            const val = e.target.value;
-            contentColorHex.textContent = val;
-            previewBody.style.color = val;
-        });
-
-        resetColorsBtn.addEventListener('click', () => {
-            titleColorInput.value = '#1e1b18';
-            titleColorHex.textContent = '#1e1b18';
-            previewTitle.style.color = '#1e1b18';
-
-            contentColorInput.value = '#2b2118';
-            contentColorHex.textContent = '#2b2118';
-            previewBody.style.color = '#2b2118';
-        });
-
-        // Cancel Edit Mode
-        cancelEditBtn.addEventListener('click', () => {
-            exitEditMode();
-        });
-
-        function exitEditMode() {
-            editingArticleId = null;
-            form.reset();
-            resetColorsBtn.click();
-            removeImgBtn.click();
-            document.getElementById('art-placement').value = "AUTO";
-            document.getElementById('art-priority').value = "10";
-            document.getElementById('art-playlist-name').value = "";
-            formHeading.textContent = "പുതിയ ലേഖനം ചേർക്കുക (New Article)";
-            formSubheading.textContent = "ലേഖനത്തിന്റെ വിവരങ്ങൾ നൽകി Publish ചെയ്യുക";
-            cancelEditBtn.classList.add('hidden');
-            submitBtn.innerHTML = `<span>Publish Article to Firestore</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
-            statusMsg.classList.add('hidden');
-        }
-
-        // Form Submit -> Add OR Update
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = editingArticleId ? 'Updating...' : 'Publishing...';
-
-            const title = document.getElementById('art-title').value.trim();
-            const category = document.getElementById('art-category').value;
-            const author = document.getElementById('art-author').value.trim();
-            const excerpt = document.getElementById('art-excerpt').value.trim();
-            const content = document.getElementById('art-content').value.trim();
-            const titleColor = titleColorInput.value || "#1e1b18";
-            const contentColor = contentColorInput.value || "#2b2118";
-
-            // Layout & Positioning Manager Fields
-            const placement = document.getElementById('art-placement').value || "AUTO";
-            const priorityVal = parseInt(document.getElementById('art-priority').value, 10);
-            const priority = isNaN(priorityVal) ? 10 : priorityVal;
-            const playlistName = document.getElementById('art-playlist-name').value.trim();
-
-            if (editingArticleId) {
-                // EDIT / UPDATE EXISTING ARTICLE
-                try {
-                    const articleRef = doc(db, "articles", editingArticleId);
-                    const updateData = {
-                        title,
-                        category,
-                        author,
-                        excerpt: excerpt || content.substring(0, 150) + "...",
-                        content,
-                        titleColor,
-                        contentColor,
-                        placement,
-                        priority,
-                        playlistName,
-                        updatedAt: serverTimestamp()
-                    };
-                    if (selectedBase64Image) {
-                        updateData.imageUrl = selectedBase64Image;
-                    }
-
-                    await updateDoc(articleRef, updateData);
-                    showSuccessMessage("ലേഖനം വിജയകരമായി എഡിറ്റ് ചെയ്ത് Firestore-ൽ അപ്‌ഡേറ്റ് ചെയ്തു!");
-                    exitEditMode();
-                } catch (err) {
-                    console.error("Firestore update error:", err);
-                    showErrorMessage("എഡിറ്റ് സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || "Firebase അനുമതി പരിശോധിക്കുക"));
-                } finally {
-                    submitBtn.disabled = false;
-                }
-                return;
-            }
-
-            // ADD NEW ARTICLE DIRECT TO FIRESTORE
-            try {
-                await addDoc(collection(db, "articles"), {
-                    title,
-                    category,
-                    author,
-                    imageUrl: selectedBase64Image || "",
-                    excerpt: excerpt || content.substring(0, 150) + "...",
-                    content,
-                    titleColor,
-                    contentColor,
-                    placement,
-                    priority,
-                    playlistName,
-                    date: new Date().toLocaleDateString('en-GB'),
-                    createdAt: serverTimestamp()
-                });
-
-                showSuccessMessage("ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! (Firestore Live)");
-                exitEditMode();
-            } catch (err) {
-                console.error("Error publishing article to Firestore:", err);
-                showErrorMessage("ലേഖനം പ്രസിദ്ധീകരിക്കാൻ കഴിഞ്ഞില്ല! Firebase Rules-ൽ 'allow read, write: if true;' നൽകി Publish ചെയ്തിട്ടുണ്ടോ എന്ന് പരിശോധിക്കുക. (" + (err.message || err) + ")");
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `<span>Publish Article to Firestore</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
-            }
-        });
-
-        function showSuccessMessage(msg) {
-            statusMsg.innerHTML = `
-                <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center gap-2">
-                    <svg class="w-4 h-4 text-emerald-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                    <span>${msg}</span>
-                </div>
-            `;
-            statusMsg.classList.remove('hidden');
-            setTimeout(() => {
-                statusMsg.classList.add('hidden');
-            }, 6000);
-        }
-
-        function showErrorMessage(msg) {
-            statusMsg.innerHTML = `
-                <div class="p-3 bg-rose-50 border border-rose-300 rounded-xl text-rose-800 text-xs font-bold flex items-center gap-2">
-                    <svg class="w-4 h-4 text-rose-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                    <span>${msg}</span>
-                </div>
-            `;
-            statusMsg.classList.remove('hidden');
-        }
-
-        // Edit Article Action
-        window.startEditArticle = (id) => {
-            const art = currentArticlesList.find(a => a.id === id);
-            if (!art) return;
-
-            editingArticleId = id;
-
-            // Fill Form
-            document.getElementById('art-title').value = art.title || "";
-            document.getElementById('art-category').value = (art.category || "HISTORY").toUpperCase();
-            document.getElementById('art-author').value = art.author || "";
-            document.getElementById('art-excerpt').value = art.excerpt || "";
-            document.getElementById('art-content').value = art.content || "";
-
-            // Layout & Positioning Manager Fill
-            document.getElementById('art-placement').value = art.placement || "AUTO";
-            document.getElementById('art-priority').value = (art.priority !== undefined && art.priority !== null) ? art.priority : 10;
-            document.getElementById('art-playlist-name').value = art.playlistName || "";
-
-            // Colors
-            const tColor = art.titleColor || "#1e1b18";
-            const cColor = art.contentColor || "#2b2118";
-            titleColorInput.value = tColor;
-            titleColorHex.textContent = tColor;
-            previewTitle.style.color = tColor;
-
-            contentColorInput.value = cColor;
-            contentColorHex.textContent = cColor;
-            previewBody.style.color = cColor;
-
-            // Image Preview if exists
-            if (art.imageUrl) {
-                selectedBase64Image = art.imageUrl;
-                imagePreview.src = art.imageUrl;
-                uploadPlaceholder.classList.add('hidden');
-                imagePreviewContainer.classList.remove('hidden');
-            } else {
-                removeImgBtn.click();
-            }
-
-            // Update UI
-            formHeading.textContent = "ലേഖനം എഡിറ്റ് ചെയ്യുക (Edit Article)";
-            formSubheading.textContent = `ലേഖനം മാറ്റം വരുത്തിയ ശേഷം 'Update Article' ക്ലിക്ക് ചെയ്യുക`;
-            cancelEditBtn.classList.remove('hidden');
-            submitBtn.innerHTML = `<span>Save & Update Article</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
-
-            // Scroll form into view
-            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        };
-
-        // Delete Article Action
-        window.deleteArticle = async (id) => {
-            if (!confirm("ഈ ലേഖനം സ്ഥിരമായി നീക്കം ചെയ്യണമോ?")) return;
-
-            try {
-                await deleteDoc(doc(db, "articles", id));
-                showSuccessMessage("ലേഖനം Firestore-ൽ നിന്ന് നീക്കം ചെയ്തു!");
-            } catch(e) {
-                console.error("Firestore delete error:", e);
-                showErrorMessage("ലേഖനം നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (e.message || "അനുമതി പരിശോധിക്കുക"));
-            }
-
-            if (editingArticleId === id) {
-                exitEditMode();
-            }
-        };
-
-        // Realtime Listener for Existing Articles in Admin from Shared Firestore
-        function renderAdminList(items) {
-            currentArticlesList = items;
-            countBadge.textContent = items.length;
-            if (items.length === 0) {
-                listContainer.innerHTML = '<p class="text-xs text-slate-400">ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല.</p>';
-                return;
-            }
-            listContainer.innerHTML = items.map(data => {
-                const titleCol = data.titleColor || "#1e1b18";
-                const placementLabel = data.placement === 'HERO' ? '⭐ HERO' : data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
-                const priorityBadge = (data.priority !== undefined && data.priority !== null) ? `P${data.priority}` : '';
-                const playlistBadge = data.playlistName ? `📚 ${data.playlistName}` : '';
-                return `
-                    <div class="p-3.5 bg-[#fbf7ee]/60 rounded-2xl border border-[#ebdccb] space-y-2 hover:border-[#b4532c]/50 transition">
-                        <div class="flex items-center justify-between gap-1 flex-wrap">
-                            <span class="text-[10px] font-bold text-[#b4532c] uppercase font-english">${data.category || 'General'}</span>
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white border border-[#ebdccb] text-[#4a3c33] font-english">${placementLabel}</span>
-                                ${priorityBadge ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 font-mono">${priorityBadge}</span>` : ''}
-                                <span class="text-[10px] text-slate-400 font-english">${data.date || ''}</span>
-                            </div>
-                        </div>
-                        <h4 class="text-sm font-bold line-clamp-1" style="color: ${titleCol};">${data.title}</h4>
-                        ${playlistBadge ? `<div class="inline-block text-[10px] font-bold text-amber-900 bg-amber-100/70 border border-amber-300 px-2 py-0.5 rounded-md">${playlistBadge}</div>` : ''}
-                        <div class="flex items-center justify-between pt-1 border-t border-[#ebdccb]/50">
-                            <p class="text-[11px] text-[#6b5c51]">${data.author || 'Author'}</p>
-                            <div class="flex items-center gap-1.5">
-                                <button type="button" onclick="window.startEditArticle('${data.id}')" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg transition font-english">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                    Edit
-                                </button>
-                                <button type="button" onclick="window.deleteArticle('${data.id}')" title="ലേഖനം ഒഴിവാക്കുക" class="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-lg transition font-english">
-                                    ✕ Delete
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
-        onSnapshot(q, (snapshot) => {
-            const fsArticles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderAdminList(fsArticles);
-        }, (err) => {
-            console.warn("Firestore read error in admin, retrying without order:", err);
-            onSnapshot(collection(db, "articles"), (snap) => {
-                const fsArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderAdminList(fsArticles);
-            }, (fallbackErr) => {
-                console.error("Firestore read fallback error:", fallbackErr);
-                listContainer.innerHTML = '<p class="text-xs text-rose-500 font-semibold">ലേഖനങ്ങൾ ലോഡ് ചെയ്യാനായില്ല. Firebase Rules പരിശോധിക്കുക.</p>';
-            });
-        });
-    </script>
+    <!-- Admin Modular Logic -->
+    <script type="module" src="admin.js"></script>
 </body>
 </html>

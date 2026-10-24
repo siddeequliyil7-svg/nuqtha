@@ -232,23 +232,23 @@ h1, h2, h3, h4, h5, h6 {
 /* ═══════════ Top Canopy Band ═══════════ */
 .top-canopy-band {
     background: linear-gradient(180deg, #b8542c 0%, #aa4923 100%);
-    height: 52px;
-    border-bottom-left-radius: 20px;
-    border-bottom-right-radius: 20px;
-    box-shadow: 0 6px 20px -3px rgba(170, 73, 35, 0.2);
+    height: 44px;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+    box-shadow: 0 5px 16px -3px rgba(170, 73, 35, 0.18);
 }
 
 @media (min-width: 641px) {
     .top-canopy-band {
-        height: 72px;
-        border-bottom-left-radius: 36px;
-        border-bottom-right-radius: 36px;
+        height: 58px;
+        border-bottom-left-radius: 26px;
+        border-bottom-right-radius: 26px;
     }
     .header-nav-wrapper {
-        margin-top: -30px;
+        margin-top: -24px;
     }
     .feed-main-wrapper {
-        padding-top: 24px !important;
+        padding-top: 18px !important;
     }
 }
 
@@ -308,8 +308,8 @@ h1, h2, h3, h4, h5, h6 {
     backdrop-filter: blur(28px) saturate(190%);
     -webkit-backdrop-filter: blur(28px) saturate(190%);
     border: 1px solid rgba(255, 255, 255, 0.9);
-    border-radius: 22px;
-    padding: 10px 14px 12px;
+    border-radius: 20px;
+    padding: 8px 14px 10px;
     width: 100%;
     box-sizing: border-box;
     box-shadow: 0 12px 30px -8px rgba(70, 35, 15, 0.1),
@@ -319,7 +319,7 @@ h1, h2, h3, h4, h5, h6 {
 @media (min-width: 641px) {
     .pro-floating-glass-card {
         border-radius: 32px;
-        padding: 16px 24px 18px;
+        padding: 12px 24px 14px;
     }
 }
 
@@ -699,7 +699,7 @@ body.dark-mode .compact-recent-card:hover {
     }
     #category-nav {
         gap: 4px !important;
-        margin-top: 8px !important;
+        margin-top: 6px !important;
     }
     .nav-category-link {
         font-size: 11px;
@@ -1376,15 +1376,37 @@ body.dark-mode .playlist-item-title {
 }
 
 /* ── Dark Gradient Overlay ── */
-.banner-slide-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
         to top,
-        rgba(10, 7, 4, 0.88) 0%,
-        rgba(10, 7, 4, 0.52) 45%,
-        rgba(10, 7, 4, 0.12) 100%
-    );
+        rgba(8, 5, 2, 0.92) 0%,
+        rgba(8, 5, 2, 0.58) 40%,
+        rgba(8, 5, 2, 0.18) 70%,
+        transparent 100%
+    '@
+
+# Improve title readability — stronger text-shadow, slightly bolder tracking
+$css = $css -replace '(\.banner-slide-title \{[\s\S]*?text-shadow: )0 2px 12px rgba\(0, 0, 0, 0\.45\)', '0 2px 16px rgba(0,0,0,0.6), 0 1px 4px rgba(0,0,0,0.4)'
+
+# Improve slide content bottom padding for more breathing room
+$css = $css -replace '(\.banner-slide-content \{[\s\S]*?padding: )28px 24px 52px(;)', '24px 22px 56px'
+
+# Better progress bar — slightly thicker, bottom position adjusted
+$css = $css -replace '(\.banner-progress-bar \{[\s\S]*?height: )2px(;)', '3px'
+$css = $css -replace '(\.banner-progress-bar \{[\s\S]*?bottom: )38px(;)', '42px'
+
+# Read button — more polished glass look
+$css = $css -replace '(\.banner-read-btn \{[\s\S]*?background: )rgba\(255, 255, 255, 0\.16\)(;)', 'rgba(255, 255, 255, 0.13)'
+
+# Mobile responsive — keep banner inside card area, no cramping
+$css = $css -replace '(@media \(max-width: 480px\) \{\s*\.banner-carousel \{[^}]+\}\s*\})', @'
+@media (max-width: 480px) {
+    .banner-carousel {
+        aspect-ratio: 3 / 2;
+        max-height: 300px;
+        border-radius: 18px;
+        margin-top: 10px;
+        margin-bottom: 20px;
+    }
+}
 }
 
 /* ── Slide Content ── */
@@ -1620,12 +1642,209 @@ body.dark-mode .banner-carousel {
 
 @media (min-width: 641px) {
     .banner-carousel {
-        border-radius: 0 0 32px 32px;
+        border-radius: 26px;
         aspect-ratio: 16 / 7;
-        margin-top: -24px;
-        width: calc(100% + clamp(20px, 6vw, 40px) * 2);
-        margin-left: calc(-1 * clamp(10px, 3vw, 20px));
-        margin-right: calc(-1 * clamp(10px, 3vw, 20px));
+        max-height: 440px;
+        margin-top: 16px;
     }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN DASHBOARD: 3-TAB FOLDER NAVIGATION & PLAYLIST STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+/* Folder Tabs Navigation Bar */
+.admin-tabs-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 22px;
+    padding: 6px;
+    box-shadow: 0 8px 24px -6px rgba(70, 35, 15, 0.08),
+                inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.admin-tabs-nav::-webkit-scrollbar {
+    display: none;
+}
+
+/* Individual Folder Tab Button */
+.admin-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #6b5c51;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    font-family: 'Noto Sans Malayalam', 'Plus Jakarta Sans', sans-serif;
+}
+
+.admin-tab-btn:hover {
+    color: var(--terracotta);
+    background: rgba(180, 83, 44, 0.06);
+}
+
+.admin-tab-btn.active {
+    background: #ffffff;
+    color: var(--terracotta);
+    border-color: rgba(180, 83, 44, 0.2);
+    box-shadow: 0 4px 14px -2px rgba(180, 83, 44, 0.14),
+                inset 0 1px 1px rgba(255, 255, 255, 1);
+}
+
+.admin-tab-btn .tab-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.admin-tab-btn .tab-badge {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(180, 83, 44, 0.12);
+    color: var(--terracotta);
+    border: 1px solid rgba(180, 83, 44, 0.2);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.admin-tab-btn.active .tab-badge {
+    background: var(--terracotta);
+    color: #ffffff;
+    border-color: var(--terracotta);
+}
+
+/* Tab Panes */
+.admin-tab-pane {
+    display: none;
+}
+.admin-tab-pane.active {
+    display: block;
+    animation: adminPaneFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes adminPaneFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ═══════════ PLAYLIST / ARTICLE SERIES HIGHLIGHT CARD ═══════════ */
+.playlist-featured-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.92) 0%, rgba(254, 243, 199, 0.45) 50%, rgba(255, 237, 213, 0.35) 100%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 2px solid rgba(245, 158, 11, 0.35);
+    border-radius: 26px;
+    padding: 24px;
+    box-shadow: 0 16px 36px -8px rgba(180, 83, 44, 0.12),
+                0 4px 14px -2px rgba(245, 158, 11, 0.1),
+                inset 0 1px 2px rgba(255, 255, 255, 1);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.playlist-featured-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+    border-top-right-radius: 26px;
+}
+
+.playlist-featured-card:hover {
+    border-color: rgba(245, 158, 11, 0.55);
+    box-shadow: 0 20px 42px -8px rgba(180, 83, 44, 0.18),
+                0 6px 18px -2px rgba(245, 158, 11, 0.16);
+}
+
+/* Playlist Preset Clickable Chips */
+.playlist-preset-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #92400e;
+    background: rgba(254, 243, 199, 0.7);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    white-space: nowrap;
+}
+
+.playlist-preset-chip:hover {
+    background: #f59e0b;
+    color: #ffffff;
+    border-color: #f59e0b;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px -1px rgba(245, 158, 11, 0.35);
+}
+
+/* ── Dark Mode Admin Styles ── */
+body.dark-mode .admin-tabs-nav {
+    background: rgba(18, 20, 29, 0.75);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.6);
+}
+
+body.dark-mode .admin-tab-btn {
+    color: #94a3b8;
+}
+
+body.dark-mode .admin-tab-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+body.dark-mode .admin-tab-btn.active {
+    background: rgba(26, 30, 43, 0.95);
+    color: #f8fafc;
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .playlist-featured-card {
+    background: linear-gradient(135deg, rgba(18, 20, 29, 0.85) 0%, rgba(30, 25, 20, 0.8) 50%, rgba(38, 28, 20, 0.7) 100%);
+    border-color: rgba(245, 158, 11, 0.3);
+    box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.7),
+                inset 0 1px 1px rgba(255, 255, 255, 0.08);
+}
+
+body.dark-mode .playlist-preset-chip {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fde68a;
+    border-color: rgba(245, 158, 11, 0.28);
+}
+
+body.dark-mode .playlist-preset-chip:hover {
+    background: #f59e0b;
+    color: #000000;
 }
 
