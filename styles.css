@@ -37,9 +37,13 @@ body.dark-mode .top-canopy-band {
 }
 
 body.dark-mode .pro-floating-glass-card {
-    background: rgba(15, 17, 26, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+    background: rgba(14, 16, 24, 0.75);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.7),
+                inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4);
 }
 
 body.dark-mode .article-glass-card {
@@ -62,13 +66,15 @@ body.dark-mode .nav-category-link {
     color: #94a3b8;
 }
 
-body.dark-mode .nav-category-link:hover,
-body.dark-mode .nav-category-link.active {
+body.dark-mode .nav-category-link:hover {
     color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
 }
 
-body.dark-mode .nav-category-link.active::after {
-    background: #ffffff;
+body.dark-mode .nav-category-link.active {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 body.dark-mode .glass-dropdown-menu {
@@ -217,7 +223,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ═══════════ Top Canopy Band ═══════════ */
 .top-canopy-band {
     background: linear-gradient(180deg, #b8542c 0%, #aa4923 100%);
-    height: clamp(80px, 12vw, 110px);
+    height: clamp(65px, 9vw, 90px);
     border-bottom-left-radius: clamp(24px, 5vw, 40px);
     border-bottom-right-radius: clamp(24px, 5vw, 40px);
     box-shadow: 0 10px 30px -5px rgba(170, 73, 35, 0.2);
@@ -225,22 +231,26 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ═══════════ More Options (3-Dot) Menu & Dropdown ═══════════ */
 .more-dots-btn {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #4a3c33;
-    background: rgba(255, 255, 255, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow: 0 2px 8px rgba(70, 35, 15, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .more-dots-btn:hover {
-    background: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.9);
     color: var(--terracotta);
-    box-shadow: 0 4px 12px rgba(80, 40, 20, 0.08);
+    box-shadow: 0 4px 12px rgba(80, 40, 20, 0.12);
+    transform: translateY(-1px);
 }
 
 .glass-dropdown-menu {
@@ -271,53 +281,53 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--terracotta);
 }
 
-/* ═══════════ Floating Glass Nav Card ═══════════ */
+/* ═══════════ Floating Glass Nav Capsule ═══════════ */
 .pro-floating-glass-card {
-    background: rgba(255, 255, 255, 0.72);
-    backdrop-filter: blur(32px) saturate(200%);
-    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
     border: 1px solid rgba(255, 255, 255, 0.85);
-    border-radius: clamp(18px, 4vw, 28px);
-    padding: clamp(20px, 5vw, 32px) clamp(16px, 5vw, 40px);
+    border-radius: clamp(20px, 4vw, 36px);
+    padding: clamp(14px, 2.5vw, 20px) clamp(16px, 4vw, 28px);
     width: 100%;
     box-sizing: border-box;
-    box-shadow: 0 24px 50px -12px rgba(80, 40, 20, 0.16),
-                0 4px 16px -2px rgba(80, 40, 20, 0.06),
-                inset 0 1px 2px rgba(255, 255, 255, 0.9);
+    box-shadow: 0 16px 36px -10px rgba(70, 35, 15, 0.12),
+                0 4px 12px -2px rgba(70, 35, 15, 0.04),
+                inset 0 1px 1px 0 rgba(255, 255, 255, 0.95),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ═══════════ Category Link Styling ═══════════ */
 .nav-category-link {
     position: relative;
-    font-size: clamp(11px, 3vw, 14px);
+    font-size: clamp(11px, 2.8vw, 13px);
     font-weight: 700;
-    color: #4a3c33;
-    transition: all 0.2s ease;
-    padding: 4px 2px 6px;
+    color: #5a4b41;
+    letter-spacing: 0.08em;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 6px 14px;
+    border-radius: 9999px;
     cursor: pointer;
     white-space: nowrap;
-    min-height: 44px;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
 }
 
 .nav-category-link:hover {
     color: var(--terracotta);
+    background: rgba(180, 83, 44, 0.06);
 }
 
 .nav-category-link.active {
     color: var(--terracotta);
+    background: rgba(180, 83, 44, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(180, 83, 44, 0.18);
 }
 
 .nav-category-link.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 10%;
-    right: 10%;
-    height: 2.5px;
-    background: var(--terracotta);
-    border-radius: 9999px;
+    display: none;
 }
 
 /* ═══════════ Frosted Glass Article Cards ═══════════ */
@@ -430,14 +440,14 @@ h1, h2, h3, h4, h5, h6 {
 /* Extra-small phones (< 360px) */
 @media (max-width: 360px) {
     .pro-floating-glass-card {
-        padding: 16px 12px;
+        padding: 10px 10px;
     }
     .nav-category-link {
         font-size: 10px;
-        padding: 4px 1px 6px;
+        padding: 4px 8px;
     }
     #category-nav {
-        gap: 14px !important;
+        gap: 6px !important;
     }
     .article-glass-card .article-preview {
         padding: 16px;
@@ -450,17 +460,17 @@ h1, h2, h3, h4, h5, h6 {
 /* Small phones (361px – 480px) */
 @media (max-width: 480px) {
     .top-canopy-band {
-        height: 85px;
-        border-bottom-left-radius: 24px;
-        border-bottom-right-radius: 24px;
+        height: 65px;
+        border-bottom-left-radius: 20px;
+        border-bottom-right-radius: 20px;
     }
     /* Nav card floats up less on small screens */
     .header-nav-wrapper {
-        margin-top: -18px;
+        margin-top: -14px;
     }
     .pro-floating-glass-card {
-        border-radius: 20px;
-        padding: 18px 14px;
+        border-radius: 24px;
+        padding: 12px 14px;
     }
     .article-glass-card {
         border-radius: 18px;
@@ -472,12 +482,13 @@ h1, h2, h3, h4, h5, h6 {
         padding: 18px;
     }
     #category-nav {
-        gap: 16px !important;
+        gap: 8px !important;
         flex-wrap: wrap;
         justify-content: center;
     }
     .nav-category-link {
         font-size: 11px;
+        padding: 5px 10px;
     }
     /* Fluid text for card headings */
     .article-glass-card h2 {
