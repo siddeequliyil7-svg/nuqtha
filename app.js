@@ -89,21 +89,33 @@ function setupCategoryNav() {
     });
 }
 
-/* ═══════════ Firestore Realtime Listener ═══════════ */
-function listenForArticles() {
-    const articlesCol = collection(db, "articles");
+/* ═══════════ Firestore Realtime Listener & Instant Hybrid Fetcher ═══════════ */
+const POSSIBLE_COLLECTIONS = ["articles", "posts", "content"];
 
-    function renderWithData(fsList) {
+async function listenForArticles() {
+    console.log("%c[NUQTHA] Starting Article Engine...", "color: #b4532c; font-weight: bold; font-size: 14px;");
+
+    function processAndRender(fsList, sourceCol) {
+        if (!Array.isArray(fsList)) return;
         const localList = getLocalArticles();
         const ids = new Set(fsList.map(a => a.id));
         allArticles = [...fsList, ...localList.filter(a => !ids.has(a.id))];
 
-        // Global latest-first sort (createdAt: desc)
+        // Global latest-first client-side sorting
         allArticles.sort((a, b) => {
             const getMillis = (item) => {
                 if (item.createdAt?.toMillis) return item.createdAt.toMillis();
                 if (item.createdAt?.seconds) return item.createdAt.seconds * 1000;
-                if (item.createdAt) return new Date(item.createdAt).getTime();
+                if (item.updatedAt?.toMillis) return item.updatedAt.toMillis();
+                if (item.updatedAt?.seconds) return item.updatedAt.seconds * 1000;
+                if (item.createdAt) {
+                    const parsed = new Date(item.createdAt).getTime();
+                    if (!isNaN(parsed)) return parsed;
+                }
+                if (item.date) {
+                    const parsed = new Date(item.date).getTime();
+                    if (!isNaN(parsed)) return parsed;
+                }
                 return 0;
             };
             return getMillis(b) - getMillis(a);
@@ -112,27 +124,60 @@ function listenForArticles() {
         renderFeed();
     }
 
-    // Direct listener on articles collection - works in 100% of Firestore configs
-    onSnapshot(articlesCol, (snapshot) => {
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderWithData(items);
-    }, async (err) => {
-        console.warn("Realtime listener failed, attempting one-time getDocs:", err);
+    // Method 1: Instant REST fetch (100% reliable across all networks, ISPs & ad-blockers)
+    async function fetchViaRest() {
         try {
-            const snap = await getDocs(articlesCol);
-            const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderWithData(items);
-        } catch(fallbackErr) {
-            console.error("Firestore getDocs failed:", fallbackErr);
-            const local = getLocalArticles();
-            if (local.length > 0) {
-                allArticles = local;
-                renderFeed();
-            } else {
-                renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
+            const url = "https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e";
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const data = await res.json();
+            if (data && data.documents && data.documents.length > 0) {
+                const restArticles = data.documents.map(doc => {
+                    const id = doc.name.split("/").pop();
+                    const f = doc.fields || {};
+                    return {
+                        id,
+                        title: f.title?.stringValue || "",
+                        category: f.category?.stringValue || "GENERAL",
+                        author: f.author?.stringValue || "NUQTHA",
+                        imageUrl: f.imageUrl?.stringValue || "",
+                        excerpt: f.excerpt?.stringValue || "",
+                        content: f.content?.stringValue || "",
+                        titleColor: f.titleColor?.stringValue || "#1e1b18",
+                        contentColor: f.contentColor?.stringValue || "#2b2118",
+                        date: f.date?.stringValue || "",
+                        createdAt: f.createdAt?.timestampValue || doc.createTime
+                    };
+                });
+                if (restArticles.length > 0) {
+                    console.log(`%c[NUQTHA] Loaded ${restArticles.length} articles via REST instant pipeline!`, "color: #059669; font-weight: bold;");
+                    processAndRender(restArticles, "REST");
+                }
             }
+        } catch(e) {
+            console.warn("[NUQTHA] REST pipeline notice:", e.message);
         }
-    });
+    }
+
+    // Trigger instant REST pipeline immediately
+    await fetchViaRest();
+
+    // Method 2: Live WebSocket Firestore SDK Listener
+    try {
+        const articlesCol = collection(db, "articles");
+        onSnapshot(articlesCol, (snapshot) => {
+            if (!snapshot.empty) {
+                const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                processAndRender(items, "Firestore-SDK");
+            }
+        }, async (err) => {
+            console.warn("[NUQTHA] SDK WebSocket listener had an issue, relying on REST pipeline:", err.message);
+            await fetchViaRest();
+        });
+    } catch(err) {
+        console.warn("[NUQTHA] SDK Init catch:", err.message);
+        await fetchViaRest();
+    }
 }
 
 function getLocalArticles() {
@@ -462,11 +507,11 @@ function buildCard(art) {
 
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
 function attachCardListeners() {
-    document.querySelectorAll(".article-glass-card").forEach(card => {
+    document.querySelectorAll(".featured-article-card, .compact-recent-card, .article-glass-card").forEach(card => {
         card.addEventListener("click", function (e) {
             // Direct navigation to article.html
             const id = this.dataset.id;
-            if (id && !e.target.closest("button")) {
+            if (id && !e.target.closest("button") && !e.target.closest("a")) {
                 window.location.href = `article.html?id=${id}`;
             }
         });
