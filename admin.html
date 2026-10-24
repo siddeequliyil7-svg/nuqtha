@@ -409,53 +409,35 @@
 
             if (editingArticleId) {
                 // EDIT / UPDATE EXISTING ARTICLE
-                const isLocal = String(editingArticleId).startsWith("local_");
-
-                if (!isLocal) {
-                    try {
-                        const articleRef = doc(db, "articles", editingArticleId);
-                        const updateData = {
-                            title,
-                            category,
-                            author,
-                            excerpt: excerpt || content.substring(0, 150) + "...",
-                            content,
-                            titleColor,
-                            contentColor,
-                            updatedAt: serverTimestamp()
-                        };
-                        if (selectedBase64Image) {
-                            updateData.imageUrl = selectedBase64Image;
-                        }
-
-                        await updateDoc(articleRef, updateData);
-                        showSuccessMessage("ലേഖനം വിജയകരമായി എഡിറ്റ് ചെയ്ത് അപ്‌ഡേറ്റ് ചെയ്തു!");
-                        exitEditMode();
-                    } catch (err) {
-                        console.error("Firestore update error:", err);
-                        // Fallback to update locally
-                        updateLocalArticle(editingArticleId, {
-                            title, category, author, excerpt, content, titleColor, contentColor,
-                            imageUrl: selectedBase64Image
-                        });
-                        showSuccessMessage("ലേഖനം എഡിറ്റ് ചെയ്ത് സേവ് ചെയ്തു!");
-                        exitEditMode();
+                try {
+                    const articleRef = doc(db, "articles", editingArticleId);
+                    const updateData = {
+                        title,
+                        category,
+                        author,
+                        excerpt: excerpt || content.substring(0, 150) + "...",
+                        content,
+                        titleColor,
+                        contentColor,
+                        updatedAt: serverTimestamp()
+                    };
+                    if (selectedBase64Image) {
+                        updateData.imageUrl = selectedBase64Image;
                     }
-                } else {
-                    // Update Local Article
-                    updateLocalArticle(editingArticleId, {
-                        title, category, author, excerpt, content, titleColor, contentColor,
-                        imageUrl: selectedBase64Image
-                    });
-                    showSuccessMessage("ലേഖനം എഡിറ്റ് ചെയ്ത് സേവ് ചെയ്തു!");
-                    exitEditMode();
-                }
 
-                submitBtn.disabled = false;
+                    await updateDoc(articleRef, updateData);
+                    showSuccessMessage("ലേഖനം വിജയകരമായി എഡിറ്റ് ചെയ്ത് Firestore-ൽ അപ്‌ഡേറ്റ് ചെയ്തു!");
+                    exitEditMode();
+                } catch (err) {
+                    console.error("Firestore update error:", err);
+                    showErrorMessage("എഡിറ്റ് സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || "Firebase അനുമതി പരിശോധിക്കുക"));
+                } finally {
+                    submitBtn.disabled = false;
+                }
                 return;
             }
 
-            // ADD NEW ARTICLE
+            // ADD NEW ARTICLE DIRECT TO FIRESTORE
             try {
                 await addDoc(collection(db, "articles"), {
                     title,
@@ -470,37 +452,13 @@
                     createdAt: serverTimestamp()
                 });
 
-                showSuccessMessage("ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!");
+                showSuccessMessage("ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! (Firestore Live)");
                 form.reset();
                 resetColorsBtn.click();
                 removeImgBtn.click();
             } catch (err) {
-                console.error("Error publishing article:", err);
-                
-                const localArticle = {
-                    id: "local_" + Date.now(),
-                    title,
-                    category,
-                    author,
-                    imageUrl: selectedBase64Image || "",
-                    excerpt: excerpt || content.substring(0, 150) + "...",
-                    content,
-                    titleColor,
-                    contentColor,
-                    date: new Date().toLocaleDateString('en-GB'),
-                    createdAt: new Date().toISOString()
-                };
-
-                let localSaved = getLocalArticles();
-                localSaved.unshift(localArticle);
-                localStorage.setItem("nuqtha_local_articles", JSON.stringify(localSaved));
-
-                renderAdminList(localSaved);
-                form.reset();
-                resetColorsBtn.click();
-                removeImgBtn.click();
-
-                showSuccessMessage("ലേഖനം വിജയകരമായി ചേർത്തു! (Live on Website)");
+                console.error("Error publishing article to Firestore:", err);
+                showErrorMessage("ലേഖനം പ്രസിദ്ധീകരിക്കാൻ കഴിഞ്ഞില്ല! Firebase Rules-ൽ 'allow read, write: if true;' നൽകി Publish ചെയ്തിട്ടുണ്ടോ എന്ന് പരിശോധിക്കുക. (" + (err.message || err) + ")");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = `<span>Publish Article to Firestore</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
@@ -520,18 +478,14 @@
             }, 6000);
         }
 
-        function updateLocalArticle(id, updatedFields) {
-            let list = getLocalArticles();
-            const idx = list.findIndex(a => a.id === id);
-            if (idx !== -1) {
-                list[idx] = {
-                    ...list[idx],
-                    ...updatedFields,
-                    imageUrl: updatedFields.imageUrl || list[idx].imageUrl
-                };
-                localStorage.setItem("nuqtha_local_articles", JSON.stringify(list));
-                renderAdminList(list);
-            }
+        function showErrorMessage(msg) {
+            statusMsg.innerHTML = `
+                <div class="p-3 bg-rose-50 border border-rose-300 rounded-xl text-rose-800 text-xs font-bold flex items-center gap-2">
+                    <svg class="w-4 h-4 text-rose-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                    <span>${msg}</span>
+                </div>
+            `;
+            statusMsg.classList.remove('hidden');
         }
 
         // Edit Article Action
@@ -582,18 +536,13 @@
         // Delete Article Action
         window.deleteArticle = async (id) => {
             if (!confirm("ഈ ലേഖനം സ്ഥിരമായി നീക്കം ചെയ്യണമോ?")) return;
-            const isLocal = String(id).startsWith("local_");
 
-            if (!isLocal) {
-                try {
-                    await deleteDoc(doc(db, "articles", id));
-                    showSuccessMessage("ലേഖനം നീക്കം ചെയ്തു!");
-                } catch(e) {
-                    console.error("Firestore delete error:", e);
-                    window.removeLocalArticle(id);
-                }
-            } else {
-                window.removeLocalArticle(id);
+            try {
+                await deleteDoc(doc(db, "articles", id));
+                showSuccessMessage("ലേഖനം Firestore-ൽ നിന്ന് നീക്കം ചെയ്തു!");
+            } catch(e) {
+                console.error("Firestore delete error:", e);
+                showErrorMessage("ലേഖനം നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (e.message || "അനുമതി പരിശോധിക്കുക"));
             }
 
             if (editingArticleId === id) {
@@ -601,7 +550,7 @@
             }
         };
 
-        // Realtime Listener for Existing Articles in Admin
+        // Realtime Listener for Existing Articles in Admin from Shared Firestore
         function renderAdminList(items) {
             currentArticlesList = items;
             countBadge.textContent = items.length;
@@ -635,27 +584,19 @@
             }).join('');
         }
 
-        window.removeLocalArticle = (id) => {
-            let list = getLocalArticles().filter(a => a.id !== id);
-            localStorage.setItem("nuqtha_local_articles", JSON.stringify(list));
-            renderAdminList(list);
-        };
-
-        const getLocalArticles = () => {
-            try { return JSON.parse(localStorage.getItem("nuqtha_local_articles") || "[]"); }
-            catch(e) { return []; }
-        };
-
         const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
         onSnapshot(q, (snapshot) => {
             const fsArticles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            const local = getLocalArticles();
-            const ids = new Set(fsArticles.map(a => a.id));
-            renderAdminList([...fsArticles, ...local.filter(a => !ids.has(a.id))]);
+            renderAdminList(fsArticles);
         }, (err) => {
-            console.warn("Firestore read error in admin:", err);
-            const local = getLocalArticles();
-            renderAdminList(local);
+            console.warn("Firestore read error in admin, retrying without order:", err);
+            onSnapshot(collection(db, "articles"), (snap) => {
+                const fsArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderAdminList(fsArticles);
+            }, (fallbackErr) => {
+                console.error("Firestore read fallback error:", fallbackErr);
+                listContainer.innerHTML = '<p class="text-xs text-rose-500 font-semibold">ലേഖനങ്ങൾ ലോഡ് ചെയ്യാനായില്ല. Firebase Rules പരിശോധിക്കുക.</p>';
+            });
         });
     </script>
 </body>

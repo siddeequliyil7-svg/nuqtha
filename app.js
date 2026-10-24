@@ -81,24 +81,28 @@ function setupCategoryNav() {
 /* ═══════════ Firestore Realtime Listener ═══════════ */
 function listenForArticles() {
     const ref = collection(db, "articles");
+    // Listen to shared articles in real-time
     const q = query(ref, orderBy("createdAt", "desc"));
 
     onSnapshot(q, (snap) => {
-        const firestoreArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const localArticles = getLocalArticles();
-        // Merge without duplicates
-        const ids = new Set(firestoreArticles.map(a => a.id));
-        allArticles = [...firestoreArticles, ...localArticles.filter(a => !ids.has(a.id))];
+        allArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderFeed();
     }, (err) => {
-        console.warn("Firestore error:", err);
-        const localArticles = getLocalArticles();
-        if (localArticles.length > 0) {
-            allArticles = localArticles;
+        console.error("Firestore realtime listener error:", err);
+        // Fallback retry without orderBy in case index or field timestamp is syncing
+        onSnapshot(ref, (snap) => {
+            allArticles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Client-side sort by createdAt or date
+            allArticles.sort((a, b) => {
+                const timeA = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+                const timeB = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+                return timeB - timeA;
+            });
             renderFeed();
-        } else {
-            renderEmpty("ഫയർബേസ് അനുമതി പരിശോധിക്കുക (Missing Permissions). ലേഖനങ്ങൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
-        }
+        }, (fallbackErr) => {
+            console.error("Firestore fallback read error:", fallbackErr);
+            renderEmpty("ഫയർബേസ് അനുമതി പരിശോധിക്കുക (Firestore Permissions). Firestore Rules-ൽ 'allow read, write: if true;' നൽകി Publish ചെയ്യുക.");
+        });
     });
 }
 

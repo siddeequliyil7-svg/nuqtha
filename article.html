@@ -23,7 +23,7 @@
 
     <!-- Top Minimal Sticky Header -->
     <header class="sticky top-0 z-40 bg-[#fbf7ee]/90 backdrop-blur-md border-b border-[#ebdccb]">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div class="w-full max-w-[min(720px,90vw)] mx-auto px-[clamp(12px,4vw,24px)] h-14 sm:h-16 flex items-center justify-between">
             <a href="index.html" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#b4532c] hover:text-[#923e1b] transition font-english">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 <span>Back to Home</span>
@@ -50,12 +50,12 @@
     </header>
 
     <!-- Main Article Container -->
-    <main class="max-w-3xl mx-auto px-4 sm:px-6 py-12 flex-1 w-full">
+    <main class="w-full max-w-[min(720px,90vw)] mx-auto px-[clamp(12px,4vw,24px)] py-10 sm:py-14 flex-1">
         <!-- Article Header -->
         <article class="space-y-8">
             <div class="space-y-4 text-center sm:text-left">
                 <span id="art-category" class="category-badge font-english">General</span>
-                <h1 id="art-title" class="text-3xl sm:text-5xl font-black text-[#1e1b18] leading-tight tracking-tight">
+                <h1 id="art-title" class="text-[clamp(24px,7vw,48px)] font-black text-[#1e1b18] leading-tight tracking-tight">
                     ലോഡ് ചെയ്യുന്നു...
                 </h1>
                 
@@ -111,24 +111,16 @@
 
             let article = null;
 
-            // 1. Try Local Storage first if it's a local draft/article
+            // Fetch from shared Firestore collection
             try {
-                const localArticles = JSON.parse(localStorage.getItem("nuqtha_local_articles") || "[]");
-                article = localArticles.find(a => a.id === articleId);
-            } catch(e) {}
-
-            // 2. Fetch from Firestore if not found in local
-            if (!article) {
-                try {
-                    const snap = await getDocs(collection(db, "articles"));
-                    snap.forEach(docSnap => {
-                        if (docSnap.id === articleId) {
-                            article = { id: docSnap.id, ...docSnap.data() };
-                        }
-                    });
-                } catch (e) {
-                    console.error("Firestore read error:", e);
-                }
+                const snap = await getDocs(collection(db, "articles"));
+                snap.forEach(docSnap => {
+                    if (docSnap.id === articleId) {
+                        article = { id: docSnap.id, ...docSnap.data() };
+                    }
+                });
+            } catch (e) {
+                console.error("Firestore read error:", e);
             }
 
             if (article) {

@@ -17,8 +17,8 @@
     <header class="relative w-full z-40 flex-shrink-0">
         <div class="top-canopy-band w-full"></div>
 
-        <div class="max-w-2xl mx-auto px-4 -mt-20">
-            <div class="pro-floating-glass-card px-8 py-7 sm:px-10 sm:py-8 flex flex-col items-center justify-center text-center relative">
+        <div class="page-wrapper header-nav-wrapper" style="margin-top: clamp(-22px, -5vw, -20px);">
+            <div class="pro-floating-glass-card flex flex-col items-center justify-center text-center relative">
                 
                 <!-- Actions (Dark Mode Toggle & 3-Dots Button) -->
                 <div class="absolute right-4 sm:right-6 top-4 sm:top-5 flex items-center gap-2">
@@ -85,10 +85,10 @@
     </header>
 
     <!-- ═══════════ MAIN FEED / BLOG-ROLL ═══════════ -->
-    <main class="flex-grow w-full max-w-2xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+    <main class="flex-grow w-full page-wrapper" style="padding-top: clamp(28px, 6vw, 56px); padding-bottom: clamp(28px, 6vw, 56px);">
         
         <!-- Feed Container -->
-        <div id="feed-container" class="space-y-6">
+        <div id="feed-container" class="space-y-5">
             <!-- Skeleton loading cards (replaced by JS) -->
             <div class="article-glass-card p-7 space-y-4">
                 <div class="skeleton-pulse h-3 w-20"></div>
