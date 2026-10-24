@@ -201,6 +201,7 @@ function renderFeed() {
 
     attachCardListeners();
     attachShowMoreListeners();
+    setupCarousel();
 }
 
 /* ─── HOME: Hero card from global latest + per-category sections ─── */
@@ -212,6 +213,11 @@ function renderHomeFeed(container) {
 
     // Global hero: the single latest article across all categories (sorted createdAt desc)
     let html = buildFeaturedCard(allArticles[0]);
+
+    // Horizontal swipe carousel: up to 10 latest articles after the hero
+    if (allArticles.length > 1) {
+        html += buildCarouselSection(allArticles.slice(1, 11));
+    }
 
     // Discover all unique categories present in the articles (preserving CATEGORY_ORDER first)
     const existingCats = new Set(allArticles.map(a => (a.category || "").toUpperCase()).filter(Boolean));
@@ -503,6 +509,117 @@ function buildCompactRecentCard(art) {
 /* ═══════════ Backward Compatibility buildCard ═══════════ */
 function buildCard(art) {
     return buildFeaturedCard(art);
+}
+
+/* ═══════════ Horizontal Swipe Carousel ═══════════ */
+function buildCarouselSection(articles) {
+    if (!articles || articles.length === 0) return '';
+    const cards = articles.map(art => buildCarouselCard(art)).join('');
+    return `
+    <div class="carousel-section">
+        <div class="carousel-section-header">
+            <div class="category-glass-badge">
+                <span class="font-english text-xs font-black tracking-wider uppercase" style="color: var(--terracotta);">SWIPE · </span>
+                <span style="font-family: 'Noto Sans Malayalam', sans-serif;" class="text-xs font-bold">പുതിയ ലേഖനങ്ങൾ</span>
+            </div>
+            <div class="carousel-nav-btns">
+                <button class="carousel-nav-btn" id="carousel-prev" aria-label="Previous">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <button class="carousel-nav-btn" id="carousel-next" aria-label="Next">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="carousel-scroll-wrapper">
+            <div class="carousel-scroll-track" id="carousel-track">${cards}</div>
+        </div>
+        <div class="carousel-dots" id="carousel-dots"></div>
+    </div>`;
+}
+
+function buildCarouselCard(art) {
+    const dateStr = art.date || formatDate(art.createdAt);
+    const words = (art.content || '').length;
+    const readMin = Math.max(1, Math.round(words / 400));
+    const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
+    const catLabel = categoryLabel(art.category);
+    return `
+    <a href="article.html?id=${art.id}" class="carousel-card" data-id="${art.id}">
+        ${art.imageUrl
+            ? `<img src="${art.imageUrl}" alt="${art.title}" class="carousel-card-img" loading="lazy">`
+            : `<div class="carousel-card-img-placeholder"><svg width="28" height="28" fill="none" stroke="rgba(255,255,255,0.45)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>`
+        }
+        <div class="carousel-card-body">
+            <span class="carousel-card-cat">${catLabel}</span>
+            <h4 class="carousel-card-title" ${titleStyle}>${art.title}</h4>
+            <p class="carousel-card-meta">${dateStr} · ${readMin} min</p>
+        </div>
+    </a>`;
+}
+
+function setupCarousel() {
+    const track = document.getElementById('carousel-track');
+    const prevBtn = document.getElementById('carousel-prev');
+    const nextBtn = document.getElementById('carousel-next');
+    const dotsContainer = document.getElementById('carousel-dots');
+    if (!track) return;
+
+    const cards = Array.from(track.querySelectorAll('.carousel-card'));
+    if (cards.length === 0) return;
+
+    // Staggered entrance via IntersectionObserver
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('carousel-visible');
+                observer.unobserve(entry.target);
+                // Reset delay after entrance so hover is instant
+                setTimeout(() => { entry.target.style.transitionDelay = '0ms'; }, 700);
+            }
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -20px 0px' });
+
+    cards.forEach((card, i) => {
+        card.style.transitionDelay = `${i * 65}ms`;
+        observer.observe(card);
+    });
+
+    // Build dot indicators
+    if (dotsContainer) {
+        dotsContainer.innerHTML = '';
+        cards.forEach((_, i) => {
+            const dot = document.createElement('button');
+            dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+            dot.setAttribute('aria-label', `Slide ${i + 1}`);
+            dot.addEventListener('click', () => scrollToCard(i));
+            dotsContainer.appendChild(dot);
+        });
+    }
+
+    function getCardStride() {
+        const card = track.querySelector('.carousel-card');
+        if (!card) return 240;
+        const style = window.getComputedStyle(track);
+        const gap = parseFloat(style.gap) || 14;
+        return card.getBoundingClientRect().width + gap;
+    }
+
+    function scrollToCard(index) {
+        track.scrollTo({ left: index * getCardStride(), behavior: 'smooth' });
+    }
+
+    function updateDots() {
+        if (!dotsContainer) return;
+        const index = Math.round(track.scrollLeft / getCardStride());
+        dotsContainer.querySelectorAll('.carousel-dot').forEach((d, i) =>
+            d.classList.toggle('active', i === index)
+        );
+    }
+
+    if (prevBtn) prevBtn.addEventListener('click', () => track.scrollBy({ left: -getCardStride() * 2, behavior: 'smooth' }));
+    if (nextBtn) nextBtn.addEventListener('click', () => track.scrollBy({ left: getCardStride() * 2, behavior: 'smooth' }));
+    track.addEventListener('scroll', updateDots, { passive: true });
 }
 
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
