@@ -124,30 +124,80 @@
                                 <span class="text-[10px] font-normal">ബോൾഡ്</span>
                             </button>
 
-                            <!-- Highlight Button -->
-                            <button type="button" id="tool-highlight-btn" class="px-2.5 py-1 text-xs font-bold bg-amber-100 hover:bg-amber-400 hover:text-black rounded-lg border border-amber-300 transition flex items-center gap-1 shadow-sm text-amber-900" title="Highlight (==വാക്ക്==)">
+                            <!-- Highlight Button (Inline) -->
+                            <button type="button" id="tool-highlight-btn" class="px-2.5 py-1 text-xs font-bold bg-amber-100 hover:bg-amber-400 hover:text-black rounded-lg border border-amber-300 transition flex items-center gap-1 shadow-sm text-amber-900" title="Highlight text (==വാക്ക്==)">
                                 <span>🖍️</span>
                                 <span class="text-[10px]">ഹൈലൈറ്റ്</span>
                             </button>
 
-                            <!-- Subheading / Title inside text -->
-                            <button type="button" id="tool-heading-btn" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-sm" title="Subheading (## തലക്കെട്ട്)">
-                                <span class="font-bold">H2</span>
+                            <!-- Dedicated Highlight Card Button -->
+                            <button type="button" id="tool-highlight-card-btn" class="px-2.5 py-1 text-xs font-bold bg-[#b4532c]/10 text-[#b4532c] hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#b4532c]/30 transition flex items-center gap-1 shadow-sm" title="Insert Glassmorphism Highlight Card">
+                                <span>✨</span>
+                                <span class="text-[10px]">Highlight Card</span>
+                            </button>
+
+                            <!-- H2 Heading Button -->
+                            <button type="button" id="tool-h2-btn" class="px-2 py-1 text-xs font-black bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-0.5 shadow-sm" title="Main Section Subheading (## ഹെഡിംഗ്)">
+                                <span class="font-extrabold">H2</span>
+                                <span class="text-[10px] font-normal">ഹെഡിംഗ്</span>
+                            </button>
+
+                            <!-- H3 Subheading Button -->
+                            <button type="button" id="tool-h3-btn" class="px-2 py-1 text-xs font-bold bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-0.5 shadow-sm" title="Sub-subheading (### ഉപതലക്കെട്ട്)">
+                                <span class="font-bold">H3</span>
                                 <span class="text-[10px] font-normal">ഉപതലക്കെട്ട്</span>
                             </button>
 
-                            <!-- Inline Image Button -->
-                            <button type="button" id="tool-inline-img-btn" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-sm text-[#b4532c]" title="Insert Image between paragraphs">
+                            <!-- Inline Image Button with Layout Modal -->
+                            <button type="button" id="tool-inline-img-btn" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-[#b4532c] hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-sm text-[#b4532c]" title="Insert Image with custom size/alignment">
                                 <span>🖼️</span>
                                 <span class="text-[10px] font-normal">ചിത്രം ചേർക്കുക</span>
                             </button>
                             <input type="file" id="inline-img-file-input" accept="image/*" class="hidden">
                         </div>
 
-                        <textarea id="art-content" rows="8" required placeholder="ലേഖനത്തിന്റെ പൂർണ്ണ രൂപം ഇവിടെ നൽകുക... ടെക്സ്റ്റ് സെലക്ട് ചെയ്ത ശേഷം മുകളിലെ ബോൾഡ് / ഹൈലൈറ്റ് ബട്ടണുകൾ ഉപയോഗിക്കാം." class="w-full text-sm p-3.5 rounded-b-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-sans leading-relaxed"></textarea>
+                        <!-- Image Insert Modal / Popup for Size & Caption Selection -->
+                        <div id="img-options-modal" class="hidden p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl mb-2 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-[#b4532c] flex items-center gap-1.5">
+                                    <span>📐</span> ചിത്രത്തിന്റെ വലിപ്പവും അലൈൻമെന്റും (Image Layout)
+                                </span>
+                                <button type="button" id="cancel-img-modal-btn" class="text-xs text-rose-600 font-bold hover:underline">✕ ഒഴിവാക്കുക</button>
+                            </div>
+                            
+                            <div class="grid grid-cols-3 gap-2 text-xs">
+                                <label class="border border-amber-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-[#b4532c] transition flex flex-col items-center text-center gap-1">
+                                    <input type="radio" name="img-size-option" value="small" class="text-[#b4532c]">
+                                    <span class="font-bold">Small</span>
+                                    <span class="text-[10px] text-[#8c7a6b]">340px Centered</span>
+                                </label>
+                                <label class="border border-amber-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-[#b4532c] transition flex flex-col items-center text-center gap-1">
+                                    <input type="radio" name="img-size-option" value="medium" checked class="text-[#b4532c]">
+                                    <span class="font-bold">Medium</span>
+                                    <span class="text-[10px] text-[#8c7a6b]">620px Centered</span>
+                                </label>
+                                <label class="border border-amber-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-[#b4532c] transition flex flex-col items-center text-center gap-1">
+                                    <input type="radio" name="img-size-option" value="full" class="text-[#b4532c]">
+                                    <span class="font-bold">Full Width</span>
+                                    <span class="text-[10px] text-[#8c7a6b]">Full Container</span>
+                                </label>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <input id="img-modal-caption" type="text" placeholder="ചിത്രത്തിന്റെ അടിക്കുറിപ്പ് (Caption) - ഓപ്ഷണൽ" class="flex-1 text-xs p-2 rounded-lg border border-amber-200 focus:outline-none focus:border-[#b4532c] bg-white">
+                                <button type="button" id="confirm-insert-img-btn" class="px-4 py-2 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-lg transition shadow-sm font-english">
+                                    Insert
+                                </button>
+                            </div>
+                        </div>
+
+                        <textarea id="art-content" rows="8" required placeholder="ലേഖനത്തിന്റെ പൂർണ്ണ രൂപം ഇവിടെ നൽകുക... ടെക്സ്റ്റ് സെലക്ട് ചെയ്ത ശേഷം മുകളിലെ ബോൾഡ് / ഹൈലൈറ്റ് / ഹെഡിംഗ് ബട്ടണുകൾ ഉപയോഗിക്കാം." class="w-full text-sm p-3.5 rounded-b-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-sans leading-relaxed"></textarea>
                         
-                        <p class="text-[11px] text-[#8c7a6b] mt-1.5 flex items-center gap-2">
-                            <span>💡 സൂചന: സെലക്ട് ചെയ്ത വാക്ക് <b>ബോൾഡ്</b> ആക്കാൻ <code>**വാക്ക്**</code> എന്നും, <mark class="bg-amber-200 px-1 rounded">ഹൈലൈറ്റ്</mark> ആക്കാൻ <code>==വാക്ക്==</code> എന്നും ചേർക്കാം.</span>
+                        <p class="text-[11px] text-[#8c7a6b] mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span>💡 <b>ബോൾഡ്:</b> <code>**വാക്ക്**</code></span>
+                            <span>🖍️ <b>ഹൈലൈറ്റ്:</b> <code>==വാക്ക്==</code></span>
+                            <span>✨ <b>Highlight Card:</b> പ്രത്യേക ഗ്ലാസ്മോർഫിസം ബോക്സ്</span>
+                            <span>📑 <b>H2/H3:</b> സബ് ഹെഡിംഗുകൾ</span>
                         </p>
                     </div>
 
@@ -248,15 +298,24 @@
         const contentTextarea = document.getElementById('art-content');
         const toolBoldBtn = document.getElementById('tool-bold-btn');
         const toolHighlightBtn = document.getElementById('tool-highlight-btn');
-        const toolHeadingBtn = document.getElementById('tool-heading-btn');
+        const toolHighlightCardBtn = document.getElementById('tool-highlight-card-btn');
+        const toolH2Btn = document.getElementById('tool-h2-btn');
+        const toolH3Btn = document.getElementById('tool-h3-btn');
         const toolInlineImgBtn = document.getElementById('tool-inline-img-btn');
         const inlineImgFileInput = document.getElementById('inline-img-file-input');
 
-        function wrapSelectedText(prefix, suffix) {
+        const imgOptionsModal = document.getElementById('img-options-modal');
+        const cancelImgModalBtn = document.getElementById('cancel-img-modal-btn');
+        const confirmInsertImgBtn = document.getElementById('confirm-insert-img-btn');
+        const imgModalCaption = document.getElementById('img-modal-caption');
+
+        let pendingInlineBase64 = "";
+
+        function wrapSelectedText(prefix, suffix, defaultPlaceholder = "ഇവിടെ ടെക്സ്റ്റ് നൽകുക") {
             const start = contentTextarea.selectionStart;
             const end = contentTextarea.selectionEnd;
             const text = contentTextarea.value;
-            const selected = text.substring(start, end) || "ഇവിടെ ടെക്സ്റ്റ് നൽകുക";
+            const selected = text.substring(start, end) || defaultPlaceholder;
             const replacement = prefix + selected + suffix;
             contentTextarea.value = text.substring(0, start) + replacement + text.substring(end);
             contentTextarea.focus();
@@ -265,10 +324,17 @@
 
         toolBoldBtn.addEventListener('click', () => wrapSelectedText('**', '**'));
         toolHighlightBtn.addEventListener('click', () => wrapSelectedText('==', '=='));
-        toolHeadingBtn.addEventListener('click', () => wrapSelectedText('\n\n### ', '\n\n'));
+        toolH2Btn.addEventListener('click', () => wrapSelectedText('\n\n## ', '\n\n', "പ്രധാന ഉപതലക്കെട്ട് (H2)"));
+        toolH3Btn.addEventListener('click', () => wrapSelectedText('\n\n### ', '\n\n', "ഉപതലക്കെട്ട് (H3)"));
+        
+        // Dedicated Highlight Card callout
+        toolHighlightCardBtn.addEventListener('click', () => {
+            wrapSelectedText('\n\n:::highlight\n', '\n:::\n\n', "പ്രത്യേകം ശ്രദ്ധിക്കേണ്ട പ്രധാന വരികൾ അല്ലെങ്കിൽ ഉദ്ധരണി ഇവിടെ നൽകുക.");
+        });
 
-        // Handle Inline Image Upload
+        // Handle Inline Image Upload & Layout Selection Modal
         toolInlineImgBtn.addEventListener('click', () => inlineImgFileInput.click());
+
         inlineImgFileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -278,7 +344,7 @@
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
-                    const maxDim = 800;
+                    const maxDim = 1000;
                     let width = img.width;
                     let height = img.height;
                     if (width > height && width > maxDim) {
@@ -293,17 +359,37 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    const base64Img = canvas.toDataURL('image/jpeg', 0.75);
-                    const insertTag = `\n\n![ചിത്രം](${base64Img})\n\n`;
-                    
-                    const start = contentTextarea.selectionStart;
-                    const text = contentTextarea.value;
-                    contentTextarea.value = text.substring(0, start) + insertTag + text.substring(start);
+                    pendingInlineBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                    imgModalCaption.value = '';
+                    imgOptionsModal.classList.remove('hidden');
+                    imgOptionsModal.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     inlineImgFileInput.value = '';
                 };
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
+        });
+
+        cancelImgModalBtn.addEventListener('click', () => {
+            pendingInlineBase64 = "";
+            imgOptionsModal.classList.add('hidden');
+        });
+
+        confirmInsertImgBtn.addEventListener('click', () => {
+            if (!pendingInlineBase64) return;
+            const selectedSizeEl = document.querySelector('input[name="img-size-option"]:checked');
+            const size = selectedSizeEl ? selectedSizeEl.value : 'medium';
+            const caption = imgModalCaption.value.trim() || 'ചിത്രം';
+
+            const insertTag = `\n\n![${caption}|${size}](${pendingInlineBase64})\n\n`;
+
+            const start = contentTextarea.selectionStart;
+            const text = contentTextarea.value;
+            contentTextarea.value = text.substring(0, start) + insertTag + text.substring(start);
+            
+            pendingInlineBase64 = "";
+            imgOptionsModal.classList.add('hidden');
+            contentTextarea.focus();
         });
 
         // Handle Image File Selection & Compression

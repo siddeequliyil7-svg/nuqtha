@@ -198,23 +198,40 @@
                 .filter(p => p.trim())
                 .map(paragraph => {
                     const p = paragraph.trim();
-                    // Subheading
-                    if (p.startsWith("### ")) {
-                        return `<h3 class="text-2xl font-bold my-6 text-[#1e1b18] font-['Manjari']">${p.replace("### ", "")}</h3>`;
+
+                    // Dedicated Highlight Card Callout: :::highlight ... :::
+                    if (p.startsWith(":::highlight") && p.endsWith(":::")) {
+                        const inner = p.replace(/^:::highlight\s*/, "").replace(/\s*:::$/, "").trim();
+                        const formattedInner = inner
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
+                            .replace(/==(.*?)=/g, '<mark class="bg-amber-200/90 px-1 rounded">$1</mark>');
+                        return `<div class="highlight-glass-card"><p>${formattedInner}</p></div>`;
                     }
+
+                    // Subheading H2
                     if (p.startsWith("## ")) {
-                        return `<h2 class="text-2xl sm:text-3xl font-extrabold my-6 text-[#1e1b18] font-['Manjari']">${p.replace("## ", "")}</h2>`;
+                        return `<h2 class="article-h2">${p.replace("## ", "")}</h2>`;
                     }
-                    // Inline Image
-                    const imgMatch = p.match(/^!\[(.*?)\]\((.*?)\)$/);
+                    // Subheading H3
+                    if (p.startsWith("### ")) {
+                        return `<h3 class="article-h3">${p.replace("### ", "")}</h3>`;
+                    }
+
+                    // Inline Image with Layout/Size: ![caption|size](url) or ![caption](url)
+                    const imgMatch = p.match(/^!\[(.*?)(?:\|(small|medium|full))?\]\((.*?)\)$/);
                     if (imgMatch) {
+                        const caption = imgMatch[1] || "";
+                        const size = imgMatch[2] || "full";
+                        const url = imgMatch[3];
+                        const sizeClass = size === "small" ? "img-small" : size === "medium" ? "img-medium" : "img-full";
                         return `
-                            <div class="my-8 rounded-3xl overflow-hidden border border-[#ebdccb] shadow-md">
-                                <img src="${imgMatch[2]}" alt="${imgMatch[1]}" class="w-full h-auto object-cover max-h-[550px]">
-                                ${imgMatch[1] && imgMatch[1] !== "ചിത്രം" ? `<p class="text-xs text-center text-[#8c7a6b] p-3 bg-[#ebdccb]/30 italic">${imgMatch[1]}</p>` : ''}
+                            <div class="article-img-wrap ${sizeClass}">
+                                <img src="${url}" alt="${caption}">
+                                ${caption && caption !== "ചിത്രം" ? `<div class="article-img-caption">${caption}</div>` : ''}
                             </div>
                         `;
                     }
+
                     // Bold and Highlight
                     let formatted = p
                         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18]">$1</strong>')

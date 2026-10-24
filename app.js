@@ -136,7 +136,7 @@ function renderFeed() {
     attachCardListeners();
 }
 
-/* ═══════════ Format Markdown/Rich Text (Bold, Highlight, Subheadings, Inline Images) ═══════════ */
+/* ═══════════ Format Markdown/Rich Text (Bold, Highlight, Subheadings, Inline Images, Highlight Cards) ═══════════ */
 function formatRichContent(rawText, contentStyle) {
     if (!rawText) return "";
     return rawText
@@ -144,23 +144,42 @@ function formatRichContent(rawText, contentStyle) {
         .filter(p => p.trim())
         .map(paragraph => {
             const p = paragraph.trim();
-            // Subheading: ### Title
-            if (p.startsWith("### ")) {
-                return `<h3 class="text-xl font-bold my-4 text-[#1e1b18]">${p.replace("### ", "")}</h3>`;
+
+            // Dedicated Highlight Card Callout: :::highlight ... ::: or > [!NOTE]
+            if (p.startsWith(":::highlight") && p.endsWith(":::")) {
+                const inner = p.replace(/^:::highlight\s*/, "").replace(/\s*:::$/, "").trim();
+                const formattedInner = inner
+                    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
+                    .replace(/==(.*?)=/g, '<mark class="bg-amber-200/90 px-1 rounded">$1</mark>');
+                return `<div class="highlight-glass-card"><p>${formattedInner}</p></div>`;
             }
-            // Inline Image: ![caption](url)
-            const imgMatch = p.match(/^!\[(.*?)\]\((.*?)\)$/);
+
+            // Subheadings: H2 (## ) and H3 (### )
+            if (p.startsWith("## ")) {
+                return `<h2 class="article-h2">${p.replace("## ", "")}</h2>`;
+            }
+            if (p.startsWith("### ")) {
+                return `<h3 class="article-h3">${p.replace("### ", "")}</h3>`;
+            }
+
+            // Inline Image with Layout/Size: ![caption|size](url) or ![caption](url)
+            const imgMatch = p.match(/^!\[(.*?)(?:\|(small|medium|full))?\]\((.*?)\)$/);
             if (imgMatch) {
+                const caption = imgMatch[1] || "";
+                const size = imgMatch[2] || "full";
+                const url = imgMatch[3];
+                const sizeClass = size === "small" ? "img-small" : size === "medium" ? "img-medium" : "img-full";
                 return `
-                    <div class="my-6 rounded-2xl overflow-hidden border border-[#ebdccb] shadow-sm">
-                        <img src="${imgMatch[2]}" alt="${imgMatch[1]}" class="w-full h-auto object-cover max-h-[500px]">
-                        ${imgMatch[1] && imgMatch[1] !== "ചിത്രം" ? `<p class="text-xs text-center text-[#8c7a6b] p-2 bg-white/40 italic">${imgMatch[1]}</p>` : ''}
+                    <div class="article-img-wrap ${sizeClass}">
+                        <img src="${url}" alt="${caption}">
+                        ${caption && caption !== "ചിത്രം" ? `<div class="article-img-caption">${caption}</div>` : ''}
                     </div>
                 `;
             }
+
             // Parse bold (**text**) and highlight (==text==)
             let formatted = p
-                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18]">$1</strong>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18] dark:text-white">$1</strong>')
                 .replace(/==(.*?)=/g, '<mark class="bg-amber-200/80 px-1.5 py-0.5 rounded text-[#2b2118] font-semibold">$1</mark>');
 
             return `<p class="text-base sm:text-lg leading-relaxed mb-4" ${contentStyle}>${formatted}</p>`;
