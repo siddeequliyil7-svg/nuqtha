@@ -2,7 +2,7 @@
  * NUQTHA — Admin Dashboard Logic (admin.js)
  * 3-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
  */
-import { db, collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
+import { db, collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
 
 let editingArticleId = null; // null = create mode, string = edit mode
 let currentArticlesList = [];
@@ -704,43 +704,79 @@ window.setPlaylistInput = function (name) {
 };
 
 /* ═══════════════════════════════════════════════════════════
-   7. LIVE FIRESTORE SYNC & PUBLISHED ARTICLES LIST (TAB 3)
+   7. LIVE FIRESTORE SYNC & PUBLISHED ARTICLES LIST (TAB 4)
    ═══════════════════════════════════════════════════════════ */
 function listenToFirestoreArticles() {
     const listContainer = document.getElementById("admin-articles-list");
-    const countBadge = document.getElementById("article-count");
-    const tabBadge = document.getElementById("tab-published-badge");
 
-    const q = query(collection(db, "articles"), orderBy("createdAt", "desc"));
+    console.log("[NUQTHA ADMIN] Initializing direct Firestore listener on 'articles' collection...");
 
-    onSnapshot(q, (snapshot) => {
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const colRef = collection(db, "articles");
+
+    function processArticlesData(items) {
+        // Client-side robust sorting by createdAt/updatedAt/date in descending order
+        items.sort((a, b) => {
+            const getMillis = (item) => {
+                if (item.createdAt?.toMillis) return item.createdAt.toMillis();
+                if (item.createdAt?.seconds) return item.createdAt.seconds * 1000;
+                if (item.updatedAt?.toMillis) return item.updatedAt.toMillis();
+                if (item.updatedAt?.seconds) return item.updatedAt.seconds * 1000;
+                if (item.createdAt) {
+                    const parsed = new Date(item.createdAt).getTime();
+                    if (!isNaN(parsed)) return parsed;
+                }
+                if (item.date) {
+                    const parsed = new Date(item.date).getTime();
+                    if (!isNaN(parsed)) return parsed;
+                }
+                return 0;
+            };
+            return getMillis(b) - getMillis(a);
+        });
+
         currentArticlesList = items;
+        
+        // Dynamically update counters immediately
         updateArticleCounters(items.length);
+        
+        // Render views without delay (hides loading message smoothly)
         renderAdminPublishedList(items);
         updateActivePlaylistOverview(items);
         renderLayoutManagerList(items);
-    }, (err) => {
-        console.warn("Firestore ordered query failed in admin, falling back without order:", err);
-        onSnapshot(collection(db, "articles"), (snap) => {
-            const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // Client-side sort by date
-            items.sort((a, b) => {
-                const ta = a.createdAt?.seconds || 0;
-                const tb = b.createdAt?.seconds || 0;
-                return tb - ta;
+    }
+
+    // 1. Direct onSnapshot (bypasses complex index requirements)
+    try {
+        onSnapshot(colRef, (snapshot) => {
+            console.log(`[NUQTHA ADMIN] Snapshot received: ${snapshot.size} articles found.`);
+            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            processArticlesData(items);
+        }, (err) => {
+            console.warn("[NUQTHA ADMIN] onSnapshot error:", err);
+            // 2. Direct getDocs fallback
+            getDocs(colRef).then(snap => {
+                const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                processArticlesData(items);
+            }).catch(fallbackErr => {
+                console.error("[NUQTHA ADMIN] getDocs fallback error:", fallbackErr);
+                if (listContainer) {
+                    listContainer.innerHTML = '<p class="text-xs text-rose-500 font-semibold p-4 text-center">ലേഖനങ്ങൾ ലോഡ് ചെയ്യാനായില്ല. Firebase Rules പരിശോധിക്കുക.</p>';
+                }
             });
-            currentArticlesList = items;
-            updateArticleCounters(items.length);
-            renderAdminPublishedList(items);
-            updateActivePlaylistOverview(items);
-            renderLayoutManagerList(items);
-        }, (fallbackErr) => {
-            console.error("Firestore read error in admin:", fallbackErr);
-            if (listContainer) {
-                listContainer.innerHTML = '<p class="text-xs text-rose-500 font-semibold p-4 text-center">ലേഖനങ്ങൾ ലോഡ് ചെയ്യാനായില്ല. Firebase Rules പരിശോധിക്കുക.</p>';
-            }
         });
+    } catch (e) {
+        console.error("[NUQTHA ADMIN] Exception starting onSnapshot:", e);
+    }
+
+    // 3. Parallel getDocs instant bootstrap for fastest initial load
+    getDocs(colRef).then(snap => {
+        if (!snap.empty && currentArticlesList.length === 0) {
+            console.log(`[NUQTHA ADMIN] Fast getDocs initial load: ${snap.size} articles.`);
+            const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            processArticlesData(items);
+        }
+    }).catch(err => {
+        console.warn("[NUQTHA ADMIN] Fast bootstrap getDocs notice:", err.message);
     });
 }
 
