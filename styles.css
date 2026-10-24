@@ -1270,3 +1270,362 @@ body.dark-mode .playlist-item-title {
     color: #f1f5f9;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   NUQTHA — Auto-Play Full-Width Banner Carousel
+   Premium glassmorphism hero banner with slide transitions,
+   auto-play progress bar, and smooth entry animations.
+════════════════════════════════════════════════════════════════════ */
+
+/* ── Outer Container ── */
+.banner-carousel {
+    position: relative;
+    /* Break out of padded page-wrapper by bleed trick */
+    width: calc(100% + clamp(20px, 6vw, 40px) * 2);
+    margin-left: calc(-1 * clamp(10px, 3vw, 20px));
+    margin-right: calc(-1 * clamp(10px, 3vw, 20px));
+    /* Lift up so banner is flush against the header */
+    margin-top: -36px !important;
+    margin-bottom: 24px;
+    overflow: hidden;
+    border-radius: 0 0 28px 28px;
+    background: #1e1b18;
+    aspect-ratio: 16 / 9;
+    max-height: 520px;
+    box-shadow:
+        0 20px 60px -12px rgba(70, 35, 15, 0.22),
+        0 4px 16px -4px rgba(0, 0, 0, 0.12);
+    animation: bannerFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    /* Ensure it sits above subsequent cards */
+    z-index: 1;
+}
+
+@keyframes bannerFadeIn {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Slides Track (stacking context) ── */
+.banner-slides-track {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* ── Individual Slide ── */
+.banner-slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        opacity 0.60s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.60s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity, transform;
+}
+
+.banner-slide--active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0) !important;
+    z-index: 2;
+}
+
+/* Enter from right (next) */
+.banner-slide--enter-right {
+    transform: translateX(4%);
+    opacity: 0;
+}
+
+/* Enter from left (prev) */
+.banner-slide--enter-left {
+    transform: translateX(-4%);
+    opacity: 0;
+}
+
+/* Exit to left (when going next) */
+.banner-slide--exit-left {
+    opacity: 0;
+    transform: translateX(-4%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Exit to right (when going prev) */
+.banner-slide--exit-right {
+    opacity: 0;
+    transform: translateX(4%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* ── Background Image Layer ── */
+.banner-slide-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    transition: transform 6s ease;
+    will-change: transform;
+}
+
+.banner-slide--active .banner-slide-bg {
+    transform: scale(1.04);
+}
+
+/* ── Dark Gradient Overlay ── */
+.banner-slide-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to top,
+        rgba(10, 7, 4, 0.88) 0%,
+        rgba(10, 7, 4, 0.52) 45%,
+        rgba(10, 7, 4, 0.12) 100%
+    );
+}
+
+/* ── Slide Content ── */
+.banner-slide-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 28px 24px 52px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+@media (min-width: 641px) {
+    .banner-slide-content {
+        padding: 36px 36px 60px;
+        max-width: 680px;
+    }
+}
+
+/* ── Category Pill ── */
+.banner-cat-pill {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-family: 'Noto Sans Malayalam', 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: rgba(180, 83, 44, 0.85);
+    color: #ffffff;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 2px 8px rgba(180, 83, 44, 0.35);
+    transition: background 0.2s;
+    animation: slideUpFadeIn 0.5s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Slide Title ── */
+.banner-slide-title {
+    font-family: 'Manjari', 'Noto Sans Malayalam', sans-serif;
+    font-size: clamp(1.2rem, 4vw, 2rem);
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1.25;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+    letter-spacing: -0.01em;
+    margin: 0;
+    animation: slideUpFadeIn 0.5s 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Excerpt ── */
+.banner-slide-excerpt {
+    font-family: 'Noto Sans Malayalam', sans-serif;
+    font-size: clamp(0.78rem, 2.2vw, 0.92rem);
+    color: rgba(255, 255, 255, 0.78);
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
+    animation: slideUpFadeIn 0.5s 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (max-width: 480px) {
+    .banner-slide-excerpt { display: none; }
+}
+
+/* ── Meta Row (date + CTA) ── */
+.banner-slide-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    animation: slideUpFadeIn 0.5s 0.30s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.banner-read-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 18px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    font-family: 'Noto Sans Malayalam', sans-serif;
+    transition: background 0.22s, border-color 0.22s, transform 0.22s;
+    white-space: nowrap;
+}
+
+.banner-slide-content:hover .banner-read-btn {
+    background: var(--terracotta);
+    border-color: transparent;
+    transform: translateX(3px);
+}
+
+/* ── Slide-Up Entrance Keyframes (applied per element on active slide) ── */
+@keyframes slideUpFadeIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Re-trigger per active slide: reset animations when slide becomes active */
+.banner-slide--active .banner-cat-pill,
+.banner-slide--active .banner-slide-title,
+.banner-slide--active .banner-slide-excerpt,
+.banner-slide--active .banner-slide-meta {
+    animation-play-state: running;
+}
+
+/* ── Navigation Arrows ── */
+.banner-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    cursor: pointer;
+    transition: background 0.22s, transform 0.22s, opacity 0.22s;
+    opacity: 0.7;
+}
+
+.banner-arrow:hover {
+    background: var(--terracotta);
+    border-color: transparent;
+    opacity: 1;
+    transform: translateY(-50%) scale(1.08);
+}
+
+.banner-arrow--prev { left: 12px; }
+.banner-arrow--next { right: 12px; }
+
+@media (max-width: 480px) {
+    .banner-arrow { width: 34px; height: 34px; opacity: 0.5; }
+    .banner-arrow--prev { left: 8px; }
+    .banner-arrow--next { right: 8px; }
+}
+
+/* ── Progress Bar ── */
+.banner-progress-bar {
+    position: absolute;
+    bottom: 38px;
+    left: 0;
+    height: 2px;
+    width: 0%;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 0 2px 2px 0;
+    z-index: 10;
+    transition: width 3.8s linear;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+}
+
+/* ── Dot Indicators ── */
+.banner-dots {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.banner-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.38);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+}
+
+.banner-dot--active {
+    width: 22px;
+    background: #ffffff;
+    border-radius: 3px;
+}
+
+.banner-dot:hover:not(.banner-dot--active) {
+    background: rgba(255, 255, 255, 0.65);
+    transform: scale(1.2);
+}
+
+/* ── Dark Mode adjustments ── */
+body.dark-mode .banner-carousel {
+    box-shadow:
+        0 20px 60px -12px rgba(0, 0, 0, 0.6),
+        0 4px 16px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Responsive aspect ratio ── */
+@media (max-width: 480px) {
+    .banner-carousel {
+        aspect-ratio: 4 / 3;
+        max-height: 340px;
+        border-radius: 0 0 20px 20px;
+        margin-top: -36px;
+    }
+}
+
+@media (min-width: 641px) {
+    .banner-carousel {
+        border-radius: 0 0 32px 32px;
+        aspect-ratio: 16 / 7;
+        margin-top: -24px;
+        width: calc(100% + clamp(20px, 6vw, 40px) * 2);
+        margin-left: calc(-1 * clamp(10px, 3vw, 20px));
+        margin-right: calc(-1 * clamp(10px, 3vw, 20px));
+    }
+}
+

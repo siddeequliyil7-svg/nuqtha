@@ -287,43 +287,49 @@ function renderHomeFeed(container) {
     const explicitFeed = allArticles.filter(a => a.placement === "FEED").sort(comparePriority);
     const autoArticles = allArticles.filter(a => !a.placement || a.placement === "AUTO");
 
-    let usedIds = new Set();
-    let html = "";
-
-    // ═══════════ TOP BANNER CAROUSEL (Directly under floating glass nav) ═══════════
-    // Pools CAROUSEL items, HERO items, and latest AUTO articles for a rich auto-playing slider
-    const carouselPool = [
-        ...explicitCarousel,
-        ...explicitHero,
-        ...autoArticles
-    ];
-    carouselPool.sort(comparePriority);
-
-    const carouselSelection = [];
-    carouselPool.forEach(a => {
-        if (!carouselSelection.some(c => c.id === a.id) && carouselSelection.length < 10) {
-            carouselSelection.push(a);
-        }
-    });
-
-    if (carouselSelection.length > 0) {
-        html += buildCarouselSection(carouselSelection);
-    }
-
-    // ═══════════ MAIN FEATURED HERO CARD (Directly below banner) ═══════════
+    // Determine Hero Article: explicit HERO (highest priority), otherwise top AUTO article
     let heroArticle = null;
+    let usedIds = new Set();
+
     if (explicitHero.length > 0) {
         heroArticle = explicitHero[0];
+        usedIds.add(heroArticle.id);
     } else if (autoArticles.length > 0) {
         heroArticle = autoArticles[0];
+        usedIds.add(heroArticle.id);
     } else {
         heroArticle = allArticles[0];
-    }
-
-    if (heroArticle) {
-        html += buildFeaturedCard(heroArticle);
         usedIds.add(heroArticle.id);
     }
+
+    // 2. Determine Carousel / Banner Articles:
+    // Top articles go into the BANNER first (including the hero), to form a full-width autoplay banner
+    const bannerPool = [
+        heroArticle,
+        ...explicitHero.filter(a => !usedIds.has(a.id)),
+        ...explicitCarousel.filter(a => !usedIds.has(a.id)),
+        ...autoArticles.filter(a => !usedIds.has(a.id))
+    ].filter(Boolean);
+
+    // Deduplicate (heroArticle already in usedIds)
+    const seen = new Set([heroArticle.id]);
+    const bannerArticles = bannerPool.filter(a => {
+        if (seen.has(a.id)) return false;
+        seen.add(a.id);
+        return true;
+    });
+    // Re-include the hero as the FIRST banner slide
+    const bannerSelection = [heroArticle, ...bannerArticles].slice(0, 8);
+    bannerSelection.forEach(a => usedIds.add(a.id));
+
+    // Banner renders FIRST — before featured card and all other sections
+    let html = '';
+    if (bannerSelection.length > 0) {
+        html += buildBannerCarousel(bannerSelection);
+    }
+
+    // Featured card is the hero (now below the banner, shown as a text summary card)
+    html += buildFeaturedCard(heroArticle);
 
     // 3. Playlist / Article Series Section (Group 3-4 articles into named series widget)
     const playlistsMap = {};
@@ -637,18 +643,74 @@ function buildCard(art) {
     return buildFeaturedCard(art);
 }
 
-/* ═══════════ Top Banner Auto-Playing Carousel ═══════════ */
-let carouselTimer = null;
+/* ═══════════ Full-Width Auto-Play Banner Carousel ═══════════ */
+function buildBannerCarousel(articles) {
+    if (!articles || articles.length === 0) return '';
 
+    const slides = articles.map((art, i) => {
+        const dateStr = art.date || formatDate(art.createdAt);
+        const words = (art.content || '').length;
+        const readMin = Math.max(1, Math.round(words / 400));
+        const catLabel = categoryLabel(art.category);
+        const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
+        const excerpt = art.excerpt || (art.content ? art.content.substring(0, 120) + '…' : '');
+
+        const bgImage = art.imageUrl
+            ? `background-image: url('${art.imageUrl}'); background-size: cover; background-position: center;`
+            : `background: linear-gradient(135deg, #b8542c 0%, #803113 100%);`;
+
+        return `
+        <div class="banner-slide${i === 0 ? ' banner-slide--active' : ''}" data-index="${i}" data-id="${art.id}">
+            <!-- Background Image Layer -->
+            <div class="banner-slide-bg" style="${bgImage}"></div>
+            <!-- Dark Gradient Overlay -->
+            <div class="banner-slide-overlay"></div>
+            <!-- Content -->
+            <a href="article.html?id=${art.id}" class="banner-slide-content" draggable="false">
+                <span class="banner-cat-pill">${catLabel}</span>
+                <h2 class="banner-slide-title" ${titleStyle}>${art.title}</h2>
+                ${excerpt ? `<p class="banner-slide-excerpt">${excerpt}</p>` : ''}
+                <div class="banner-slide-meta">
+                    <span>${dateStr} · ${readMin} min</span>
+                    <span class="banner-read-btn">വായിക്കുക &rarr;</span>
+                </div>
+            </a>
+        </div>`;
+    }).join('');
+
+    const dots = articles.map((_, i) =>
+        `<button class="banner-dot${i === 0 ? ' banner-dot--active' : ''}" data-slide="${i}" aria-label="Slide ${i + 1}"></button>`
+    ).join('');
+
+    return `
+    <div class="banner-carousel" id="banner-carousel" role="region" aria-label="Featured Articles Banner">
+        <div class="banner-slides-track" id="banner-track">${slides}</div>
+
+        <!-- Navigation Arrows -->
+        <button class="banner-arrow banner-arrow--prev" id="banner-prev" aria-label="Previous slide">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <button class="banner-arrow banner-arrow--next" id="banner-next" aria-label="Next slide">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+        </button>
+
+        <!-- Progress Bar -->
+        <div class="banner-progress-bar" id="banner-progress"></div>
+
+        <!-- Dot Indicators -->
+        <div class="banner-dots" id="banner-dots">${dots}</div>
+    </div>`;
+}
+
+/* ═══════════ Legacy Horizontal Swipe Carousel (kept for backward compat) ═══════════ */
 function buildCarouselSection(articles) {
     if (!articles || articles.length === 0) return '';
     const cards = articles.map(art => buildCarouselCard(art)).join('');
     return `
-    <div class="carousel-section top-banner-carousel" id="top-banner-carousel">
+    <div class="carousel-section">
         <div class="carousel-section-header">
             <div class="category-glass-badge">
-                <span class="pulse-indicator"></span>
-                <span class="font-english text-xs font-black tracking-wider uppercase text-terracotta">TRENDING · </span>
+                <span class="font-english text-xs font-black tracking-wider uppercase" style="color: var(--terracotta);">SWIPE · </span>
                 <span style="font-family: 'Noto Sans Malayalam', sans-serif;" class="text-xs font-bold">പുതിയ ലേഖനങ്ങൾ</span>
             </div>
             <div class="carousel-nav-btns">
@@ -675,40 +737,137 @@ function buildCarouselCard(art) {
     const catLabel = categoryLabel(art.category);
     return `
     <a href="article.html?id=${art.id}" class="carousel-card" data-id="${art.id}">
-        <div class="carousel-card-img-wrap">
-            ${art.imageUrl
-                ? `<img src="${art.imageUrl}" alt="${art.title}" class="carousel-card-img" loading="lazy">`
-                : `<div class="carousel-card-img-placeholder"><svg width="28" height="28" fill="none" stroke="rgba(255,255,255,0.45)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>`
-            }
-            <span class="carousel-card-cat-badge">${catLabel}</span>
-        </div>
+        ${art.imageUrl
+            ? `<img src="${art.imageUrl}" alt="${art.title}" class="carousel-card-img" loading="lazy">`
+            : `<div class="carousel-card-img-placeholder"><svg width="28" height="28" fill="none" stroke="rgba(255,255,255,0.45)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>`
+        }
         <div class="carousel-card-body">
+            <span class="carousel-card-cat">${catLabel}</span>
             <h4 class="carousel-card-title" ${titleStyle}>${art.title}</h4>
-            <div class="carousel-card-meta">
-                <span>${dateStr}</span>
-                <span>•</span>
-                <span>${readMin} min വായന</span>
-            </div>
+            <p class="carousel-card-meta">${dateStr} · ${readMin} min</p>
         </div>
     </a>`;
 }
 
+/* ═══════════ Auto-Play Banner Setup (called after renderFeed) ═══════════ */
+function setupBannerCarousel() {
+    const banner = document.getElementById('banner-carousel');
+    if (!banner) return;
+
+    const slides = Array.from(banner.querySelectorAll('.banner-slide'));
+    const dots = Array.from(banner.querySelectorAll('.banner-dot'));
+    const prevBtn = document.getElementById('banner-prev');
+    const nextBtn = document.getElementById('banner-next');
+    const progressBar = document.getElementById('banner-progress');
+    if (slides.length === 0) return;
+
+    let currentIndex = 0;
+    let autoPlayTimer = null;
+    let progressTimer = null;
+    const INTERVAL = 3800; // ms between auto-advances
+
+    function goTo(index, direction = 'next') {
+        const prev = currentIndex;
+        currentIndex = (index + slides.length) % slides.length;
+
+        slides[prev].classList.remove('banner-slide--active', 'banner-slide--exit-left', 'banner-slide--exit-right');
+        slides[currentIndex].classList.remove('banner-slide--enter-left', 'banner-slide--enter-right');
+
+        // Set enter direction class before making active
+        if (direction === 'next') {
+            slides[currentIndex].classList.add('banner-slide--enter-right');
+        } else {
+            slides[currentIndex].classList.add('banner-slide--enter-left');
+        }
+
+        // Force reflow for animation restart
+        slides[currentIndex].getBoundingClientRect();
+
+        // Remove enter class and activate (triggers CSS transition)
+        slides[currentIndex].classList.remove('banner-slide--enter-right', 'banner-slide--enter-left');
+        slides[prev].classList.add(direction === 'next' ? 'banner-slide--exit-left' : 'banner-slide--exit-right');
+        slides[currentIndex].classList.add('banner-slide--active');
+
+        // Clean up exit class after animation finishes
+        setTimeout(() => {
+            slides[prev].classList.remove('banner-slide--exit-left', 'banner-slide--exit-right');
+        }, 620);
+
+        // Update dots
+        dots.forEach((d, i) => d.classList.toggle('banner-dot--active', i === currentIndex));
+
+        // Restart progress bar
+        restartProgress();
+    }
+
+    function goNext() { goTo(currentIndex + 1, 'next'); }
+    function goPrev() { goTo(currentIndex - 1, 'prev'); }
+
+    function restartProgress() {
+        if (!progressBar) return;
+        progressBar.style.transition = 'none';
+        progressBar.style.width = '0%';
+        // Force reflow
+        progressBar.getBoundingClientRect();
+        progressBar.style.transition = `width ${INTERVAL}ms linear`;
+        progressBar.style.width = '100%';
+    }
+
+    function startAutoPlay() {
+        stopAutoPlay();
+        autoPlayTimer = setInterval(goNext, INTERVAL);
+        restartProgress();
+    }
+
+    function stopAutoPlay() {
+        if (autoPlayTimer) { clearInterval(autoPlayTimer); autoPlayTimer = null; }
+        if (progressBar) { progressBar.style.transition = 'none'; }
+    }
+
+    // Arrow buttons
+    if (prevBtn) prevBtn.addEventListener('click', () => { goPrev(); startAutoPlay(); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { goNext(); startAutoPlay(); });
+
+    // Dot clicks
+    dots.forEach((dot, i) => {
+        dot.addEventListener('click', () => {
+            const dir = i > currentIndex ? 'next' : 'prev';
+            goTo(i, dir);
+            startAutoPlay();
+        });
+    });
+
+    // Pause on hover / touch
+    banner.addEventListener('mouseenter', stopAutoPlay);
+    banner.addEventListener('mouseleave', startAutoPlay);
+    banner.addEventListener('touchstart', stopAutoPlay, { passive: true });
+    banner.addEventListener('touchend', () => setTimeout(startAutoPlay, 1200), { passive: true });
+
+    // Touch / swipe support
+    let touchStartX = 0;
+    banner.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+    banner.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(dx) > 48) {
+            if (dx < 0) goNext(); else goPrev();
+            startAutoPlay();
+        }
+    }, { passive: true });
+
+    // Start auto-play
+    startAutoPlay();
+}
+
 function setupCarousel() {
+    // Legacy small carousel (hidden now; kept for future use or category view)
     const track = document.getElementById('carousel-track');
-    const container = document.getElementById('top-banner-carousel');
     const prevBtn = document.getElementById('carousel-prev');
     const nextBtn = document.getElementById('carousel-next');
     const dotsContainer = document.getElementById('carousel-dots');
-    if (!track) return;
-
-    // Clear any previous auto-play timers to prevent leaks
-    if (carouselTimer) {
-        clearInterval(carouselTimer);
-        carouselTimer = null;
-    }
+    if (!track) { setupBannerCarousel(); return; }
 
     const cards = Array.from(track.querySelectorAll('.carousel-card'));
-    if (cards.length === 0) return;
+    if (cards.length === 0) { setupBannerCarousel(); return; }
 
     // Staggered entrance via IntersectionObserver
     const observer = new IntersectionObserver((entries) => {
@@ -722,119 +881,46 @@ function setupCarousel() {
     }, { threshold: 0.1, rootMargin: '0px 0px -20px 0px' });
 
     cards.forEach((card, i) => {
-        card.style.transitionDelay = `${i * 60}ms`;
+        card.style.transitionDelay = `${i * 65}ms`;
         observer.observe(card);
     });
 
-    // Build dot indicators
     if (dotsContainer) {
         dotsContainer.innerHTML = '';
         cards.forEach((_, i) => {
             const dot = document.createElement('button');
             dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
             dot.setAttribute('aria-label', `Slide ${i + 1}`);
-            dot.addEventListener('click', () => {
-                scrollToCard(i);
-                resetAutoPlay();
-            });
+            dot.addEventListener('click', () => scrollToCard(i));
             dotsContainer.appendChild(dot);
         });
     }
 
     function getCardStride() {
         const card = track.querySelector('.carousel-card');
-        if (!card) return 260;
+        if (!card) return 240;
         const style = window.getComputedStyle(track);
-        const gap = parseFloat(style.gap) || 16;
+        const gap = parseFloat(style.gap) || 14;
         return card.getBoundingClientRect().width + gap;
     }
 
-    function getActiveIndex() {
-        const stride = getCardStride();
-        return Math.round(track.scrollLeft / stride);
-    }
-
     function scrollToCard(index) {
-        const stride = getCardStride();
-        const maxScroll = track.scrollWidth - track.clientWidth;
-        let targetScroll = index * stride;
-        if (targetScroll > maxScroll) targetScroll = maxScroll;
-        track.scrollTo({ left: targetScroll, behavior: 'smooth' });
-    }
-
-    function stepNext() {
-        const maxScroll = track.scrollWidth - track.clientWidth - 10;
-        if (track.scrollLeft >= maxScroll) {
-            // Loop back to beginning smoothly
-            track.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-            const currentIdx = getActiveIndex();
-            const nextIdx = (currentIdx + 1) >= cards.length ? 0 : currentIdx + 1;
-            scrollToCard(nextIdx);
-        }
-    }
-
-    function stepPrev() {
-        if (track.scrollLeft <= 10) {
-            scrollToCard(cards.length - 1);
-        } else {
-            const currentIdx = getActiveIndex();
-            const prevIdx = (currentIdx - 1) < 0 ? 0 : currentIdx - 1;
-            scrollToCard(prevIdx);
-        }
+        track.scrollTo({ left: index * getCardStride(), behavior: 'smooth' });
     }
 
     function updateDots() {
         if (!dotsContainer) return;
-        const index = Math.min(cards.length - 1, Math.max(0, getActiveIndex()));
+        const index = Math.round(track.scrollLeft / getCardStride());
         dotsContainer.querySelectorAll('.carousel-dot').forEach((d, i) =>
             d.classList.toggle('active', i === index)
         );
     }
 
-    // Auto-Play: shifts every 3.5 seconds
-    function startAutoPlay() {
-        if (carouselTimer || cards.length <= 1) return;
-        carouselTimer = setInterval(() => {
-            stepNext();
-        }, 3500);
-    }
-
-    function stopAutoPlay() {
-        if (carouselTimer) {
-            clearInterval(carouselTimer);
-            carouselTimer = null;
-        }
-    }
-
-    function resetAutoPlay() {
-        stopAutoPlay();
-        startAutoPlay();
-    }
-
-    // Hover & touch pauses auto-play
-    if (container) {
-        container.addEventListener('mouseenter', stopAutoPlay);
-        container.addEventListener('mouseleave', startAutoPlay);
-        container.addEventListener('touchstart', stopAutoPlay, { passive: true });
-        container.addEventListener('touchend', () => {
-            setTimeout(startAutoPlay, 2000);
-        }, { passive: true });
-    }
-
-    if (prevBtn) prevBtn.addEventListener('click', () => {
-        stepPrev();
-        resetAutoPlay();
-    });
-    if (nextBtn) nextBtn.addEventListener('click', () => {
-        stepNext();
-        resetAutoPlay();
-    });
-
+    if (prevBtn) prevBtn.addEventListener('click', () => track.scrollBy({ left: -getCardStride() * 2, behavior: 'smooth' }));
+    if (nextBtn) nextBtn.addEventListener('click', () => track.scrollBy({ left: getCardStride() * 2, behavior: 'smooth' }));
     track.addEventListener('scroll', updateDots, { passive: true });
 
-    // Launch auto-play
-    startAutoPlay();
+    setupBannerCarousel();
 }
 
 /* ═══════════ Interactive Playlist / Article Series Widget ═══════════ */
