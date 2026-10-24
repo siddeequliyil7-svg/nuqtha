@@ -89,19 +89,32 @@ function setupCategoryNav() {
     });
 }
 
-/* ═══════════ Firestore Realtime Listener & Instant Hybrid Fetcher ═══════════ */
+/* ═══════════ Firestore Realtime Listener & Hard Diagnostic Engine ═══════════ */
 const POSSIBLE_COLLECTIONS = ["articles", "posts", "content"];
 
 async function listenForArticles() {
-    console.log("%c[NUQTHA] Starting Article Engine...", "color: #b4532c; font-weight: bold; font-size: 14px;");
+    console.group("%c[NUQTHA DIAGNOSTIC] Initializing Article Fetch Engine", "color: #b4532c; font-weight: bold; font-size: 14px;");
+    console.log("Timestamp:", new Date().toISOString());
+    console.log("Configured Project ID:", "nuqtha-c0900");
+    console.log("Checking collections:", POSSIBLE_COLLECTIONS);
+    console.groupEnd();
+
+    let dataLoaded = false;
 
     function processAndRender(fsList, sourceCol) {
-        if (!Array.isArray(fsList)) return;
+        if (!Array.isArray(fsList) || fsList.length === 0) {
+            console.warn(`[NUQTHA DIAGNOSTIC] processAndRender received empty or non-array from ${sourceCol}:`, fsList);
+            return;
+        }
+
+        console.log(`%c[NUQTHA SUCCESS] Received ${fsList.length} articles from '${sourceCol}'! Processing...`, "color: #16a34a; font-weight: bold; font-size: 13px;", fsList);
+
+        dataLoaded = true;
         const localList = getLocalArticles();
         const ids = new Set(fsList.map(a => a.id));
         allArticles = [...fsList, ...localList.filter(a => !ids.has(a.id))];
 
-        // Global latest-first client-side sorting
+        // Global latest-first client-side sorting (No Firestore composite index required)
         allArticles.sort((a, b) => {
             const getMillis = (item) => {
                 if (item.createdAt?.toMillis) return item.createdAt.toMillis();
@@ -121,66 +134,112 @@ async function listenForArticles() {
             return getMillis(b) - getMillis(a);
         });
 
+        console.log(`[NUQTHA DIAGNOSTIC] Successfully mapped & sorted ${allArticles.length} total articles. Rendering feed...`);
         renderFeed();
     }
 
-    // Method 1: Instant REST fetch (100% reliable across all networks, ISPs & ad-blockers)
-    async function fetchViaRest() {
+    // Pipeline 1: Native Firestore SDK Collection Listeners (Direct collection bypass without complex indexes)
+    POSSIBLE_COLLECTIONS.forEach(colName => {
         try {
-            const url = "https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e";
-            const res = await fetch(url);
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            const data = await res.json();
-            if (data && data.documents && data.documents.length > 0) {
-                const restArticles = data.documents.map(doc => {
-                    const id = doc.name.split("/").pop();
-                    const f = doc.fields || {};
-                    return {
-                        id,
-                        title: f.title?.stringValue || "",
-                        category: f.category?.stringValue || "GENERAL",
-                        author: f.author?.stringValue || "NUQTHA",
-                        imageUrl: f.imageUrl?.stringValue || "",
-                        excerpt: f.excerpt?.stringValue || "",
-                        content: f.content?.stringValue || "",
-                        titleColor: f.titleColor?.stringValue || "#1e1b18",
-                        contentColor: f.contentColor?.stringValue || "#2b2118",
-                        placement: f.placement?.stringValue || "AUTO",
-                        priority: f.priority ? (parseInt(f.priority.integerValue || f.priority.doubleValue || f.priority.stringValue, 10) || 10) : 10,
-                        playlistName: f.playlistName?.stringValue || "",
-                        date: f.date?.stringValue || "",
-                        createdAt: f.createdAt?.timestampValue || doc.createTime
-                    };
-                });
-                if (restArticles.length > 0) {
-                    console.log(`%c[NUQTHA] Loaded ${restArticles.length} articles via REST instant pipeline!`, "color: #059669; font-weight: bold;");
-                    processAndRender(restArticles, "REST");
+            console.log(`[NUQTHA DIAGNOSTIC] Attaching Firestore SDK listener to collection: '${colName}'...`);
+            const colRef = collection(db, colName);
+
+            // 1. Direct onSnapshot (bypasses all indexing requirements)
+            onSnapshot(colRef, (snapshot) => {
+                console.log(`[NUQTHA DIAGNOSTIC] SDK onSnapshot event on '${colName}': docs count = ${snapshot.size}, empty = ${snapshot.empty}`);
+                if (!snapshot.empty) {
+                    const items = snapshot.docs.map(d => {
+                        const data = d.data();
+                        console.log(`[NUQTHA DIAGNOSTIC] Raw Doc [${d.id}]:`, data);
+                        return { id: d.id, ...data };
+                    });
+                    processAndRender(items, `Firestore-SDK:${colName}`);
+                } else if (!dataLoaded && colName === "articles") {
+                    console.info(`[NUQTHA DIAGNOSTIC] Collection '${colName}' snapshot is currently empty.`);
+                }
+            }, (err) => {
+                console.error(`%c[NUQTHA PERMISSION/QUERY ERROR] Failed onSnapshot on '${colName}':`, "color: #dc2626; font-weight: bold;", err.code, err.message, err);
+            });
+
+            // 2. Direct getDocs fallback in parallel
+            getDocs(colRef).then(snap => {
+                if (!snap.empty && !dataLoaded) {
+                    console.log(`%c[NUQTHA DIAGNOSTIC] getDocs resolved with ${snap.size} docs from '${colName}'!`, "color: #0284c7; font-weight: bold;");
+                    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    processAndRender(items, `Firestore-getDocs:${colName}`);
+                }
+            }).catch(getErr => {
+                console.warn(`[NUQTHA DIAGNOSTIC] getDocs('${colName}') notice:`, getErr.message);
+            });
+
+        } catch(e) {
+            console.error(`[NUQTHA DIAGNOSTIC] Error initializing SDK listener for '${colName}':`, e);
+        }
+    });
+
+    // Pipeline 2: Instant REST HTTP API (Works even if WebSockets or gRPC are blocked by ISP/browser)
+    async function fetchViaRest() {
+        for (const colName of POSSIBLE_COLLECTIONS) {
+            try {
+                const url = `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/${colName}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`;
+                console.log(`[NUQTHA DIAGNOSTIC] Querying REST endpoint: ${url}`);
+                const res = await fetch(url);
+                console.log(`[NUQTHA DIAGNOSTIC] REST Response for '${colName}': HTTP ${res.status}`);
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    console.log(`[NUQTHA DIAGNOSTIC] REST Data payload for '${colName}':`, data);
+                    if (data && data.documents && data.documents.length > 0) {
+                        const restArticles = data.documents.map(doc => {
+                            const id = doc.name.split("/").pop();
+                            const f = doc.fields || {};
+                            return {
+                                id,
+                                title: f.title?.stringValue || "",
+                                category: f.category?.stringValue || "GENERAL",
+                                author: f.author?.stringValue || "NUQTHA",
+                                imageUrl: f.imageUrl?.stringValue || "",
+                                excerpt: f.excerpt?.stringValue || "",
+                                content: f.content?.stringValue || "",
+                                titleColor: f.titleColor?.stringValue || "#1e1b18",
+                                contentColor: f.contentColor?.stringValue || "#2b2118",
+                                placement: f.placement?.stringValue || "AUTO",
+                                priority: f.priority ? (parseInt(f.priority.integerValue || f.priority.doubleValue || f.priority.stringValue, 10) || 10) : 10,
+                                playlistName: f.playlistName?.stringValue || "",
+                                date: f.date?.stringValue || "",
+                                createdAt: f.createdAt?.timestampValue || doc.createTime
+                            };
+                        });
+                        console.log(`%c[NUQTHA SUCCESS] REST pipeline parsed ${restArticles.length} articles from '${colName}'!`, "color: #16a34a; font-weight: bold;");
+                        processAndRender(restArticles, `REST:${colName}`);
+                        break;
+                    }
+                } else {
+                    const errText = await res.text();
+                    console.error(`%c[NUQTHA REST ERROR] HTTP ${res.status} on '${colName}':`, "color: #dc2626;", errText);
+                }
+            } catch(e) {
+                console.warn(`[NUQTHA DIAGNOSTIC] REST attempt on '${colName}' failed:`, e.message);
+            }
+        }
+
+        // Final local fallback check if remote has not responded
+        setTimeout(() => {
+            if (!dataLoaded) {
+                const local = getLocalArticles();
+                if (local.length > 0) {
+                    console.log(`[NUQTHA DIAGNOSTIC] Using local storage articles as fallback (${local.length} found).`);
+                    allArticles = local;
+                    renderFeed();
+                } else {
+                    console.warn("[NUQTHA DIAGNOSTIC] No articles retrieved from Firestore or LocalStorage. Displaying empty state banner.");
+                    renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
                 }
             }
-        } catch(e) {
-            console.warn("[NUQTHA] REST pipeline notice:", e.message);
-        }
+        }, 1500);
     }
 
-    // Trigger instant REST pipeline immediately
-    await fetchViaRest();
-
-    // Method 2: Live WebSocket Firestore SDK Listener
-    try {
-        const articlesCol = collection(db, "articles");
-        onSnapshot(articlesCol, (snapshot) => {
-            if (!snapshot.empty) {
-                const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                processAndRender(items, "Firestore-SDK");
-            }
-        }, async (err) => {
-            console.warn("[NUQTHA] SDK WebSocket listener had an issue, relying on REST pipeline:", err.message);
-            await fetchViaRest();
-        });
-    } catch(err) {
-        console.warn("[NUQTHA] SDK Init catch:", err.message);
-        await fetchViaRest();
-    }
+    fetchViaRest();
 }
 
 function getLocalArticles() {
