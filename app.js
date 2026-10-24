@@ -2,7 +2,7 @@
  * NUQTHA — Frosted Glass Feed Engine
  * Realtime Firestore → Category-Sectioned Feed, Latest-First
  */
-import { db, collection, getDocs, doc, query, orderBy, onSnapshot } from "./firebase-config.js";
+import { db, collection, query, orderBy, onSnapshot } from "./firebase-config.js";
 
 let allArticles = [];
 let currentCategory = "ALL";
@@ -557,13 +557,7 @@ window.openFullScreenReader = function(id) {
 
     const contentColorStyle = art.contentColor ? `style="color: ${art.contentColor};"` : 'style="color: #2b2118;"';
 
-    const fullContent = (art.content || art.excerpt || "")
-        .split("\n\n")
-        .filter(p => p.trim())
-        .map(p => `<p class="text-lg leading-relaxed mb-6" ${contentColorStyle}>${p}</p>`)
-        .join("");
-
-    document.getElementById("reader-content").innerHTML = fullContent;
+    document.getElementById("reader-content").innerHTML = formatRichContent(art.content || art.excerpt || "", contentColorStyle);
     overlay.classList.remove("hidden");
     document.body.style.overflow = "hidden";
 };
