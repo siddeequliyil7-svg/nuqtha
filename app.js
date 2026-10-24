@@ -165,19 +165,18 @@ function renderHomeFeed(container) {
         return;
     }
 
-    // Global hero: the single latest article across all categories
+    // Global hero: the single latest article across all categories (sorted createdAt desc)
     let html = buildFeaturedCard(allArticles[0]);
 
-    // Per-category sections (only categories that have articles)
-    const categoriesWithArticles = CATEGORY_ORDER.filter(cat =>
-        allArticles.some(a => (a.category || "").toUpperCase() === cat)
-    );
+    // Discover all unique categories present in the articles (preserving CATEGORY_ORDER first)
+    const existingCats = new Set(allArticles.map(a => (a.category || "").toUpperCase()).filter(Boolean));
+    const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c))];
 
-    categoriesWithArticles.forEach(cat => {
+    orderedCats.forEach(cat => {
         const catArticles = allArticles.filter(a => (a.category || "").toUpperCase() === cat);
         if (catArticles.length === 0) return;
 
-        // Show up to 4 compact cards per section
+        // Show up to 4 compact cards per section under each category
         const preview = catArticles.slice(0, 4);
         const hasMore = catArticles.length > 4;
 
@@ -189,14 +188,13 @@ function renderHomeFeed(container) {
         html += `</div>`;
     });
 
-    // If no known categories have articles, show compact list of remaining
-    if (categoriesWithArticles.length === 0 && allArticles.length > 1) {
+    // If no categorized articles exist, list remaining articles in a default section
+    if (orderedCats.length === 0 && allArticles.length > 1) {
         const rest = allArticles.slice(1);
-        html += `<div class="category-section-block mt-6">`;
         html += buildCategorySectionHeader("ALL", false);
         html += `<div class="category-cards-list space-y-3 mt-3">`;
         rest.forEach(art => { html += buildCompactRecentCard(art); });
-        html += `</div></div>`;
+        html += `</div>`;
     }
 
     container.innerHTML = html;
@@ -211,31 +209,59 @@ function renderCategoryFeed(container, category) {
         return;
     }
 
-    // Hero card is the latest in this category
-    let html = buildFeaturedCard(filtered[0]);
+    // Filter indicator banner with 'SHOW ALL' button to return home
+    let html = `
+    <div class="category-filter-banner flex items-center justify-between p-3.5 mb-5 rounded-2xl bg-white/60 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10">
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-[#8c7a6b] dark:text-[#94a3b8]">വിഭാഗം:</span>
+            <span class="category-glass-badge">
+                <span class="font-english text-xs font-black tracking-widest uppercase">${category}</span>
+                <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold">· ${categoryLabel(category)}</span>
+            </span>
+            <span class="text-xs text-[#8c7a6b] dark:text-[#94a3b8]">(${filtered.length} ലേഖനങ്ങൾ)</span>
+        </div>
+        <button class="show-all-home-btn text-xs font-bold text-[#b4532c] hover:text-[#923e1b] dark:text-[#f87171] dark:hover:text-white transition flex items-center gap-1 font-english">
+            <span>&larr; ALL ARTICLES</span>
+        </button>
+    </div>
+    `;
+
+    // Hero card is the latest article in this category
+    html += buildFeaturedCard(filtered[0]);
 
     if (filtered.length > 1) {
         const rest = filtered.slice(1);
         html += `<div class="category-section-block mt-6">`;
-        html += buildCategorySectionHeader(category, false);
+        html += buildCategorySectionHeader(category, false, true);
         html += `<div class="category-cards-list space-y-3 mt-3">`;
         rest.forEach(art => { html += buildCompactRecentCard(art); });
         html += `</div></div>`;
     }
 
     container.innerHTML = html;
+
+    const showAllBtn = container.querySelector(".show-all-home-btn");
+    if (showAllBtn) {
+        showAllBtn.addEventListener("click", () => switchToCategory("ALL"));
+    }
 }
 
 /* ─── Category Section Header: glass badge + show-more pill ─── */
-function buildCategorySectionHeader(cat, hasMore) {
+function buildCategorySectionHeader(cat, hasMore, isFilteredView = false) {
     const label = cat === "ALL" ? "പുതിയ ലേഖനങ്ങൾ" : categoryLabel(cat);
-    const showMoreBtn = hasMore
-        ? `<button class="show-more-pill" data-category="${cat}">SHOW MORE &rsaquo;</button>`
+    const showMoreBtn = (hasMore && !isFilteredView)
+        ? `<button class="show-more-pill" data-category="${cat}" title="${label} വിഭാഗത്തിലെ എല്ലാ ലേഖനങ്ങളും കാണുക">
+            <span class="font-english">SHOW MORE</span>
+            <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
+            <span class="text-xs">&rsaquo;</span>
+           </button>`
         : ``;
+
     return `
-    <div class="category-section-header flex items-center justify-between mt-6 mb-0">
+    <div class="category-section-header flex items-center justify-between mt-7 mb-1">
         <div class="category-glass-badge">
-            <span class="font-english text-xs font-black tracking-widest uppercase">${cat === "ALL" ? "" : cat + " · "}</span><span class="font-['Noto_Sans_Malayalam'] text-xs font-bold">${label}</span>
+            <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">${cat === "ALL" ? "" : cat + " · "}</span>
+            <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-[#f1f5f9]">${label}</span>
         </div>
         ${showMoreBtn}
     </div>`;
