@@ -12,18 +12,30 @@
     <link rel="stylesheet" href="styles.css">
     <style>
         .article-body p {
-            margin-bottom: 1.5rem;
-            line-height: 2;
-            font-size: 1.125rem;
+            margin-bottom: 1.75rem;
+            line-height: 2.1;
+            font-size: 1.2rem;
             color: #2b2118;
+            font-family: 'Noto Sans Malayalam', sans-serif;
+            letter-spacing: -0.01em;
+        }
+        .article-title-text {
+            font-family: 'Manjari', 'Noto Sans Malayalam', sans-serif;
+            line-height: 1.35;
+        }
+        .dark-mode .article-body p {
+            color: #ebdccb;
+        }
+        .dark-mode .article-title-text {
+            color: #fbf7ee;
         }
     </style>
 </head>
 <body class="bg-[#fbf7ee] text-[#1e1b18] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col justify-between">
 
     <!-- Top Minimal Sticky Header -->
-    <header class="sticky top-0 z-40 bg-[#fbf7ee]/90 backdrop-blur-md border-b border-[#ebdccb]">
-        <div class="w-full max-w-[min(720px,90vw)] mx-auto px-[clamp(12px,4vw,24px)] h-14 sm:h-16 flex items-center justify-between">
+    <header class="sticky top-0 z-40 bg-[#fbf7ee]/90 dark:bg-[#1a1410]/90 backdrop-blur-md border-b border-[#ebdccb]">
+        <div class="w-full max-w-4xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
             <a href="index.html" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#b4532c] hover:text-[#923e1b] transition font-english">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 <span>Back to Home</span>
@@ -50,12 +62,12 @@
     </header>
 
     <!-- Main Article Container -->
-    <main class="w-full max-w-[min(720px,90vw)] mx-auto px-[clamp(12px,4vw,24px)] py-10 sm:py-14 flex-1">
+    <main class="w-full max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-14 flex-1">
         <!-- Article Header -->
         <article class="space-y-8">
-            <div class="space-y-4 text-center sm:text-left">
+            <div class="space-y-4">
                 <span id="art-category" class="category-badge font-english">General</span>
-                <h1 id="art-title" class="text-[clamp(24px,7vw,48px)] font-black text-[#1e1b18] leading-tight tracking-tight">
+                <h1 id="art-title" class="article-title-text text-3xl sm:text-4xl md:text-5xl font-black text-[#1e1b18] tracking-tight">
                     ലോഡ് ചെയ്യുന്നു...
                 </h1>
                 
@@ -64,7 +76,7 @@
                         N
                     </div>
                     <div>
-                        <p id="art-author" class="font-bold text-[#1e1b18] text-sm font-sans">NUQTHA</p>
+                        <p id="art-author" class="font-bold text-[#1e1b18] text-sm">NUQTHA</p>
                         <p id="art-date">Date</p>
                     </div>
                 </div>
@@ -72,12 +84,15 @@
 
             <!-- Optional Article Cover Image -->
             <div id="art-image-wrapper" class="hidden rounded-3xl overflow-hidden border border-[#ebdccb] shadow-sm">
-                <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[450px]">
+                <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px]">
             </div>
 
             <!-- Full Article Body -->
-            <div id="art-content" class="article-body font-sans text-lg pt-4">
-                <p class="text-slate-400">ലേഖനം ലോഡ് ചെയ്യുന്നു...</p>
+            <div id="art-content" class="article-body font-sans text-lg pt-4 leading-relaxed">
+                <div class="flex items-center gap-2 text-slate-400">
+                    <span class="inline-block w-4 h-4 border-2 border-[#b4532c] border-t-transparent rounded-full animate-spin"></span>
+                    <span>ലേഖനം ലോഡ് ചെയ്യുന്നു...</span>
+                </div>
             </div>
 
             <!-- Article Footer Back Link -->
@@ -96,96 +111,130 @@
         </div>
     </footer>
 
-    <!-- Script to load article details from Firestore or LocalStorage -->
+    <!-- Script to load article details from Firestore -->
     <script type="module">
-        import { db, collection, getDocs, doc, onSnapshot } from "./firebase-config.js";
+        import { db, doc, getDoc, collection, getDocs } from "./firebase-config.js";
 
         const urlParams = new URLSearchParams(window.location.search);
         const articleId = urlParams.get('id');
 
         async function loadArticle() {
             if (!articleId) {
-                document.getElementById('art-title').textContent = "ലേഖനം കണ്ടെത്താനായില്ല";
+                showError("ലേഖനത്തിന്റെ ഐഡി നൽകിയിട്ടില്ല.");
                 return;
             }
 
             let article = null;
 
-            // Fetch from shared Firestore collection
+            // 1. First fetch directly by Document ID (fast & reliable)
             try {
-                const snap = await getDocs(collection(db, "articles"));
-                snap.forEach(docSnap => {
-                    if (docSnap.id === articleId) {
-                        article = { id: docSnap.id, ...docSnap.data() };
-                    }
-                });
+                const docRef = doc(db, "articles", articleId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    article = { id: docSnap.id, ...docSnap.data() };
+                }
             } catch (e) {
-                console.error("Firestore read error:", e);
+                console.warn("Direct doc fetch error, fallback to collection query:", e);
+            }
+
+            // 2. Fallback: Query all documents if direct fetch had issues
+            if (!article) {
+                try {
+                    const snap = await getDocs(collection(db, "articles"));
+                    snap.forEach(docSnap => {
+                        if (docSnap.id === articleId) {
+                            article = { id: docSnap.id, ...docSnap.data() };
+                        }
+                    });
+                } catch (e) {
+                    console.error("Firestore read error:", e);
+                }
             }
 
             if (article) {
-                document.title = `${article.title} | NUQTHA`;
-                
-                const titleEl = document.getElementById('art-title');
-                titleEl.textContent = article.title;
-                if (article.titleColor) {
-                    titleEl.style.color = article.titleColor;
-                }
-
-                document.getElementById('art-category').textContent = article.category || "GENERAL";
-                document.getElementById('art-author').textContent = article.author || "NUQTHA";
-                document.getElementById('art-date').textContent = article.date || "Recent";
-                
-                if (article.imageUrl && !article.imageUrl.includes("placeholder")) {
-                    const img = document.getElementById('art-image');
-                    img.src = article.imageUrl;
-                    document.getElementById('art-image-wrapper').classList.remove('hidden');
-                }
-
-                // Reading time estimate
-                const words = (article.content || "").length;
-                const min = Math.max(1, Math.round(words / 400));
-                document.getElementById('reading-time').textContent = `${min} min read`;
-
-                const contentEl = document.getElementById('art-content');
-                const contentColorStyle = article.contentColor ? `style="color: ${article.contentColor};"` : '';
-                
-                contentEl.innerHTML = (article.content || article.excerpt || "")
-                    .split('\n\n')
-                    .filter(p => p.trim())
-                    .map(paragraph => {
-                        const p = paragraph.trim();
-                        // Subheading
-                        if (p.startsWith("### ")) {
-                            return `<h3 class="text-2xl font-bold my-6 text-[#1e1b18]">${p.replace("### ", "")}</h3>`;
-                        }
-                        // Inline Image
-                        const imgMatch = p.match(/^!\[(.*?)\]\((.*?)\)$/);
-                        if (imgMatch) {
-                            return `
-                                <div class="my-8 rounded-3xl overflow-hidden border border-[#ebdccb] shadow-md">
-                                    <img src="${imgMatch[2]}" alt="${imgMatch[1]}" class="w-full h-auto object-cover max-h-[550px]">
-                                    ${imgMatch[1] && imgMatch[1] !== "ചിത്രം" ? `<p class="text-xs text-center text-[#8c7a6b] p-3 bg-[#ebdccb]/30 italic">${imgMatch[1]}</p>` : ''}
-                                </div>
-                            `;
-                        }
-                        // Bold and Highlight
-                        let formatted = p
-                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18]">$1</strong>')
-                            .replace(/==(.*?)=/g, '<mark class="bg-amber-200/90 px-1.5 py-0.5 rounded text-[#2b2118] font-semibold">$1</mark>');
-
-                        return `<p ${contentColorStyle}>${formatted}</p>`;
-                    })
-                    .join('');
+                renderArticle(article);
             } else {
-                document.getElementById('art-title').textContent = "ലേഖനം കണ്ടെത്താനായില്ല";
-                document.getElementById('art-content').innerHTML = `
-                    <div class="p-6 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-center space-y-2">
-                        <p class="font-bold">ഈ ലേഖനം നിലവിലില്ല അല്ലെങ്കിൽ നീക്കം ചെയ്തിരിക്കുന്നു.</p>
-                        <a href="index.html" class="inline-block mt-2 text-xs font-bold text-[#b4532c] underline font-english">ഹോം പേജിലേക്ക് മടങ്ങുക</a>
-                    </div>
-                `;
+                showError("ഈ ലേഖനം കണ്ടെത്താനായില്ല അല്ലെങ്കിൽ നീക്കം ചെയ്തിരിക്കുന്നു.");
             }
+        }
+
+        function renderArticle(article) {
+            document.title = `${article.title} | NUQTHA`;
+            
+            const titleEl = document.getElementById('art-title');
+            titleEl.textContent = article.title;
+            if (article.titleColor) {
+                titleEl.style.color = article.titleColor;
+            }
+
+            document.getElementById('art-category').textContent = article.category || "GENERAL";
+            document.getElementById('art-author').textContent = article.author || "NUQTHA";
+            
+            let dateStr = article.date || "";
+            if (!dateStr && article.createdAt) {
+                try {
+                    const d = article.createdAt.toDate ? article.createdAt.toDate() : new Date(article.createdAt);
+                    dateStr = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                } catch(e) {}
+            }
+            document.getElementById('art-date').textContent = dateStr || "Recent";
+            
+            if (article.imageUrl && !article.imageUrl.includes("placeholder")) {
+                const img = document.getElementById('art-image');
+                img.src = article.imageUrl;
+                document.getElementById('art-image-wrapper').classList.remove('hidden');
+            }
+
+            // Reading time estimate
+            const words = (article.content || "").length;
+            const min = Math.max(1, Math.round(words / 400));
+            document.getElementById('reading-time').textContent = `${min} min read`;
+
+            const contentEl = document.getElementById('art-content');
+            const contentColorStyle = article.contentColor ? `style="color: ${article.contentColor};"` : '';
+            
+            contentEl.innerHTML = (article.content || article.excerpt || "")
+                .split('\n\n')
+                .filter(p => p.trim())
+                .map(paragraph => {
+                    const p = paragraph.trim();
+                    // Subheading
+                    if (p.startsWith("### ")) {
+                        return `<h3 class="text-2xl font-bold my-6 text-[#1e1b18] font-['Manjari']">${p.replace("### ", "")}</h3>`;
+                    }
+                    if (p.startsWith("## ")) {
+                        return `<h2 class="text-2xl sm:text-3xl font-extrabold my-6 text-[#1e1b18] font-['Manjari']">${p.replace("## ", "")}</h2>`;
+                    }
+                    // Inline Image
+                    const imgMatch = p.match(/^!\[(.*?)\]\((.*?)\)$/);
+                    if (imgMatch) {
+                        return `
+                            <div class="my-8 rounded-3xl overflow-hidden border border-[#ebdccb] shadow-md">
+                                <img src="${imgMatch[2]}" alt="${imgMatch[1]}" class="w-full h-auto object-cover max-h-[550px]">
+                                ${imgMatch[1] && imgMatch[1] !== "ചിത്രം" ? `<p class="text-xs text-center text-[#8c7a6b] p-3 bg-[#ebdccb]/30 italic">${imgMatch[1]}</p>` : ''}
+                            </div>
+                        `;
+                    }
+                    // Bold and Highlight
+                    let formatted = p
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18]">$1</strong>')
+                        .replace(/==(.*?)=/g, '<mark class="bg-amber-200/90 px-1.5 py-0.5 rounded text-[#2b2118] font-semibold">$1</mark>');
+
+                    return `<p ${contentColorStyle}>${formatted}</p>`;
+                })
+                .join('');
+        }
+
+        function showError(msg) {
+            document.getElementById('art-title').textContent = "ലേഖനം കണ്ടെത്താനായില്ല";
+            document.getElementById('art-content').innerHTML = `
+                <div class="p-6 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-center space-y-3">
+                    <p class="font-bold text-base">${msg}</p>
+                    <a href="index.html" class="inline-block mt-2 px-4 py-2 rounded-xl bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition shadow">ഹോം പേജിലേക്ക് മടങ്ങുക</a>
+                </div>
+            `;
+        }
+
         function setupTheme() {
             const themeBtn = document.getElementById("theme-toggle-btn");
             const sunIcon = document.getElementById("sun-icon");
