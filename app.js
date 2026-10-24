@@ -1,11 +1,25 @@
 /**
  * NUQTHA — Frosted Glass Feed Engine
- * Realtime Firestore → Vertical Blog-Roll with Inline Expansion
+ * Realtime Firestore → Category-Sectioned Feed, Latest-First
  */
 import { db, collection, getDocs, doc, query, orderBy, onSnapshot } from "./firebase-config.js";
 
 let allArticles = [];
 let currentCategory = "ALL";
+
+// Ordered list of categories shown on HOME
+const CATEGORY_ORDER = ["HISTORY", "STUDY", "STORY"];
+
+// Malayalam labels map
+const CATEGORY_ML = {
+    "HISTORY": "ചരിത്രം",
+    "STUDY": "പഠനം",
+    "STORY": "കഥ"
+};
+
+function categoryLabel(cat) {
+    return CATEGORY_ML[cat] || cat || "ലേഖനം";
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     setupThemeToggle();
@@ -70,10 +84,7 @@ function setupCategoryNav() {
     links.forEach(link => {
         link.addEventListener("click", (e) => {
             e.preventDefault();
-            links.forEach(l => l.classList.remove("active"));
-            link.classList.add("active");
-            currentCategory = link.dataset.category;
-            renderFeed();
+            switchToCategory(link.dataset.category);
         });
     });
 }
@@ -87,7 +98,7 @@ function listenForArticles() {
         const ids = new Set(fsList.map(a => a.id));
         allArticles = [...fsList, ...localList.filter(a => !ids.has(a.id))];
 
-        // Safe timestamp sorting
+        // Global latest-first sort (createdAt: desc)
         allArticles.sort((a, b) => {
             const getMillis = (item) => {
                 if (item.createdAt?.toMillis) return item.createdAt.toMillis();
@@ -137,46 +148,120 @@ function renderFeed() {
     const container = document.getElementById("feed-container");
     if (!container) return;
 
-    const filtered = currentCategory === "ALL"
-        ? allArticles
-        : allArticles.filter(a => (a.category || "").toUpperCase() === currentCategory);
+    if (currentCategory === "ALL") {
+        renderHomeFeed(container);
+    } else {
+        renderCategoryFeed(container, currentCategory);
+    }
 
-    if (filtered.length === 0) {
-        renderEmpty(
-            currentCategory === "ALL"
-                ? "ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം."
-                : `${currentCategory} വിഭാഗത്തിൽ ലേഖനങ്ങൾ ഇപ്പോൾ ലഭ്യമല്ല.`
-        );
+    attachCardListeners();
+    attachShowMoreListeners();
+}
+
+/* ─── HOME: Hero card from global latest + per-category sections ─── */
+function renderHomeFeed(container) {
+    if (allArticles.length === 0) {
+        renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
         return;
     }
 
-    // 1st article: Main Featured Article Card
-    const featuredArticle = filtered[0];
-    const recentArticles = filtered.slice(1);
+    // Global hero: the single latest article across all categories
+    let html = buildFeaturedCard(allArticles[0]);
 
-    let html = buildFeaturedCard(featuredArticle);
+    // Per-category sections (only categories that have articles)
+    const categoriesWithArticles = CATEGORY_ORDER.filter(cat =>
+        allArticles.some(a => (a.category || "").toUpperCase() === cat)
+    );
 
-    // If there are more articles, show Recent Articles list below
-    if (recentArticles.length > 0) {
-        html += `
-            <div class="recent-articles-section pt-6 sm:pt-8 space-y-4">
-                <div class="flex items-center justify-between pb-1 px-1">
-                    <h3 class="text-base sm:text-lg font-black text-[#1e1b18] dark:text-white font-['Manjari']">
-                        പുതിയ ലേഖനങ്ങൾ
-                    </h3>
-                    <span class="text-xs font-bold text-[#b4532c] hover:underline cursor-pointer font-['Noto_Sans_Malayalam']">
-                        എല്ലാം കാണുക
-                    </span>
-                </div>
-                <div class="space-y-3">
-                    ${recentArticles.map(art => buildCompactRecentCard(art)).join("")}
-                </div>
-            </div>
-        `;
+    categoriesWithArticles.forEach(cat => {
+        const catArticles = allArticles.filter(a => (a.category || "").toUpperCase() === cat);
+        if (catArticles.length === 0) return;
+
+        // Show up to 4 compact cards per section
+        const preview = catArticles.slice(0, 4);
+        const hasMore = catArticles.length > 4;
+
+        html += buildCategorySectionHeader(cat, hasMore);
+        html += `<div class="category-cards-list space-y-3 mt-3">`;
+        preview.forEach(art => {
+            html += buildCompactRecentCard(art);
+        });
+        html += `</div>`;
+    });
+
+    // If no known categories have articles, show compact list of remaining
+    if (categoriesWithArticles.length === 0 && allArticles.length > 1) {
+        const rest = allArticles.slice(1);
+        html += `<div class="category-section-block mt-6">`;
+        html += buildCategorySectionHeader("ALL", false);
+        html += `<div class="category-cards-list space-y-3 mt-3">`;
+        rest.forEach(art => { html += buildCompactRecentCard(art); });
+        html += `</div></div>`;
     }
 
     container.innerHTML = html;
-    attachCardListeners();
+}
+
+/* ─── CATEGORY VIEW: full filtered feed ─── */
+function renderCategoryFeed(container, category) {
+    const filtered = allArticles.filter(a => (a.category || "").toUpperCase() === category);
+
+    if (filtered.length === 0) {
+        renderEmpty(`${category} വിഭാഗത്തിൽ ലേഖനങ്ങൾ ഇപ്പോൾ ലഭ്യമല്ല.`);
+        return;
+    }
+
+    // Hero card is the latest in this category
+    let html = buildFeaturedCard(filtered[0]);
+
+    if (filtered.length > 1) {
+        const rest = filtered.slice(1);
+        html += `<div class="category-section-block mt-6">`;
+        html += buildCategorySectionHeader(category, false);
+        html += `<div class="category-cards-list space-y-3 mt-3">`;
+        rest.forEach(art => { html += buildCompactRecentCard(art); });
+        html += `</div></div>`;
+    }
+
+    container.innerHTML = html;
+}
+
+/* ─── Category Section Header: glass badge + show-more pill ─── */
+function buildCategorySectionHeader(cat, hasMore) {
+    const label = cat === "ALL" ? "പുതിയ ലേഖനങ്ങൾ" : categoryLabel(cat);
+    const showMoreBtn = hasMore
+        ? `<button class="show-more-pill" data-category="${cat}">SHOW MORE &rsaquo;</button>`
+        : ``;
+    return `
+    <div class="category-section-header flex items-center justify-between mt-6 mb-0">
+        <div class="category-glass-badge">
+            <span class="font-english text-xs font-black tracking-widest uppercase">${cat === "ALL" ? "" : cat + " · "}</span><span class="font-['Noto_Sans_Malayalam'] text-xs font-bold">${label}</span>
+        </div>
+        ${showMoreBtn}
+    </div>`;
+}
+
+/* ─── Show-More → switch to category filter ─── */
+function attachShowMoreListeners() {
+    document.querySelectorAll(".show-more-pill").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            const cat = btn.dataset.category;
+            switchToCategory(cat);
+        });
+    });
+}
+
+function switchToCategory(cat) {
+    currentCategory = cat;
+    // Update nav active state
+    document.querySelectorAll("#category-nav .nav-category-link").forEach(link => {
+        link.classList.toggle("active", link.dataset.category === cat);
+    });
+    renderFeed();
+    // Scroll to top of feed
+    const feedEl = document.getElementById("feed-container");
+    if (feedEl) feedEl.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 /* ═══════════ Format Markdown/Rich Text (Bold, Highlight, Subheadings, Inline Images, Highlight Cards) ═══════════ */
@@ -242,12 +327,7 @@ function buildFeaturedCard(art) {
     const authorName = art.author || "NUQTHA";
     const authorInitial = authorName.trim().charAt(0) || "N";
 
-    // Category in Malayalam label
-    const categoryMalayalam = {
-        "HISTORY": "ചരിത്രം",
-        "STUDY": "പഠനം",
-        "STORY": "കഥ"
-    }[art.category] || art.category || "ലേഖനം";
+    const categoryMalayalam = categoryLabel(art.category);
 
     return `
     <article class="featured-article-card group cursor-pointer hover:shadow-2xl transition-all duration-300" data-id="${art.id}">
@@ -314,11 +394,7 @@ function buildCompactRecentCard(art) {
     const readMin = Math.max(1, Math.round(words / 400));
     const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
 
-    const categoryMalayalam = {
-        "HISTORY": "ചരിത്രം",
-        "STUDY": "പഠനം",
-        "STORY": "കഥ"
-    }[art.category] || art.category || "ലേഖനം";
+    const categoryMalayalam = categoryLabel(art.category);
 
     return `
     <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300" data-id="${art.id}">
