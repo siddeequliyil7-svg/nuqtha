@@ -17,12 +17,13 @@ document.addEventListener("DOMContentLoaded", () => {
     initColorCustomizer();
     initImageUpload();
     initPlaylistPresets();
+    initLayoutManagerControls();
     initPublishedSearchFilter();
     listenToFirestoreArticles();
 });
 
 /* ═══════════════════════════════════════════════════════════
-   1. 3-FOLDER TAB NAVIGATION LOGIC
+   1. 4-FOLDER TAB NAVIGATION LOGIC
    ═══════════════════════════════════════════════════════════ */
 function initTabNavigation() {
     const tabButtons = document.querySelectorAll(".admin-tab-btn");
@@ -47,9 +48,9 @@ function initTabNavigation() {
         });
     });
 
-    // Check URL hash on load (e.g. #tab=published)
+    // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=playlist)
     const hash = window.location.hash.replace("#tab=", "").trim();
-    if (["create", "layout", "published"].includes(hash)) {
+    if (["create", "playlist", "layout", "published"].includes(hash)) {
         switchAdminTab(hash);
     }
 }
@@ -70,9 +71,14 @@ export function switchAdminTab(tabName) {
     // Update window hash without scrolling
     history.replaceState(null, null, `#tab=${tabName}`);
 
-    // If switching to layout tab, refresh the active playlist overview
-    if (tabName === "layout") {
+    // If switching to playlist tab, refresh the active playlist overview
+    if (tabName === "playlist") {
         updateActivePlaylistOverview(currentArticlesList);
+    }
+
+    // If switching to layout tab, refresh layout manager cards
+    if (tabName === "layout") {
+        renderLayoutManagerList(currentArticlesList);
     }
 }
 
@@ -713,6 +719,7 @@ function listenToFirestoreArticles() {
         updateArticleCounters(items.length);
         renderAdminPublishedList(items);
         updateActivePlaylistOverview(items);
+        renderLayoutManagerList(items);
     }, (err) => {
         console.warn("Firestore ordered query failed in admin, falling back without order:", err);
         onSnapshot(collection(db, "articles"), (snap) => {
@@ -727,6 +734,7 @@ function listenToFirestoreArticles() {
             updateArticleCounters(items.length);
             renderAdminPublishedList(items);
             updateActivePlaylistOverview(items);
+            renderLayoutManagerList(items);
         }, (fallbackErr) => {
             console.error("Firestore read error in admin:", fallbackErr);
             if (listContainer) {
@@ -886,3 +894,141 @@ function showGlobalStatus(message, type = "success") {
         }
     }, 6000);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   10. TAB 3: DEDICATED LAYOUT MANAGER LOGIC
+   ═══════════════════════════════════════════════════════════ */
+function initLayoutManagerControls() {
+    const searchInput = document.getElementById("search-layout-input");
+    const placementFilter = document.getElementById("filter-layout-placement");
+
+    function applyLayoutFilter() {
+        const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+        const filterVal = placementFilter ? placementFilter.value : "ALL";
+
+        const filtered = currentArticlesList.filter(art => {
+            const matchesQuery = !query ||
+                (art.title && art.title.toLowerCase().includes(query)) ||
+                (art.author && art.author.toLowerCase().includes(query));
+
+            const artPlacement = (art.placement || "AUTO").toUpperCase();
+            const matchesPlacement = filterVal === "ALL" || artPlacement === filterVal;
+
+            return matchesQuery && matchesPlacement;
+        });
+
+        renderLayoutManagerList(filtered);
+    }
+
+    if (searchInput) searchInput.addEventListener("input", applyLayoutFilter);
+    if (placementFilter) placementFilter.addEventListener("change", applyLayoutFilter);
+}
+
+export function renderLayoutManagerList(items) {
+    const container = document.getElementById("layout-manager-list");
+    if (!container) return;
+
+    if (!items || items.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-10 px-4 bg-[#fbf7ee]/40 rounded-2xl border border-[#ebdccb] space-y-2">
+                <span class="text-2xl">🔍</span>
+                <p class="text-xs font-bold text-[#8c7a6b]">ലേഖനങ്ങൾ ഒന്നും കണ്ടെത്തിയില്ല</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = items.map(art => {
+        const currentPlacement = art.placement || "AUTO";
+        const currentPriority = (art.priority !== undefined && art.priority !== null) ? art.priority : 10;
+        const currentPlaylist = art.playlistName || "";
+
+        return `
+            <div class="p-4 sm:p-5 bg-white rounded-2xl border border-[#ebdccb] hover:border-amber-400 transition shadow-sm space-y-3" id="layout-card-${art.id}">
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] font-black uppercase font-english bg-[#b4532c]/10 text-[#b4532c] px-2.5 py-0.5 rounded-md">
+                            ${art.category || 'General'}
+                        </span>
+                        <span class="text-[10px] text-[#8c7a6b] font-english">${art.date || ''}</span>
+                        ${currentPlaylist ? `<span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-md">📚 ${currentPlaylist}</span>` : ''}
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-400">ID: ${art.id.substring(0, 8)}…</span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    ${art.imageUrl ? `
+                        <div class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border border-[#ebdccb]">
+                            <img src="${art.imageUrl}" alt="" class="w-full h-full object-cover">
+                        </div>
+                    ` : ''}
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-extrabold text-[#1e1b18] truncate leading-tight">${art.title}</h4>
+                        <p class="text-[11px] text-[#8c7a6b] mt-0.5">${art.author || 'Author'}</p>
+                    </div>
+                </div>
+
+                <!-- Interactive Layout Adjuster Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-2 border-t border-[#f0e6d6] items-center">
+                    <div class="sm:col-span-5">
+                        <label class="block text-[10px] font-bold uppercase text-[#4a3c33] font-english mb-1">സ്ഥാനം (Placement)</label>
+                        <select id="placement-select-${art.id}" class="w-full text-xs font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#1e1b18]">
+                            <option value="AUTO" ${currentPlacement === 'AUTO' ? 'selected' : ''}>⚡ Automatic</option>
+                            <option value="HERO" ${currentPlacement === 'HERO' ? 'selected' : ''}>⭐ Hero Featured</option>
+                            <option value="CAROUSEL" ${currentPlacement === 'CAROUSEL' ? 'selected' : ''}>🎠 Carousel</option>
+                            <option value="FEED" ${currentPlacement === 'FEED' ? 'selected' : ''}>📰 Feed</option>
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-4">
+                        <label class="block text-[10px] font-bold uppercase text-[#4a3c33] font-english mb-1">മുൻഗണന (Priority)</label>
+                        <input type="number" id="priority-input-${art.id}" min="1" max="999" value="${currentPriority}" class="w-full text-xs font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#b4532c]">
+                    </div>
+
+                    <div class="sm:col-span-3 pt-4 sm:pt-4">
+                        <button type="button" onclick="window.saveArticleLayoutQuick('${art.id}')" id="save-layout-btn-${art.id}" class="w-full px-3 py-2.5 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-xl transition shadow-sm font-english flex items-center justify-center gap-1.5">
+                            <span>Save</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+// Quick Save Layout for a specific article
+window.saveArticleLayoutQuick = async function(articleId) {
+    const placementSelect = document.getElementById(`placement-select-${articleId}`);
+    const priorityInput = document.getElementById(`priority-input-${articleId}`);
+    const saveBtn = document.getElementById(`save-layout-btn-${articleId}`);
+
+    if (!placementSelect || !priorityInput) return;
+
+    const newPlacement = placementSelect.value;
+    const newPriority = parseInt(priorityInput.value, 10) || 10;
+
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = `<span>⏳</span>`;
+    }
+
+    try {
+        const articleRef = doc(db, "articles", articleId);
+        await updateDoc(articleRef, {
+            placement: newPlacement,
+            priority: newPriority,
+            updatedAt: serverTimestamp()
+        });
+
+        showGlobalStatus(`ലേഔട്ട് വിജയകരമായി മാറ്റി! (${newPlacement}, Priority: ${newPriority})`, "success");
+    } catch (err) {
+        console.error("Error saving quick layout:", err);
+        showGlobalStatus("ലേഔട്ട് അപ്‌ഡേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = `<span>Save</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+        }
+    }
+};

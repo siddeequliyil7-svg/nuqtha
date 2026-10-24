@@ -57,15 +57,19 @@
         <!-- Global Status / Notification Message -->
         <div id="admin-global-status" class="hidden"></div>
 
-        <!-- ═══════════ 3-FOLDER NAVIGATION TABS ═══════════ -->
-        <nav class="admin-tabs-nav w-full max-w-4xl mx-auto shadow-md">
+        <!-- ═══════════ 4-FOLDER NAVIGATION TABS ═══════════ -->
+        <nav class="admin-tabs-nav w-full max-w-5xl mx-auto shadow-md">
             <button type="button" class="admin-tab-btn active flex-1 justify-center" data-tab="create">
                 <span class="tab-icon">📁</span>
-                <span class="truncate">പുതിയ ലേഖനം (Create & Editor)</span>
+                <span class="truncate">പുതിയ ലേഖനം (Create)</span>
+            </button>
+            <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="playlist">
+                <span class="tab-icon">📚</span>
+                <span class="truncate">പ്ലേലിസ്റ്റ് (Playlist)</span>
             </button>
             <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="layout">
-                <span class="tab-icon">📚</span>
-                <span class="truncate">ലേഔട്ട് & പ്ലേലിസ്റ്റ് (Layout & Series)</span>
+                <span class="tab-icon">🎯</span>
+                <span class="truncate">ലേഔട്ട് മാനേജർ (Layout)</span>
             </button>
             <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="published">
                 <span class="tab-icon">📑</span>
@@ -104,7 +108,7 @@
                             <p id="form-subheading" class="text-xs text-[#8c7a6b] mt-0.5">ലേഖനത്തിന്റെ പ്രധാന വിവരങ്ങൾ, ഫോർമാറ്റിംഗ്, കളർ ശൈലി എന്നിവ നൽകുക</p>
                         </div>
                         <span class="text-xs font-bold font-english text-[#b4532c] bg-[#b4532c]/10 px-3 py-1 rounded-full">
-                            Folder 1 / 3
+                            Folder 1 / 4
                         </span>
                     </div>
 
@@ -285,10 +289,36 @@
                         </div>
                     </div>
 
+                    <!-- Initial Placement & Priority (Quick Setup) -->
+                    <div class="p-4 bg-[#fbf7ee]/60 border border-[#ebdccb] rounded-2xl space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english flex items-center gap-1.5">
+                                🎯 പ്രാഥമിക ലേഔട്ട് സ്ഥാനം (Initial Layout Placement)
+                            </span>
+                            <span class="text-[10px] text-[#8c7a6b] font-english">Optional Quick Settings</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <div>
+                                <label for="art-placement" class="block text-xs font-semibold text-[#1e1b18] mb-1 font-english">ഹോം ഫീഡ് സ്ഥാനം (Placement)</label>
+                                <select id="art-placement" class="w-full text-xs font-bold p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white text-[#1e1b18]">
+                                    <option value="AUTO">⚡ Automatic (Based on Latest Time)</option>
+                                    <option value="HERO">⭐ Hero Featured (Top Main Banner)</option>
+                                    <option value="CAROUSEL">🎠 Horizontal Carousel (Side-Scrolling)</option>
+                                    <option value="FEED">📰 Category Feed (Standard List)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="art-priority" class="block text-xs font-semibold text-[#1e1b18] mb-1 font-english">മുൻഗണന നമ്പർ (Display Priority)</label>
+                                <input type="number" id="art-priority" min="1" max="999" value="10" placeholder="10" class="w-full text-xs font-bold p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white text-[#b4532c]">
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-[#8c7a6b]">പ്രസിദ്ധീകരിച്ച ശേഷവും <b>'ലേഔട്ട് മാനേജർ' (Tab 3)</b> വഴി എല്ലാ ലേഖനങ്ങളുടെയും ലേഔട്ട് തത്സമയം മാറ്റാവുന്നതാണ്.</p>
+                    </div>
+
                     <!-- Bottom Action Controls on Tab 1 -->
                     <div class="pt-4 border-t border-[#f0e6d6] flex flex-col sm:flex-row items-center justify-between gap-3">
-                        <button type="button" data-switch-tab="layout" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition">
-                            <span>അടുത്തത്: ലേഔട്ട് & പ്ലേലിസ്റ്റ് (Next: Layout & Series)</span>
+                        <button type="button" data-switch-tab="playlist" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition">
+                            <span>അടുത്തത്: പ്ലേലിസ്റ്റ് (Next: Playlist Series)</span>
                             <span>&rarr;</span>
                         </button>
 
@@ -302,26 +332,24 @@
             </div>
 
             <!-- ═══════════════════════════════════════════════════════════
-                 TAB 2: ലേഔട്ട് & പ്ലേലിസ്റ്റ് (LAYOUT & SERIES MANAGER)
+                 TAB 2: പ്ലേലിസ്റ്റ് (PLAYLIST / ARTICLE SERIES - STANDALONE)
                  ═══════════════════════════════════════════════════════════ -->
-            <div class="admin-tab-pane" data-pane="layout">
+            <div class="admin-tab-pane" data-pane="playlist">
                 <div class="max-w-4xl mx-auto space-y-6">
-                    
-                    <!-- Main Card -->
                     <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-6">
                         
                         <!-- Header -->
                         <div class="border-b border-[#f0e6d6] pb-4 flex items-center justify-between">
                             <div>
-                                <h2 class="text-xl font-extrabold text-[#1e1b18]">ലേഔട്ട് & പ്ലേലിസ്റ്റ് മാനേജർ (Layout & Series Manager)</h2>
-                                <p class="text-xs text-[#8c7a6b] mt-0.5">ഹോം പേജിൽ ലേഖനത്തിന്റെ സ്ഥാനം, മുൻഗണന, പ്രത്യേക പരമ്പരകൾ എന്നിവ നിശ്ചയിക്കുക</p>
+                                <h2 class="text-xl font-extrabold text-[#1e1b18]">പ്ലേലിസ്റ്റ് മാനേജർ (Playlist / Article Series)</h2>
+                                <p class="text-xs text-[#8c7a6b] mt-0.5">പരമ്പരകളായി പ്രസിദ്ധീകരിക്കുന്ന ലേഖനങ്ങൾ ഒന്നിച്ച് ഒരു പ്ലേലിസ്റ്റിലേക്ക് ചേർക്കുക</p>
                             </div>
                             <span class="text-xs font-bold font-english text-amber-700 bg-amber-100 px-3 py-1 rounded-full">
-                                Folder 2 / 3
+                                Folder 2 / 4
                             </span>
                         </div>
 
-                        <!-- ═══════════ SPECIAL HIGHLIGHT: PLAYLIST / ARTICLE SERIES CARD ═══════════ -->
+                        <!-- ═══════════ SPECIAL HIGHLIGHT: PLAYLIST CARD ═══════════ -->
                         <div class="playlist-featured-card space-y-4">
                             <div class="flex items-center justify-between border-b border-amber-300/60 pb-3 flex-wrap gap-2">
                                 <div class="flex items-center gap-2">
@@ -345,7 +373,7 @@
                             <!-- Input with Datalist -->
                             <div class="space-y-2">
                                 <label for="art-playlist-name" class="block text-xs font-bold text-[#78350f] uppercase tracking-wide font-english">
-                                    Playlist / Series Name
+                                    Playlist / Series Name (ഈ ലേഖനം ചേർക്കേണ്ട പ്ലേലിസ്റ്റ്)
                                 </label>
                                 <div class="relative">
                                     <input type="text" id="art-playlist-name" list="playlist-suggestions" placeholder="e.g. മലബാർ സമരം, Special Series, ചരിത്ര പഠനങ്ങൾ..." class="w-full text-sm font-bold p-3.5 rounded-xl border-2 border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18] shadow-sm">
@@ -380,45 +408,8 @@
                                     <span>📊 നിലവിൽ സജീവമായ പരമ്പരകൾ (Active Playlists):</span>
                                     <span class="text-[10px] text-amber-800 font-normal">തത്സമയം അപ്‌ഡേറ്റ് ആകുന്നു</span>
                                 </span>
-                                <div id="active-playlists-overview" class="space-y-2 max-h-44 overflow-y-auto pr-1">
+                                <div id="active-playlists-overview" class="space-y-2 max-h-48 overflow-y-auto pr-1">
                                     <p class="text-[11px] text-amber-800/70">പരിശോധിക്കുന്നു...</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ═══════════ PLACEMENT & PRIORITY CONTROLS ═══════════ -->
-                        <div class="p-5 bg-gradient-to-br from-[#fbf7ee] to-[#f4ede0] border border-[#ebdccb] rounded-2xl space-y-4 shadow-sm">
-                            <div class="flex items-center justify-between border-b border-[#ebdccb] pb-2.5">
-                                <span class="text-xs font-black uppercase tracking-wider text-[#b4532c] font-english flex items-center gap-2">
-                                    <span class="text-base">🎯</span> Placement & Display Priority
-                                </span>
-                                <span class="text-[10px] font-bold text-[#8c7a6b] bg-white px-2.5 py-1 rounded-full border border-[#ebdccb] font-english">
-                                    Home Feed Placement
-                                </span>
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <!-- Placement -->
-                                <div class="space-y-1.5">
-                                    <label for="art-placement" class="block text-xs font-bold text-[#1e1b18] font-english">
-                                        Placement Selection
-                                    </label>
-                                    <select id="art-placement" class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white text-[#1e1b18] shadow-sm">
-                                        <option value="AUTO">⚡ Automatic (Based on Latest Time)</option>
-                                        <option value="HERO">⭐ Hero Featured (Top Main Banner)</option>
-                                        <option value="CAROUSEL">🎠 Horizontal Carousel (Side-Scrolling)</option>
-                                        <option value="FEED">📰 Category Feed (Standard List)</option>
-                                    </select>
-                                    <p class="text-[10px] text-[#8c7a6b]">ഏറ്റവും പ്രധാനപ്പെട്ട ലേഖനങ്ങൾ 'Hero Featured' അല്ലെങ്കിൽ 'Carousel' നൽകാം.</p>
-                                </div>
-
-                                <!-- Display Priority -->
-                                <div class="space-y-1.5">
-                                    <label for="art-priority" class="block text-xs font-bold text-[#1e1b18] font-english">
-                                        Display Priority / Order Number
-                                    </label>
-                                    <input type="number" id="art-priority" min="1" max="999" value="10" placeholder="e.g. 1, 2, 3..." class="w-full text-xs font-black p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white text-[#b4532c] shadow-sm">
-                                    <p class="text-[10px] text-[#8c7a6b]">കുറഞ്ഞ നമ്പർ (Priority 1, 2, 3) ഹോം പേജിൽ മുൻഗണനയോടെ ആദ്യം കാണിക്കും.</p>
                                 </div>
                             </div>
                         </div>
@@ -428,6 +419,11 @@
                             <button type="button" data-switch-tab="create" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 transition">
                                 <span>&larr;</span>
                                 <span>തിരികെ ലേഖനത്തിലേക്ക് (Back to Editor)</span>
+                            </button>
+
+                            <button type="button" data-switch-tab="layout" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition">
+                                <span>അടുത്തത്: ലേഔട്ട് മാനേജർ (Next: Layout Manager)</span>
+                                <span>&rarr;</span>
                             </button>
 
                             <button type="submit" class="submit-article-btn w-full sm:w-auto px-7 py-3.5 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
@@ -443,7 +439,74 @@
         </form>
 
         <!-- ═══════════════════════════════════════════════════════════
-             TAB 3: പ്രസിദ്ധീകരിച്ചവ (PUBLISHED LIVE ARTICLES)
+             TAB 3: ലേഔട്ട് മാനേജർ (LAYOUT MANAGER - STANDALONE FOLDER)
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="admin-tab-pane" data-pane="layout">
+            <div class="max-w-5xl mx-auto space-y-6">
+                
+                <!-- Main Header Card -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-6">
+                    <div class="border-b border-[#f0e6d6] pb-4 flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-8 h-8 rounded-xl bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center text-base">🎯</span>
+                                <h2 class="text-xl font-extrabold text-[#1e1b18]">ലേഔട്ട് മാനേജർ (Layout & Placement Manager)</h2>
+                            </div>
+                            <p class="text-xs text-[#8c7a6b] mt-1">മുഴുവൻ ലേഖനം വീണ്ടും തുറക്കാതെ തന്നെ ഹോം പേജിലെ സ്ഥാനം (Hero, Carousel, Feed) മുൻഗണനയും ഒറ്റ ക്ലിക്കിൽ മാറ്റാം</p>
+                        </div>
+                        <span class="text-xs font-bold font-english text-[#b4532c] bg-[#b4532c]/10 px-3 py-1 rounded-full">
+                            Folder 3 / 4
+                        </span>
+                    </div>
+
+                    <!-- Layout Guide Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                        <div class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
+                            <span class="text-xs font-black text-amber-900 font-english flex items-center gap-1.5">
+                                <span>⭐</span> HERO FEATURED
+                            </span>
+                            <p class="text-[11px] text-amber-800">ഹോം പേജിന്റെ ഏറ്റവും മുകളിൽ വലിയ പ്രധാന കാർഡായി ദൃശ്യമാകുന്നു.</p>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-1">
+                            <span class="text-xs font-black text-blue-900 font-english flex items-center gap-1.5">
+                                <span>🎠</span> CAROUSEL
+                            </span>
+                            <p class="text-[11px] text-blue-800">സൈഡ് സ്ക്രോളിംഗ് സ്ലൈഡറിൽ പ്രത്യേക ശ്രദ്ധ നേടുന്ന കാർഡുകൾ.</p>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-1">
+                            <span class="text-xs font-black text-emerald-900 font-english flex items-center gap-1.5">
+                                <span>📰</span> CATEGORY FEED
+                            </span>
+                            <p class="text-[11px] text-emerald-800">വിഭാഗങ്ങൾക്ക് (History, Study, Story) കീഴിൽ സാധാരണ ലിസ്റ്റായി ദൃശ്യമാകുന്നു.</p>
+                        </div>
+                    </div>
+
+                    <!-- Quick Filter Search in Layout Tab -->
+                    <div class="flex items-center gap-3 pt-2">
+                        <div class="relative flex-1">
+                            <input id="search-layout-input" type="text" placeholder="ലേഖനം തിരയുക..." class="w-full text-xs font-bold p-3 pl-9 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40">
+                            <svg class="w-4 h-4 absolute left-3 top-3 text-[#8c7a6b]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <select id="filter-layout-placement" class="text-xs font-bold p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#1e1b18] font-english">
+                            <option value="ALL">എല്ലാ ലേഔട്ടുകളും (All)</option>
+                            <option value="HERO">⭐ Hero</option>
+                            <option value="CAROUSEL">🎠 Carousel</option>
+                            <option value="FEED">📰 Feed</option>
+                            <option value="AUTO">⚡ Auto</option>
+                        </select>
+                    </div>
+
+                    <!-- Layout Manager Interactive Article Items Container -->
+                    <div id="layout-manager-list" class="space-y-3.5 pt-2">
+                        <div class="text-center py-10 text-xs text-[#8c7a6b]">ലേഖനങ്ങൾ പരിശോധിക്കുന്നു...</div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TAB 4: പ്രസിദ്ധീകരിച്ചവ (PUBLISHED LIVE ARTICLES)
              ═══════════════════════════════════════════════════════════ -->
         <div class="admin-tab-pane" data-pane="published">
             <div class="max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-6">
