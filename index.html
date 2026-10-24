@@ -17,63 +17,69 @@
     <header class="relative w-full z-40 flex-shrink-0">
         <div class="top-canopy-band w-full"></div>
 
-        <div class="page-wrapper header-nav-wrapper" style="margin-top: clamp(-22px, -5vw, -20px);">
-            <div class="pro-floating-glass-card flex flex-col items-center justify-center text-center relative">
+        <div class="page-wrapper header-nav-wrapper">
+            <div class="pro-floating-glass-card relative">
                 
-                <!-- Actions (Dark Mode Toggle & 3-Dots Button) -->
-                <div class="absolute right-4 sm:right-6 top-4 sm:top-5 flex items-center gap-2">
-                    <!-- Light / Dark Mode Toggle Button -->
-                    <button id="theme-toggle-btn" class="more-dots-btn" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
-                        <!-- Sun Icon (shown in dark mode) -->
-                        <svg id="sun-icon" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        <!-- Moon Icon (shown in light mode) -->
-                        <svg id="moon-icon" class="w-4 h-4 text-[#4a3c33]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                    </button>
+                <!-- Top Row: Brand Logo & Actions aligned -->
+                <div class="nav-top-row flex items-center justify-between w-full">
+                    <!-- Invisible spacer for perfect centering on desktop -->
+                    <div class="w-16 hidden sm:block"></div>
 
-                    <!-- 3-Dots Button -->
-                    <button id="dots-menu-btn" class="more-dots-btn" title="More Options" aria-label="More Options">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                            <circle cx="12" cy="5" r="2" />
-                            <circle cx="12" cy="12" r="2" />
-                            <circle cx="12" cy="19" r="2" />
-                        </svg>
-                    </button>
-
-                    <!-- Glassmorphism Dropdown Menu -->
-                    <div id="dots-dropdown" class="hidden absolute right-0 mt-12 w-56 glass-dropdown-menu p-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
-                        <div class="px-3 py-2 border-b border-[#ebdccb]/60 mb-1">
-                            <p class="text-[10px] font-extrabold uppercase tracking-widest text-[#8c7a6b] font-english">Administration</p>
+                    <!-- Brand Logo & Title -->
+                    <div class="brand-badge flex items-center justify-center gap-2">
+                        <div class="brand-icon w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-sm shadow-blue-500/20 flex items-center justify-center p-1.5 flex-shrink-0">
+                            <svg class="w-full h-full text-white" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z" />
+                            </svg>
                         </div>
-                        <a href="admin.html" class="dropdown-item">
-                            <div class="w-7 h-7 rounded-lg bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                            </div>
-                            <div>
-                                <span class="font-english">Admin Dashboard</span>
-                                <p class="text-[10px] text-[#8c7a6b] font-normal">Publish & Manage</p>
-                            </div>
-                        </a>
+                        <span class="brand-title text-lg sm:text-2xl font-black tracking-tight text-[#1e1b18] font-english uppercase">
+                            NUQTHA
+                        </span>
                     </div>
-                </div>
 
-                <!-- Brand Logo & Title -->
-                <div class="flex items-center justify-center gap-2.5 mb-3 sm:mb-4">
-                    <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-sm shadow-blue-500/20 flex items-center justify-center p-2 flex-shrink-0">
-                        <svg class="w-full h-full text-white" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z" />
-                        </svg>
+                    <!-- Actions (Dark Mode Toggle & 3-Dots Button) -->
+                    <div class="nav-actions flex items-center gap-1.5 sm:gap-2 relative">
+                        <!-- Light / Dark Mode Toggle Button -->
+                        <button id="theme-toggle-btn" class="more-dots-btn" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+                            <!-- Sun Icon (shown in dark mode) -->
+                            <svg id="sun-icon" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <!-- Moon Icon (shown in light mode) -->
+                            <svg id="moon-icon" class="w-4 h-4 text-[#4a3c33]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                        </button>
+
+                        <!-- 3-Dots Button -->
+                        <button id="dots-menu-btn" class="more-dots-btn" title="More Options" aria-label="More Options">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="5" r="2" />
+                                <circle cx="12" cy="12" r="2" />
+                                <circle cx="12" cy="19" r="2" />
+                            </svg>
+                        </button>
+
+                        <!-- Glassmorphism Dropdown Menu -->
+                        <div id="dots-dropdown" class="hidden absolute right-0 top-full mt-2 w-52 glass-dropdown-menu p-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+                            <div class="px-3 py-2 border-b border-[#ebdccb]/60 mb-1">
+                                <p class="text-[10px] font-extrabold uppercase tracking-widest text-[#8c7a6b] font-english">Administration</p>
+                            </div>
+                            <a href="admin.html" class="dropdown-item">
+                                <div class="w-7 h-7 rounded-lg bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </div>
+                                <div>
+                                    <span class="font-english">Admin Dashboard</span>
+                                    <p class="text-[10px] text-[#8c7a6b] font-normal">Publish & Manage</p>
+                                </div>
+                            </a>
+                        </div>
                     </div>
-                    <span class="text-xl sm:text-2xl font-black tracking-tight text-[#1e1b18] font-english uppercase">
-                        NUQTHA
-                    </span>
                 </div>
 
                 <!-- Category Tabs -->
-                <nav id="category-nav" class="flex items-center justify-center flex-wrap gap-2 sm:gap-3 w-full font-english tracking-wider text-xs sm:text-sm font-bold uppercase">
+                <nav id="category-nav" class="flex items-center justify-center gap-1.5 sm:gap-3 w-full font-english tracking-wider text-xs sm:text-sm font-bold uppercase mt-2.5 sm:mt-3">
                     <a href="#" data-category="ALL" class="nav-category-link active">HOME</a>
                     <a href="#" data-category="HISTORY" class="nav-category-link">HISTORY</a>
                     <a href="#" data-category="STUDY" class="nav-category-link">STUDY</a>
@@ -85,7 +91,7 @@
     </header>
 
     <!-- ═══════════ MAIN FEED / BLOG-ROLL ═══════════ -->
-    <main class="flex-grow w-full page-wrapper" style="padding-top: clamp(20px, 4vw, 36px); padding-bottom: clamp(28px, 6vw, 56px);">
+    <main class="flex-grow w-full page-wrapper feed-main-wrapper">
         
         <!-- Feed Container -->
         <div id="feed-container" class="space-y-5">

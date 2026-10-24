@@ -213,55 +213,76 @@ h1, h2, h3, h4, h5, h6 {
 /* ═══════════ Responsive Page Wrapper ═══════════ */
 .page-wrapper {
     width: 100%;
-    max-width: min(600px, 90vw);
+    max-width: min(600px, 94vw);
     margin-left: auto;
     margin-right: auto;
-    padding-left: clamp(12px, 4vw, 24px);
-    padding-right: clamp(12px, 4vw, 24px);
+    padding-left: clamp(10px, 3vw, 20px);
+    padding-right: clamp(10px, 3vw, 20px);
+}
+
+.header-nav-wrapper {
+    margin-top: -24px;
+}
+
+.feed-main-wrapper {
+    padding-top: 14px !important;
+    padding-bottom: 40px !important;
 }
 
 /* ═══════════ Top Canopy Band ═══════════ */
 .top-canopy-band {
     background: linear-gradient(180deg, #b8542c 0%, #aa4923 100%);
-    height: clamp(65px, 9vw, 90px);
-    border-bottom-left-radius: clamp(24px, 5vw, 40px);
-    border-bottom-right-radius: clamp(24px, 5vw, 40px);
-    box-shadow: 0 10px 30px -5px rgba(170, 73, 35, 0.2);
+    height: 52px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    box-shadow: 0 6px 20px -3px rgba(170, 73, 35, 0.2);
+}
+
+@media (min-width: 641px) {
+    .top-canopy-band {
+        height: 72px;
+        border-bottom-left-radius: 36px;
+        border-bottom-right-radius: 36px;
+    }
+    .header-nav-wrapper {
+        margin-top: -30px;
+    }
+    .feed-main-wrapper {
+        padding-top: 24px !important;
+    }
 }
 
 /* ═══════════ More Options (3-Dot) Menu & Dropdown ═══════════ */
 .more-dots-btn {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #4a3c33;
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.65);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.75);
-    box-shadow: 0 2px 8px rgba(70, 35, 15, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 2px 6px rgba(70, 35, 15, 0.06);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
 }
 
 .more-dots-btn:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     color: var(--terracotta);
-    box-shadow: 0 4px 12px rgba(80, 40, 20, 0.12);
-    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(80, 40, 20, 0.12);
 }
 
 .glass-dropdown-menu {
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(255, 255, 255, 0.94);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    box-shadow: 0 16px 40px -8px rgba(80, 40, 20, 0.18),
-                0 4px 12px -2px rgba(80, 40, 20, 0.06),
-                inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    border-radius: 18px;
+    box-shadow: 0 16px 36px -8px rgba(80, 40, 20, 0.18);
 }
 
 .dropdown-item {
@@ -283,36 +304,48 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ═══════════ Floating Glass Nav Capsule ═══════════ */
 .pro-floating-glass-card {
-    background: rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(28px) saturate(190%);
     -webkit-backdrop-filter: blur(28px) saturate(190%);
-    border: 1px solid rgba(255, 255, 255, 0.85);
-    border-radius: clamp(20px, 4vw, 36px);
-    padding: clamp(14px, 2.5vw, 20px) clamp(16px, 4vw, 28px);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 22px;
+    padding: 10px 14px 12px;
     width: 100%;
     box-sizing: border-box;
-    box-shadow: 0 16px 36px -10px rgba(70, 35, 15, 0.12),
-                0 4px 12px -2px rgba(70, 35, 15, 0.04),
-                inset 0 1px 1px 0 rgba(255, 255, 255, 0.95),
-                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.03);
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 12px 30px -8px rgba(70, 35, 15, 0.1),
+                inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+@media (min-width: 641px) {
+    .pro-floating-glass-card {
+        border-radius: 32px;
+        padding: 16px 24px 18px;
+    }
 }
 
 /* ═══════════ Category Link Styling ═══════════ */
 .nav-category-link {
     position: relative;
-    font-size: clamp(11px, 2.8vw, 13px);
+    font-size: 11px;
     font-weight: 700;
     color: #5a4b41;
-    letter-spacing: 0.08em;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    padding: 6px 14px;
+    letter-spacing: 0.06em;
+    padding: 5px 11px;
     border-radius: 9999px;
     cursor: pointer;
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.2s ease;
+}
+
+@media (min-width: 641px) {
+    .nav-category-link {
+        font-size: 13px;
+        padding: 6px 14px;
+        letter-spacing: 0.08em;
+    }
 }
 
 .nav-category-link:hover {
@@ -437,40 +470,47 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
-/* Extra-small phones (< 360px) */
-@media (max-width: 360px) {
-    .pro-floating-glass-card {
-        padding: 10px 10px;
+/* Mobile & Small Screens (<= 640px) */
+@media (max-width: 640px) {
+    .page-wrapper {
+        padding-left: 14px;
+        padding-right: 14px;
     }
-    .nav-category-link {
-        font-size: 10px;
-        padding: 4px 8px;
+    .top-canopy-band {
+        height: 48px;
+        border-bottom-left-radius: 18px;
+        border-bottom-right-radius: 18px;
+    }
+    .header-nav-wrapper {
+        margin-top: -24px;
+    }
+    .feed-main-wrapper {
+        padding-top: 12px !important;
+        padding-bottom: 32px !important;
+    }
+    .pro-floating-glass-card {
+        border-radius: 20px;
+        padding: 8px 12px 10px;
+    }
+    .nav-top-row {
+        gap: 8px;
+    }
+    .brand-title {
+        font-size: 1.15rem !important;
+        letter-spacing: -0.02em;
+    }
+    .more-dots-btn {
+        width: 30px;
+        height: 30px;
     }
     #category-nav {
-        gap: 6px !important;
+        gap: 4px !important;
+        margin-top: 8px !important;
     }
-    .article-glass-card .article-preview {
-        padding: 16px;
-    }
-    h1, h2 {
-        letter-spacing: -0.01em;
-    }
-}
-
-/* Small phones (361px – 480px) */
-@media (max-width: 480px) {
-    .top-canopy-band {
-        height: 65px;
-        border-bottom-left-radius: 20px;
-        border-bottom-right-radius: 20px;
-    }
-    /* Nav card floats up less on small screens */
-    .header-nav-wrapper {
-        margin-top: -14px;
-    }
-    .pro-floating-glass-card {
-        border-radius: 24px;
-        padding: 12px 14px;
+    .nav-category-link {
+        font-size: 11px;
+        padding: 4px 9px;
+        letter-spacing: 0.04em;
     }
     .article-glass-card {
         border-radius: 18px;
@@ -479,37 +519,28 @@ h1, h2, h3, h4, h5, h6 {
         transform: none; /* disable hover lift on touch devices */
     }
     .article-glass-card .article-preview {
-        padding: 18px;
+        padding: 16px;
     }
-    #category-nav {
-        gap: 8px !important;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    .nav-category-link {
-        font-size: 11px;
-        padding: 5px 10px;
-    }
-    /* Fluid text for card headings */
     .article-glass-card h2 {
-        font-size: clamp(16px, 5vw, 22px) !important;
+        font-size: clamp(17px, 5vw, 22px) !important;
     }
     .article-glass-card p {
-        font-size: clamp(13px, 3.5vw, 15px);
-    }
-    /* Article reader page */
-    #art-title {
-        font-size: clamp(22px, 7vw, 36px) !important;
-    }
-    .article-body p {
-        font-size: 1rem;
+        font-size: 14px;
     }
 }
 
-/* Medium phones (481px – 640px) */
-@media (min-width: 481px) and (max-width: 640px) {
-    .article-glass-card h2 {
-        font-size: clamp(18px, 4vw, 24px) !important;
+/* Extra-small phones (< 380px) */
+@media (max-width: 380px) {
+    .nav-category-link {
+        font-size: 10px;
+        padding: 3px 7px;
+    }
+    .brand-title {
+        font-size: 1.05rem !important;
+    }
+    .more-dots-btn {
+        width: 28px;
+        height: 28px;
     }
 }
 
