@@ -607,21 +607,44 @@ function renderHomeFeed(container) {
     // Featured Hero Card below carousel
     html += buildFeaturedCard(heroArticle);
 
-    // 3. Playlist / Article Series Section (Group 3-4 articles into named series widget)
-    const playlistsMap = {};
+    // 3. Books / Editions Section (Collection of articles grouped under a Book cover)
+    const booksMap = {};
+    const bookCovers = allArticles.filter(a => a.type === "BOOK");
+    
     allArticles.forEach(a => {
-        if (a.playlistName && a.playlistName.trim()) {
-            const key = a.playlistName.trim();
-            if (!playlistsMap[key]) playlistsMap[key] = [];
-            playlistsMap[key].push(a);
+        if (a.bookName && a.bookName.trim()) {
+            const key = a.bookName.trim();
+            if (!booksMap[key]) booksMap[key] = [];
+            booksMap[key].push(a);
         }
     });
 
-    // Render interactive playlist widget for any playlist with 2+ articles
-    Object.keys(playlistsMap).forEach(pName => {
-        const pArticles = playlistsMap[pName].sort(comparePriority);
-        if (pArticles.length >= 2) {
-            html += buildPlaylistWidget(pName, pArticles);
+    // Render Books section if any books exist
+    if (bookCovers.length > 0) {
+        html += `
+        <div class="category-section-header flex items-center justify-between mt-8 mb-4">
+            <div class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5">
+                <span class="font-english text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]">BOOKS & EDITIONS</span>
+            </div>
+            <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] uppercase font-english">New Collections</span>
+        </div>
+        <div class="books-grid grid grid-cols-1 sm:grid-cols-2 gap-4">
+        `;
+        bookCovers.forEach(book => {
+            const relatedArticles = (booksMap[book.bookName] || []).filter(a => a.id !== book.id).sort(comparePriority);
+            html += buildBookCard(book, relatedArticles);
+        });
+        html += `</div>`;
+    }
+
+    // Also render any remaining Playlist widgets (now labeled as Series)
+    Object.keys(booksMap).forEach(bName => {
+        const isAlreadyShownAsBook = bookCovers.some(bc => bc.bookName === bName);
+        if (!isAlreadyShownAsBook) {
+            const bArticles = booksMap[bName].sort(comparePriority);
+            if (bArticles.length >= 2) {
+                html += buildBookWidget(bName, bArticles);
+            }
         }
     });
 
@@ -1304,11 +1327,10 @@ function setupCarousel() {
     startAutoScroll();
 }
 
-/* ═══════════ Interactive Playlist / Article Series Widget ═══════════ */
-function buildPlaylistWidget(seriesName, articles) {
+/* ═══════════ Interactive Book / Article Series Widget ═══════════ */
+function buildBookWidget(seriesName, articles) {
     if (!articles || articles.length === 0) return '';
     const totalCount = articles.length;
-    const leadArticle = articles[0];
 
     const itemsHtml = articles.map((art, idx) => {
         const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
@@ -1337,25 +1359,22 @@ function buildPlaylistWidget(seriesName, articles) {
 
     return `
     <div class="playlist-glass-card mt-7 mb-3 overflow-hidden" data-playlist="${seriesName}">
-        <!-- Playlist Header Banner -->
         <div class="playlist-header flex items-center justify-between p-4 sm:p-5 border-b border-[#ebdccb]/60 dark:border-white/10">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-[#b4532c]/10 dark:bg-white/10 text-[#b4532c] dark:text-[#f87171] flex items-center justify-center flex-shrink-0 font-black">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                <div class="w-10 h-10 rounded-2xl bg-blue-600/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0 font-black">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                 </div>
                 <div>
-                    <span class="text-[10px] font-black tracking-widest uppercase font-english text-[#b4532c] dark:text-[#f87171]">SERIES PLAYLIST</span>
+                    <span class="text-[10px] font-black tracking-widest uppercase font-english text-blue-600 dark:text-blue-400">SERIES / COLLECTION</span>
                     <h3 class="text-base sm:text-lg font-black text-[#1e1b18] dark:text-[#f8fafc] font-['Manjari',sans-serif] leading-tight">
                         ${seriesName}
                     </h3>
                 </div>
             </div>
-            <div class="playlist-count-pill font-english text-xs font-bold px-3 py-1 rounded-full bg-white/70 dark:bg-white/10 text-[#b4532c] dark:text-[#f87171] border border-[#ebdccb] dark:border-white/15">
+            <div class="playlist-count-pill font-english text-xs font-bold px-3 py-1 rounded-full bg-white/70 dark:bg-white/10 text-blue-600 dark:text-blue-400 border border-[#ebdccb] dark:border-white/15">
                 ${totalCount} Articles
             </div>
         </div>
-
-        <!-- Articles List Container -->
         <div class="playlist-items-list p-3 sm:p-4 space-y-2">
             ${itemsHtml}
         </div>
@@ -1363,17 +1382,79 @@ function buildPlaylistWidget(seriesName, articles) {
     `;
 }
 
+/* ═══════════ Book / Edition Collection Card ═══════════ */
+function buildBookCard(book, articles) {
+    const cleanTitle = stripMarkdown(book.title);
+    const count = articles.length;
+    const dateStr = book.date || formatDate(book.createdAt);
+
+    return `
+    <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300" data-id="${book.id}">
+        <div class="flex h-full">
+            <!-- Left: Book Spine/Cover -->
+            <div class="w-1/3 relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-800">
+                ${book.imageUrl ? `
+                    <img src="${book.imageUrl}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                ` : `
+                    <div class="w-full h-full flex items-center justify-center text-white/50">📘</div>
+                `}
+                <div class="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent"></div>
+                <!-- Spine detail -->
+                <div class="absolute top-0 left-0 bottom-0 w-1 bg-white/20 shadow-inner"></div>
+            </div>
+            
+            <!-- Right: Book Info -->
+            <div class="flex-1 p-4 flex flex-col justify-between space-y-2">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[9px] font-black tracking-widest uppercase text-blue-600 dark:text-blue-400 font-english">BOOK EDITION</span>
+                        <span class="text-[9px] text-[#8c7a6b] dark:text-[#94a3b8] font-bold">${dateStr}</span>
+                    </div>
+                    <h3 class="text-sm sm:text-base font-black text-[#1e1b18] dark:text-white leading-snug line-clamp-2 mb-1 group-hover:text-blue-600 transition-colors">
+                        ${cleanTitle}
+                    </h3>
+                    <p class="text-[10px] text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed">
+                        ${stripMarkdown(book.excerpt || book.content).substring(0, 80)}...
+                    </p>
+                </div>
+                
+                <div class="flex items-center justify-between pt-2 border-t border-[#ebdccb]/40 dark:border-white/10">
+                    <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8]">📚 ${count} Articles</span>
+                    <div class="text-[10px] font-black text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:gap-2 transition-all">
+                        <span>OPEN BOOK</span>
+                        <span>&rsaquo;</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+}
+
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
 function attachCardListeners() {
-    document.querySelectorAll(".featured-article-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card").forEach(card => {
+    document.querySelectorAll(".featured-article-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card").forEach(card => {
         card.addEventListener("click", function (e) {
             // Direct navigation to article.html
             const id = this.dataset.id;
+            const art = allArticles.find(a => a.id === id);
+            
             if (id && !e.target.closest("button") && !e.target.closest("a")) {
-                window.location.href = `article.html?id=${id}`;
+                if (art && art.type === "BOOK") {
+                    // Open Book index page/modal
+                    openBookIndex(art);
+                } else {
+                    window.location.href = `article.html?id=${id}`;
+                }
             }
         });
     });
+}
+
+function openBookIndex(book) {
+    // We can use the existing full screen reader to show a "Book Index"
+    // Or just redirect to article.html which will handle showing the index if it's a BOOK type
+    window.location.href = `article.html?id=${book.id}`;
 }
 
 /* ═══════════ Empty State ═══════════ */

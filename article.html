@@ -484,6 +484,12 @@
 
             const contentEl = document.getElementById('art-content');
             
+            // IF TYPE IS BOOK, RENDER INDEX PAGE
+            if (article.type === "BOOK") {
+                renderBookIndex(article, contentEl);
+                return;
+            }
+
             // Map font size presets to rem values
             const fontSizeMap = {
                 small: "1.05rem",
@@ -552,6 +558,76 @@
                     return `<p ${contentStyleAttr}>${formatted}</p>`;
                 })
                 .join('');
+        }
+
+        async function renderBookIndex(book, container) {
+            container.innerHTML = `
+                <div class="space-y-6">
+                    <div class="p-6 bg-blue-50/50 dark:bg-white/5 border border-blue-100 dark:border-white/10 rounded-3xl space-y-3">
+                        <div class="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                            <span class="text-xs font-black tracking-widest uppercase font-english">Book Content / ഇൻഡക്സ്</span>
+                        </div>
+                        <p class="text-sm text-[#5a4b41] dark:text-[#cbd5e1] leading-relaxed">
+                            ${(book.content || book.excerpt || "").substring(0, 300)}...
+                        </p>
+                    </div>
+                    
+                    <div id="book-articles-list" class="space-y-3">
+                        <div class="flex items-center gap-2 text-slate-400 py-10 justify-center">
+                            <span class="inline-block w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+                            <span>ലേഖനങ്ങൾ ശേഖരിക്കുന്നു...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Fetch articles in this book
+            try {
+                const snap = await getDocs(collection(db, "articles"));
+                const items = [];
+                snap.forEach(d => {
+                    const art = normalizeArticleDoc(d.data(), d.id);
+                    if (art.bookName === book.bookName && art.type !== "BOOK") {
+                        items.push(art);
+                    }
+                });
+
+                // Sort by priority then date
+                items.sort((a, b) => {
+                    if (a.priority !== b.priority) return a.priority - b.priority;
+                    return parseTimestampMillis(b.createdAt) - parseTimestampMillis(a.createdAt);
+                });
+
+                const listEl = document.getElementById("book-articles-list");
+                if (items.length === 0) {
+                    listEl.innerHTML = `<p class="text-center text-xs text-slate-500 py-8 italic">ഈ പുസ്തകത്തിൽ ലേഖനങ്ങളൊന്നും നിലവിൽ ലഭ്യമല്ല.</p>`;
+                    return;
+                }
+
+                listEl.innerHTML = items.map((art, idx) => `
+                    <a href="article.html?id=${art.id}" class="group flex items-center p-4 bg-white/60 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 rounded-2xl hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm">
+                        <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs mr-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            ${idx + 1}
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="text-base font-bold text-[#1e1b18] dark:text-white group-hover:text-blue-600 transition-colors">${art.title}</h4>
+                            <div class="flex items-center gap-2 text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] mt-0.5">
+                                <span>${art.author || "NUQTHA"}</span>
+                                <span>•</span>
+                                <span>${art.date || "Recent"}</span>
+                            </div>
+                        </div>
+                        <div class="text-blue-600 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                        </div>
+                    </a>
+                `).join("");
+
+            } catch (err) {
+                console.error("Book index load error:", err);
+                document.getElementById("book-articles-list").innerHTML = `<p class="text-rose-500 text-xs text-center py-4">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു.</p>`;
+            }
         }
 
         function showError(msg) {

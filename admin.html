@@ -134,9 +134,9 @@
                 <span class="tab-icon">📁</span>
                 <span class="truncate">പുതിയ ലേഖനം (Create)</span>
             </button>
-            <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="playlist">
+            <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="book">
                 <span class="tab-icon">📚</span>
-                <span class="truncate">പ്ലേലിസ്റ്റ് (Playlist)</span>
+                <span class="truncate">പുസ്തകങ്ങൾ (Books)</span>
             </button>
             <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="layout">
                 <span class="tab-icon">🎯</span>
@@ -397,6 +397,21 @@
                         </div>
                     </div>
 
+                    <!-- Is Book Toggle -->
+                    <div class="p-4 bg-blue-50/60 border border-blue-200 rounded-2xl flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-lg">📚</span>
+                            <div>
+                                <h4 class="text-xs font-bold text-blue-900">ഇതൊരു പുസ്തകത്തിന്റെ കവർ പേജാണോ? (Is this a Book Cover?)</h4>
+                                <p class="text-[10px] text-blue-700">ഓൺ ചെയ്താൽ ഇത് ഒരു പുസ്തകമായി (Booklet/Edition) പ്രസിദ്ധീകരിക്കപ്പെടും.</p>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="art-is-book" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
                     <!-- Initial Placement & Priority (Quick Setup) -->
                     <div class="p-4 bg-[#fbf7ee]/60 border border-[#ebdccb] rounded-2xl space-y-3">
                         <div class="flex items-center justify-between">
@@ -425,8 +440,8 @@
 
                     <!-- Bottom Action Controls on Tab 1 -->
                     <div class="pt-4 border-t border-[#f0e6d6] flex flex-col sm:flex-row items-center justify-between gap-3">
-                        <button type="button" data-switch-tab="playlist" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition">
-                            <span>അടുത്തത്: പ്ലേലിസ്റ്റ് (Next: Playlist Series)</span>
+                        <button type="button" data-switch-tab="book" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition">
+                            <span>അടുത്തത്: ബുക്ക്/എഡിഷൻ (Next: Book / Edition)</span>
                             <span>&rarr;</span>
                         </button>
 
@@ -440,24 +455,38 @@
             </div>
 
             <!-- ═══════════════════════════════════════════════════════════
-                 TAB 2: പ്ലേലിസ്റ്റ് (PLAYLIST / ARTICLE SERIES - STANDALONE)
+                 TAB 2: ബുക്ക് മാനേജർ (BOOK / EDITION MANAGER)
                  ═══════════════════════════════════════════════════════════ -->
-            <div class="admin-tab-pane" data-pane="playlist">
+            <div class="admin-tab-pane" data-pane="book">
                 <div class="max-w-4xl mx-auto space-y-6">
                     <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-6">
 
                         <!-- Header -->
                         <div class="border-b border-[#f0e6d6] pb-4 flex items-center justify-between">
                             <div>
-                                <h2 class="text-xl font-extrabold text-[#1e1b18]">പ്ലേലിസ്റ്റ് മാനേജർ (Playlist / Article Series)</h2>
-                                <p class="text-xs text-[#8c7a6b] mt-0.5">പരമ്പരകളായി പ്രസിദ്ധീകരിക്കുന്ന ലേഖനങ്ങൾ ഒന്നിച്ച് ഒരു പ്ലേലിസ്റ്റിലേക്ക് ചേർക്കുക</p>
+                                <h2 class="text-xl font-extrabold text-[#1e1b18]">ബുക്ക് മാനേജർ (Book / Edition Manager)</h2>
+                                <p class="text-xs text-[#8c7a6b] mt-0.5">ലേഖനങ്ങളെ ഒന്നിച്ച് ഒരു പുസ്തകമായി അല്ലെങ്കിൽ പതിപ്പായി പ്രസിദ്ധീകരിക്കാം</p>
                             </div>
                             <span class="text-xs font-bold font-english text-amber-700 bg-amber-100 px-3 py-1 rounded-full">
                                 Folder 2 / 4
                             </span>
                         </div>
 
-                        <!-- ═══════════ SPECIAL HIGHLIGHT: PLAYLIST CARD ═══════════ -->
+                        <!-- Book Creation Option -->
+                        <div class="p-5 bg-blue-50 border border-blue-200 rounded-2xl space-y-4">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">📘</span>
+                                <h3 class="text-sm font-bold text-blue-900">പുതിയ പുസ്തകം/പതിപ്പ് സൃഷ്ടിക്കുക (Create New Book/Edition)</h3>
+                            </div>
+                            <p class="text-[11px] text-blue-800">പുസ്തകത്തിന്റെ കവർ പേജായി ഒരു ലേഖനം പ്രസിദ്ധീകരിക്കാൻ താഴെ പറയുന്നവ ശ്രദ്ധിക്കുക:</p>
+                            <ol class="text-[10px] text-blue-700 list-decimal list-inside space-y-1">
+                                <li>ടാബ് 1-ൽ പോയി പുസ്തകത്തിന്റെ പേരും കവർ ചിത്രവും വിവരങ്ങളും നൽകുക.</li>
+                                <li>താഴെയുള്ള <b>"Is this a Book Cover?"</b> എന്ന ഓപ്ഷൻ ഓൺ ചെയ്യുക.</li>
+                                <li>Publish ചെയ്യുക. ഇപ്പോൾ അത് ഒരു 'Book' ആയി ഹോം പേജിൽ ദൃശ്യമാകും.</li>
+                            </ol>
+                        </div>
+
+                        <!-- ═══════════ SPECIAL HIGHLIGHT: BOOK CARD ═══════════ -->
                         <div class="playlist-featured-card space-y-4">
                             <div class="flex items-center justify-between border-b border-amber-300/60 pb-3 flex-wrap gap-2">
                                 <div class="flex items-center gap-2">
@@ -465,33 +494,21 @@
                                         📚
                                     </span>
                                     <div>
-                                        <h3 class="text-sm font-extrabold text-[#78350f]">പ്രത്യേക പ്ലേലിസ്റ്റ് / ലേഖന പരമ്പര (Article Series)</h3>
-                                        <p class="text-[11px] text-amber-900/80">3-4 അനുബന്ധ ലേഖനങ്ങൾ ഒന്നിച്ച് ഹോം പേജ് കാർഡ് വിജറ്റിൽ കാണിക്കാം</p>
+                                        <h3 class="text-sm font-extrabold text-[#78350f]">ലേഖനങ്ങൾ പുസ്തകത്തിലേക്ക് ചേർക്കുക</h3>
+                                        <p class="text-[11px] text-amber-900/80">ലേഖനങ്ങളെ ഒരു നിശ്ചിത പുസ്തകത്തിന്റെ ഭാഗമാക്കാൻ താഴെ പേര് നൽകുക</p>
                                     </div>
                                 </div>
-                                <span class="text-[10px] font-black tracking-wider uppercase bg-gradient-to-r from-amber-600 to-[#b4532c] text-white px-3 py-1 rounded-full shadow-sm font-english">
-                                    ⭐ Featured Series Tool
-                                </span>
                             </div>
-
-                            <p class="text-xs text-[#78350f] leading-relaxed">
-                                ഒരേ പരമ്പരയിലെ ലേഖനങ്ങൾക്ക് ഒരേ Playlist പേര് നൽകുക. ഇത് ഹോം പേജിൽ വായനക്കാർക്ക് പരമ്പര മുഴുവൻ ക്രമമായി വായിക്കാൻ സഹായിക്കുന്ന <b>Interactive Playlist Card Widget</b> ആയി തനിയെ മാറും!
-                            </p>
 
                             <!-- Input with Datalist -->
                             <div class="space-y-2">
                                 <label for="art-playlist-name" class="block text-xs font-bold text-[#78350f] uppercase tracking-wide font-english">
-                                    Playlist / Series Name (ഈ ലേഖനം ചേർക്കേണ്ട പ്ലേലിസ്റ്റ്)
+                                    Book / Edition Name (ഈ ലേഖനം ചേർക്കേണ്ട പുസ്തകം)
                                 </label>
                                 <div class="relative">
-                                    <input type="text" id="art-playlist-name" list="playlist-suggestions" placeholder="e.g. മലബാർ സമരം, Special Series, ചരിത്ര പഠനങ്ങൾ..." class="w-full text-sm font-bold p-3.5 rounded-xl border-2 border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18] shadow-sm">
+                                    <input type="text" id="art-playlist-name" list="playlist-suggestions" placeholder="e.g. ഒക്ടോബർ പതിപ്പ്, Special Edition, ചരിത്ര പുസ്തകം..." class="w-full text-sm font-bold p-3.5 rounded-xl border-2 border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18] shadow-sm">
                                     <datalist id="playlist-suggestions">
-                                        <option value="മലബാർ സമരം">
-                                        <option value="Special Series">
-                                        <option value="ചരിത്ര വീഥികൾ">
-                                        <option value="സാഹിത്യ പഠനം">
-                                        <option value="ശാസ്ത്ര വിചാരം">
-                                        <option value="Featured Collection">
+                                        <!-- Dynamic suggestions from existing books -->
                                     </datalist>
                                 </div>
                             </div>
@@ -499,21 +516,17 @@
                             <!-- Clickable Preset Chips -->
                             <div class="space-y-2 pt-1">
                                 <span class="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
-                                    <span>💡</span> പെട്ടെന്ന് തിരഞ്ഞെടുക്കാൻ നിർദ്ദേശങ്ങൾ (Click to Select):
+                                    <span>💡</span> പെട്ടെന്ന് തിരഞ്ഞെടുക്കാൻ നിലവിലുള്ള പുസ്തകങ്ങൾ:
                                 </span>
-                                <div class="flex flex-wrap gap-2">
-                                    <button type="button" class="playlist-preset-chip" data-name="മലബാർ സമരം">+ മലബാർ സമരം</button>
-                                    <button type="button" class="playlist-preset-chip" data-name="Special Series">+ Special Series</button>
-                                    <button type="button" class="playlist-preset-chip" data-name="ചരിത്ര വീഥികൾ">+ ചരിത്ര വീഥികൾ</button>
-                                    <button type="button" class="playlist-preset-chip" data-name="സാഹിത്യ പഠനം">+ സാഹിത്യ പഠനം</button>
-                                    <button type="button" class="playlist-preset-chip" data-name="ശാസ്ത്ര വിചാരം">+ ശാസ്ത്ര വിചാരം</button>
+                                <div id="book-preset-chips" class="flex flex-wrap gap-2">
+                                    <!-- Dynamic chips from admin.js -->
                                 </div>
                             </div>
 
-                            <!-- Active Playlists Live Overview -->
+                            <!-- Active Books Live Overview -->
                             <div class="pt-3 border-t border-amber-300/50 space-y-2">
                                 <span class="text-xs font-bold text-amber-950 flex items-center justify-between">
-                                    <span>📊 നിലവിൽ സജീവമായ പരമ്പരകൾ (Active Playlists):</span>
+                                    <span>📊 നിലവിൽ ലഭ്യമായ പുസ്തകങ്ങൾ (Active Books):</span>
                                     <span class="text-[10px] text-amber-800 font-normal">തത്സമയം അപ്‌ഡേറ്റ് ആകുന്നു</span>
                                 </span>
                                 <div id="active-playlists-overview" class="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -535,7 +548,7 @@
                             </button>
 
                             <button type="submit" class="submit-article-btn w-full sm:w-auto px-7 py-3.5 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
-                                <span>Publish Article to Firestore</span>
+                                <span>Publish Article/Book to Firestore</span>
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                             </button>
                         </div>

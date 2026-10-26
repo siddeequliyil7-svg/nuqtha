@@ -266,10 +266,13 @@ export function validateAndSanitizeArticleForSave(raw) {
     const placement = sanitizePlacement(raw.placement);
     const priority = sanitizePriority(raw.priority, 10);
 
-    // 9. Playlist Name
-    const playlistName = sanitizeString(raw.playlistName, 120, "");
+    // 9. Book Name
+    const bookName = sanitizeString(raw.bookName || raw.playlistName, 120, "");
 
-    // 10. Date string
+    // 10. Type (ARTICLE or BOOK)
+    const type = raw.type === "BOOK" ? "BOOK" : "ARTICLE";
+
+    // 11. Date string
     const date = sanitizeString(raw.date, 30, new Date().toLocaleDateString("en-GB"));
 
     // Estimate payload size for Firestore 1MB doc ceiling
@@ -291,7 +294,8 @@ export function validateAndSanitizeArticleForSave(raw) {
         fontSize,
         placement,
         priority,
-        playlistName,
+        bookName,
+        type,
         date
     };
 }
@@ -317,7 +321,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
             fontSize: "medium",
             placement: "AUTO",
             priority: 10,
-            playlistName: "",
+            bookName: "",
+            type: "ARTICLE",
             date: "",
             createdAt: null
         };
@@ -341,7 +346,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const fontSize = sanitizeFontSize(rawDoc.fontSize, "medium");
     const placement = sanitizePlacement(rawDoc.placement);
     const priority = sanitizePriority(rawDoc.priority, 10);
-    const playlistName = sanitizeString(rawDoc.playlistName, 120, "");
+    const bookName = sanitizeString(rawDoc.bookName || rawDoc.playlistName, 120, "");
+    const type = rawDoc.type === "BOOK" ? "BOOK" : "ARTICLE";
 
     // Normalizing createdAt timestamp
     const createdAt = rawDoc.createdAt || rawDoc.createTime || null;
@@ -361,7 +367,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         fontSize,
         placement,
         priority,
-        playlistName,
+        bookName,
+        type,
         date,
         createdAt
     };

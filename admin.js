@@ -138,9 +138,9 @@ function initTabNavigation() {
         });
     });
 
-    // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=playlist)
+    // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=book)
     const hash = window.location.hash.replace("#tab=", "").trim();
-    if (["create", "playlist", "layout", "published"].includes(hash)) {
+    if (["create", "book", "layout", "published"].includes(hash)) {
         switchAdminTab(hash);
     }
 }
@@ -161,9 +161,9 @@ export function switchAdminTab(tabName) {
     // Update window hash without scrolling
     history.replaceState(null, null, `#tab=${tabName}`);
 
-    // If switching to playlist tab, refresh the active playlist overview
-    if (tabName === "playlist") {
-        updateActivePlaylistOverview(currentArticlesList);
+    // If switching to book tab, refresh the active book overview
+    if (tabName === "book") {
+        updateActiveBookOverview(currentArticlesList);
     }
 
     // If switching to layout tab, refresh layout manager cards
@@ -215,7 +215,8 @@ async function handleFormSubmit() {
 
         const rawPlacement = document.getElementById("art-placement")?.value || "AUTO";
         const rawPriority = document.getElementById("art-priority")?.value;
-        const rawPlaylistName = document.getElementById("art-playlist-name")?.value || "";
+        const rawBookName = document.getElementById("art-playlist-name")?.value || "";
+        const isBookCover = document.getElementById("art-is-book")?.checked || false;
 
         // STRICT SCHEMA VALIDATION & SANITIZATION
         const sanitized = validateAndSanitizeArticleForSave({
@@ -231,7 +232,8 @@ async function handleFormSubmit() {
             fontSize: rawFontSize,
             placement: rawPlacement,
             priority: rawPriority,
-            playlistName: rawPlaylistName,
+            bookName: rawBookName,
+            type: isBookCover ? "BOOK" : "ARTICLE",
             date: new Date().toLocaleDateString("en-GB")
         });
 
@@ -249,7 +251,8 @@ async function handleFormSubmit() {
                 fontSize: sanitized.fontSize,
                 placement: sanitized.placement,
                 priority: sanitized.priority,
-                playlistName: sanitized.playlistName,
+                bookName: sanitized.bookName,
+                type: sanitized.type,
                 updatedAt: serverTimestamp()
             };
 
@@ -298,8 +301,8 @@ function setSubmitButtonsLoading(isLoading) {
         } else {
             const isEdit = Boolean(editingArticleId);
             btn.innerHTML = isEdit
-                ? `<span>Save & Update Article</span><svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
-                : `<span>Publish Article to Firestore</span><svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+                ? `<span>Save & Update Article/Book</span><svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
+                : `<span>Publish to Firestore</span><svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
         }
     });
 }
@@ -331,9 +334,11 @@ function resetFormFields() {
     const placementEl = document.getElementById("art-placement");
     const priorityEl = document.getElementById("art-priority");
     const playlistEl = document.getElementById("art-playlist-name");
+    const isBookEl = document.getElementById("art-is-book");
     if (placementEl) placementEl.value = "AUTO";
     if (priorityEl) priorityEl.value = "10";
     if (playlistEl) playlistEl.value = "";
+    if (isBookEl) isBookEl.checked = false;
 }
 
 function exitEditMode() {
@@ -383,7 +388,9 @@ window.startEditArticle = function (id) {
 
     if (placementInput) placementInput.value = art.placement || "AUTO";
     if (priorityInput) priorityInput.value = (art.priority !== undefined && art.priority !== null) ? art.priority : 10;
-    if (playlistInput) playlistInput.value = art.playlistName || "";
+    if (playlistInput) playlistInput.value = art.bookName || "";
+    const isBookToggle = document.getElementById("art-is-book");
+    if (isBookToggle) isBookToggle.checked = (art.type === "BOOK");
 
     // Colors
     const titleColorInput = document.getElementById("art-title-color");
@@ -819,40 +826,58 @@ function initPlaylistPresets() {
     });
 }
 
-function updateActivePlaylistOverview(articles) {
+function updateActiveBookOverview(articles) {
     const container = document.getElementById("active-playlists-overview");
+    const chipsContainer = document.getElementById("book-preset-chips");
+    const suggestionsList = document.getElementById("playlist-suggestions");
     if (!container) return;
 
-    // Group articles by playlist
-    const playlistMap = {};
+    // Group articles by book
+    const bookMap = {};
+    const bookCovers = {}; // Store cover image if type is BOOK
+
     articles.forEach(art => {
-        const name = (art.playlistName || "").trim();
+        const name = (art.bookName || "").trim();
         if (name) {
-            if (!playlistMap[name]) playlistMap[name] = [];
-            playlistMap[name].push(art);
+            if (!bookMap[name]) bookMap[name] = [];
+            bookMap[name].push(art);
+            if (art.type === "BOOK") {
+                bookCovers[name] = art;
+            }
         }
     });
 
-    const seriesNames = Object.keys(playlistMap);
+    const bookNames = Object.keys(bookMap);
 
-    if (seriesNames.length === 0) {
+    // Update suggestions and chips
+    if (suggestionsList) {
+        suggestionsList.innerHTML = bookNames.map(name => `<option value="${name}">`).join("");
+    }
+    if (chipsContainer) {
+        chipsContainer.innerHTML = bookNames.map(name => `
+            <button type="button" class="playlist-preset-chip" onclick="window.setPlaylistInput('${name}')">+ ${name}</button>
+        `).join("");
+    }
+
+    if (bookNames.length === 0) {
         container.innerHTML = `
             <div class="text-center py-4 px-3 bg-white/60 dark:bg-white/5 rounded-2xl border border-amber-200/50 dark:border-white/10 text-xs text-[#8c7a6b] dark:text-[#94a3b8]">
-                നിലവിൽ സജീവമായ പ്ലേലിസ്റ്റുകളൊന്നുമില്ല. മുകളിലെ ഇൻപുട്ടിൽ പേര് നൽകി ആദ്യ പരമ്പര ആരംഭിക്കാം!
+                നിലവിൽ പുസ്തകങ്ങളൊന്നുമില്ല. ഒരു ബുക്ക് കവർ പ്രസിദ്ധീകരിച്ച് തുടങ്ങാം!
             </div>
         `;
         return;
     }
 
-    container.innerHTML = seriesNames.map(name => {
-        const count = playlistMap[name].length;
+    container.innerHTML = bookNames.map(name => {
+        const count = bookMap[name].length;
+        const cover = bookCovers[name];
         return `
             <div class="flex items-center justify-between p-3 bg-white/80 dark:bg-white/5 rounded-2xl border border-amber-200/70 dark:border-white/10 hover:border-amber-400 transition cursor-pointer" onclick="window.setPlaylistInput('${name}')">
                 <div class="flex items-center gap-2.5">
-                    <span class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold text-xs flex items-center justify-center">📚</span>
+                    ${cover?.imageUrl ? `<img src="${cover.imageUrl}" class="w-8 h-10 object-cover rounded shadow-sm">` : `<span class="w-8 h-10 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold text-xs flex items-center justify-center">📚</span>`}
                     <div>
                         <h5 class="text-xs font-bold text-[#1e1b18] dark:text-[#f8fafc]">${name}</h5>
-                        <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8]">${count} ലേഖനങ്ങൾ ഉൾപ്പെടുത്തിയിട്ടുണ്ട്</p>
+                        <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8]">${count} ഐറ്റങ്ങൾ ഇതിലുണ്ട്</p>
                     </div>
                 </div>
                 <button type="button" class="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 px-2.5 py-1 rounded-full hover:bg-amber-200 transition">
@@ -899,7 +924,7 @@ function listenToFirestoreArticles() {
         currentArticlesList = items;
         updateArticleCounters(items.length);
         renderAdminPublishedList(items);
-        updateActivePlaylistOverview(items);
+        updateActiveBookOverview(items);
         renderLayoutManagerList(items);
     }
 
@@ -1226,7 +1251,8 @@ export function renderLayoutManagerList(items) {
                             ${art.category || 'General'}
                         </span>
                         <span class="text-[10px] text-[#8c7a6b] font-english">${art.date || ''}</span>
-                        ${currentPlaylist ? `<span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-md">📚 ${currentPlaylist}</span>` : ''}
+                        ${art.bookName ? `<span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-md">📚 ${art.bookName}</span>` : ''}
+                        ${art.type === 'BOOK' ? `<span class="text-[10px] font-bold text-blue-800 bg-blue-100 px-2.5 py-0.5 rounded-md">📘 COVER</span>` : ''}
                     </div>
                     <span class="text-[10px] font-mono text-slate-400">ID: ${art.id.substring(0, 8)}…</span>
                 </div>
