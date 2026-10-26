@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUQTHA | Article Reader</title>
+    <!-- Google Fonts Preconnect & Load (Noto Sans Malayalam, Manjari, Plus Jakarta Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@100..800&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .article-body p {
+            margin-bottom: 2rem;
+            line-height: 2.15;
+            font-size: 1.22rem;
+            color: #2b2118;
+            font-family: 'Anek Malayalam', sans-serif;
+            letter-spacing: -0.01em;
+        }
+        .article-title-text {
+            font-family: 'Anek Malayalam', sans-serif;
+            line-height: 1.32;
+        }
+        .dark-mode .article-body p {
+            color: #ebdccb;
+        }
+        .dark-mode .article-title-text {
+            color: #fbf7ee;
+        }
+
+        /* Editorial Blockquote */
+        .editorial-quote {
+            position: relative;
+            margin: 2.25rem 0;
+            padding: 1.25rem 1.75rem 1.25rem 2rem;
+            border-left: 4px solid var(--terracotta, #b4532c);
+            background: rgba(180, 83, 44, 0.04);
+            border-radius: 0 16px 16px 0;
+            font-style: italic;
+            font-size: 1.2rem;
+            line-height: 1.9;
+            color: #432818;
+        }
+        .editorial-quote::before {
+            content: "“";
+            position: absolute;
+            top: -0.5rem;
+            left: 0.5rem;
+            font-size: 3rem;
+            color: rgba(180, 83, 44, 0.25);
+            font-family: Georgia, serif;
+            line-height: 1;
+        }
+        .dark-mode .editorial-quote {
+            background: rgba(255, 255, 255, 0.03);
+            border-left-color: #f87171;
+            color: #fde68a;
+        }
+
+        /* Related Articles Section (Matching Editorial Card Style) */
+        .related-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(235, 220, 203, 0.9);
+            border-radius: 18px;
+            overflow: hidden;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 18px -3px rgba(70, 35, 15, 0.07);
+        }
+        .related-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 16px 36px -6px rgba(70, 35, 15, 0.16);
+            border-color: rgba(180, 83, 44, 0.45);
+            background: #ffffff;
+        }
+        .dark-mode .related-card {
+            background: rgba(18, 20, 29, 0.75);
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 18px -3px rgba(0, 0, 0, 0.45);
+        }
+        .dark-mode .related-card:hover {
+            background: rgba(26, 30, 43, 0.92);
+            border-color: rgba(255, 255, 255, 0.22);
+            box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.65);
+        }
+        .related-img-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            overflow: hidden;
+            background: linear-gradient(135deg, #b8542c 0%, #803113 100%);
+        }
+        .related-read-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.68);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 9px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            letter-spacing: 0.02em;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body class="bg-[#fbf7ee] text-[#1e1b18] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col justify-between">
+
+    <!-- Top Minimal Sticky Header -->
+    <header class="sticky top-0 z-40 bg-[#fbf7ee]/90 backdrop-blur-md border-b border-[#ebdccb]">
+        <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+            <!-- Clickable NUQTHA Brand Logo returning to Home -->
+            <a href="index.html" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20" title="Return to Home Page / ഹോം പേജ്">
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-sm flex items-center justify-center p-1.5 text-white flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <svg class="w-full h-full" viewBox="0 0 24 24" fill="currentColor"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z"/></svg>
+                </div>
+                <span class="text-base sm:text-xl font-black uppercase font-english tracking-tight text-[#1e1b18] group-hover:text-[#b4532c] transition-colors">NUQTHA</span>
+            </a>
+
+            <div class="flex items-center gap-3">
+                <!-- Theme Toggle Button -->
+                <button id="theme-toggle-btn" class="more-dots-btn w-8 h-8 rounded-full flex items-center justify-center" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+                    <svg id="sun-icon" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <svg id="moon-icon" class="w-4 h-4 text-[#4a3c33]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Article Container -->
+    <main class="w-full max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-10 sm:py-14 flex-1">
+        <!-- Article Header -->
+        <article class="space-y-8">
+            <div class="space-y-4">
+                <span id="art-category" class="category-badge font-english uppercase">GENERAL</span>
+                <h1 id="art-title" class="article-title-text text-3xl sm:text-4xl md:text-5xl font-black text-[#1e1b18] dark:text-white tracking-tight">
+                    ലോഡ് ചെയ്യുന്നു...
+                </h1>
+                
+                <div class="flex items-center gap-4 p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-sm my-4 flex-wrap justify-between">
+                    <div class="flex items-center gap-3">
+                        <div id="art-author-avatar" class="w-12 h-12 rounded-full bg-[#b4532c] text-white flex items-center justify-center font-black text-lg shadow-md flex-shrink-0">
+                            N
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span id="art-author" class="text-lg sm:text-xl font-bold text-[#1e1b18] font-['Anek_Malayalam'] tracking-wide">NUQTHA</span>
+                            </div>
+                            <div id="art-transcription-container" class="hidden flex items-center gap-2 flex-wrap text-xs font-semibold">
+                                <span class="text-[#8c7a6b] dark:text-[#a0aec0]">📝 കേട്ടെഴുത്ത്:</span>
+                                <span id="art-transcription" class="font-extrabold text-[#1e1b18] font-['Anek_Malayalam']"></span>
+                            </div>
+                            <div class="text-xs text-[#8c7a6b] dark:text-[#a0aec0] font-english pt-0.5">
+                                📅 <span id="art-date">Date</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Permanent Social Share Buttons -->
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button onclick="shareArticlePage('whatsapp')" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-[#25D366] hover:opacity-90 transition-opacity shadow-sm" title="Share on WhatsApp">
+                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                            <span>WhatsApp</span>
+                        </button>
+                        <button onclick="shareArticlePage('telegram')" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-[#229ED9] hover:opacity-90 transition-opacity shadow-sm" title="Share on Telegram">
+                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.562 8.161c-.18.717-.962 4.084-1.362 5.411-.168.56-.457.747-.736.765-.607.039-1.069-.408-1.657-.793-.921-.603-1.442-.977-2.336-1.565-1.033-.679-.363-1.053.226-1.664.154-.16 2.83-2.593 2.882-2.816.006-.028.012-.135-.051-.191-.064-.056-.157-.037-.225-.022-.097.022-1.64 1.044-4.629 3.061-.438.301-.835.449-1.191.441-.393-.008-1.15-.222-1.712-.405-.69-.225-1.238-.344-1.19-.726.025-.199.301-.403.827-.613 3.246-1.413 5.412-2.345 6.498-2.797 3.097-1.292 3.741-1.516 4.161-1.523.092-.002.298.021.432.13.113.092.144.218.159.307.015.089.034.295.019.456z"/></svg>
+                            <span>Telegram</span>
+                        </button>
+                        <button onclick="shareArticlePage('twitter')" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-black dark:bg-slate-800 hover:opacity-90 transition-opacity shadow-sm" title="Share on X (Twitter)">
+                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                            <span>X</span>
+                        </button>
+                        <button onclick="shareArticlePage('facebook')" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-[#1877F2] hover:opacity-90 transition-opacity shadow-sm" title="Share on Facebook">
+                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                            <span>Facebook</span>
+                        </button>
+                        <button onclick="shareArticlePage('copy')" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-[#b4532c] hover:bg-[#923e1b] transition-colors shadow-sm" title="Copy Article Link">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                            <span id="page-copy-label">Copy Link</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Optional Article Cover Image -->
+            <div id="art-image-wrapper" class="hidden rounded-3xl overflow-hidden border border-[#ebdccb] shadow-sm">
+                <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px]">
+            </div>
+
+            <!-- Full Article Body -->
+            <div id="art-content" class="article-body font-sans text-lg pt-4 leading-relaxed">
+                <div class="flex items-center gap-2 text-slate-400">
+                    <span class="inline-block w-4 h-4 border-2 border-[#b4532c] border-t-transparent rounded-full animate-spin"></span>
+                    <span>ലേഖനം ലോഡ് ചെയ്യുന്നു...</span>
+                </div>
+            </div>
+
+            <!-- Article Footer Back Link -->
+            <div class="pt-8 border-t border-[#ebdccb] dark:border-white/10 flex justify-center">
+                <a href="index.html" class="px-6 py-3 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
+                    &larr; Back to all stories
+                </a>
+            </div>
+
+            <!-- Related Articles Grid Section -->
+            <section id="related-articles-section" class="pt-10 border-t border-[#ebdccb] dark:border-white/10 hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="category-glass-badge">
+                        <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">RELATED · </span>
+                        <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-[#f1f5f9]">കൂടുതൽ ലേഖനങ്ങൾ</span>
+                    </div>
+                </div>
+                <div id="related-articles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
+                    <!-- Related cards injected here -->
+                </div>
+            </section>
+        </article>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#241711] text-[#cbbba9] border-t border-[#3d2c22] py-8 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs font-english tracking-wider">
+            &copy; 2026 NUQTHA. All rights reserved.
+        </div>
+    </footer>
+
+    <!-- Script to load article details from Firestore -->
+    <script type="module">
+        import { db, doc, getDoc, collection, getDocs } from "./firebase-config.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const articleId = urlParams.get('id');
+
+        async function loadArticle() {
+            if (!articleId) {
+                showError("ലേഖനത്തിന്റെ ഐഡി നൽകിയിട്ടില്ല.");
+                return;
+            }
+
+            let article = null;
+
+            // 1. First fetch directly by Document ID (fast & reliable)
+            try {
+                const docRef = doc(db, "articles", articleId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    // Normalize & sanitize all fields — safe fallbacks, no crashes
+                    article = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                }
+            } catch (e) {
+                console.warn("[article.html] Direct doc fetch error, fallback to collection query:", e);
+            }
+
+            // 2. Fallback: Query all documents if direct fetch had issues
+            if (!article) {
+                try {
+                    const snap = await getDocs(collection(db, "articles"));
+                    snap.forEach(docSnap => {
+                        if (docSnap.id === articleId) {
+                            article = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                        }
+                    });
+                } catch (e) {
+                    console.error("[article.html] Firestore read error:", e);
+                }
+            }
+
+            // 3. Fallback: Direct Firestore REST API (immune to gRPC/WebSocket blocking)
+            if (!article) {
+                try {
+                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(articleId)}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json && json.fields) {
+                            const data = {};
+                            for (const [k, v] of Object.entries(json.fields)) {
+                                data[k] = v.stringValue !== undefined ? v.stringValue :
+                                          v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
+                                          v.timestampValue !== undefined ? v.timestampValue : null;
+                            }
+                            article = normalizeArticleDoc(data, articleId);
+                        }
+                    }
+                } catch (err) {
+                    console.warn("[article.html] REST fallback error:", err);
+                }
+            }
+
+            if (article) {
+                renderArticle(article);
+                loadRelatedArticles(article);
+            } else {
+                showError("ഈ ലേഖനം കണ്ടെത്താനായില്ല അല്ലെങ്കിൽ നീക്കം ചെയ്തിരിക്കുന്നു.");
+            }
+        }
+
+        async function loadRelatedArticles(currentArticle) {
+            const relatedSection = document.getElementById("related-articles-section");
+            const relatedGrid = document.getElementById("related-articles-grid");
+            if (!relatedSection || !relatedGrid) return;
+
+            let allDocs = [];
+
+            // 1. Fetch articles from Firestore collection
+            try {
+                const snap = await getDocs(collection(db, "articles"));
+                snap.forEach(docSnap => {
+                    allDocs.push(normalizeArticleDoc(docSnap.data(), docSnap.id));
+                });
+            } catch (e) {
+                console.warn("[article.html] Failed to get docs for related articles, trying REST:", e);
+            }
+
+            // 2. Fallback to REST API if Firestore SDK returned empty
+            if (allDocs.length === 0) {
+                try {
+                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?pageSize=20&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json && json.documents) {
+                            json.documents.forEach(docItem => {
+                                const docId = docItem.name.split("/").pop();
+                                const data = {};
+                                if (docItem.fields) {
+                                    for (const [k, v] of Object.entries(docItem.fields)) {
+                                        data[k] = v.stringValue !== undefined ? v.stringValue :
+                                                  v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
+                                                  v.timestampValue !== undefined ? v.timestampValue : null;
+                                    }
+                                }
+                                allDocs.push(normalizeArticleDoc(data, docId));
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.warn("[article.html] REST fetch error for related articles:", err);
+                }
+            }
+
+            // Filter out current article
+            const candidates = allDocs.filter(a => a.id !== currentArticle.id);
+            if (candidates.length === 0) return;
+
+            // Prioritize articles from the SAME category first, then others
+            const sameCat = candidates.filter(a => (a.category || "").toUpperCase() === (currentArticle.category || "").toUpperCase());
+            const diffCat = candidates.filter(a => (a.category || "").toUpperCase() !== (currentArticle.category || "").toUpperCase());
+            const sortedRelated = [...sameCat, ...diffCat].slice(0, 4);
+
+            if (sortedRelated.length === 0) return;
+
+            const categoryEnglishMap = {
+                "HISTORY": "HISTORY",
+                "STUDY": "STUDY",
+                "STORY": "STORY",
+                "GENERAL": "GENERAL"
+            };
+
+            relatedGrid.innerHTML = sortedRelated.map(item => {
+                const catName = categoryEnglishMap[(item.category || "").toUpperCase()] || (item.category || "GENERAL").toUpperCase();
+                let dateStr = item.date || "";
+                if (!dateStr) {
+                    try {
+                        const ms = parseTimestampMillis(item.createdAt);
+                        if (ms) dateStr = new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                    } catch(e) {}
+                }
+
+                const cleanTitle = (item.title || "").replace(/[*_#~`]/g, "");
+                const rawExcerpt = item.excerpt || (item.content ? item.content.substring(0, 100) : "");
+                const cleanExcerpt = rawExcerpt.replace(/[*_#~`]/g, "").trim();
+
+                return `
+                    <a href="article.html?id=${item.id}" class="related-card group">
+                        <!-- Image Container -->
+                        <div class="related-img-container">
+                            ${item.imageUrl ? `
+                                <img src="${item.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            ` : `
+                                <div class="w-full h-full flex flex-col items-center justify-center p-4 text-white/80">
+                                    <div class="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-1 border border-white/20">
+                                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                    </div>
+                                    <span class="text-[10px] font-bold font-english uppercase tracking-widest">${catName}</span>
+                                </div>
+                            `}
+                        </div>
+
+                        <!-- Card Body -->
+                        <div class="p-4 sm:p-4.5 flex flex-col justify-between flex-1 gap-2">
+                            <div class="space-y-1.5">
+                                <span class="text-[11px] font-black text-[#b4532c] dark:text-[#f87171] uppercase tracking-wider font-english">
+                                    ${catName}
+                                </span>
+                                <h4 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[#b4532c] transition-colors text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
+                                    ${cleanTitle}
+                                </h4>
+                                ${cleanExcerpt ? `
+                                    <p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed font-['Noto_Sans_Malayalam']">
+                                        ${cleanExcerpt}
+                                    </p>
+                                ` : ''}
+                            </div>
+                            <div class="pt-2.5 border-t border-[#ebdccb]/60 dark:border-white/10 flex items-center justify-between text-[11px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
+                                <span class="font-bold text-[#1e1b18] dark:text-white">${item.author || "NUQTHA"}</span>
+                                <span>${dateStr || "Recent"}</span>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            }).join('');
+
+            relatedSection.classList.remove("hidden");
+        }
+
+        function renderArticle(article) {
+            // article is already normalized — all fields are guaranteed to exist
+            document.title = `${article.title || "NUQTHA"} | NUQTHA`;
+            
+            const titleEl = document.getElementById('art-title');
+            titleEl.textContent = article.title || "ലേഖനം";
+            if (article.titleColor) {
+                titleEl.style.color = article.titleColor;
+            }
+
+            const authorName = (article.author && article.author.trim()) ? article.author.trim() : "NUQTHA";
+            document.getElementById('art-author').textContent = authorName;
+            const avatarEl = document.getElementById('art-author-avatar');
+            if (avatarEl) {
+                avatarEl.textContent = authorName.charAt(0).toUpperCase() || "N";
+            }
+
+            const transContainer = document.getElementById('art-transcription-container');
+            const transEl = document.getElementById('art-transcription');
+            if (transContainer && transEl) {
+                if (article.transcription && article.transcription.trim()) {
+                    transEl.textContent = article.transcription.trim();
+                    transContainer.classList.remove('hidden');
+                } else {
+                    transContainer.classList.add('hidden');
+                }
+            }
+
+            // Use formatDateSafe via parseTimestampMillis for robust date handling
+            let dateStr = article.date || "";
+            if (!dateStr) {
+                try {
+                    const ms = parseTimestampMillis(article.createdAt);
+                    if (ms) {
+                        dateStr = new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                    }
+                } catch(e) {
+                    console.warn("[article.html] Date parse error:", e);
+                }
+            }
+            document.getElementById('art-date').textContent = dateStr || "Recent";
+            
+            if (article.imageUrl && !article.imageUrl.includes("placeholder")) {
+                const img = document.getElementById('art-image');
+                img.src = article.imageUrl;
+                img.onerror = () => {
+                    document.getElementById('art-image-wrapper').classList.add('hidden');
+                    console.warn("[article.html] Cover image failed to load.");
+                };
+                document.getElementById('art-image-wrapper').classList.remove('hidden');
+            }
+
+            const contentEl = document.getElementById('art-content');
+            
+            // Map font size presets to rem values
+            const fontSizeMap = {
+                small: "1.05rem",
+                medium: "1.22rem",
+                large: "1.38rem",
+                xlarge: "1.55rem"
+            };
+            const chosenSize = fontSizeMap[article.fontSize] || "1.22rem";
+            const contentStyleParts = [];
+            if (article.contentColor) contentStyleParts.push(`color: ${article.contentColor}`);
+            if (chosenSize) contentStyleParts.push(`font-size: ${chosenSize}`);
+            const contentStyleAttr = contentStyleParts.length > 0 ? `style="${contentStyleParts.join('; ')};"` : '';
+            
+            contentEl.innerHTML = (article.content || article.excerpt || "")
+                .split('\n\n')
+                .filter(p => p.trim())
+                .map(paragraph => {
+                    const p = paragraph.trim();
+
+                    // Dedicated Highlight Card Callout: :::highlight ... :::
+                    if (p.startsWith(":::highlight") && p.endsWith(":::")) {
+                        const inner = p.replace(/^:::highlight\s*/, "").replace(/\s*:::$/, "").trim();
+                        const formattedInner = inner
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
+                            .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
+                        return `<div class="highlight-glass-card"><p>${formattedInner}</p></div>`;
+                    }
+
+                    // Subheading H2
+                    if (p.startsWith("## ")) {
+                        return `<h2 class="article-h2">${p.replace("## ", "")}</h2>`;
+                    }
+                    // Subheading H3
+                    if (p.startsWith("### ")) {
+                        return `<h3 class="article-h3">${p.replace("### ", "")}</h3>`;
+                    }
+
+                    // Blockquote: > quote text
+                    if (p.startsWith("> ")) {
+                        const quoteText = p.replace(/^>\s*/, "").trim()
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
+                            .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
+                        return `<blockquote class="editorial-quote"><p>${quoteText}</p></blockquote>`;
+                    }
+
+                    // Inline Image with Layout/Size: ![caption|size](url) or ![caption](url)
+                    const imgMatch = p.match(/^!\[(.*?)(?:\|(small|medium|full))?\]\((.*?)\)$/);
+                    if (imgMatch) {
+                        const caption = imgMatch[1] || "";
+                        const size = imgMatch[2] || "full";
+                        const url = imgMatch[3];
+                        const sizeClass = size === "small" ? "img-small" : size === "medium" ? "img-medium" : "img-full";
+                        return `
+                            <div class="article-img-wrap ${sizeClass}">
+                                <img src="${url}" alt="${caption}">
+                                ${caption && caption !== "ചിത്രം" ? `<div class="article-img-caption">${caption}</div>` : ''}
+                            </div>
+                        `;
+                    }
+
+                    // Bold and Highlight (==വാക്ക്==)
+                    let formatted = p
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18]">$1</strong>')
+                        .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
+
+                    return `<p ${contentStyleAttr}>${formatted}</p>`;
+                })
+                .join('');
+        }
+
+        function showError(msg) {
+            document.getElementById('art-title').textContent = "ലേഖനം കണ്ടെത്താനായില്ല";
+            document.getElementById('art-content').innerHTML = `
+                <div class="p-6 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-center space-y-3">
+                    <p class="font-bold text-base">${msg}</p>
+                    <a href="index.html" class="inline-block mt-2 px-4 py-2 rounded-xl bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition shadow">ഹോം പേജിലേക്ക് മടങ്ങുക</a>
+                </div>
+            `;
+        }
+
+        function setupTheme() {
+            const themeBtn = document.getElementById("theme-toggle-btn");
+            const sunIcon = document.getElementById("sun-icon");
+            const moonIcon = document.getElementById("moon-icon");
+
+            const savedTheme = localStorage.getItem("nuqtha_theme");
+            if (savedTheme === "dark") {
+                document.body.classList.add("dark-mode");
+                if (sunIcon) sunIcon.classList.remove("hidden");
+                if (moonIcon) moonIcon.classList.add("hidden");
+            }
+
+            if (themeBtn) {
+                themeBtn.addEventListener("click", () => {
+                    const isDark = document.body.classList.toggle("dark-mode");
+                    localStorage.setItem("nuqtha_theme", isDark ? "dark" : "light");
+
+                    if (isDark) {
+                        if (sunIcon) sunIcon.classList.remove("hidden");
+                        if (moonIcon) moonIcon.classList.add("hidden");
+                    } else {
+                        if (sunIcon) sunIcon.classList.add("hidden");
+                        if (moonIcon) moonIcon.classList.remove("hidden");
+                    }
+                });
+            }
+        }
+
+        window.shareArticlePage = function(platform) {
+            const url = window.location.href;
+            const title = document.title || "NUQTHA Article";
+            if (platform === 'whatsapp') {
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(title + " " + url)}`, '_blank');
+            } else if (platform === 'telegram') {
+                window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, '_blank');
+            } else if (platform === 'twitter') {
+                window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, '_blank');
+            } else if (platform === 'facebook') {
+                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+            } else if (platform === 'copy') {
+                navigator.clipboard.writeText(url).then(() => {
+                    const label = document.getElementById('page-copy-label');
+                    if (label) {
+                        label.textContent = 'Copied!';
+                        setTimeout(() => { label.textContent = 'Copy Link'; }, 2000);
+                    }
+                }).catch(() => {
+                    alert('Article Link: ' + url);
+                });
+            }
+        };
+
+        setupTheme();
+        loadArticle();
+    </script>
+</body>
+</html>

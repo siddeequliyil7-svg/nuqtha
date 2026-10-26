@@ -1,0 +1,6 @@
+{
+  "name": "NUQTHA - നുഖ്ത | Malayalam Publishing Platform",
+  "description": "A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
