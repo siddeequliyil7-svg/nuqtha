@@ -2014,3 +2014,42 @@ body.dark-mode #sidebar-drawer {
     letter-spacing: 0.05em;
 }
 
+
+/* ═══════════ PREMIUM BOOK COVER UI ═══════════ */
+.book-mega-cover {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.book-mega-cover h2 {
+    text-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    font-family: 'Anek Malayalam', sans-serif;
+}
+
+.book-mega-cover p {
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 640px) {
+    .book-mega-cover {
+        border-radius: 1.5rem;
+    }
+    .book-mega-cover h2 {
+        font-size: 2.75rem;
+        line-height: 1.1;
+    }
+}
+
+/* Custom transition for book grid cards */
+#book-articles-list a {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#book-articles-list a:hover {
+    background: white;
+}
+
+.dark-mode #book-articles-list a:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+

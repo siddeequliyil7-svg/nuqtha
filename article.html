@@ -561,22 +561,53 @@
         }
 
         async function renderBookIndex(book, container) {
+            // Hide default cover/header if it's a BOOK type as we will build a custom one
+            document.getElementById('art-image-wrapper')?.classList.add('hidden');
+            
             container.innerHTML = `
-                <div class="space-y-6">
-                    <div class="p-6 bg-blue-50/50 dark:bg-white/5 border border-blue-100 dark:border-white/10 rounded-3xl space-y-3">
-                        <div class="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                            <span class="text-xs font-black tracking-widest uppercase font-english">Book Content / ഇൻഡക്സ്</span>
+                <div class="space-y-10">
+                    <!-- ═══════════ MAGAZINE STYLE COVER ═══════════ -->
+                    <div class="book-mega-cover relative rounded-[2.5rem] overflow-hidden shadow-2xl bg-[#1e1b18] group">
+                        <div class="aspect-[3/4] sm:aspect-[16/10] lg:aspect-[16/8] relative">
+                            ${book.imageUrl ? `
+                                <img src="${book.imageUrl}" class="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-[2s]">
+                            ` : ''}
+                            <div class="absolute inset-0 bg-gradient-to-t from-[#1e1b18] via-transparent to-transparent"></div>
+                            
+                            <!-- Cover Text Overlays -->
+                            <div class="absolute inset-x-0 bottom-0 p-8 sm:p-12 space-y-4">
+                                <div class="flex items-center gap-3">
+                                    <span class="px-4 py-1.5 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg">Special Edition</span>
+                                    <span class="text-white/60 text-xs font-bold font-english">${book.date || ''}</span>
+                                </div>
+                                <h2 class="text-4xl sm:text-6xl lg:text-7xl font-black text-white leading-none tracking-tighter drop-shadow-2xl">
+                                    ${book.title}
+                                </h2>
+                                <p class="text-white/80 text-sm sm:text-base max-w-2xl leading-relaxed line-clamp-3 font-['Noto_Sans_Malayalam']">
+                                    ${book.excerpt || ''}
+                                </p>
+                            </div>
                         </div>
-                        <p class="text-sm text-[#5a4b41] dark:text-[#cbd5e1] leading-relaxed">
-                            ${(book.content || book.excerpt || "").substring(0, 300)}...
-                        </p>
                     </div>
-                    
-                    <div id="book-articles-list" class="space-y-3">
-                        <div class="flex items-center gap-2 text-slate-400 py-10 justify-center">
-                            <span class="inline-block w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
-                            <span>ലേഖനങ്ങൾ ശേഖരിക്കുന്നു...</span>
+
+                    <!-- ═══════════ TABLE OF CONTENTS ═══════════ -->
+                    <div class="space-y-8">
+                        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#ebdccb] dark:border-white/10 pb-6">
+                            <div>
+                                <span class="text-[10px] font-black tracking-[0.3em] uppercase text-blue-600 dark:text-blue-400 block mb-2">CONTENTS / ഇൻഡക്സ്</span>
+                                <h3 class="text-2xl sm:text-3xl font-black text-[#1e1b18] dark:text-white">ഈ പതിപ്പിലെ ലേഖനങ്ങൾ</h3>
+                            </div>
+                            <div id="book-count-label" class="text-xs font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-english">
+                                Loading collection...
+                            </div>
+                        </div>
+                        
+                        <div id="book-articles-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                            <!-- Injected by JS -->
+                            <div class="col-span-full flex items-center gap-2 text-slate-400 py-20 justify-center">
+                                <span class="inline-block w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+                                <span class="font-bold text-xs uppercase tracking-widest">Opening Edition...</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -600,33 +631,40 @@
                 });
 
                 const listEl = document.getElementById("book-articles-list");
+                const countLabel = document.getElementById("book-count-label");
+                
+                if (countLabel) countLabel.textContent = `${items.length} ARTICLES INCLUDED`;
+
                 if (items.length === 0) {
-                    listEl.innerHTML = `<p class="text-center text-xs text-slate-500 py-8 italic">ഈ പുസ്തകത്തിൽ ലേഖനങ്ങളൊന്നും നിലവിൽ ലഭ്യമല്ല.</p>`;
+                    listEl.innerHTML = `<p class="col-span-full text-center text-xs text-slate-500 py-12 italic">ഈ പുസ്തകത്തിൽ ലേഖനങ്ങളൊന്നും നിലവിൽ ലഭ്യമല്ല.</p>`;
                     return;
                 }
 
-                listEl.innerHTML = items.map((art, idx) => `
-                    <a href="article.html?id=${art.id}" class="group flex items-center p-4 bg-white/60 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 rounded-2xl hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm">
-                        <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs mr-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                            ${idx + 1}
-                        </div>
-                        <div class="flex-1">
-                            <h4 class="text-base font-bold text-[#1e1b18] dark:text-white group-hover:text-blue-600 transition-colors">${art.title}</h4>
-                            <div class="flex items-center gap-2 text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] mt-0.5">
-                                <span>${art.author || "NUQTHA"}</span>
-                                <span>•</span>
-                                <span>${art.date || "Recent"}</span>
+                listEl.innerHTML = items.map((art, idx) => {
+                    const previewText = (art.excerpt || art.content || "").replace(/[*_#~`]/g, "").substring(0, 100);
+                    return `
+                        <a href="article.html?id=${art.id}" class="group relative flex flex-col p-6 bg-white/40 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 rounded-[2rem] hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500">
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-white/10 text-slate-400 dark:text-slate-500 flex items-center justify-center font-black text-sm group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                                    ${idx + 1 < 10 ? '0' + (idx + 1) : idx + 1}
+                                </span>
+                                <span class="text-[10px] font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">Read Now &rarr;</span>
                             </div>
-                        </div>
-                        <div class="text-blue-600 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-                        </div>
-                    </a>
-                `).join("");
+                            <h4 class="text-lg sm:text-xl font-black text-[#1e1b18] dark:text-white leading-tight group-hover:text-blue-600 transition-colors mb-3">${art.title}</h4>
+                            <p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed mb-4">
+                                ${previewText}...
+                            </p>
+                            <div class="mt-auto pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] uppercase tracking-wide">
+                                <span>${art.author || "NUQTHA"}</span>
+                                <span>${art.date || "RECENT"}</span>
+                            </div>
+                        </a>
+                    `;
+                }).join("");
 
             } catch (err) {
                 console.error("Book index load error:", err);
-                document.getElementById("book-articles-list").innerHTML = `<p class="text-rose-500 text-xs text-center py-4">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു.</p>`;
+                document.getElementById("book-articles-list").innerHTML = `<p class="col-span-full text-rose-500 text-xs text-center py-4">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു.</p>`;
             }
         }
 

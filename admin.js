@@ -18,6 +18,7 @@ let editingArticleId = null; // null = create mode, string = edit mode
 let currentArticlesList = [];
 let activeTab = "create";
 let selectedBase64Image = "";
+let selectedBookCoverBase64 = "";
 let pendingInlineBase64 = "";
 
 const ADMIN_PASSWORD = "admin768";
@@ -35,6 +36,7 @@ function initAdminDashboard() {
     initPlaylistPresets();
     initLayoutManagerControls();
     initPublishedSearchFilter();
+    initBookCoverUpload();
     listenToFirestoreArticles();
 }
 
@@ -803,6 +805,122 @@ function initImageUpload() {
             if (imagePreview) imagePreview.src = "";
             if (imagePreviewContainer) imagePreviewContainer.classList.add("hidden");
             if (uploadPlaceholder) uploadPlaceholder.classList.remove("hidden");
+        });
+    }
+}
+
+function initBookCoverUpload() {
+    const fileInput = document.getElementById("book-cover-input");
+    const placeholder = document.getElementById("book-upload-placeholder");
+    const previewContainer = document.getElementById("book-image-preview-container");
+    const previewImg = document.getElementById("book-image-preview");
+    const removeBtn = document.getElementById("remove-book-img-btn");
+    const publishBtn = document.getElementById("publish-book-cover-btn");
+
+    if (!fileInput) return;
+
+    fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                const maxDim = 1000;
+                let width = img.width;
+                let height = img.height;
+                if (width > height && width > maxDim) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                } else if (height > maxDim) {
+                    width = Math.round((width * maxDim) / height);
+                    height = maxDim;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+                selectedBookCoverBase64 = canvas.toDataURL("image/jpeg", 0.85);
+                if (previewImg) previewImg.src = selectedBookCoverBase64;
+                if (placeholder) placeholder.classList.add("hidden");
+                if (previewContainer) previewContainer.classList.remove("hidden");
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    if (removeBtn) {
+        removeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            selectedBookCoverBase64 = "";
+            fileInput.value = "";
+            if (previewContainer) previewContainer.classList.add("hidden");
+            if (placeholder) placeholder.classList.remove("hidden");
+        });
+    }
+
+    if (publishBtn) {
+        publishBtn.addEventListener("click", async () => {
+            const name = document.getElementById("book-meta-name")?.value.trim();
+            const desc = document.getElementById("book-meta-desc")?.value.trim();
+
+            if (!name) {
+                alert("ദയവായി പുസ്തകത്തിന്റെ പേര് നൽകുക (Book Name Required)");
+                return;
+            }
+            if (!selectedBookCoverBase64) {
+                alert("ദയവായി ഒരു കവർ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക");
+                return;
+            }
+
+            publishBtn.disabled = true;
+            publishBtn.innerHTML = "Processing...";
+
+            try {
+                // Check if a book cover already exists for this name
+                const existing = currentArticlesList.find(a => a.type === "BOOK" && a.bookName === name);
+                
+                const payload = {
+                    title: name,
+                    category: "GENERAL",
+                    author: "NUQTHA EDITORIAL",
+                    imageUrl: selectedBookCoverBase64,
+                    excerpt: desc || "Book Collection",
+                    content: desc || "This is a curated book collection.",
+                    type: "BOOK",
+                    bookName: name,
+                    placement: "AUTO",
+                    priority: 1,
+                    date: new Date().toLocaleDateString("en-GB"),
+                    updatedAt: serverTimestamp()
+                };
+
+                if (existing) {
+                    await updateDoc(doc(db, "articles", existing.id), payload);
+                    showGlobalStatus(`'${name}' ബുക്ക് കവർ അപ്‌ഡേറ്റ് ചെയ്തു! ✨`, "success");
+                } else {
+                    await addDoc(collection(db, "articles"), {
+                        ...payload,
+                        createdAt: serverTimestamp()
+                    });
+                    showGlobalStatus(`പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! 📚`, "success");
+                }
+
+                // Reset fields
+                document.getElementById("book-meta-name").value = "";
+                document.getElementById("book-meta-desc").value = "";
+                removeBtn.click();
+
+            } catch (err) {
+                console.error("Book cover save error:", err);
+                showGlobalStatus("കവർ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
+            } finally {
+                publishBtn.disabled = false;
+                publishBtn.innerHTML = `<span>Save & Publish Book Cover</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
+            }
         });
     }
 }
