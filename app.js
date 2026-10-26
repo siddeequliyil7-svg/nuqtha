@@ -1382,50 +1382,32 @@ function buildBookWidget(seriesName, articles) {
     `;
 }
 
-/* ═══════════ Book / Edition Collection Card ═══════════ */
+/* ═══════════ Book / Edition Collection Card (Risala Update Style) ═══════════ */
 function buildBookCard(book, articles) {
     const cleanTitle = stripMarkdown(book.title);
     const count = articles.length;
     const dateStr = book.date || formatDate(book.createdAt);
 
     return `
-    <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300" data-id="${book.id}">
-        <div class="flex h-full">
-            <!-- Left: Book Spine/Cover -->
-            <div class="w-1/3 relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-800">
-                ${book.imageUrl ? `
-                    <img src="${book.imageUrl}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
-                ` : `
-                    <div class="w-full h-full flex items-center justify-center text-white/50">📘</div>
-                `}
-                <div class="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent"></div>
-                <!-- Spine detail -->
-                <div class="absolute top-0 left-0 bottom-0 w-1 bg-white/20 shadow-inner"></div>
-            </div>
-            
-            <!-- Right: Book Info -->
-            <div class="flex-1 p-4 flex flex-col justify-between space-y-2">
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-[9px] font-black tracking-widest uppercase text-blue-600 dark:text-blue-400 font-english">BOOK EDITION</span>
-                        <span class="text-[9px] text-[#8c7a6b] dark:text-[#94a3b8] font-bold">${dateStr}</span>
-                    </div>
-                    <h3 class="text-sm sm:text-base font-black text-[#1e1b18] dark:text-white leading-snug line-clamp-2 mb-1 group-hover:text-blue-600 transition-colors">
-                        ${cleanTitle}
-                    </h3>
-                    <p class="text-[10px] text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed">
-                        ${stripMarkdown(book.excerpt || book.content).substring(0, 80)}...
-                    </p>
-                </div>
-                
-                <div class="flex items-center justify-between pt-2 border-t border-[#ebdccb]/40 dark:border-white/10">
-                    <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8]">📚 ${count} Articles</span>
-                    <div class="text-[10px] font-black text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:gap-2 transition-all">
-                        <span>OPEN BOOK</span>
-                        <span>&rsaquo;</span>
-                    </div>
-                </div>
-            </div>
+    <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${book.id}">
+        <!-- Cover Image Container (Vertical Magazine Style) -->
+        <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
+            ${book.imageUrl ? `
+                <img src="${book.imageUrl}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+            ` : `
+                <div class="w-full h-full flex items-center justify-center text-white/50 text-xl font-bold">📘</div>
+            `}
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
+        </div>
+        
+        <!-- Bottom Risala-Style Banner -->
+        <div class="bg-[#b4532c] text-white p-4 text-center space-y-1 group-hover:bg-[#923e1b] transition-colors">
+            <h3 class="text-base sm:text-lg font-black tracking-tight font-['Anek_Malayalam']">
+                ${cleanTitle}
+            </h3>
+            <p class="text-[11px] text-white/90 font-english uppercase tracking-wider font-bold">
+                Volume 15 • ${count} Articles
+            </p>
         </div>
     </div>
     `;
