@@ -888,9 +888,10 @@ function initBookCoverUpload() {
                 // Check if a book cover already exists for this name
                 const existing = currentArticlesList.find(a => a.type === "BOOK" && a.bookName === name);
                 
+                const seriesTag = document.getElementById("book-meta-tag")?.value.trim() || "Premium Book";
                 const payload = {
                     title: name,
-                    category: "GENERAL",
+                    category: seriesTag,
                     author: "NUQTHA EDITORIAL",
                     imageUrl: selectedBookCoverBase64,
                     excerpt: desc || "Book Collection",
@@ -1106,7 +1107,7 @@ function initBookManagerDirectWriter() {
         publishBtn.addEventListener("click", async () => {
             const title = document.getElementById("bm-art-title")?.value.trim();
             const author = document.getElementById("bm-art-author")?.value.trim() || "NUQTHA";
-            const category = document.getElementById("bm-art-category")?.value || "GENERAL";
+            const category = document.getElementById("bm-art-category")?.value.trim() || "Premium Book";
             const transcription = document.getElementById("bm-art-transcription")?.value.trim() || "";
             const priority = parseInt(document.getElementById("bm-art-priority")?.value, 10) || 1;
             const content = document.getElementById("bm-art-content")?.value.trim();
@@ -2087,3 +2088,9 @@ window.editAuthorProfile = function(key) {
 };
 
 window.renderAdminAuthorsTab = renderAdminAuthorsTab;
+
+
+window.setBmSeriesTag = function(tag) {
+    const el = document.getElementById("bm-art-category");
+    if (el) el.value = tag;
+};

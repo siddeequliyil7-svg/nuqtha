@@ -197,13 +197,22 @@
                     <!-- Category, Author & Transcription Row -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">വിഭാഗം (Category)</label>
-                            <select id="art-category" class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-english font-bold text-[#1e1b18]">
-                                <option value="HISTORY">HISTORY</option>
-                                <option value="STUDY">STUDY</option>
-                                <option value="STORY">STORY</option>
-                                <option value="GENERAL">GENERAL</option>
-                            </select>
+                            <label for="art-category" class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2 flex items-center justify-between">
+                                <span>വിഭാഗം (Category)</span>
+                                <span class="text-[10px] text-[#8c7a6b] font-normal font-sans">തിരഞ്ഞെടുക്കുക / പുതിയത് ടൈപ്പ് ചെയ്യുക</span>
+                            </label>
+                            <input type="text" id="art-category" list="category-suggestions" placeholder="e.g. HISTORY, STUDY, STORY, കവിത..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-bold text-[#1e1b18]" autocomplete="off" value="HISTORY" />
+                            <datalist id="category-suggestions">
+                                <option value="HISTORY">HISTORY (ചരിത്രം)</option>
+                                <option value="STUDY">STUDY (പഠനം)</option>
+                                <option value="STORY">STORY (കഥ)</option>
+                                <option value="GENERAL">GENERAL (ജനറൽ)</option>
+                                <option value="POETRY">POETRY (കവിത)</option>
+                                <option value="ESSAY">ESSAY (ലേഖനം)</option>
+                                <option value="POLITICS">POLITICS (രാഷ്ട്രീയം)</option>
+                                <option value="CULTURE">CULTURE (സംസ്കാരം)</option>
+                                <option value="SPECIAL">SPECIAL (പ്രത്യേകം)</option>
+                            </datalist>
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">എഴുത്തുകാരൻ (Author)</label>
@@ -546,19 +555,24 @@
                             <!-- Category, Transcription, Priority -->
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div class="space-y-1.5">
-                                    <label for="bm-art-category" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
-                                        Category (വിഭാഗം)
+                                    <label for="bm-art-category" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english flex items-center justify-between">
+                                        <span>Premium Book / Special Series</span>
+                                        <span class="text-[10px] text-emerald-700 font-normal">പ്രത്യേക പതിപ്പ് ടാഗ്</span>
                                     </label>
-                                    <select id="bm-art-category" class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-white">
-                                        <option value="CURRENT_AFFAIRS">ആനുകാലികം (Current Affairs)</option>
-                                        <option value="EDITORIAL">എഡിറ്റോറിയൽ (Editorial)</option>
-                                        <option value="HISTORY">ചരിത്രം (History)</option>
-                                        <option value="POLITICS">രാഷ്ട്രീയം (Politics)</option>
-                                        <option value="CULTURE">സംസ്കാരം (Culture)</option>
-                                        <option value="SPIRITUAL">ആത്മീയം (Spiritual)</option>
-                                        <option value="FAMILY">കുടുംബം (Family)</option>
-                                        <option value="GENERAL" selected>ജനറൽ (General)</option>
-                                    </select>
+                                    <input type="text" id="bm-art-category" list="bm-series-suggestions" placeholder="e.g. Premium Book, Special Edition, Risala Special, പഠന പരമ്പര..." class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-white text-[#1e1b18]" autocomplete="off" value="Premium Book" />
+                                    <datalist id="bm-series-suggestions">
+                                        <option value="Premium Book">💎 Premium Book (പ്രത്യേക പുസ്തകം)</option>
+                                        <option value="Special Edition">⭐ Special Edition (പ്രത്യേക പതിപ്പ്)</option>
+                                        <option value="Risala Style Series">📖 Risala Style Series (മാഗസിൻ പരമ്പര)</option>
+                                        <option value="Exclusive Series">🔥 Exclusive Series (എക്സ്ക്ലൂസീവ്)</option>
+                                        <option value="Research Monograph">📑 Research Monograph (ഗവേഷണ കൃതി)</option>
+                                        <option value="Annual Publication">🗓️ Annual Publication (വാർഷിക പതിപ്പ്)</option>
+                                    </datalist>
+                                    <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                        <button type="button" onclick="window.setBmSeriesTag('Premium Book')" class="text-[10px] px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold transition cursor-pointer">💎 Premium Book</button>
+                                        <button type="button" onclick="window.setBmSeriesTag('Special Edition')" class="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 font-bold transition cursor-pointer">⭐ Special Edition</button>
+                                        <button type="button" onclick="window.setBmSeriesTag('Risala Style Series')" class="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold transition cursor-pointer">📖 Risala Series</button>
+                                    </div>
                                 </div>
 
                                 <div class="space-y-1.5">
@@ -681,6 +695,10 @@
                                 <div>
                                     <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800 mb-1">Book / Edition Name</label>
                                     <input type="text" id="book-meta-name" placeholder="e.g. ഒക്ടോബർ പതിപ്പ്" class="w-full text-xs font-bold p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800 mb-1">Series / Publication Tag (പ്രത്യേക പതിപ്പ് ടാഗ്)</label>
+                                    <input type="text" id="book-meta-tag" list="bm-series-suggestions" placeholder="e.g. Premium Book / Special Book Series" value="Premium Book" class="w-full text-xs font-bold p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800 mb-1">Intro / Editorial Note</label>

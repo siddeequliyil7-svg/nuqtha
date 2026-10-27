@@ -100,13 +100,16 @@ export function sanitizeString(val, maxLength = 10000, fallback = "") {
  */
 export function sanitizeCategory(cat) {
     if (!cat) return "GENERAL";
-    const cleaned = String(cat).trim().toUpperCase();
+    const trimmed = String(cat).trim();
+    if (!trimmed) return "GENERAL";
+    const cleaned = trimmed.toUpperCase();
     if (ALLOWED_CATEGORIES.includes(cleaned)) return cleaned;
     // Map common aliases or partial matches
     if (cleaned.includes("HIST") || cleaned.includes("ചരിത്ര")) return "HISTORY";
     if (cleaned.includes("STUD") || cleaned.includes("പഠന")) return "STUDY";
     if (cleaned.includes("STOR") || cleaned.includes("കഥ")) return "STORY";
-    return "GENERAL";
+    // Allow any custom category or special book tag safely sanitized
+    return sanitizeString(trimmed, 60, "GENERAL");
 }
 
 /**
