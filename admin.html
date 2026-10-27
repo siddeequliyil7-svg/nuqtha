@@ -474,59 +474,30 @@
             <div class="admin-tab-pane" data-pane="book">
                 <div class="max-w-5xl mx-auto space-y-6">
 
-                    <!-- Header & Book Selection Card -->
-                    <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-5">
-                        <div class="border-b border-[#f0e6d6] pb-4 flex items-center justify-between flex-wrap gap-3">
+                    <!-- Header Card -->
+                    <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
                             <div>
                                 <div class="flex items-center gap-2.5">
                                     <span class="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-900 flex items-center justify-center text-lg font-black shadow-xs">📚</span>
                                     <h2 class="text-xl font-extrabold text-[#1e1b18]">ബുക്ക് മാനേജർ (Book / Edition Manager)</h2>
                                 </div>
-                                <p class="text-xs text-[#8c7a6b] mt-1">പ്രത്യേക പതിപ്പുകൾ നിർമ്മിക്കാനും, നേരിട്ട് ലേഖനങ്ങൾ എഴുതി ചേർക്കാനും, നിലവിലുള്ളവ അറ്റാച്ച് ചെയ്യാനും സാധിക്കും</p>
+                                <p class="text-xs text-[#8c7a6b] mt-1">പ്രത്യേക പതിപ്പുകൾ നിർമ്മിക്കാനും, നേരിട്ട് ലേഖനങ്ങൾ എഴുതി ചേർക്കാനും, കവറുകളും പ്രസന്റേഷനുകളും അപ്‌ലോഡ് ചെയ്യാനും സാധിക്കും</p>
                             </div>
                             <span class="text-xs font-bold font-english text-amber-700 bg-amber-100 border border-amber-200 px-3.5 py-1.5 rounded-full">
-                                Folder 2 / 4
+                                Book Manager
                             </span>
-                        </div>
-
-                        <!-- Active Book / Edition Target Selector -->
-                        <div class="p-5 bg-gradient-to-r from-amber-50 to-orange-50/60 border-2 border-amber-300 rounded-2xl space-y-3">
-                            <div class="flex items-center justify-between flex-wrap gap-2">
-                                <label for="bm-selected-book" class="text-xs font-extrabold text-[#78350f] uppercase tracking-wide font-english flex items-center gap-1.5">
-                                    <span>🎯</span> Active Book / Edition (പ്രവർത്തിക്കുന്ന പുസ്തകം):
-                                </label>
-                                <span id="bm-active-badge" class="px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold text-[11px]">പുസ്തകം തിരഞ്ഞെടുക്കുക</span>
-                            </div>
-                            
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                                <input type="text" id="bm-selected-book" list="playlist-suggestions" placeholder="e.g. ഒക്ടോബർ പതിപ്പ്, Special Edition, വോളിയം 15..." class="sm:col-span-8 text-xs font-bold p-3.5 rounded-xl border-2 border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18] shadow-xs">
-                                <datalist id="playlist-suggestions"></datalist>
-                                <button type="button" id="bm-apply-book-btn" class="sm:col-span-4 px-4 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm transition flex items-center justify-center gap-1.5">
-                                    <span>Set Active Book</span>
-                                    <span>✓</span>
-                                </button>
-                            </div>
-
-                            <!-- Clickable Preset Chips -->
-                            <div class="flex items-center gap-1.5 flex-wrap pt-1">
-                                <span class="text-[11px] font-bold text-amber-900 flex items-center gap-1">
-                                    <span>💡</span> നിലവിലുള്ള പുസ്തകങ്ങൾ:
-                                </span>
-                                <div id="book-preset-chips" class="flex flex-wrap gap-1.5">
-                                    <!-- Dynamic chips from admin.js -->
-                                </div>
-                            </div>
                         </div>
                     </div>
 
-                    <!-- ═══════════ 1. PRIMARY FEATURE: DIRECT NEW ARTICLE CREATION FORM ═══════════ -->
+                    <!-- ═══════════ 1. PRIMARY FEATURE: DIRECT NEW ARTICLE CREATION FORM (TOP) ═══════════ -->
                     <div class="bg-white p-6 md:p-8 rounded-3xl border-2 border-emerald-500/30 shadow-md space-y-6">
                         <div class="flex items-center justify-between border-b border-emerald-100 pb-4 flex-wrap gap-2">
                             <div class="flex items-center gap-3">
                                 <span class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-xl shadow-md">✍️</span>
                                 <div>
                                     <h3 class="text-base sm:text-lg font-black text-emerald-950 leading-tight">പുതിയ ലേഖനം നേരിട്ട് എഴുതുക (Create Article for this Book)</h3>
-                                    <p class="text-[11px] text-emerald-800">തിരഞ്ഞെടുത്ത പുസ്തകത്തിലേക്ക് ഒരു പുതിയ ലേഖനം നേരിട്ട് എഴുതി പ്രസിദ്ധീകരിക്കാം</p>
+                                    <p class="text-[11px] text-emerald-800">പുസ്തകത്തിലേക്ക് ഒരു പുതിയ ലേഖനം നേരിട്ട് എഴുതി പ്രസിദ്ധീകരിക്കാം</p>
                                 </div>
                             </div>
                             <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider font-english">
@@ -552,39 +523,35 @@
                                 </div>
                             </div>
 
-                            <!-- Category, Transcription, Priority -->
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div class="space-y-1.5">
+                            <!-- Book Name, Category, Transcription & Priority -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="space-y-1.5 sm:col-span-2 md:col-span-1">
+                                    <label for="bm-book-name" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english flex items-center justify-between">
+                                        <span>Book / Edition <span class="text-rose-500">*</span></span>
+                                        <span class="text-[10px] text-emerald-700 font-normal">പുസ്തകം</span>
+                                    </label>
+                                    <input type="text" id="bm-book-name" list="playlist-suggestions" placeholder="e.g. ഒക്ടോബർ പതിപ്പ്..." class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition text-[#1e1b18]" autocomplete="off">
+                                    <datalist id="playlist-suggestions"></datalist>
+                                </div>
+
+                                <div class="space-y-1.5 sm:col-span-2 md:col-span-1">
                                     <label for="bm-art-category" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english flex items-center justify-between">
-                                        <span>Premium Book / Special Series</span>
-                                        <span class="text-[10px] text-emerald-700 font-normal">പ്രത്യേക പതിപ്പ് ടാഗ്</span>
+                                        <span>Series / Tag</span>
+                                        <span class="text-[10px] text-[#8c7a6b] font-normal">ടാഗ്</span>
                                     </label>
-                                    <input type="text" id="bm-art-category" list="bm-series-suggestions" placeholder="e.g. Premium Book, Special Edition, Risala Special, പഠന പരമ്പര..." class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-white text-[#1e1b18]" autocomplete="off" value="Premium Book" />
-                                    <datalist id="bm-series-suggestions">
-                                        <option value="Premium Book">💎 Premium Book (പ്രത്യേക പുസ്തകം)</option>
-                                        <option value="Special Edition">⭐ Special Edition (പ്രത്യേക പതിപ്പ്)</option>
-                                        <option value="Risala Style Series">📖 Risala Style Series (മാഗസിൻ പരമ്പര)</option>
-                                        <option value="Exclusive Series">🔥 Exclusive Series (എക്സ്ക്ലൂസീവ്)</option>
-                                        <option value="Research Monograph">📑 Research Monograph (ഗവേഷണ കൃതി)</option>
-                                        <option value="Annual Publication">🗓️ Annual Publication (വാർഷിക പതിപ്പ്)</option>
-                                    </datalist>
-                                    <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
-                                        <button type="button" onclick="window.setBmSeriesTag('Premium Book')" class="text-[10px] px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold transition cursor-pointer">💎 Premium Book</button>
-                                        <button type="button" onclick="window.setBmSeriesTag('Special Edition')" class="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 font-bold transition cursor-pointer">⭐ Special Edition</button>
-                                        <button type="button" onclick="window.setBmSeriesTag('Risala Style Series')" class="text-[10px] px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold transition cursor-pointer">📖 Risala Series</button>
-                                    </div>
+                                    <input type="text" id="bm-art-category" placeholder="e.g. Premium Book, പഠനം..." class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition text-[#1e1b18]" autocomplete="off" value="Premium Book">
                                 </div>
 
-                                <div class="space-y-1.5">
-                                    <label for="bm-art-transcription" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
-                                        Transcription / കേട്ടെഴുത്ത് (Optional)
+                                <div class="space-y-1.5 sm:col-span-2 md:col-span-1">
+                                    <label for="bm-art-transcription" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english truncate">
+                                        Transcription (കേട്ടെഴുത്ത്)
                                     </label>
-                                    <input type="text" id="bm-art-transcription" placeholder="കേട്ടെഴുത്ത് നിർവഹിച്ച വ്യക്തി..." class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition">
+                                    <input type="text" id="bm-art-transcription" placeholder="കേട്ടെഴുത്ത്..." class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition">
                                 </div>
 
-                                <div class="space-y-1.5">
-                                    <label for="bm-art-priority" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
-                                        Book Order (പുസ്തകത്തിലെ ക്രമം)
+                                <div class="space-y-1.5 sm:col-span-2 md:col-span-1">
+                                    <label for="bm-art-priority" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english truncate">
+                                        Book Order (ക്രമം)
                                     </label>
                                     <input type="number" id="bm-art-priority" min="1" max="999" value="1" class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition">
                                 </div>
@@ -626,46 +593,7 @@
                         </div>
                     </div>
 
-                    <!-- ═══════════ 2. COMPACT EXISTING ARTICLES LIST (SCHEDULE / SELECTOR VIEW) ═══════════ -->
-                    <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
-                        <div class="flex items-center justify-between border-b border-[#f0e6d6] pb-3 flex-wrap gap-2">
-                            <div class="flex items-center gap-2.5">
-                                <span class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-900 flex items-center justify-center text-base font-bold">📋</span>
-                                <div>
-                                    <h3 class="text-sm font-extrabold text-[#78350f]">നിലവിലുള്ള ലേഖനങ്ങൾ പുസ്തകത്തിലേക്ക് ചേർക്കുക</h3>
-                                    <p class="text-[11px] text-[#8c7a6b]">Check all published articles to attach or detach from this edition</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button type="button" id="bm-select-all-btn" class="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Select All</button>
-                                <button type="button" id="bm-deselect-all-btn" class="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Clear</button>
-                            </div>
-                        </div>
-
-                        <!-- Search Filter Bar -->
-                        <div class="relative">
-                            <input type="text" id="bm-articles-search" placeholder="ലേഖനങ്ങൾ അല്ലെങ്കിൽ രചയിതാവിന്റെ പേര് വെച്ച് തിരയുക..." class="w-full text-xs p-3 pl-9 rounded-xl border border-slate-200 focus:border-amber-500 outline-none bg-slate-50">
-                            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        </div>
-
-                        <!-- Compact Scrollable List -->
-                        <div id="bm-compact-articles-list" class="max-h-72 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 rounded-2xl p-2 bg-slate-50/40">
-                            <p class="text-xs text-center py-6 text-slate-400">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
-                        </div>
-
-                        <!-- Batch Action Button -->
-                        <div class="pt-2 flex items-center justify-between flex-wrap gap-2">
-                            <span class="text-xs font-bold text-slate-600 font-english">
-                                Selected: <strong id="bm-selected-count" class="text-amber-700">0</strong> articles
-                            </span>
-                            <button type="button" id="bm-attach-selected-btn" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow transition flex items-center gap-1.5">
-                                <span>തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക</span>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- ═══════════ 3. BOOK COVER PAGE (DEDICATED COVER UPLOADER) ═══════════ -->
+                    <!-- ═══════════ 2. BOOK COVER PAGE (DEDICATED COVER UPLOADER) ═══════════ -->
                     <div class="p-6 bg-blue-50/80 border-2 border-blue-200 rounded-3xl space-y-5">
                         <div class="flex items-center gap-3 border-b border-blue-200 pb-3">
                             <span class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-lg">🖼️</span>
@@ -698,7 +626,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800 mb-1">Series / Publication Tag (പ്രത്യേക പതിപ്പ് ടാഗ്)</label>
-                                    <input type="text" id="book-meta-tag" list="bm-series-suggestions" placeholder="e.g. Premium Book / Special Book Series" value="Premium Book" class="w-full text-xs font-bold p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                    <input type="text" id="book-meta-tag" placeholder="e.g. Premium Book" value="Premium Book" class="w-full text-xs font-bold p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800 mb-1">Intro / Editorial Note</label>
@@ -713,7 +641,7 @@
                         </button>
                     </div>
 
-                    <!-- ═══════════ 4. PRESENTATION UPLOAD (PDF / SLIDES) ═══════════ -->
+                    <!-- ═══════════ 3. PRESENTATION UPLOAD (PDF / SLIDES) ═══════════ -->
                     <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
                         <div class="flex items-center gap-3 border-b border-[#f0e6d6] pb-3">
                             <span class="w-9 h-9 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center text-lg shadow-xs">📑</span>
@@ -750,7 +678,7 @@
                         </div>
                     </div>
 
-                    <!-- Active Books Live Overview -->
+                    <!-- ═══════════ 4. ACTIVE BOOKS LIVE OVERVIEW ═══════════ -->
                     <div class="bg-white p-6 rounded-3xl border border-[#ebdccb] shadow-sm space-y-3">
                         <span class="text-xs font-bold text-[#1e1b18] flex items-center justify-between">
                             <span>📊 നിലവിൽ ലഭ്യമായ പുസ്തകങ്ങൾ (Active Books):</span>
@@ -758,6 +686,53 @@
                         </span>
                         <div id="active-playlists-overview" class="space-y-2 max-h-48 overflow-y-auto pr-1">
                             <p class="text-[11px] text-amber-800/70">പരിശോധിക്കുന്നു...</p>
+                        </div>
+                    </div>
+
+                    <!-- ═══════════ 5. ATTACH EXISTING ARTICLES SECTION (VERY BOTTOM) ═══════════ -->
+                    <div class="bg-white p-6 md:p-8 rounded-3xl border-2 border-amber-400/40 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-[#f0e6d6] pb-3 flex-wrap gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-900 flex items-center justify-center text-base font-bold">📋</span>
+                                <div>
+                                    <h3 class="text-sm font-extrabold text-[#78350f]">നിലവിലുള്ള ലേഖനങ്ങൾ പുസ്തകത്തിലേക്ക് ചേർക്കുക</h3>
+                                    <p class="text-[11px] text-[#8c7a6b]">എല്ലാ വിഭാഗങ്ങളിലുമുള്ള പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങൾ തിരഞ്ഞെടുത്ത് പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യാം</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" id="bm-select-all-btn" class="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Select All</button>
+                                <button type="button" id="bm-deselect-all-btn" class="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Clear</button>
+                            </div>
+                        </div>
+
+                        <!-- Target Book Input for Attaching -->
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200">
+                            <label for="bm-target-attach-book" class="text-xs font-extrabold text-[#78350f] whitespace-nowrap flex items-center gap-1.5">
+                                <span>🎯 ലക്ഷ്യ പുസ്തകം (Target Book):</span>
+                            </label>
+                            <input type="text" id="bm-target-attach-book" list="playlist-suggestions" placeholder="ലേഖനങ്ങൾ ചേർക്കേണ്ട പുസ്തകത്തിന്റെ പേര് നൽകുക..." class="flex-1 text-xs font-bold p-2.5 rounded-xl border border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18]">
+                        </div>
+
+                        <!-- Search Filter Bar -->
+                        <div class="relative">
+                            <input type="text" id="bm-articles-search" placeholder="ലേഖനങ്ങൾ അല്ലെങ്കിൽ രചയിതാവിന്റെ പേര് വെച്ച് തിരയുക..." class="w-full text-xs p-3 pl-9 rounded-xl border border-slate-200 focus:border-amber-500 outline-none bg-slate-50">
+                            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+
+                        <!-- Compact Scrollable List (Automatically fetches all published articles) -->
+                        <div id="bm-compact-articles-list" class="max-h-72 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 rounded-2xl p-2 bg-slate-50/40">
+                            <p class="text-xs text-center py-6 text-slate-400">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
+                        </div>
+
+                        <!-- Batch Action Button -->
+                        <div class="pt-2 flex items-center justify-between flex-wrap gap-2">
+                            <span class="text-xs font-bold text-slate-600 font-english">
+                                Selected: <strong id="bm-selected-count" class="text-amber-700">0</strong> articles
+                            </span>
+                            <button type="button" id="bm-attach-selected-btn" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow transition flex items-center gap-1.5">
+                                <span>തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </button>
                         </div>
                     </div>
 

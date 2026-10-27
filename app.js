@@ -636,17 +636,6 @@ function renderHomeFeed(container) {
         html += `</div>`;
     }
 
-    // Also render any remaining Playlist widgets (now labeled as Series)
-    Object.keys(booksMap).forEach(bName => {
-        const isAlreadyShownAsBook = bookCovers.some(bc => bc.bookName === bName);
-        if (!isAlreadyShownAsBook) {
-            const bArticles = booksMap[bName].sort(comparePriority);
-            if (bArticles.length >= 2) {
-                html += buildBookWidget(bName, bArticles);
-            }
-        }
-    });
-
     // 4. Category Feed: Standard categorized list with prominent Featured card & compact subsequent list
     // Discover all unique categories present across articles
     const existingCats = new Set(allArticles.map(a => (a.category || "").toUpperCase()).filter(Boolean));

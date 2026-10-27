@@ -164,9 +164,10 @@ export function switchAdminTab(tabName) {
     // Update window hash without scrolling
     history.replaceState(null, null, `#tab=${tabName}`);
 
-    // If switching to book tab, refresh the active book overview
+    // If switching to book tab, refresh the active book overview and all articles
     if (tabName === "book") {
         updateActiveBookOverview(currentArticlesList);
+        renderBookManagerCompactArticles(currentArticlesList);
     }
 
     // If switching to layout tab, refresh layout manager cards
@@ -1017,8 +1018,16 @@ window.setPlaylistInput = function (name) {
     if (playlistInput) {
         playlistInput.value = name;
         playlistInput.focus();
-        showGlobalStatus(`പ്ലേലിസ്റ്റ് '${name}' സെലക്ട് ചെയ്തു!`, "info");
     }
+    const bmBookName = document.getElementById("bm-book-name");
+    if (bmBookName) bmBookName.value = name;
+    const bmTargetBook = document.getElementById("bm-target-attach-book");
+    if (bmTargetBook) bmTargetBook.value = name;
+    const bookMetaName = document.getElementById("book-meta-name");
+    if (bookMetaName && !bookMetaName.value) bookMetaName.value = name;
+
+    showGlobalStatus(`പുസ്തകം '${name}' തിരഞ്ഞെടുത്തു!`, "info");
+    renderBookManagerCompactArticles(currentArticlesList, name);
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -1111,11 +1120,11 @@ function initBookManagerDirectWriter() {
             const transcription = document.getElementById("bm-art-transcription")?.value.trim() || "";
             const priority = parseInt(document.getElementById("bm-art-priority")?.value, 10) || 1;
             const content = document.getElementById("bm-art-content")?.value.trim();
-            const bookName = document.getElementById("bm-selected-book")?.value.trim();
+            const bookName = document.getElementById("bm-book-name")?.value.trim() || document.getElementById("bm-selected-book")?.value.trim();
 
             if (!bookName) {
-                alert("ദയവായി മുകളിൽ പുസ്തകത്തിന്റെ പേര് (Book / Edition Name) നൽകുക അല്ലെങ്കിൽ തിരഞ്ഞെടുക്കുക.");
-                document.getElementById("bm-selected-book")?.focus();
+                alert("ദയവായി പുസ്തകത്തിന്റെ പേര് (Book / Edition Name) നൽകുക.");
+                document.getElementById("bm-book-name")?.focus();
                 return;
             }
             if (!title || title.length < 2) {
@@ -1176,14 +1185,20 @@ function initBookManagerDirectWriter() {
 
 function initBookManagerExistingArticlesList() {
     const searchInput = document.getElementById("bm-articles-search");
+    const targetBookInput = document.getElementById("bm-target-attach-book");
     const selectAllBtn = document.getElementById("bm-select-all-btn");
     const deselectAllBtn = document.getElementById("bm-deselect-all-btn");
     const attachBtn = document.getElementById("bm-attach-selected-btn");
 
     if (searchInput) {
         searchInput.addEventListener("input", () => {
-            const activeBook = document.getElementById("bm-selected-book")?.value.trim() || "";
-            renderBookManagerCompactArticles(currentArticlesList, activeBook);
+            renderBookManagerCompactArticles(currentArticlesList);
+        });
+    }
+
+    if (targetBookInput) {
+        targetBookInput.addEventListener("input", () => {
+            renderBookManagerCompactArticles(currentArticlesList, targetBookInput.value.trim());
         });
     }
 
@@ -1203,10 +1218,10 @@ function initBookManagerExistingArticlesList() {
 
     if (attachBtn) {
         attachBtn.addEventListener("click", async () => {
-            const activeBook = document.getElementById("bm-selected-book")?.value.trim();
+            const activeBook = document.getElementById("bm-target-attach-book")?.value.trim() || document.getElementById("bm-book-name")?.value.trim() || document.getElementById("bm-selected-book")?.value.trim();
             if (!activeBook) {
-                alert("ദയവായി മുകളിൽ ഒരു പുസ്തകത്തിന്റെ പേര് (Book / Edition Name) നൽകുക.");
-                document.getElementById("bm-selected-book")?.focus();
+                alert("ദയവായി ലേഖനങ്ങൾ അറ്റാച്ച് ചെയ്യേണ്ട ലക്ഷ്യ പുസ്തകത്തിന്റെ പേര് (Target Book Name) നൽകുക.");
+                document.getElementById("bm-target-attach-book")?.focus();
                 return;
             }
 
@@ -1230,6 +1245,7 @@ function initBookManagerExistingArticlesList() {
                     }
                 }
                 showGlobalStatus(`${checked.length} ലേഖനങ്ങൾ '${activeBook}' ലേക്ക് വിജയകരമായി അറ്റാച്ച് ചെയ്തു! ✨`, "success");
+                renderBookManagerCompactArticles(currentArticlesList, activeBook);
             } catch (err) {
                 console.error("Attach articles to book error:", err);
                 showGlobalStatus("ലേഖനങ്ങൾ അറ്റാച്ച് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
@@ -1239,6 +1255,9 @@ function initBookManagerExistingArticlesList() {
             }
         });
     }
+
+    // Immediately render all articles upon init
+    renderBookManagerCompactArticles(currentArticlesList);
 }
 
 function updateBmSelectedCount() {
@@ -1251,11 +1270,12 @@ function renderBookManagerCompactArticles(articles, activeBookParam) {
     const listEl = document.getElementById("bm-compact-articles-list");
     if (!listEl) return;
 
-    const activeBook = activeBookParam !== undefined ? activeBookParam : (document.getElementById("bm-selected-book")?.value.trim() || "");
+    const listToRender = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
+    const activeBook = activeBookParam !== undefined ? activeBookParam : (document.getElementById("bm-target-attach-book")?.value.trim() || document.getElementById("bm-book-name")?.value.trim() || document.getElementById("bm-selected-book")?.value.trim() || "");
     const searchTerm = (document.getElementById("bm-articles-search")?.value || "").toLowerCase().trim();
 
-    // Filter articles (exclude pure BOOK covers if needed, or show regular articles)
-    let filtered = articles.filter(a => a.type !== "BOOK");
+    // Filter articles (exclude pure BOOK covers if needed, show all regular articles)
+    let filtered = listToRender.filter(a => a.type !== "BOOK");
     if (searchTerm) {
         filtered = filtered.filter(a => 
             (a.title || "").toLowerCase().includes(searchTerm) ||
@@ -1422,6 +1442,7 @@ function listenToFirestoreArticles() {
         updateArticleCounters(items.length);
         renderAdminPublishedList(items);
         updateActiveBookOverview(items);
+        renderBookManagerCompactArticles(items);
         renderLayoutManagerList(items);
     }
 
