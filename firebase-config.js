@@ -39,6 +39,7 @@ export const db = initializeFirestore(app, {
 });
 
 export { 
+  app,
   collection, 
   getDocs, 
   getDoc, 

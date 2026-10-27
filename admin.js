@@ -1612,6 +1612,9 @@ function renderAdminPublishedList(items) {
                     </a>
 
                     <div class="flex items-center gap-2">
+                        <button type="button" onclick="window.viewArticleComments('${data.id}', '${(data.title || '').replace(/'/g, "\\'")}')" title="ലേഖന അഭിപ്രായങ്ങളും ഇമെയിലുകളും കാണുക" class="inline-flex items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/20 border border-blue-200 px-3 py-1 rounded-xl transition font-english">
+                            <span>💬 Comments</span>
+                        </button>
                         <button type="button" onclick="window.startEditArticle('${data.id}')" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                             <span>Edit</span>
@@ -2093,4 +2096,103 @@ window.renderAdminAuthorsTab = renderAdminAuthorsTab;
 window.setBmSeriesTag = function(tag) {
     const el = document.getElementById("bm-art-category");
     if (el) el.value = tag;
+};
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN COMMENTS MODAL & VISIBILITY CONTROLLER
+   ═══════════════════════════════════════════════════════════ */
+window.viewArticleComments = async function(articleId, articleTitle) {
+    const modal = document.getElementById("admin-comments-modal");
+    const titleEl = document.getElementById("modal-article-title");
+    const countEl = document.getElementById("modal-comments-count");
+    const bodyEl = document.getElementById("modal-comments-body");
+    if (!modal || !bodyEl) return;
+
+    modal.classList.remove("hidden");
+    if (titleEl) titleEl.textContent = articleTitle || "Article";
+    if (countEl) countEl.textContent = "...";
+    bodyEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-8">അഭിപ്രായങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>`;
+
+    try {
+        const commentsCol = collection(db, "articles", articleId, "comments");
+        const q = query(commentsCol, orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
+        const comments = [];
+        snap.forEach(d => comments.push({ id: d.id, ...d.data() }));
+
+        if (countEl) countEl.textContent = comments.length;
+
+        if (comments.length === 0) {
+            bodyEl.innerHTML = `
+                <div class="text-center py-10 text-xs text-[#8c7a6b] space-y-1">
+                    <p class="font-bold text-sm">അഭിപ്രായങ്ങളൊന്നും ഇല്ല</p>
+                    <p>ഈ ലേഖനത്തിൽ ഇതുവരെ അഭിപ്രായങ്ങൾ രേഖപ്പെടുത്തിയിട്ടില്ല.</p>
+                </div>
+            `;
+            return;
+        }
+
+        bodyEl.innerHTML = comments.map(c => {
+            const cleanName = (c.name || "വായനക്കാരൻ").replace(/<[^>]*>?/gm, '');
+            const cleanEmail = (c.email || "ലോഗിൻ ചെയ്യാത്ത ഇമെയിൽ").replace(/<[^>]*>?/gm, '');
+            const cleanComment = (c.comment || "").replace(/<[^>]*>?/gm, '');
+            const initial = cleanName.charAt(0).toUpperCase() || "W";
+            let dateStr = "ഇപ്പോൾ";
+            if (c.createdAt) {
+                try {
+                    const ms = typeof c.createdAt === "number" ? c.createdAt : (c.createdAt.toMillis ? c.createdAt.toMillis() : Date.parse(c.createdAt));
+                    if (ms) dateStr = new Date(ms).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+                } catch {}
+            }
+
+            return `
+                <div class="p-3.5 rounded-2xl bg-[#fbf7ee]/60 border border-[#ebdccb] space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            ${c.avatar ? `
+                                <img src="${c.avatar}" class="w-8 h-8 rounded-full object-cover border border-[#ebdccb] flex-shrink-0" alt="Avatar">
+                            ` : `
+                                <div class="w-8 h-8 rounded-full bg-[#b4532c] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                    ${initial}
+                                </div>
+                            `}
+                            <div class="min-w-0">
+                                <h5 class="text-xs font-bold text-[#1e1b18] truncate">${cleanName}</h5>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded font-mono font-semibold truncate max-w-xs">
+                                        📧 ${cleanEmail}
+                                    </span>
+                                    <span class="text-[10px] text-slate-400 font-english">${dateStr}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" onclick="window.deleteAdminComment('${articleId}', '${c.id}')" title="അഭിപ്രായം ഡിലീറ്റ് ചെയ്യുക" class="text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 text-xs px-2.5 py-1 rounded-lg border border-rose-200 transition font-bold font-english cursor-pointer flex-shrink-0">
+                            Delete
+                        </button>
+                    </div>
+                    <p class="text-xs text-[#4a3c33] pl-10 leading-relaxed font-sans">${cleanComment}</p>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error("Load comments error:", err);
+        bodyEl.innerHTML = `<p class="text-xs text-rose-600 text-center py-6">അഭിപ്രായങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു.</p>`;
+    }
+};
+
+window.closeCommentsModal = function() {
+    const modal = document.getElementById("admin-comments-modal");
+    if (modal) modal.classList.add("hidden");
+};
+
+window.deleteAdminComment = async function(articleId, commentId) {
+    if (!confirm("ഈ അഭിപ്രായം ശാശ്വതമായി ഒഴിവാക്കണോ?")) return;
+    try {
+        await deleteDoc(doc(db, "articles", articleId, "comments", commentId));
+        alert("അഭിപ്രായം ഒഴിവാക്കി.");
+        window.viewArticleComments(articleId, document.getElementById("modal-article-title")?.textContent || "");
+    } catch (err) {
+        console.error("Delete comment error:", err);
+        alert("ഡിലീറ്റ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു: " + err.message);
+    }
 };
