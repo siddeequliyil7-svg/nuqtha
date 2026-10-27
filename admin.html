@@ -707,10 +707,13 @@
 
                         <!-- Target Book Input for Attaching -->
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200">
-                            <label for="bm-target-attach-book" class="text-xs font-extrabold text-[#78350f] whitespace-nowrap flex items-center gap-1.5">
+                            <label for="bm-target-book-select" class="text-xs font-extrabold text-[#78350f] whitespace-nowrap flex items-center gap-1.5">
                                 <span>🎯 ലക്ഷ്യ പുസ്തകം (Target Book):</span>
                             </label>
-                            <input type="text" id="bm-target-attach-book" list="playlist-suggestions" placeholder="ലേഖനങ്ങൾ ചേർക്കേണ്ട പുസ്തകത്തിന്റെ പേര് നൽകുക..." class="flex-1 text-xs font-bold p-2.5 rounded-xl border border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18]">
+                            <select id="bm-target-book-select" class="text-xs font-bold p-2.5 rounded-xl border border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18] min-w-[200px]">
+                                <option value="">-- പുസ്തകം തിരഞ്ഞെടുക്കുക (Select Book) --</option>
+                            </select>
+                            <input type="text" id="bm-target-attach-book" list="playlist-suggestions" placeholder="അല്ലെങ്കിൽ പുസ്തകത്തിന്റെ പേര് നൽകുക..." class="flex-1 text-xs font-bold p-2.5 rounded-xl border border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18]">
                         </div>
 
                         <!-- Search Filter Bar -->

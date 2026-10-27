@@ -955,6 +955,7 @@ function updateActiveBookOverview(articles) {
     const container = document.getElementById("active-playlists-overview");
     const chipsContainer = document.getElementById("book-preset-chips");
     const suggestionsList = document.getElementById("playlist-suggestions");
+    const targetBookSelect = document.getElementById("bm-target-book-select");
     if (!container) return;
 
     // Group articles by book
@@ -977,6 +978,11 @@ function updateActiveBookOverview(articles) {
     // Update suggestions and chips
     if (suggestionsList) {
         suggestionsList.innerHTML = bookNames.map(name => `<option value="${name}">`).join("");
+    }
+    if (targetBookSelect) {
+        const currentVal = targetBookSelect.value;
+        targetBookSelect.innerHTML = '<option value="">-- പുസ്തകം തിരഞ്ഞെടുക്കുക (Select Book) --</option>' + bookNames.map(name => `<option value="${name}">📚 ${name}</option>`).join("");
+        if (currentVal && bookNames.includes(currentVal)) targetBookSelect.value = currentVal;
     }
     if (chipsContainer) {
         chipsContainer.innerHTML = bookNames.map(name => `
@@ -1186,6 +1192,7 @@ function initBookManagerDirectWriter() {
 function initBookManagerExistingArticlesList() {
     const searchInput = document.getElementById("bm-articles-search");
     const targetBookInput = document.getElementById("bm-target-attach-book");
+    const targetBookSelect = document.getElementById("bm-target-book-select");
     const selectAllBtn = document.getElementById("bm-select-all-btn");
     const deselectAllBtn = document.getElementById("bm-deselect-all-btn");
     const attachBtn = document.getElementById("bm-attach-selected-btn");
@@ -1196,9 +1203,21 @@ function initBookManagerExistingArticlesList() {
         });
     }
 
+    if (targetBookSelect) {
+        targetBookSelect.addEventListener("change", () => {
+            const selected = targetBookSelect.value.trim();
+            if (targetBookInput) targetBookInput.value = selected;
+            const directBookInput = document.getElementById("bm-book-name");
+            if (directBookInput && selected) directBookInput.value = selected;
+            renderBookManagerCompactArticles(currentArticlesList, selected);
+        });
+    }
+
     if (targetBookInput) {
         targetBookInput.addEventListener("input", () => {
-            renderBookManagerCompactArticles(currentArticlesList, targetBookInput.value.trim());
+            const val = targetBookInput.value.trim();
+            if (targetBookSelect) targetBookSelect.value = val;
+            renderBookManagerCompactArticles(currentArticlesList, val);
         });
     }
 
@@ -1235,6 +1254,10 @@ function initBookManagerExistingArticlesList() {
             attachBtn.innerHTML = "അറ്റാച്ച് ചെയ്യുന്നു...";
 
             try {
+                const checkedIds = new Set(checked.map(c => c.dataset.id));
+                const allCheckboxes = Array.from(document.querySelectorAll(".bm-article-chk"));
+
+                // Attach checked articles
                 for (const chk of checked) {
                     const id = chk.dataset.id;
                     if (id) {
@@ -1242,9 +1265,27 @@ function initBookManagerExistingArticlesList() {
                             bookName: activeBook,
                             updatedAt: serverTimestamp()
                         });
+                        const item = currentArticlesList.find(a => a.id === id);
+                        if (item) item.bookName = activeBook;
                     }
                 }
-                showGlobalStatus(`${checked.length} ലേഖനങ്ങൾ '${activeBook}' ലേക്ക് വിജയകരമായി അറ്റാച്ച് ചെയ്തു! ✨`, "success");
+
+                // Detach unchecked articles that were previously in this book
+                for (const chk of allCheckboxes) {
+                    const id = chk.dataset.id;
+                    if (id && !checkedIds.has(id)) {
+                        const item = currentArticlesList.find(a => a.id === id);
+                        if (item && item.bookName && item.bookName.trim().toLowerCase() === activeBook.toLowerCase()) {
+                            await updateDoc(doc(db, "articles", id), {
+                                bookName: "",
+                                updatedAt: serverTimestamp()
+                            });
+                            item.bookName = "";
+                        }
+                    }
+                }
+
+                showGlobalStatus(`✨ '${activeBook}' ലേക്ക് ലേഖനങ്ങൾ അറ്റാച്ച് ചെയ്തു! (${checked.length} articles)`, "success");
                 renderBookManagerCompactArticles(currentArticlesList, activeBook);
             } catch (err) {
                 console.error("Attach articles to book error:", err);
