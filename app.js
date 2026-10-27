@@ -610,7 +610,6 @@ function renderHomeFeed(container) {
     // 3. Books / Editions Section (Collection of articles grouped under a Book cover)
     const booksMap = {};
     const bookCovers = allArticles.filter(a => a.type === "BOOK");
-    
     allArticles.forEach(a => {
         if (a.bookName && a.bookName.trim()) {
             const key = a.bookName.trim();
@@ -648,7 +647,7 @@ function renderHomeFeed(container) {
         }
     });
 
-    // 4. Category Feed: Standard categorized list with remaining articles
+    // 4. Category Feed: Standard categorized list with prominent Featured card & compact subsequent list
     // Discover all unique categories present across articles
     const existingCats = new Set(allArticles.map(a => (a.category || "").toUpperCase()).filter(Boolean));
     const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c))];
@@ -658,25 +657,63 @@ function renderHomeFeed(container) {
         const catArticles = allArticles.filter(a => (a.category || "").toUpperCase() === cat).sort(comparePriority);
         if (catArticles.length === 0) return;
 
-        // Show up to 4 compact cards per section under each category
-        const preview = catArticles.slice(0, 4);
-        const hasMore = catArticles.length > 4;
+        const theme = getCategoryTheme(cat);
+        const featuredArt = catArticles[0];
+        // Next 3 to 4 articles underneath in clean compact format
+        const subsequentArticles = catArticles.slice(1, 5);
+        const hasMore = catArticles.length > 5;
+        const catName = categoryLabel(cat);
 
-        html += buildCategorySectionHeader(cat, hasMore);
-        html += `<div class="category-cards-list space-y-3 mt-3">`;
-        preview.forEach(art => {
-            html += buildCompactRecentCard(art);
-        });
-        html += `</div>`;
+        html += `
+        <section class="category-section-block category-section-${cat.toLowerCase()} mt-7 sm:mt-9 p-3.5 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}">
+            ${buildCategorySectionHeader(cat, hasMore, false, theme)}
+            <!-- Featured First Article -->
+            <div class="category-featured-wrapper mt-3 mb-3 sm:mb-4">
+                ${buildCategoryFeaturedCard(featuredArt, theme)}
+            </div>
+
+            <!-- Subsequent Articles (Clean Compact List) -->
+            ${subsequentArticles.length > 0 ? `
+            <div class="category-cards-list space-y-2.5 sm:space-y-3">
+                ${subsequentArticles.map(art => buildCompactRecentCard(art, theme)).join('')}
+            </div>
+            ` : ''}
+
+            ${hasMore ? `
+            <div class="flex justify-end pt-3">
+                <button class="show-more-pill" data-category="${cat}" title="${catName} വിഭാഗത്തിലെ കൂടുതൽ ലേഖനങ്ങൾ കാണുക" style="border-color: ${theme.color}40; color: ${theme.color};">
+                    <span class="font-english">VIEW ALL ${catName}</span>
+                    <span class="text-xs">&rarr;</span>
+                </button>
+            </div>
+            ` : ''}
+        </section>
+        `;
     });
 
     // If no categorized articles exist, list remaining articles in a default section
     if (orderedCats.length === 0 && allArticles.length > 1) {
         const rest = allArticles.filter(a => a.id !== heroArticle.id);
-        html += buildCategorySectionHeader("ALL", false);
-        html += `<div class="category-cards-list space-y-3 mt-3">`;
-        rest.forEach(art => { html += buildCompactRecentCard(art); });
-        html += `</div>`;
+        const theme = getCategoryTheme("ALL");
+        const featuredArt = rest[0];
+        const subsequentArticles = rest.slice(1, 5);
+        const hasMore = rest.length > 5;
+
+        html += `
+        <section class="category-section-block category-section-all mt-7 sm:mt-9 p-3.5 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}">
+            ${buildCategorySectionHeader("ALL", false, false, theme)}
+            ${featuredArt ? `
+            <div class="category-featured-wrapper mt-3 mb-3 sm:mb-4">
+                ${buildCategoryFeaturedCard(featuredArt, theme)}
+            </div>
+            ` : ''}
+            ${subsequentArticles.length > 0 ? `
+            <div class="category-cards-list space-y-2.5 sm:space-y-3">
+                ${subsequentArticles.map(art => buildCompactRecentCard(art, theme)).join('')}
+            </div>
+            ` : ''}
+        </section>
+        `;
     }
 
     container.innerHTML = html;
@@ -728,10 +765,11 @@ function renderCategoryFeed(container, category) {
 }
 
 /* ─── Category Section Header: glass badge + show-more pill ─── */
-function buildCategorySectionHeader(cat, hasMore, isFilteredView = false) {
+function buildCategorySectionHeader(cat, hasMore, isFilteredView = false, theme = null) {
     const label = cat === "ALL" ? "പുതിയ ലേഖനങ്ങൾ" : categoryLabel(cat);
+    const t = theme || getCategoryTheme(cat);
     const showMoreBtn = (hasMore && !isFilteredView)
-        ? `<button class="show-more-pill" data-category="${cat}" title="${label} വിഭാഗത്തിലെ എല്ലാ ലേഖനങ്ങളും കാണുക">
+        ? `<button class="show-more-pill" data-category="${cat}" title="${label} വിഭാഗത്തിലെ എല്ലാ ലേഖനങ്ങളും കാണുക" style="border-color: ${t.color}40; color: ${t.color};">
             <span class="font-english">SHOW MORE</span>
             <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
             <span class="text-xs">&rsaquo;</span>
@@ -739,9 +777,10 @@ function buildCategorySectionHeader(cat, hasMore, isFilteredView = false) {
         : ``;
 
     return `
-    <div class="category-section-header flex items-center justify-between mt-7 mb-1">
-        <div class="category-glass-badge">
-            <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">${label}</span>
+    <div class="category-section-header flex items-center justify-between mb-2">
+        <div class="category-glass-badge border ${t.badgeBorder}">
+            <span class="w-2 h-2 rounded-full inline-block flex-shrink-0" style="background-color: ${t.color};"></span>
+            <span class="font-english text-xs font-black tracking-wider uppercase ${t.badgeText}">${label}</span>
         </div>
         ${showMoreBtn}
     </div>`;
@@ -837,6 +876,143 @@ function stripMarkdown(text) {
         .trim();
 }
 
+/* ═══════════ Category Theme Helper & Subtle Variations ═══════════ */
+function getCategoryTheme(cat) {
+    const c = (cat || "").toUpperCase();
+    if (c === "HISTORY") {
+        return {
+            color: "#b4532c",
+            darkColor: "#f87171",
+            sectionBorder: "border-[#b4532c]/25 dark:border-[#b4532c]/30",
+            cardBorder: "border-[#b4532c]/25 dark:border-[#b4532c]/30 hover:border-[#b4532c]/50",
+            bgTint: "from-[#b4532c]/[0.03] to-transparent dark:from-[#b4532c]/[0.05] dark:to-transparent",
+            badgeBg: "bg-[#b4532c]/10 dark:bg-[#b4532c]/20",
+            badgeText: "text-[#b4532c] dark:text-[#f87171]",
+            badgeBorder: "border-[#b4532c]/30 dark:border-[#b4532c]/40",
+            accentGrad: "from-[#b4532c] via-[#aa4923] to-[#7c2d12]"
+        };
+    } else if (c === "STUDY") {
+        return {
+            color: "#1d4ed8",
+            darkColor: "#60a5fa",
+            sectionBorder: "border-[#1d4ed8]/25 dark:border-[#3b82f6]/30",
+            cardBorder: "border-[#1d4ed8]/25 dark:border-[#3b82f6]/30 hover:border-[#1d4ed8]/50",
+            bgTint: "from-[#1d4ed8]/[0.03] to-transparent dark:from-[#1d4ed8]/[0.05] dark:to-transparent",
+            badgeBg: "bg-[#1d4ed8]/10 dark:bg-[#1d4ed8]/20",
+            badgeText: "text-[#1d4ed8] dark:text-[#60a5fa]",
+            badgeBorder: "border-[#1d4ed8]/30 dark:border-[#1d4ed8]/40",
+            accentGrad: "from-[#1e40af] via-[#1d4ed8] to-[#172554]"
+        };
+    } else if (c === "STORY") {
+        return {
+            color: "#059669",
+            darkColor: "#34d399",
+            sectionBorder: "border-[#059669]/25 dark:border-[#10b981]/30",
+            cardBorder: "border-[#059669]/25 dark:border-[#10b981]/30 hover:border-[#059669]/50",
+            bgTint: "from-[#059669]/[0.03] to-transparent dark:from-[#059669]/[0.05] dark:to-transparent",
+            badgeBg: "bg-[#059669]/10 dark:bg-[#059669]/20",
+            badgeText: "text-[#059669] dark:text-[#34d399]",
+            badgeBorder: "border-[#059669]/30 dark:border-[#059669]/40",
+            accentGrad: "from-[#047857] via-[#059669] to-[#064e3b]"
+        };
+    }
+    // Dynamic / General Fallback
+    return {
+        color: "#b4532c",
+        darkColor: "#f87171",
+        sectionBorder: "border-[#ebdccb] dark:border-white/10",
+        cardBorder: "border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/40",
+        bgTint: "from-white/40 to-transparent dark:from-white/[0.02] dark:to-transparent",
+        badgeBg: "bg-[#b4532c]/10 dark:bg-[#b4532c]/20",
+        badgeText: "text-[#b4532c] dark:text-[#f87171]",
+        badgeBorder: "border-[#ebdccb] dark:border-white/20",
+        accentGrad: "from-[#b8542c] to-[#803113]"
+    };
+}
+
+/* ═══════════ Category Featured Card (Larger & More Prominent) ═══════════ */
+function buildCategoryFeaturedCard(art, theme = null) {
+    const t = theme || getCategoryTheme(art.category);
+    const dateStr = art.date || formatDate(art.createdAt);
+    const cleanTitle = stripMarkdown(art.title);
+    const rawPreview = art.excerpt || (art.content ? art.content.substring(0, 160) : "");
+    const cleanPreview = stripMarkdown(rawPreview);
+    const preview = cleanPreview.substring(0, 150) + (cleanPreview.length > 150 ? "…" : "");
+    const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
+    const contentStyle = art.contentColor ? `style="color: ${art.contentColor};"` : '';
+
+    const authorName = art.author || "NUQTHA";
+    const authorInitial = authorName.trim().charAt(0) || "N";
+    const categoryMalayalam = categoryLabel(art.category);
+
+    return `
+    <article class="category-featured-card group cursor-pointer hover:shadow-xl transition-all duration-300 ${t.cardBorder}" data-id="${art.id}">
+        <a href="article.html?id=${art.id}" class="block">
+            <!-- Large Prominent Cover Image -->
+            <div class="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden bg-gradient-to-br ${t.accentGrad}">
+                ${art.imageUrl ? `
+                    <img src="${art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                ` : `
+                    <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90">
+                        <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        </div>
+                        <span class="text-xs font-bold uppercase tracking-widest text-white/80 font-english">${categoryMalayalam}</span>
+                    </div>
+                `}
+                <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
+                <!-- Floating Category Badge -->
+                <div class="absolute top-3 left-3 sm:top-4 sm:left-4 z-10">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-black/60 backdrop-blur-md text-white border border-white/20 shadow-sm font-english">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${t.color};"></span>
+                        FEATURED · ${categoryMalayalam}
+                    </span>
+                </div>
+                <!-- Floating Date -->
+                <div class="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
+                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-black/50 backdrop-blur-md text-white/90 border border-white/10 font-english">
+                        ${dateStr}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Content Area with Bolder Typography -->
+            <div class="p-4 sm:p-6 space-y-2.5 sm:space-y-3">
+                <h3 class="text-xl sm:text-2xl md:text-[1.65rem] font-black text-[#1e1b18] dark:text-white leading-snug tracking-tight group-hover:text-[${t.color}] transition-colors" ${titleStyle}>
+                    ${cleanTitle}
+                </h3>
+
+                ${preview ? `
+                <p class="text-xs sm:text-sm text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 sm:line-clamp-3 leading-relaxed" ${contentStyle}>
+                    ${preview}
+                </p>
+                ` : ''}
+
+                <!-- Author & CTA Row -->
+                <div class="flex items-center justify-between pt-3 border-t border-[#ebdccb]/60 dark:border-white/10 gap-2 flex-wrap">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center flex-shrink-0">
+                            ${authorInitial}
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
+                                ${authorName}
+                            </span>
+                            ${art.transcription ? `<span class="text-[10px] sm:text-[11px] font-semibold text-[#8c7a6b] dark:text-[#cbd5e1] font-['Noto_Sans_Malayalam']">📝 ${art.transcription}</span>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold font-english text-white shadow-sm transition-all group-hover:shadow-md" style="background-color: ${t.color};">
+                        <span>വായിക്കുക</span>
+                        <span class="text-xs">&rarr;</span>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </article>
+    `;
+}
+
 /* ═══════════ 1. Featured Article Card (Reference Design) ═══════════ */
 function buildFeaturedCard(art) {
     const dateStr = art.date || formatDate(art.createdAt);
@@ -919,7 +1095,7 @@ function buildFeaturedCard(art) {
 }
 
 /* ═══════════ 2. Compact Horizontal Recent Article Card ═══════════ */
-function buildCompactRecentCard(art) {
+function buildCompactRecentCard(art, theme = null) {
     const dateStr = art.date || formatDate(art.createdAt);
     const words = (art.content || "").length;
     const readMin = Math.max(1, Math.round(words / 400));
@@ -928,14 +1104,15 @@ function buildCompactRecentCard(art) {
 
     const categoryMalayalam = categoryLabel(art.category);
     const authorName = art.author || "NUQTHA";
+    const t = theme || getCategoryTheme(art.category);
 
     return `
-    <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300" data-id="${art.id}">
+    <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300 ${t.cardBorder}" data-id="${art.id}">
         <a href="article.html?id=${art.id}" class="flex items-center p-3 sm:p-4 gap-3.5 sm:gap-4 w-full">
             <!-- Left Thumbnail -->
-            <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#b8542c] to-[#803113]">
+            <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${t.accentGrad}">
                 ${art.imageUrl ? `
-                    <img src="${art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                    <img src="${art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
                 ` : `
                     <div class="w-full h-full flex items-center justify-center text-white/70 text-[10px]">
                         ചിത്രം
@@ -945,11 +1122,11 @@ function buildCompactRecentCard(art) {
 
             <!-- Right Details -->
             <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-                <span class="text-[11px] font-bold text-[#b4532c] dark:text-[#f87171] uppercase font-['Noto_Sans_Malayalam'] tracking-wide">
+                <span class="text-[11px] font-bold ${t.badgeText} uppercase font-['Noto_Sans_Malayalam'] tracking-wide">
                     [${categoryMalayalam}]
                 </span>
 
-                <h4 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[#b4532c] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
+                <h4 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[${t.color}] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
                     ${cleanTitle}
                 </h4>
 
@@ -1399,7 +1576,6 @@ function buildBookCard(book, articles) {
             `}
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
         </div>
-        
         <!-- Bottom Risala-Style Banner -->
         <div class="bg-[#b4532c] text-white p-4 text-center space-y-1 group-hover:bg-[#923e1b] transition-colors">
             <h3 class="text-sm sm:text-base font-bold tracking-tight font-['Anek_Malayalam']">
@@ -1415,12 +1591,11 @@ function buildBookCard(book, articles) {
 
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
 function attachCardListeners() {
-    document.querySelectorAll(".featured-article-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card").forEach(card => {
+    document.querySelectorAll(".featured-article-card, .category-featured-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card").forEach(card => {
         card.addEventListener("click", function (e) {
             // Direct navigation to article.html
             const id = this.dataset.id;
             const art = allArticles.find(a => a.id === id);
-            
             if (id && !e.target.closest("button") && !e.target.closest("a")) {
                 if (art && art.type === "BOOK") {
                     // Open Book index page/modal

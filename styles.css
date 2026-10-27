@@ -2053,3 +2053,42 @@ body.dark-mode #sidebar-drawer {
     background: rgba(255, 255, 255, 0.08);
 }
 
+
+/* ═══════════ Category Section Container & Subtle Themes ═══════════ */
+.category-section-block {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: all 0.3s ease;
+}
+
+.category-section-block .category-section-header {
+    margin-top: 0;
+}
+
+/* ═══════════ Category Featured Article Card ═══════════ */
+.category-featured-card {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(235, 220, 203, 0.85);
+    border-radius: 24px;
+    box-shadow: 0 4px 20px -4px rgba(70, 35, 15, 0.07);
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.category-featured-card:hover {
+    background: rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px -6px rgba(70, 35, 15, 0.12);
+}
+
+body.dark-mode .category-featured-card {
+    background: rgba(18, 20, 29, 0.75);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .category-featured-card:hover {
+    background: rgba(26, 30, 43, 0.9);
+}
