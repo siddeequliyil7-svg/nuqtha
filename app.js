@@ -1840,8 +1840,11 @@ function renderBooksCategoryFeed(container) {
                     </div>
                     <!-- Details / Meta Underneath -->
                     <div class="py-2 px-2.5 text-center bg-[#fbf7ee]/40 dark:bg-white/[0.02] border-t border-[#ebdccb]/60 dark:border-white/10 space-y-0.5">
-                        <p class="text-[11px] font-bold text-[#1e1b18] dark:text-white font-english tracking-wide truncate">
-                            ${book.category || 'Special Edition'} • ${book.date || 'Recent Issue'}
+                        <p class="text-xs font-bold text-[#1e1b18] dark:text-white font-english tracking-wide truncate">
+                            ${book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Volume ' + book.volume) : 'Volume 36'} • ${book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue: ' + book.issue) : 'Issue: 27'}
+                        </p>
+                        <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">
+                            ${book.date || 'Recent Issue'}
                         </p>
                         <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
                             ${count} ലേഖനങ്ങൾ ഉൾക്കൊള്ളുന്നു

@@ -271,6 +271,10 @@ export function validateAndSanitizeArticleForSave(raw) {
 
     // 9. Book Name
     const bookName = sanitizeString(raw.bookName || raw.playlistName, 120, "");
+    const volume = sanitizeString(raw.volume, 50, "");
+    const issue = sanitizeString(raw.issue, 50, "");
+    const leadTitle = sanitizeString(raw.leadTitle, 250, "");
+    const featuredTitle = sanitizeString(raw.featuredTitle, 250, "");
 
     // 10. Type (ARTICLE or BOOK)
     const type = raw.type === "BOOK" ? "BOOK" : "ARTICLE";
@@ -299,6 +303,10 @@ export function validateAndSanitizeArticleForSave(raw) {
         placement,
         priority,
         bookName,
+        volume,
+        issue,
+        leadTitle,
+        featuredTitle,
         type,
         date
     };
@@ -353,6 +361,10 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const placement = sanitizePlacement(rawDoc.placement);
     const priority = sanitizePriority(rawDoc.priority, 10);
     const bookName = sanitizeString(rawDoc.bookName || rawDoc.playlistName, 120, "");
+    const volume = sanitizeString(rawDoc.volume, 50, "");
+    const issue = sanitizeString(rawDoc.issue, 50, "");
+    const leadTitle = sanitizeString(rawDoc.leadTitle, 250, "");
+    const featuredTitle = sanitizeString(rawDoc.featuredTitle, 250, "");
     const type = rawDoc.type === "BOOK" ? "BOOK" : "ARTICLE";
 
     // Normalizing createdAt timestamp
@@ -374,6 +386,10 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         placement,
         priority,
         bookName,
+        volume,
+        issue,
+        leadTitle,
+        featuredTitle,
         type,
         date,
         createdAt

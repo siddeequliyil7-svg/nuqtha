@@ -939,9 +939,14 @@ function initBookSwitcherAndStep1() {
     if (publishBtn) {
         publishBtn.addEventListener("click", async () => {
             const name = document.getElementById("book-meta-name")?.value.trim();
-            const author = document.getElementById("book-meta-author")?.value.trim();
+            const volume = document.getElementById("book-meta-volume")?.value.trim() || "";
+            const issue = document.getElementById("book-meta-issue")?.value.trim() || "";
+            const dateVal = document.getElementById("book-meta-date")?.value.trim() || new Date().toLocaleDateString("en-GB");
+            const leadTitle = document.getElementById("book-meta-lead-title")?.value.trim() || "";
+            const author = document.getElementById("book-meta-author")?.value.trim() || "- എഡിറ്റോറിയൽ";
+            const featuredTitle = document.getElementById("book-meta-featured-title")?.value.trim() || "";
             const tag = document.getElementById("book-meta-tag")?.value.trim() || "Premium Book";
-            const desc = document.getElementById("book-meta-desc")?.value.trim();
+            const desc = document.getElementById("book-meta-desc")?.value.trim() || "";
 
             if (!name) {
                 alert("ദയവായി പുസ്തകത്തിന്റെ പേര് (Book Title) നൽകുക.");
@@ -973,6 +978,10 @@ function initBookSwitcherAndStep1() {
                 const payload = {
                     title: name,
                     bookName: name,
+                    volume: volume,
+                    issue: issue,
+                    leadTitle: leadTitle,
+                    featuredTitle: featuredTitle,
                     author: author,
                     category: tag,
                     imageUrl: coverImage,
@@ -981,7 +990,7 @@ function initBookSwitcherAndStep1() {
                     type: "BOOK",
                     placement: "AUTO",
                     priority: 1,
-                    date: new Date().toLocaleDateString("en-GB"),
+                    date: dateVal,
                     updatedAt: serverTimestamp()
                 };
 
@@ -1041,6 +1050,16 @@ function resetBookManagerForm() {
     if (authorInput) authorInput.value = "";
     if (tagInput) tagInput.value = "Premium Book";
     if (descInput) descInput.value = "";
+    const volInput = document.getElementById("book-meta-volume");
+    const issInput = document.getElementById("book-meta-issue");
+    const dateInput = document.getElementById("book-meta-date");
+    const leadInput = document.getElementById("book-meta-lead-title");
+    const featInput = document.getElementById("book-meta-featured-title");
+    if (volInput) volInput.value = "";
+    if (issInput) issInput.value = "";
+    if (dateInput) dateInput.value = "";
+    if (leadInput) leadInput.value = "";
+    if (featInput) featInput.value = "";
     if (removeBtn) removeBtn.click();
 
     const wrapper = document.getElementById("bm-step2-3-wrapper");
@@ -1083,6 +1102,16 @@ function selectActiveBook(bookName) {
     if (authorInput) authorInput.value = activeBookAuthor;
     if (tagInput) tagInput.value = bookCover?.category || "Premium Book";
     if (descInput) descInput.value = bookCover?.excerpt || bookCover?.content || "";
+    const volInput = document.getElementById("book-meta-volume");
+    const issInput = document.getElementById("book-meta-issue");
+    const dateInput = document.getElementById("book-meta-date");
+    const leadInput = document.getElementById("book-meta-lead-title");
+    const featInput = document.getElementById("book-meta-featured-title");
+    if (volInput) volInput.value = bookCover?.volume || "";
+    if (issInput) issInput.value = bookCover?.issue || "";
+    if (dateInput) dateInput.value = bookCover?.date || "";
+    if (leadInput) leadInput.value = bookCover?.leadTitle || "";
+    if (featInput) featInput.value = bookCover?.featuredTitle || "";
 
     if (bookCover?.imageUrl && previewImg && previewContainer && placeholder) {
         previewImg.src = bookCover.imageUrl;

@@ -700,50 +700,67 @@
                         </a>
                     </div>
 
-                    <!-- CLEAN EDITION HERO CARD (Matching Nuqtha's aesthetic) -->
-                    <div class="bg-gradient-to-br from-white via-[#fcfaf4] to-amber-50/30 dark:from-[#151722] dark:via-[#12141d] dark:to-[#1a1622] rounded-3xl p-5 sm:p-7 border border-[#ebdccb] dark:border-white/10 shadow-xs">
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-center">
-                            <!-- Left: 3:4 Vertical Magazine Cover -->
-                            <div class="md:col-span-4 w-full max-w-[210px] sm:max-w-[230px] mx-auto md:mx-0">
-                                <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-md bg-[#f7eedf] dark:bg-[#0c0d12] border border-[#ebdccb] dark:border-white/10 relative group">
+                    <!-- ═══════════ DEDICATED BOOK EDITION HEADER VIEW (Exact Reference Screenshot) ═══════════ -->
+                    <div class="bg-[#181920] text-white rounded-3xl p-6 sm:p-8 lg:p-10 shadow-2xl border border-white/10">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 lg:gap-10 items-center">
+                            <!-- Left: Large Vertical Magazine Cover (3:4) -->
+                            <div class="md:col-span-5 w-full max-w-[260px] sm:max-w-xs mx-auto md:mx-0">
+                                <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-[#0f1015] relative group border-2 border-white/15">
                                     ${book.imageUrl ? `
                                         <img src="${book.imageUrl}" alt="${book.title}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
                                     ` : `
-                                        <div class="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 text-center space-y-2">
-                                            <span class="text-3xl">📚</span>
-                                            <span class="text-[10px] font-bold uppercase font-english">Edition Cover</span>
+                                        <div class="w-full h-full flex flex-col items-center justify-center text-white/50 text-3xl font-bold space-y-2">
+                                            <span>📚</span>
+                                            <span class="text-xs uppercase font-english">Edition Cover</span>
                                         </div>
                                     `}
                                 </div>
                             </div>
 
-                            <!-- Right: Edition Details -->
-                            <div class="md:col-span-8 space-y-3 text-left">
-                                <div class="space-y-1.5">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="text-[10px] sm:text-xs font-black uppercase font-english tracking-wider bg-[#b4532c]/10 text-[#b4532c] dark:bg-[#f87171]/15 dark:text-[#f87171] px-2.5 py-0.5 rounded-full border border-[#b4532c]/20">
-                                            ${book.category || "Special Edition"}
-                                        </span>
-                                        <span class="text-xs font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-english">
-                                            ${book.date || "Recent Issue"}
-                                        </span>
+                            <!-- Right: Styled Banner Area (Highlighted in User Reference) -->
+                            <div class="md:col-span-7 space-y-3.5 text-left">
+                                <!-- Red / Crimson Title -->
+                                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-[#f87171] tracking-tight font-['Anek_Malayalam']">
+                                    ${book.title}
+                                </h1>
+
+                                <!-- Volume, Issue & Date Metadata -->
+                                <p class="text-xs sm:text-sm font-bold text-slate-400 font-english uppercase tracking-wider">
+                                    ${book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Volume ' + book.volume) : 'Volume 36'} • ${book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue: ' + book.issue) : 'Issue: 27'} | ${book.date || '28 October 2026'}
+                                </p>
+
+                                <!-- Lead Editorial Heading & Subtitle -->
+                                ${book.leadTitle ? `
+                                    <div class="pt-2 space-y-0.5">
+                                        <h2 class="text-lg sm:text-xl lg:text-2xl font-bold text-white font-['Anek_Malayalam'] leading-snug">
+                                            ${book.leadTitle}
+                                        </h2>
+                                        ${book.author ? `<p class="text-xs text-slate-400 font-['Noto_Sans_Malayalam']">${book.author.startsWith('-') ? book.author : '- ' + book.author}</p>` : ''}
                                     </div>
+                                ` : (book.author ? `<p class="text-xs text-slate-400 font-['Noto_Sans_Malayalam']">- ${book.author}</p>` : '')}
 
-                                    <h1 class="text-xl sm:text-2xl lg:text-3xl font-black text-[#1e1b18] dark:text-white leading-tight font-['Anek_Malayalam']">
-                                        ${book.title}
-                                    </h1>
-                                </div>
+                                <!-- Divider Line (Exact to screenshot) -->
+                                <hr class="border-white/15 my-3">
 
-                                <div class="border-t border-[#ebdccb]/70 dark:border-white/10 pt-2.5">
-                                    <p class="text-xs sm:text-sm text-[#5a4b41] dark:text-[#cbd5e1] leading-relaxed font-['Noto_Sans_Malayalam']">
-                                        ${book.excerpt || book.content || "പ്രസിദ്ധീകരണത്തിന്റെ പുതിയ ലക്കം. താഴെ നൽകിയിരിക്കുന്ന ലേഖനങ്ങൾ വായിക്കാം."}
+                                <!-- Cover Story / Featured Title -->
+                                ${book.featuredTitle ? `
+                                    <h3 class="text-base sm:text-lg font-bold text-white font-['Anek_Malayalam'] pt-0.5">
+                                        ${book.featuredTitle}
+                                    </h3>
+                                ` : ''}
+
+                                <!-- Editorial Note / Description / Excerpt -->
+                                ${(book.excerpt || book.content) ? `
+                                    <p class="text-xs sm:text-sm text-slate-300 font-['Noto_Sans_Malayalam'] leading-relaxed pt-1">
+                                        ${book.excerpt || book.content}
                                     </p>
-                                </div>
+                                ` : ''}
 
-                                <div class="pt-1 flex items-center gap-3">
-                                    <span class="text-xs font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam'] flex items-center gap-1.5 bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 px-3 py-1.5 rounded-xl shadow-2xs">
+                                <!-- Available Articles Pill -->
+                                <div class="pt-2 flex items-center gap-3 text-xs font-bold text-slate-300 font-english">
+                                    <span class="px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 flex items-center gap-1.5">
                                         <span>📚</span>
-                                        <span><strong id="book-count-label" class="text-[#1e1b18] dark:text-white font-english">...</strong> ലേഖനങ്ങൾ ഉൾക്കൊള്ളുന്നു</span>
+                                        <span><strong id="book-count-label" class="text-white">...</strong> ലേഖനങ്ങൾ ലഭ്യമാണ്</span>
                                     </span>
                                 </div>
                             </div>
