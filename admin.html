@@ -458,132 +458,286 @@
                  TAB 2: ബുക്ക് മാനേജർ (BOOK / EDITION MANAGER)
                  ═══════════════════════════════════════════════════════════ -->
             <div class="admin-tab-pane" data-pane="book">
-                <div class="max-w-4xl mx-auto space-y-6">
-                    <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-6">
+                <div class="max-w-5xl mx-auto space-y-6">
 
-                        <!-- Header -->
-                        <div class="border-b border-[#f0e6d6] pb-4 flex items-center justify-between">
+                    <!-- Header & Book Selection Card -->
+                    <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-5">
+                        <div class="border-b border-[#f0e6d6] pb-4 flex items-center justify-between flex-wrap gap-3">
                             <div>
-                                <h2 class="text-xl font-extrabold text-[#1e1b18]">ബുക്ക് മാനേജർ (Book / Edition Manager)</h2>
-                                <p class="text-xs text-[#8c7a6b] mt-0.5">ലേഖനങ്ങളെ ഒന്നിച്ച് ഒരു പുസ്തകമായി അല്ലെങ്കിൽ പതിപ്പായി പ്രസിദ്ധീകരിക്കാം</p>
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-900 flex items-center justify-center text-lg font-black shadow-xs">📚</span>
+                                    <h2 class="text-xl font-extrabold text-[#1e1b18]">ബുക്ക് മാനേജർ (Book / Edition Manager)</h2>
+                                </div>
+                                <p class="text-xs text-[#8c7a6b] mt-1">പ്രത്യേക പതിപ്പുകൾ നിർമ്മിക്കാനും, നേരിട്ട് ലേഖനങ്ങൾ എഴുതി ചേർക്കാനും, നിലവിലുള്ളവ അറ്റാച്ച് ചെയ്യാനും സാധിക്കും</p>
                             </div>
-                            <span class="text-xs font-bold font-english text-amber-700 bg-amber-100 px-3 py-1 rounded-full">
+                            <span class="text-xs font-bold font-english text-amber-700 bg-amber-100 border border-amber-200 px-3.5 py-1.5 rounded-full">
                                 Folder 2 / 4
                             </span>
                         </div>
 
-                        <!-- Book Creation Option -->
-                        <div class="p-6 bg-blue-50/80 border-2 border-blue-200 rounded-3xl space-y-5">
-                            <div class="flex items-center gap-3 border-b border-blue-200 pb-3">
-                                <span class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-lg">🖼️</span>
-                                <div>
-                                    <h3 class="text-base font-black text-blue-900 leading-tight">ബുക്ക് കവർ പേജ് (Dedicated Book Cover Page)</h3>
-                                    <p class="text-[11px] text-blue-700">ഈ എഡിഷന്റെ പ്രധാന കവർ ചിത്രം ഇവിടെ അപ്‌ലോഡ് ചെയ്യുക</p>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div class="space-y-2">
-                                    <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800">Cover Image</label>
-                                    <div class="border-2 border-dashed border-blue-300 hover:border-blue-600 rounded-2xl p-4 text-center bg-white/60 transition cursor-pointer relative group">
-                                        <input id="book-cover-input" type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                                        <div id="book-upload-placeholder" class="space-y-1">
-                                            <svg class="w-8 h-8 mx-auto text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                            <p class="text-[10px] font-bold text-blue-900">Upload Magazine Cover</p>
-                                        </div>
-                                        <div id="book-image-preview-container" class="hidden relative rounded-xl overflow-hidden h-32">
-                                            <img id="book-image-preview" src="" alt="Cover Preview" class="w-full h-full object-cover">
-                                            <button type="button" id="remove-book-img-btn" class="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full text-[8px] z-20">✕</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="space-y-4">
-                                    <div>
-                                        <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800 mb-1">Book / Edition Name</label>
-                                        <input type="text" id="book-meta-name" placeholder="e.g. ഒക്ടോബർ പതിപ്പ്" class="w-full text-xs font-bold p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800 mb-1">Intro / Editorial Note</label>
-                                        <textarea id="book-meta-desc" rows="2" placeholder="ഈ എഡിഷനെ കുറിച്ച് ചെറിയ വിവരണം..." class="w-full text-xs p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white"></textarea>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button type="button" id="publish-book-cover-btn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/30 transition flex items-center justify-center gap-2">
-                                <span>Save & Publish Book Cover</span>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-                            </button>
-                        </div>
-
-                        <!-- ═══════════ SPECIAL HIGHLIGHT: BOOK CARD ═══════════ -->
-                        <div class="playlist-featured-card space-y-4">
-                            <div class="flex items-center justify-between border-b border-amber-300/60 pb-3 flex-wrap gap-2">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-9 h-9 rounded-2xl bg-amber-500/25 border border-amber-400 text-amber-800 flex items-center justify-center text-lg shadow-sm">
-                                        📚
-                                    </span>
-                                    <div>
-                                        <h3 class="text-sm font-extrabold text-[#78350f]">ലേഖനങ്ങൾ പുസ്തകത്തിലേക്ക് ചേർക്കുക</h3>
-                                        <p class="text-[11px] text-amber-900/80">ലേഖനങ്ങളെ ഒരു നിശ്ചിത പുസ്തകത്തിന്റെ ഭാഗമാക്കാൻ താഴെ പേര് നൽകുക</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Input with Datalist -->
-                            <div class="space-y-2">
-                                <label for="art-playlist-name" class="block text-xs font-bold text-[#78350f] uppercase tracking-wide font-english">
-                                    Book / Edition Name (ഈ ലേഖനം ചേർക്കേണ്ട പുസ്തകം)
+                        <!-- Active Book / Edition Target Selector -->
+                        <div class="p-5 bg-gradient-to-r from-amber-50 to-orange-50/60 border-2 border-amber-300 rounded-2xl space-y-3">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <label for="bm-selected-book" class="text-xs font-extrabold text-[#78350f] uppercase tracking-wide font-english flex items-center gap-1.5">
+                                    <span>🎯</span> Active Book / Edition (പ്രവർത്തിക്കുന്ന പുസ്തകം):
                                 </label>
-                                <div class="relative">
-                                    <input type="text" id="art-playlist-name" list="playlist-suggestions" placeholder="e.g. ഒക്ടോബർ പതിപ്പ്, Special Edition, ചരിത്ര പുസ്തകം..." class="w-full text-sm font-bold p-3.5 rounded-xl border-2 border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18] shadow-sm">
-                                    <datalist id="playlist-suggestions">
-                                        <!-- Dynamic suggestions from existing books -->
-                                    </datalist>
-                                </div>
+                                <span id="bm-active-badge" class="px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold text-[11px]">പുസ്തകം തിരഞ്ഞെടുക്കുക</span>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                                <input type="text" id="bm-selected-book" list="playlist-suggestions" placeholder="e.g. ഒക്ടോബർ പതിപ്പ്, Special Edition, വോളിയം 15..." class="sm:col-span-8 text-xs font-bold p-3.5 rounded-xl border-2 border-amber-300 focus:outline-none focus:border-amber-600 bg-white text-[#1e1b18] shadow-xs">
+                                <datalist id="playlist-suggestions"></datalist>
+                                <button type="button" id="bm-apply-book-btn" class="sm:col-span-4 px-4 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm transition flex items-center justify-center gap-1.5">
+                                    <span>Set Active Book</span>
+                                    <span>✓</span>
+                                </button>
                             </div>
 
                             <!-- Clickable Preset Chips -->
-                            <div class="space-y-2 pt-1">
-                                <span class="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
-                                    <span>💡</span> പെട്ടെന്ന് തിരഞ്ഞെടുക്കാൻ നിലവിലുള്ള പുസ്തകങ്ങൾ:
+                            <div class="flex items-center gap-1.5 flex-wrap pt-1">
+                                <span class="text-[11px] font-bold text-amber-900 flex items-center gap-1">
+                                    <span>💡</span> നിലവിലുള്ള പുസ്തകങ്ങൾ:
                                 </span>
-                                <div id="book-preset-chips" class="flex flex-wrap gap-2">
+                                <div id="book-preset-chips" class="flex flex-wrap gap-1.5">
                                     <!-- Dynamic chips from admin.js -->
                                 </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <!-- Active Books Live Overview -->
-                            <div class="pt-3 border-t border-amber-300/50 space-y-2">
-                                <span class="text-xs font-bold text-amber-950 flex items-center justify-between">
-                                    <span>📊 നിലവിൽ ലഭ്യമായ പുസ്തകങ്ങൾ (Active Books):</span>
-                                    <span class="text-[10px] text-amber-800 font-normal">തത്സമയം അപ്‌ഡേറ്റ് ആകുന്നു</span>
-                                </span>
-                                <div id="active-playlists-overview" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-                                    <p class="text-[11px] text-amber-800/70">പരിശോധിക്കുന്നു...</p>
+                    <!-- ═══════════ 1. PRIMARY FEATURE: DIRECT NEW ARTICLE CREATION FORM ═══════════ -->
+                    <div class="bg-white p-6 md:p-8 rounded-3xl border-2 border-emerald-500/30 shadow-md space-y-6">
+                        <div class="flex items-center justify-between border-b border-emerald-100 pb-4 flex-wrap gap-2">
+                            <div class="flex items-center gap-3">
+                                <span class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-xl shadow-md">✍️</span>
+                                <div>
+                                    <h3 class="text-base sm:text-lg font-black text-emerald-950 leading-tight">പുതിയ ലേഖനം നേരിട്ട് എഴുതുക (Create Article for this Book)</h3>
+                                    <p class="text-[11px] text-emerald-800">തിരഞ്ഞെടുത്ത പുസ്തകത്തിലേക്ക് ഒരു പുതിയ ലേഖനം നേരിട്ട് എഴുതി പ്രസിദ്ധീകരിക്കാം</p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider font-english">
+                                Direct Article Writer
+                            </span>
+                        </div>
+
+                        <div class="space-y-5">
+                            <!-- Title & Author -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="space-y-1.5">
+                                    <label for="bm-art-title" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
+                                        Article Title (ലേഖനത്തിന്റെ തലക്കെട്ട്) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" id="bm-art-title" placeholder="ലേഖനത്തിന്റെ പ്രധാന തലക്കെട്ട് നൽകുക..." class="w-full text-sm font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition">
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <label for="bm-art-author" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
+                                        Author Name (രചയിതാവിന്റെ പേര്) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" id="bm-art-author" placeholder="രചയിതാവിന്റെ പേര് (e.g. അബൂബക്കർ സിദ്ദീഖ്)" class="w-full text-sm font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition">
+                                </div>
+                            </div>
+
+                            <!-- Category, Transcription, Priority -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="space-y-1.5">
+                                    <label for="bm-art-category" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
+                                        Category (വിഭാഗം)
+                                    </label>
+                                    <select id="bm-art-category" class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-white">
+                                        <option value="CURRENT_AFFAIRS">ആനുകാലികം (Current Affairs)</option>
+                                        <option value="EDITORIAL">എഡിറ്റോറിയൽ (Editorial)</option>
+                                        <option value="HISTORY">ചരിത്രം (History)</option>
+                                        <option value="POLITICS">രാഷ്ട്രീയം (Politics)</option>
+                                        <option value="CULTURE">സംസ്കാരം (Culture)</option>
+                                        <option value="SPIRITUAL">ആത്മീയം (Spiritual)</option>
+                                        <option value="FAMILY">കുടുംബം (Family)</option>
+                                        <option value="GENERAL" selected>ജനറൽ (General)</option>
+                                    </select>
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <label for="bm-art-transcription" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
+                                        Transcription / കേട്ടെഴുത്ത് (Optional)
+                                    </label>
+                                    <input type="text" id="bm-art-transcription" placeholder="കേട്ടെഴുത്ത് നിർവഹിച്ച വ്യക്തി..." class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition">
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <label for="bm-art-priority" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
+                                        Book Order (പുസ്തകത്തിലെ ക്രമം)
+                                    </label>
+                                    <input type="number" id="bm-art-priority" min="1" max="999" value="1" class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition">
+                                </div>
+                            </div>
+
+                            <!-- Dedicated Article Image Upload -->
+                            <div class="space-y-1.5">
+                                <label class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
+                                    Article Featured Image (വ്യക്തമായ ലേഖന ചിത്രം ചേർക്കാനുള്ള ഫീൽഡ്)
+                                </label>
+                                <div class="border-2 border-dashed border-emerald-300 hover:border-emerald-600 rounded-2xl p-4 text-center bg-emerald-50/30 hover:bg-emerald-50/50 transition cursor-pointer relative group">
+                                    <input id="bm-art-image-input" type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                    <div id="bm-art-image-placeholder" class="space-y-1">
+                                        <svg class="w-8 h-8 mx-auto text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        <p class="text-xs font-bold text-emerald-950">ലേഖന ചിത്രം അപ്‌ലോഡ് ചെയ്യുക (Click or Drag Article Image)</p>
+                                        <p class="text-[10px] text-emerald-700">PNG, JPG, WEBP • സ്വയം കംപ്രസ് ചെയ്യപ്പെടുന്നു</p>
+                                    </div>
+                                    <div id="bm-art-image-preview-container" class="hidden relative rounded-xl overflow-hidden max-h-48 mx-auto">
+                                        <img id="bm-art-image-preview" src="" alt="Article Preview" class="w-full h-44 object-cover rounded-xl">
+                                        <button type="button" id="bm-remove-art-img-btn" class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded-full text-[10px] font-bold shadow-md z-20">✕ Remove</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Article Content Editor -->
+                            <div class="space-y-1.5">
+                                <label for="bm-art-content" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english flex items-center justify-between">
+                                    <span>Article Content (ലേഖനത്തിന്റെ പൂർണ്ണ രൂപം) <span class="text-rose-500">*</span></span>
+                                    <span class="text-[10px] text-slate-500 font-normal">Markdown ഫോർമാറ്റിംഗ് പിന്തുണയ്ക്കുന്നു</span>
+                                </label>
+                                <textarea id="bm-art-content" rows="7" placeholder="ലേഖനത്തിന്റെ പൂർണ്ണ ഉള്ളടക്കം ഇവിടെ ടൈപ്പ് ചെയ്യുക അല്ലെങ്കിൽ പേസ്റ്റ് ചെയ്യുക..." class="w-full text-sm leading-relaxed p-4 rounded-2xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white font-['Noto_Sans_Malayalam'] transition"></textarea>
+                            </div>
+
+                            <!-- Publish Button -->
+                            <button type="button" id="bm-publish-article-btn" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                                <span>ഈ പുസ്തകത്തിലേക്ക് ലേഖനം പ്രസിദ്ധീകരിക്കുക (Publish to Selected Book)</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ═══════════ 2. COMPACT EXISTING ARTICLES LIST (SCHEDULE / SELECTOR VIEW) ═══════════ -->
+                    <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-[#f0e6d6] pb-3 flex-wrap gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-900 flex items-center justify-center text-base font-bold">📋</span>
+                                <div>
+                                    <h3 class="text-sm font-extrabold text-[#78350f]">നിലവിലുള്ള ലേഖനങ്ങൾ പുസ്തകത്തിലേക്ക് ചേർക്കുക</h3>
+                                    <p class="text-[11px] text-[#8c7a6b]">Check all published articles to attach or detach from this edition</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" id="bm-select-all-btn" class="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Select All</button>
+                                <button type="button" id="bm-deselect-all-btn" class="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Clear</button>
+                            </div>
+                        </div>
+
+                        <!-- Search Filter Bar -->
+                        <div class="relative">
+                            <input type="text" id="bm-articles-search" placeholder="ലേഖനങ്ങൾ അല്ലെങ്കിൽ രചയിതാവിന്റെ പേര് വെച്ച് തിരയുക..." class="w-full text-xs p-3 pl-9 rounded-xl border border-slate-200 focus:border-amber-500 outline-none bg-slate-50">
+                            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+
+                        <!-- Compact Scrollable List -->
+                        <div id="bm-compact-articles-list" class="max-h-72 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 rounded-2xl p-2 bg-slate-50/40">
+                            <p class="text-xs text-center py-6 text-slate-400">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
+                        </div>
+
+                        <!-- Batch Action Button -->
+                        <div class="pt-2 flex items-center justify-between flex-wrap gap-2">
+                            <span class="text-xs font-bold text-slate-600 font-english">
+                                Selected: <strong id="bm-selected-count" class="text-amber-700">0</strong> articles
+                            </span>
+                            <button type="button" id="bm-attach-selected-btn" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow transition flex items-center gap-1.5">
+                                <span>തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ═══════════ 3. BOOK COVER PAGE (DEDICATED COVER UPLOADER) ═══════════ -->
+                    <div class="p-6 bg-blue-50/80 border-2 border-blue-200 rounded-3xl space-y-5">
+                        <div class="flex items-center gap-3 border-b border-blue-200 pb-3">
+                            <span class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-lg">🖼️</span>
+                            <div>
+                                <h3 class="text-base font-black text-blue-900 leading-tight">ബുക്ക് കവർ പേജ് (Dedicated Book Cover Page)</h3>
+                                <p class="text-[11px] text-blue-700">ഈ എഡിഷന്റെ പ്രധാന കവർ ചിത്രം ഇവിടെ അപ്‌ലോഡ് ചെയ്യുക</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="space-y-2">
+                                <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800">Cover Image (Magazine Vertical Aspect 3:4)</label>
+                                <div class="border-2 border-dashed border-blue-300 hover:border-blue-600 rounded-2xl p-4 text-center bg-white/60 transition cursor-pointer relative group">
+                                    <input id="book-cover-input" type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                    <div id="book-upload-placeholder" class="space-y-1">
+                                        <svg class="w-8 h-8 mx-auto text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        <p class="text-[10px] font-bold text-blue-900">Upload Magazine Cover</p>
+                                    </div>
+                                    <div id="book-image-preview-container" class="hidden relative rounded-xl overflow-hidden h-32">
+                                        <img id="book-image-preview" src="" alt="Cover Preview" class="w-full h-full object-cover">
+                                        <button type="button" id="remove-book-img-btn" class="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full text-[8px] z-20">✕</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800 mb-1">Book / Edition Name</label>
+                                    <input type="text" id="book-meta-name" placeholder="e.g. ഒക്ടോബർ പതിപ്പ്" class="w-full text-xs font-bold p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-800 mb-1">Intro / Editorial Note</label>
+                                    <textarea id="book-meta-desc" rows="2" placeholder="ഈ എഡിഷനെ കുറിച്ച് ചെറിയ വിവരണം..." class="w-full text-xs p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white"></textarea>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Bottom Action Controls on Tab 2 -->
-                        <div class="pt-4 border-t border-[#f0e6d6] flex flex-col sm:flex-row items-center justify-between gap-3">
-                            <button type="button" data-switch-tab="create" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 transition">
-                                <span>&larr;</span>
-                                <span>തിരികെ ലേഖനത്തിലേക്ക് (Back to Editor)</span>
-                            </button>
+                        <button type="button" id="publish-book-cover-btn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] shadow-lg shadow-blue-500/30 transition flex items-center justify-center gap-2">
+                            <span>Save & Publish Book Cover</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </button>
+                    </div>
 
-                            <button type="button" data-switch-tab="layout" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition">
-                                <span>അടുത്തത്: ലേഔട്ട് മാനേജർ (Next: Layout Manager)</span>
-                                <span>&rarr;</span>
-                            </button>
-
-                            <button type="submit" class="submit-article-btn w-full sm:w-auto px-7 py-3.5 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
-                                <span>Publish Article/Book to Firestore</span>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                            </button>
+                    <!-- ═══════════ 4. PRESENTATION UPLOAD (PDF / SLIDES) ═══════════ -->
+                    <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
+                        <div class="flex items-center gap-3 border-b border-[#f0e6d6] pb-3">
+                            <span class="w-9 h-9 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center text-lg shadow-xs">📑</span>
+                            <div>
+                                <h3 class="text-sm font-extrabold text-indigo-950">പ്രസന്റേഷൻ / പതിപ്പ് ഫയൽ (Presentation / PDF / Slides Upload)</h3>
+                                <p class="text-[11px] text-[#8c7a6b]">ഈ എഡിഷന്റെ പൂർണ്ണ രൂപം PDF അല്ലെങ്കിൽ പ്രസന്റേഷൻ സ്ലൈഡുകളായി അപ്‌ലോഡ് ചെയ്യാം</p>
+                            </div>
                         </div>
 
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                            <div class="border-2 border-dashed border-indigo-200 hover:border-indigo-500 rounded-2xl p-4 text-center bg-indigo-50/30 transition cursor-pointer relative group">
+                                <input id="bm-presentation-file-input" type="file" accept=".pdf,.ppt,.pptx,.key" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                <div id="bm-presentation-placeholder" class="space-y-1">
+                                    <svg class="w-7 h-7 mx-auto text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                    <p class="text-xs font-bold text-indigo-900">Upload Presentation File (PDF / Slides)</p>
+                                    <p class="text-[10px] text-indigo-600">PDF, PPT, PPTX (Drag or Click)</p>
+                                </div>
+                                <div id="bm-presentation-file-info" class="hidden text-xs font-bold text-indigo-900 flex items-center justify-center gap-2 py-2">
+                                    <span id="bm-presentation-file-name" class="truncate max-w-xs">file.pdf</span>
+                                    <button type="button" id="bm-remove-presentation-btn" class="text-rose-600 hover:text-rose-700 text-xs font-bold z-20">✕</button>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold uppercase tracking-wider text-indigo-900 mb-1">External Presentation / Drive Link (Optional)</label>
+                                    <input type="url" id="bm-presentation-link" placeholder="https://drive.google.com/..." class="w-full text-xs p-3 rounded-xl border border-indigo-200 focus:border-indigo-600 outline-none bg-white">
+                                </div>
+                                <button type="button" id="bm-save-presentation-btn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] shadow-sm transition flex items-center justify-center gap-2">
+                                    <span>Save Presentation to Book</span>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Active Books Live Overview -->
+                    <div class="bg-white p-6 rounded-3xl border border-[#ebdccb] shadow-sm space-y-3">
+                        <span class="text-xs font-bold text-[#1e1b18] flex items-center justify-between">
+                            <span>📊 നിലവിൽ ലഭ്യമായ പുസ്തകങ്ങൾ (Active Books):</span>
+                            <span class="text-[10px] text-amber-800 font-normal">തത്സമയം അപ്‌ഡേറ്റ് ആകുന്നു</span>
+                        </span>
+                        <div id="active-playlists-overview" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            <p class="text-[11px] text-amber-800/70">പരിശോധിക്കുന്നു...</p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 

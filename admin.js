@@ -1018,6 +1018,379 @@ window.setPlaylistInput = function (name) {
 /* ═══════════════════════════════════════════════════════════
    7. LIVE FIRESTORE SYNC & PUBLISHED ARTICLES LIST (TAB 4)
    ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   6B. BOOK MANAGER SUITE (DIRECT WRITER, COMPACT ARTICLES & PRESENTATION)
+   ═══════════════════════════════════════════════════════════ */
+let bmSelectedArticleImageBase64 = "";
+let bmPresentationFileBase64 = "";
+let bmPresentationFileName = "";
+
+function initBookManagerDirectWriter() {
+    const fileInput = document.getElementById("bm-art-image-input");
+    const placeholder = document.getElementById("bm-art-image-placeholder");
+    const previewContainer = document.getElementById("bm-art-image-preview-container");
+    const previewImg = document.getElementById("bm-art-image-preview");
+    const removeBtn = document.getElementById("bm-remove-art-img-btn");
+    const publishBtn = document.getElementById("bm-publish-article-btn");
+    const applyBookBtn = document.getElementById("bm-apply-book-btn");
+    const selectedBookInput = document.getElementById("bm-selected-book");
+    const activeBadge = document.getElementById("bm-active-badge");
+
+    if (applyBookBtn && selectedBookInput) {
+        applyBookBtn.addEventListener("click", () => {
+            const val = selectedBookInput.value.trim();
+            if (!val) {
+                alert("ദയവായി പുസ്തകത്തിന്റെ പേര് നൽകുക.");
+                return;
+            }
+            window.setPlaylistInput(val);
+        });
+        selectedBookInput.addEventListener("change", () => {
+            const val = selectedBookInput.value.trim();
+            if (val) window.setPlaylistInput(val);
+        });
+    }
+
+    if (fileInput) {
+        fileInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    const maxDim = 1200;
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > height && width > maxDim) {
+                        height = Math.round((height * maxDim) / width);
+                        width = maxDim;
+                    } else if (height > maxDim) {
+                        width = Math.round((width * maxDim) / height);
+                        height = maxDim;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+                    bmSelectedArticleImageBase64 = canvas.toDataURL("image/jpeg", 0.85);
+                    if (previewImg) previewImg.src = bmSelectedArticleImageBase64;
+                    if (placeholder) placeholder.classList.add("hidden");
+                    if (previewContainer) previewContainer.classList.remove("hidden");
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (removeBtn) {
+        removeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            bmSelectedArticleImageBase64 = "";
+            if (fileInput) fileInput.value = "";
+            if (previewContainer) previewContainer.classList.add("hidden");
+            if (placeholder) placeholder.classList.remove("hidden");
+        });
+    }
+
+    if (publishBtn) {
+        publishBtn.addEventListener("click", async () => {
+            const title = document.getElementById("bm-art-title")?.value.trim();
+            const author = document.getElementById("bm-art-author")?.value.trim() || "NUQTHA";
+            const category = document.getElementById("bm-art-category")?.value || "GENERAL";
+            const transcription = document.getElementById("bm-art-transcription")?.value.trim() || "";
+            const priority = parseInt(document.getElementById("bm-art-priority")?.value, 10) || 1;
+            const content = document.getElementById("bm-art-content")?.value.trim();
+            const bookName = document.getElementById("bm-selected-book")?.value.trim();
+
+            if (!bookName) {
+                alert("ദയവായി മുകളിൽ പുസ്തകത്തിന്റെ പേര് (Book / Edition Name) നൽകുക അല്ലെങ്കിൽ തിരഞ്ഞെടുക്കുക.");
+                document.getElementById("bm-selected-book")?.focus();
+                return;
+            }
+            if (!title || title.length < 2) {
+                alert("ലേഖനത്തിന്റെ തലക്കെട്ട് (Title) കുറഞ്ഞത് 2 അക്ഷരങ്ങൾ വേണം.");
+                document.getElementById("bm-art-title")?.focus();
+                return;
+            }
+            if (!content || content.length < 5) {
+                alert("ലേഖനത്തിന്റെ ഉള്ളടക്കം (Content) നൽകുക.");
+                document.getElementById("bm-art-content")?.focus();
+                return;
+            }
+
+            publishBtn.disabled = true;
+            publishBtn.innerHTML = "പ്രസിദ്ധീകരിക്കുന്നു...";
+
+            try {
+                const raw = {
+                    title,
+                    author,
+                    category,
+                    transcription,
+                    priority,
+                    content,
+                    imageUrl: bmSelectedArticleImageBase64,
+                    bookName,
+                    type: "ARTICLE",
+                    placement: "AUTO",
+                    date: new Date().toLocaleDateString("en-GB")
+                };
+
+                const sanitized = validateAndSanitizeArticleForSave(raw);
+
+                await addDoc(collection(db, "articles"), {
+                    ...sanitized,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+
+                showGlobalStatus(`✨ '${title}' വിജയകരമായി '${bookName}' ലേക്ക് പ്രസിദ്ധീകരിച്ചു!`, "success");
+
+                // Reset fields but keep bookName
+                document.getElementById("bm-art-title").value = "";
+                document.getElementById("bm-art-content").value = "";
+                document.getElementById("bm-art-transcription").value = "";
+                if (removeBtn) removeBtn.click();
+
+            } catch (err) {
+                console.error("Direct book article publish error:", err);
+                showGlobalStatus(err.message || "ലേഖനം പ്രസിദ്ധീകരിക്കാൻ കഴിഞ്ഞില്ല.", "error");
+            } finally {
+                publishBtn.disabled = false;
+                publishBtn.innerHTML = `<span>ഈ പുസ്തകത്തിലേക്ക് ലേഖനം പ്രസിദ്ധീകരിക്കുക (Publish to Selected Book)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+            }
+        });
+    }
+}
+
+function initBookManagerExistingArticlesList() {
+    const searchInput = document.getElementById("bm-articles-search");
+    const selectAllBtn = document.getElementById("bm-select-all-btn");
+    const deselectAllBtn = document.getElementById("bm-deselect-all-btn");
+    const attachBtn = document.getElementById("bm-attach-selected-btn");
+
+    if (searchInput) {
+        searchInput.addEventListener("input", () => {
+            const activeBook = document.getElementById("bm-selected-book")?.value.trim() || "";
+            renderBookManagerCompactArticles(currentArticlesList, activeBook);
+        });
+    }
+
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener("click", () => {
+            document.querySelectorAll(".bm-article-chk").forEach(chk => { chk.checked = true; });
+            updateBmSelectedCount();
+        });
+    }
+
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener("click", () => {
+            document.querySelectorAll(".bm-article-chk").forEach(chk => { chk.checked = false; });
+            updateBmSelectedCount();
+        });
+    }
+
+    if (attachBtn) {
+        attachBtn.addEventListener("click", async () => {
+            const activeBook = document.getElementById("bm-selected-book")?.value.trim();
+            if (!activeBook) {
+                alert("ദയവായി മുകളിൽ ഒരു പുസ്തകത്തിന്റെ പേര് (Book / Edition Name) നൽകുക.");
+                document.getElementById("bm-selected-book")?.focus();
+                return;
+            }
+
+            const checked = Array.from(document.querySelectorAll(".bm-article-chk:checked"));
+            if (checked.length === 0) {
+                alert("ദയവായി പുസ്തകത്തിലേക്ക് ചേർക്കാൻ കുറഞ്ഞത് ഒരു ലേഖനമെങ്കിലും തിരഞ്ഞെടുക്കുക.");
+                return;
+            }
+
+            attachBtn.disabled = true;
+            attachBtn.innerHTML = "അറ്റാച്ച് ചെയ്യുന്നു...";
+
+            try {
+                for (const chk of checked) {
+                    const id = chk.dataset.id;
+                    if (id) {
+                        await updateDoc(doc(db, "articles", id), {
+                            bookName: activeBook,
+                            updatedAt: serverTimestamp()
+                        });
+                    }
+                }
+                showGlobalStatus(`${checked.length} ലേഖനങ്ങൾ '${activeBook}' ലേക്ക് വിജയകരമായി അറ്റാച്ച് ചെയ്തു! ✨`, "success");
+            } catch (err) {
+                console.error("Attach articles to book error:", err);
+                showGlobalStatus("ലേഖനങ്ങൾ അറ്റാച്ച് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
+            } finally {
+                attachBtn.disabled = false;
+                attachBtn.innerHTML = `<span>തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക</span><svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            }
+        });
+    }
+}
+
+function updateBmSelectedCount() {
+    const count = document.querySelectorAll(".bm-article-chk:checked").length;
+    const label = document.getElementById("bm-selected-count");
+    if (label) label.textContent = count;
+}
+
+function renderBookManagerCompactArticles(articles, activeBookParam) {
+    const listEl = document.getElementById("bm-compact-articles-list");
+    if (!listEl) return;
+
+    const activeBook = activeBookParam !== undefined ? activeBookParam : (document.getElementById("bm-selected-book")?.value.trim() || "");
+    const searchTerm = (document.getElementById("bm-articles-search")?.value || "").toLowerCase().trim();
+
+    // Filter articles (exclude pure BOOK covers if needed, or show regular articles)
+    let filtered = articles.filter(a => a.type !== "BOOK");
+    if (searchTerm) {
+        filtered = filtered.filter(a => 
+            (a.title || "").toLowerCase().includes(searchTerm) ||
+            (a.author || "").toLowerCase().includes(searchTerm) ||
+            (a.category || "").toLowerCase().includes(searchTerm) ||
+            (a.bookName || "").toLowerCase().includes(searchTerm)
+        );
+    }
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<p class="text-xs text-center py-6 text-slate-400">ലേഖനങ്ങളൊന്നും കണ്ടെത്താനായില്ല.</p>`;
+        updateBmSelectedCount();
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(art => {
+        const isBelong = Boolean(activeBook && art.bookName && art.bookName.trim().toLowerCase() === activeBook.toLowerCase());
+        const hasOtherBook = Boolean(art.bookName && art.bookName.trim() && !isBelong);
+
+        let badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500">Unassigned</span>`;
+        if (isBelong) {
+            badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">In this Book</span>`;
+        } else if (hasOtherBook) {
+            badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">${art.bookName}</span>`;
+        }
+
+        return `
+            <label class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200/60 hover:border-amber-300 transition cursor-pointer gap-2">
+                <div class="flex items-center gap-3 min-w-0">
+                    <input type="checkbox" class="bm-article-chk rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer" data-id="${art.id}" ${isBelong ? "checked" : ""}>
+                    ${art.imageUrl ? `<img src="${art.imageUrl}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">` : `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center text-xs flex-shrink-0">📄</span>`}
+                    <div class="min-w-0">
+                        <h5 class="text-xs font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">${art.title}</h5>
+                        <p class="text-[10px] text-slate-400">${art.author || "NUQTHA"} • ${art.date || "Recent"}</p>
+                    </div>
+                </div>
+                <div class="flex-shrink-0">
+                    ${badgeHtml}
+                </div>
+            </label>
+        `;
+    }).join("");
+
+    // Add listeners to checkboxes
+    document.querySelectorAll(".bm-article-chk").forEach(chk => {
+        chk.addEventListener("change", updateBmSelectedCount);
+    });
+    updateBmSelectedCount();
+}
+
+function initBookManagerPresentationUpload() {
+    const fileInput = document.getElementById("bm-presentation-file-input");
+    const placeholder = document.getElementById("bm-presentation-placeholder");
+    const fileInfo = document.getElementById("bm-presentation-file-info");
+    const fileNameEl = document.getElementById("bm-presentation-file-name");
+    const removeBtn = document.getElementById("bm-remove-presentation-btn");
+    const saveBtn = document.getElementById("bm-save-presentation-btn");
+    const linkInput = document.getElementById("bm-presentation-link");
+
+    if (fileInput) {
+        fileInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            bmPresentationFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                bmPresentationFileBase64 = event.target.result;
+                if (fileNameEl) fileNameEl.textContent = file.name + " (" + Math.round(file.size / 1024) + " KB)";
+                if (placeholder) placeholder.classList.add("hidden");
+                if (fileInfo) fileInfo.classList.remove("hidden");
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (removeBtn) {
+        removeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            bmPresentationFileBase64 = "";
+            bmPresentationFileName = "";
+            if (fileInput) fileInput.value = "";
+            if (fileInfo) fileInfo.classList.add("hidden");
+            if (placeholder) placeholder.classList.remove("hidden");
+        });
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener("click", async () => {
+            const activeBook = document.getElementById("bm-selected-book")?.value.trim();
+            const externalLink = linkInput?.value.trim() || "";
+
+            if (!activeBook) {
+                alert("ദയവായി പുസ്തകത്തിന്റെ പേര് (Book / Edition Name) നൽകുക.");
+                document.getElementById("bm-selected-book")?.focus();
+                return;
+            }
+
+            if (!bmPresentationFileBase64 && !externalLink) {
+                alert("ദയവായി പ്രസന്റേഷൻ ഫയൽ അപ്‌ലോഡ് ചെയ്യുകയോ ലിങ്ക് നൽകുകയോ ചെയ്യുക.");
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = "സേവ് ചെയ്യുന്നു...";
+
+            try {
+                // Find existing book cover or record
+                const existingBook = currentArticlesList.find(a => a.type === "BOOK" && a.bookName === activeBook);
+                const payload = {
+                    presentationUrl: externalLink || bmPresentationFileBase64,
+                    presentationName: bmPresentationFileName || "Edition Presentation",
+                    updatedAt: serverTimestamp()
+                };
+
+                if (existingBook) {
+                    await updateDoc(doc(db, "articles", existingBook.id), payload);
+                } else {
+                    await addDoc(collection(db, "articles"), {
+                        title: activeBook,
+                        category: "GENERAL",
+                        author: "NUQTHA EDITORIAL",
+                        type: "BOOK",
+                        bookName: activeBook,
+                        ...payload,
+                        createdAt: serverTimestamp()
+                    });
+                }
+
+                showGlobalStatus(`പ്രസന്റേഷൻ '${activeBook}' ലേക്ക് വിജയകരമായി സേവ് ചെയ്തു! 📑`, "success");
+            } catch (err) {
+                console.error("Presentation save error:", err);
+                showGlobalStatus("പ്രസന്റേഷൻ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `<span>Save Presentation to Book</span><svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            }
+        });
+    }
+}
+
 function listenToFirestoreArticles() {
     const listContainer = document.getElementById("admin-articles-list");
     const colRef = collection(db, "articles");
