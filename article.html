@@ -149,6 +149,11 @@
         <!-- Article Header -->
         <article class="space-y-3.5 sm:space-y-6 md:space-y-8">
             <div class="space-y-2 sm:space-y-3.5">
+                <div id="art-book-badge-container" class="hidden mb-1">
+                    <a id="art-book-link" href="#" class="inline-flex items-center gap-1.5 text-xs font-bold text-[#b4532c] dark:text-[#f87171] bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-3 py-1 rounded-full hover:bg-[#b4532c]/20 transition shadow-2xs">
+                        <span id="art-book-badge-text">📚 Book Name • അധ്യായം 1</span>
+                    </a>
+                </div>
                 <span id="art-category" class="category-badge font-english uppercase">GENERAL</span>
                 <h1 id="art-title" class="article-title-text text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e1b18] dark:text-white tracking-tight leading-snug">
                     ലോഡ് ചെയ്യുന്നു...
@@ -845,7 +850,7 @@
                         <div class="flex-1 min-w-0 space-y-1.5">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
-                                    ${categoryLabel(art.category)}
+                                    അധ്യായം ${idx + 1}
                                 </span>
                                 <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-['Anek_Malayalam']">
                                     ${art.author || "NUQTHA"}
