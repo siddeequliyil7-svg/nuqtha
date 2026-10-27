@@ -900,7 +900,7 @@ function buildFeaturedCard(art) {
                             ${authorInitial}
                         </div>
                         <div class="flex flex-col">
-                            <span class="text-xs sm:text-sm font-bold text-[#1e1b18] font-['Anek_Malayalam']">
+                            <span class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
                                 ${authorName}
                             </span>
                             ${art.transcription ? `<span class="text-[11px] font-semibold text-[#8c7a6b] dark:text-[#cbd5e1] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${art.transcription}</span>` : ''}
@@ -954,7 +954,7 @@ function buildCompactRecentCard(art) {
                 </h4>
 
                 <div class="flex items-center gap-1.5 text-[11px] sm:text-xs flex-wrap font-['Noto_Sans_Malayalam']">
-                    <span class="font-bold text-[#1e1b18]">${authorName}</span>
+                    <span class="font-bold text-[#1e1b18] dark:text-white">${authorName}</span>
                     ${art.transcription ? `<span class="text-[#8c7a6b] dark:text-[#a0aec0]">(📝 ${art.transcription})</span>` : ''}
                     <span class="text-[#8c7a6b] dark:text-[#a0aec0]">• ${dateStr}</span>
                 </div>
@@ -1402,7 +1402,7 @@ function buildBookCard(book, articles) {
         
         <!-- Bottom Risala-Style Banner -->
         <div class="bg-[#b4532c] text-white p-4 text-center space-y-1 group-hover:bg-[#923e1b] transition-colors">
-            <h3 class="text-base sm:text-lg font-black tracking-tight font-['Anek_Malayalam']">
+            <h3 class="text-sm sm:text-base font-bold tracking-tight font-['Anek_Malayalam']">
                 ${cleanTitle}
             </h3>
             <p class="text-[11px] text-white/90 font-english uppercase tracking-wider font-bold">
@@ -1504,10 +1504,20 @@ window.shareArticle = function(platform) {
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(title + " " + url)}`, '_blank');
     } else if (platform === 'telegram') {
         window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, '_blank');
-    } else if (platform === 'twitter') {
-        window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, '_blank');
     } else if (platform === 'facebook') {
         window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+    } else if (platform === 'instagram') {
+        navigator.clipboard.writeText(url).then(() => {
+            const label = document.getElementById('share-copy-label');
+            if (label) {
+                const prev = label.textContent;
+                label.textContent = 'Link Copied!';
+                setTimeout(() => { label.textContent = prev; }, 2000);
+            }
+            window.open('https://www.instagram.com/', '_blank');
+        }).catch(() => {
+            window.open('https://www.instagram.com/', '_blank');
+        });
     } else if (platform === 'copy') {
         navigator.clipboard.writeText(url).then(() => {
             const label = document.getElementById('share-copy-label');
@@ -1528,3 +1538,4 @@ function formatDate(ts) {
         return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     } catch { return ""; }
 }
+
