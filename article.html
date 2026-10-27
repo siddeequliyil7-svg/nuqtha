@@ -576,6 +576,10 @@
             const contentEl = document.getElementById('art-content');
             // IF TYPE IS BOOK, RENDER INDEX PAGE
             if (article.type === "BOOK") {
+                const headerWrapper = document.getElementById('art-title')?.parentElement;
+                if (headerWrapper) headerWrapper.classList.add('hidden');
+                document.getElementById('art-share-bar')?.classList.add('hidden');
+                document.getElementById('art-image-wrapper')?.classList.add('hidden');
                 renderBookIndex(article, contentEl);
                 return;
             }
@@ -650,107 +654,131 @@
         }
 
         async function renderBookIndex(book, container) {
-            // Hide default cover/header if it's a BOOK type as we will build a custom one
-            document.getElementById('art-image-wrapper')?.classList.add('hidden');
-            container.innerHTML = `
-                <div class="space-y-12">
-                    <!-- ═══════════ RISALA STYLE EDITION HEADER & COVER ═══════════ -->
-                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start bg-white/60 dark:bg-[#12141d]/60 backdrop-blur-xl border border-[#ebdccb] dark:border-white/10 p-6 sm:p-10 rounded-[2.5rem] shadow-xl">
-                        <!-- Left: Large Vertical Magazine Cover -->
-                        <div class="lg:col-span-5 w-full max-w-sm mx-auto lg:max-w-none">
-                            <div class="aspect-[3/4] rounded-3xl overflow-hidden shadow-2xl bg-[#1e1b18] relative group border-4 border-white dark:border-white/10">
-                                ${book.imageUrl ? `
-                                    <img src="${book.imageUrl}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
-                                ` : `
-                                    <div class="w-full h-full flex items-center justify-center text-white/50 text-2xl font-bold">📘</div>
-                                `}
-                            </div>
-                        </div>
-
-                        <!-- Right: Edition Details & Title -->
-                        <div class="lg:col-span-7 space-y-6">
-                            <div class="space-y-2">
-                                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1e1b18] dark:text-white tracking-tight font-['Anek_Malayalam']">
-                                    ${book.title}
-                                </h1>
-                                <p class="text-xs sm:text-sm font-bold text-[#b4532c] dark:text-[#f87171] uppercase tracking-wider font-english">
-                                    Volume 15 • Issue 209 • ${book.date || 'Recent Edition'}
-                                </p>
-                            </div>
-
-                            <p class="text-sm sm:text-base text-[#5a4b41] dark:text-[#cbd5e1] leading-relaxed font-['Noto_Sans_Malayalam']">
-                                ${book.excerpt || book.content || 'പ്രസിദ്ധീകരണത്തിന്റെ പുതിയ ലക്കം. താഴെ നൽകിയിരിക്കുന്ന ലേഖനങ്ങൾ വായിക്കാം.'}
-                            </p>
-
-                            <div class="pt-4 border-t border-[#ebdccb] dark:border-white/10 flex items-center gap-4 text-xs font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-english">
-                                <span>📚 <strong id="book-count-label" class="text-[#1e1b18] dark:text-white">0</strong> Articles Published</span>
-                            </div>
+    container.innerHTML = `
+        <div class="space-y-10 sm:space-y-12">
+            <!-- RISALA STYLE EDITION HEADER HERO (Image 1 Ref) -->
+            <div class="bg-[#181920] text-white rounded-3xl p-6 sm:p-8 lg:p-10 shadow-2xl border border-white/10">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 lg:gap-10 items-center">
+                    <!-- Left: Large Vertical Magazine Cover -->
+                    <div class="md:col-span-5 w-full max-w-[260px] sm:max-w-xs mx-auto md:max-w-none">
+                        <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-[#0f1015] relative group border-2 border-white/20">
+                            ${book.imageUrl ? `
+                                <img src="${book.imageUrl}" alt="${book.title}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                            ` : `
+                                <div class="w-full h-full flex flex-col items-center justify-center text-white/50 text-3xl font-bold space-y-2">
+                                    <span>📚</span>
+                                    <span class="text-xs uppercase font-english">Edition Cover</span>
+                                </div>
+                            `}
                         </div>
                     </div>
 
-                    <!-- ═══════════ TABLE OF CONTENTS (RISALA LIST STYLE) ═══════════ -->
-                    <div class="space-y-6">
-                        <div class="border-b-2 border-[#1e1b18] dark:border-white pb-3">
-                            <h3 class="text-xl sm:text-2xl font-black text-[#1e1b18] dark:text-white uppercase font-english tracking-wide">
-                                TABLE OF CONTENTS / ഇൻഡക്സ്
-                            </h3>
+                    <!-- Right: Edition Details & Titles -->
+                    <div class="md:col-span-7 space-y-4">
+                        <div class="space-y-1.5">
+                            <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-[#f87171] tracking-tight font-['Anek_Malayalam']">
+                                ${book.title}
+                            </h1>
+                            <p class="text-xs sm:text-sm font-bold text-slate-400 font-english uppercase tracking-wider">
+                                ${book.category || "Special Edition"} • ${book.date || "Recent Issue"}
+                            </p>
                         </div>
-                        <div id="book-articles-list" class="space-y-4">
-                            <!-- Injected by JS -->
-                            <div class="flex items-center gap-2 text-slate-400 py-16 justify-center">
-                                <span class="inline-block w-5 h-5 border-2 border-[#b4532c] border-t-transparent rounded-full animate-spin"></span>
-                                <span class="font-bold text-xs uppercase tracking-widest font-english">Loading articles...</span>
-                            </div>
+
+                        <div class="border-t border-white/15 pt-3">
+                            <p class="text-sm sm:text-base text-slate-200 leading-relaxed font-['Noto_Sans_Malayalam']">
+                                ${book.excerpt || book.content || "പ്രസിദ്ധീകരണത്തിന്റെ പുതിയ ലക്കം. താഴെ നൽകിയിരിക്കുന്ന ലേഖനങ്ങൾ വായിക്കാം."}
+                            </p>
+                        </div>
+
+                        <div class="pt-2 flex items-center gap-3 text-xs font-bold text-slate-300 font-english">
+                            <span class="px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10">
+                                📚 <strong id="book-count-label" class="text-white">...</strong> ലേഖനങ്ങൾ ലഭ്യമാണ്
+                            </span>
                         </div>
                     </div>
                 </div>
-            `;
+            </div>
 
-            // Fetch articles in this book
-            try {
-                const snap = await getDocs(collection(db, "articles"));
-                const items = [];
-                snap.forEach(d => {
-                    const art = normalizeArticleDoc(d.data(), d.id);
-                    if (art.bookName === book.bookName && art.type !== "BOOK") {
-                        items.push(art);
-                    }
-                });
+            <!-- SEQUENTIAL ARTICLES LIST (Image 2 Ref) -->
+            <div class="space-y-6">
+                <div class="border-b-2 border-[#1e1b18] dark:border-white pb-3 flex items-center justify-between">
+                    <h3 class="text-lg sm:text-xl font-black text-[#1e1b18] dark:text-white uppercase font-english tracking-wide">
+                        EDITION ARTICLES / ലേഖനങ്ങൾ
+                    </h3>
+                    <span class="text-xs text-[#8c7a6b] dark:text-[#94a3b8] font-english">Sequential Reading</span>
+                </div>
+                <div id="book-articles-list" class="space-y-4">
+                    <div class="flex items-center gap-2 text-slate-400 py-16 justify-center">
+                        <span class="inline-block w-5 h-5 border-2 border-[#b4532c] border-t-transparent rounded-full animate-spin"></span>
+                        <span class="font-bold text-xs uppercase tracking-widest font-english">Loading articles...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 
-                // Sort by priority then date
-                items.sort((a, b) => {
-                    if (a.priority !== b.priority) return a.priority - b.priority;
-                    return parseTimestampMillis(b.createdAt) - parseTimestampMillis(a.createdAt);
-                });
-
-                const listEl = document.getElementById("book-articles-list");
-                const countLabel = document.getElementById("book-count-label");
-                if (countLabel) countLabel.textContent = items.length;
-
-                if (items.length === 0) {
-                    listEl.innerHTML = `<p class="text-center text-xs text-slate-500 py-12 italic">ഈ പുസ്തകത്തിൽ ലേഖനങ്ങളൊന്നും നിലവിൽ ലഭ്യമല്ല.</p>`;
-                    return;
-                }
-
-                listEl.innerHTML = items.map((art, idx) => `
-                    <a href="article.html?id=${art.id}" class="group block py-5 px-6 bg-white/70 dark:bg-white/5 border-b border-[#ebdccb] dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-all duration-300">
-                        <div class="space-y-1">
-                            <span class="text-[11px] font-bold text-[#b4532c] dark:text-[#f87171] uppercase tracking-widest font-english">
-                                ${categoryLabel(art.category)} / ${art.author || "NUQTHA"}
-                            </span>
-                            <h4 class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] transition-colors font-['Anek_Malayalam']">
-                                ${art.title}
-                            </h4>
-                            ${art.transcription ? `<p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${art.transcription}</p>` : ''}
-                        </div>
-                    </a>
-                `).join("");
-
-            } catch (err) {
-                console.error("Book index load error:", err);
-                document.getElementById("book-articles-list").innerHTML = `<p class="text-rose-500 text-xs text-center py-4">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു.</p>`;
+    try {
+        const snap = await getDocs(collection(db, "articles"));
+        const items = [];
+        snap.forEach(d => {
+            const art = normalizeArticleDoc(d.data(), d.id);
+            if (art.bookName === book.bookName && art.type !== "BOOK") {
+                items.push(art);
             }
+        });
+
+        items.sort((a, b) => {
+            if (a.priority !== b.priority) return a.priority - b.priority;
+            return parseTimestampMillis(b.createdAt) - parseTimestampMillis(a.createdAt);
+        });
+
+        const listEl = document.getElementById("book-articles-list");
+        const countLabel = document.getElementById("book-count-label");
+        if (countLabel) countLabel.textContent = items.length;
+
+        if (items.length === 0) {
+            listEl.innerHTML = `<p class="text-center text-xs text-slate-500 py-12 italic">ഈ പുസ്തകത്തിൽ ലേഖനങ്ങളൊന്നും നിലവിൽ ലഭ്യമല്ല.</p>`;
+            return;
         }
+
+        listEl.innerHTML = items.map((art, idx) => `
+            <a href="article.html?id=${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-6 p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 hover:bg-white dark:hover:bg-white/10 shadow-xs hover:shadow-md transition-all duration-300">
+                ${art.imageUrl ? `
+                    <div class="w-full sm:w-52 h-40 sm:h-32 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0">
+                        <img src="${art.imageUrl}" alt="${art.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                ` : `
+                    <div class="w-full sm:w-52 h-40 sm:h-32 rounded-xl bg-gradient-to-tr from-[#b4532c]/10 to-amber-500/10 flex items-center justify-center text-3xl flex-shrink-0 border border-[#ebdccb]/60">
+                        📰
+                    </div>
+                `}
+                <div class="flex-1 min-w-0 space-y-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 px-2 py-0.5 rounded-md">
+                            ${categoryLabel(art.category)}
+                        </span>
+                        <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-['Anek_Malayalam']">
+                            ${art.author || "NUQTHA"}
+                        </span>
+                    </div>
+                    <h4 class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] transition-colors leading-snug font-['Anek_Malayalam']">
+                        ${art.title}
+                    </h4>
+                    ${art.excerpt ? `
+                        <p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed font-sans">
+                            ${art.excerpt}
+                        </p>
+                    ` : ""}
+                    ${art.transcription ? `<p class="text-[11px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${art.transcription}</p>` : ""}
+                </div>
+            </a>
+        `).join("");
+
+    } catch (err) {
+        console.error("Book index load error:", err);
+        document.getElementById("book-articles-list").innerHTML = `<p class="text-rose-500 text-xs text-center py-4">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു.</p>`;
+    }
+}
 
         function showError(msg) {
             document.getElementById('art-title').textContent = "ലേഖനം കണ്ടെത്താനായില്ല";

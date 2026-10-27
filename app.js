@@ -476,6 +476,8 @@ function renderFeed() {
         renderSearchFeed(container, currentSearchQuery.trim());
     } else if (currentCategory === "ALL") {
         renderHomeFeed(container);
+    } else if (currentCategory === "BOOKS" || currentCategory === "BOOK") {
+        renderBooksCategoryFeed(container);
     } else {
         renderCategoryFeed(container, currentCategory);
     }
@@ -641,10 +643,12 @@ function renderHomeFeed(container) {
     const existingCats = new Set(allArticles.map(a => (a.category || "").toUpperCase()).filter(Boolean));
     const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c))];
 
-    orderedCats.forEach(cat => {
+    let renderedCatCount = 0;
+    orderedCats.forEach((cat, catIdx) => {
         // Collect articles for this category that can appear in the feed
         const catArticles = allArticles.filter(a => (a.category || "").toUpperCase() === cat).sort(comparePriority);
         if (catArticles.length === 0) return;
+        renderedCatCount++;
 
         const theme = getCategoryTheme(cat);
         const featuredArt = catArticles[0];
@@ -678,7 +682,17 @@ function renderHomeFeed(container) {
             ` : ''}
         </section>
         `;
+
+        // ═══════════ HOME PAGE BOOK SHOWCASE SECTION (RIGHT IN THE MIDDLE) ═══════════
+        if (renderedCatCount === 1 && bookCovers.length > 0) {
+            html += buildBookShowcaseSection(bookCovers, booksMap);
+        }
     });
+
+    // If no categories reached or only empty, render showcase if available
+    if (renderedCatCount === 0 && bookCovers.length > 0) {
+        html += buildBookShowcaseSection(bookCovers, booksMap);
+    }
 
     // If no categorized articles exist, list remaining articles in a default section
     if (orderedCats.length === 0 && allArticles.length > 1) {
@@ -1703,3 +1717,152 @@ function formatDate(ts) {
     } catch { return ""; }
 }
 
+
+
+/* ═══════════ 1. HOME PAGE BOOK SHOWCASE / CAROUSEL SECTION ═══════════ */
+function buildBookShowcaseSection(bookCovers, booksMap) {
+    if (!bookCovers || bookCovers.length === 0) return '';
+
+    return `
+    <section class="category-section-block book-showcase-section mt-8 sm:mt-10 p-4 sm:p-6 rounded-3xl border border-[#ebdccb] dark:border-white/10 bg-gradient-to-br from-[#fbf7ee] via-white to-amber-50/40 dark:from-[#151722] dark:via-[#12141d] dark:to-[#1a1520] shadow-sm">
+        <div class="category-section-header flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+                <div class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5">
+                    <span class="w-2 h-2 rounded-full inline-block flex-shrink-0 bg-[#b4532c]"></span>
+                    <span class="font-english text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]">BOOKS & EDITIONS</span>
+                    <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-white">പുസ്തകങ്ങൾ</span>
+                </div>
+            </div>
+            <button class="show-more-pill" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക" style="border-color: #b4532c40; color: #b4532c;">
+                <span class="font-english">SHOW MORE</span>
+                <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
+                <span class="text-xs">&rsaquo;</span>
+            </button>
+        </div>
+
+        <!-- Horizontal Swipe Showcase (Matching Reference Image 3) -->
+        <div class="flex gap-4 sm:gap-5 overflow-x-auto pb-3 pt-1 scrollbar-none snap-x snap-mandatory">
+            ${bookCovers.map(book => {
+                const cleanTitle = stripMarkdown(book.title);
+                const count = (booksMap[book.bookName] || []).filter(a => a.id !== book.id).length;
+                return `
+                <div class="book-glass-card w-44 sm:w-52 flex-shrink-0 snap-start group cursor-pointer bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col" data-id="${book.id}">
+                    <div class="aspect-[3/4] w-full bg-[#181920] overflow-hidden relative">
+                        ${book.imageUrl ? `
+                            <img src="${book.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                        ` : `
+                            <div class="w-full h-full flex flex-col items-center justify-center text-white/40 space-y-1">
+                                <span class="text-3xl">📚</span>
+                                <span class="text-[10px] font-bold font-english uppercase">Edition</span>
+                            </div>
+                        `}
+                    </div>
+                    <!-- Maroon Title Banner (Exact match to Risala reference) -->
+                    <div class="bg-[#b4532c] text-white py-2 px-2.5 text-center text-xs font-black font-['Anek_Malayalam'] truncate">
+                        ${cleanTitle}
+                    </div>
+                    <!-- Details / Count -->
+                    <div class="p-2 text-center bg-[#fbf7ee]/40 dark:bg-white/[0.02] border-t border-[#ebdccb]/60 dark:border-white/10">
+                        <p class="text-[11px] font-bold text-[#1e1b18] dark:text-white font-english truncate">
+                            ${book.date || book.category || 'Special Edition'}
+                        </p>
+                        <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
+                            ${count} ലേഖനങ്ങൾ
+                        </p>
+                    </div>
+                </div>
+                `;
+            }).join('')}
+        </div>
+    </section>
+    `;
+}
+
+/* ═══════════ 2. BOOKS CATEGORY PAGE LAYOUT (Image 3 Ref) ═══════════ */
+function renderBooksCategoryFeed(container) {
+    const bookCovers = allArticles.filter(a => a.type === "BOOK");
+    const booksMap = {};
+    allArticles.forEach(a => {
+        if (a.bookName && a.bookName.trim() && a.type !== "BOOK") {
+            const key = a.bookName.trim();
+            if (!booksMap[key]) booksMap[key] = [];
+            booksMap[key].push(a);
+        }
+    });
+
+    let html = `
+    <div class="category-filter-banner flex items-center justify-between p-4 mb-6 rounded-2xl bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10 shadow-xs">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl sm:text-3xl">📚</span>
+            <div>
+                <h2 class="text-base sm:text-lg font-black text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
+                    പുസ്തകങ്ങളും പ്രത്യേക പതിപ്പുകളും (Books & Editions)
+                </h2>
+                <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8] font-english">
+                    ${bookCovers.length} പ്രസിദ്ധീകരണങ്ങൾ ലഭ്യമാണ് (Published Issues & Volumes)
+                </p>
+            </div>
+        </div>
+        <button class="show-all-home-btn text-xs font-bold text-[#b4532c] hover:text-[#923e1b] dark:text-[#f87171] dark:hover:text-white transition flex items-center gap-1 font-english cursor-pointer">
+            <span>&larr; ALL STORIES</span>
+        </button>
+    </div>
+    `;
+
+    if (bookCovers.length === 0) {
+        html += `
+        <div class="p-12 text-center rounded-3xl bg-white/50 border border-dashed border-[#ebdccb] text-slate-400 text-xs">
+            നിലവിൽ പുസ്തകങ്ങളൊന്നും പ്രസിദ്ധീകരിച്ചിട്ടില്ല.
+        </div>
+        `;
+    } else {
+        html += `
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-7">
+            ${bookCovers.map(book => {
+                const cleanTitle = stripMarkdown(book.title);
+                const count = (booksMap[book.bookName] || []).length;
+                return `
+                <div class="book-glass-card group cursor-pointer flex flex-col bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] dark:hover:border-[#f87171] shadow-sm hover:shadow-2xl transition-all duration-300" data-id="${book.id}">
+                    <div class="aspect-[3/4] w-full bg-[#181920] overflow-hidden relative">
+                        ${book.imageUrl ? `
+                            <img src="${book.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                        ` : `
+                            <div class="w-full h-full flex flex-col items-center justify-center text-white/40 space-y-2">
+                                <span class="text-4xl">📚</span>
+                                <span class="text-xs font-bold font-english uppercase">Book Edition</span>
+                            </div>
+                        `}
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                            <span class="text-xs font-bold text-white uppercase font-english tracking-wider flex items-center gap-1.5 bg-[#b4532c] px-3.5 py-1.5 rounded-full shadow">
+                                <span>തുറക്കുക (Open Edition)</span>
+                                <span>&rarr;</span>
+                            </span>
+                        </div>
+                    </div>
+                    <!-- Maroon Title Banner (Exact match to Risala reference) -->
+                    <div class="bg-[#b4532c] text-white py-2.5 px-3 text-center text-sm font-black font-['Anek_Malayalam'] truncate shadow-xs">
+                        ${cleanTitle}
+                    </div>
+                    <!-- Details / Meta Underneath -->
+                    <div class="py-2.5 px-3 text-center bg-[#fbf7ee]/40 dark:bg-white/[0.02] border-t border-[#ebdccb]/60 dark:border-white/10 space-y-0.5">
+                        <p class="text-xs font-bold text-[#1e1b18] dark:text-white font-english tracking-wide">
+                            ${book.category || 'Special Edition'} • ${book.date || 'Recent Issue'}
+                        </p>
+                        <p class="text-[11px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
+                            ${count} ലേഖനങ്ങൾ ഉൾക്കൊള്ളുന്നു
+                        </p>
+                    </div>
+                </div>
+                `;
+            }).join('')}
+        </div>
+        `;
+    }
+
+    container.innerHTML = html;
+
+    const showAllBtn = container.querySelector(".show-all-home-btn");
+    if (showAllBtn) {
+        showAllBtn.addEventListener("click", () => switchToCategory("ALL"));
+    }
+}
