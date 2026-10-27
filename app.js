@@ -123,6 +123,15 @@ function setupMoreDropdown() {
     });
 }
 
+/* ─── Helper: Identify Book Entities (Covers and Chapters) ─── */
+function isBookEntity(article) {
+    if (!article) return false;
+    if (article.type === "BOOK") return true;
+    if (article.bookName && article.bookName.trim()) return true;
+    if (article.playlistName && article.playlistName.trim()) return true;
+    return false;
+}
+
 function updateMoreCategoriesMenu() {
     const dropdown = document.getElementById("more-categories-dropdown");
     if (!dropdown) return;
@@ -131,8 +140,9 @@ function updateMoreCategoriesMenu() {
     const extraCats = new Set();
 
     allArticles.forEach(a => {
+        if (isBookEntity(a)) return; // Exclude books & chapters from categories dropdown
         const cat = (a.category || "").toUpperCase();
-        if (cat && !baseCats.has(cat)) {
+        if (cat && !baseCats.has(cat) && cat !== "BOOKS" && cat !== "BOOK" && cat !== "PREMIUM BOOK") {
             extraCats.add(cat);
         }
     });
@@ -545,7 +555,17 @@ function renderSearchFeed(container, query) {
 
 /* ─── HOME: Layout Manager Aware (Hero, Carousel, Playlist Series, Category Feed) ─── */
 function renderHomeFeed(container) {
-    if (allArticles.length === 0) {
+    // Filter out book covers and chapters completely from standard home feed
+    const regularArticles = allArticles.filter(a => !isBookEntity(a));
+
+    if (regularArticles.length === 0) {
+        // If only books exist, show middle showcase directly
+        const bookCovers = allArticles.filter(a => a.type === "BOOK");
+        if (bookCovers.length > 0) {
+            container.innerHTML = buildBookShowcaseSection(bookCovers, allArticles);
+            attachShowMoreListeners();
+            return;
+        }
         renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
         return;
     }
@@ -558,13 +578,13 @@ function renderHomeFeed(container) {
         return 0; // maintain latest-first sorted order
     };
 
-    // 1. Group articles by explicit Placement or AUTO
-    const explicitHero = allArticles.filter(a => a.placement === "HERO").sort(comparePriority);
-    const explicitCarousel = allArticles.filter(a => a.placement === "CAROUSEL").sort(comparePriority);
-    const explicitFeed = allArticles.filter(a => a.placement === "FEED").sort(comparePriority);
-    const autoArticles = allArticles.filter(a => !a.placement || a.placement === "AUTO");
+    // 1. Group regular articles by explicit Placement or AUTO (No books/chapters!)
+    const explicitHero = regularArticles.filter(a => a.placement === "HERO").sort(comparePriority);
+    const explicitCarousel = regularArticles.filter(a => a.placement === "CAROUSEL").sort(comparePriority);
+    const explicitFeed = regularArticles.filter(a => a.placement === "FEED").sort(comparePriority);
+    const autoArticles = regularArticles.filter(a => !a.placement || a.placement === "AUTO");
 
-    // Determine Hero Article: explicit HERO (highest priority), otherwise top AUTO article
+    // Determine Hero Article strictly from regular standalone articles
     let heroArticle = null;
     let usedIds = new Set();
 
@@ -575,12 +595,12 @@ function renderHomeFeed(container) {
         heroArticle = autoArticles[0];
         usedIds.add(heroArticle.id);
     } else {
-        heroArticle = allArticles[0];
+        heroArticle = regularArticles[0];
         usedIds.add(heroArticle.id);
     }
 
     // 2. Determine Carousel Articles for Top Horizontal Swipe:
-    // Pool articles marked for CAROUSEL or HERO or recent AUTO
+    // Pool regular articles marked for CAROUSEL or HERO or recent AUTO (No books/chapters!)
     const carouselPool = [
         ...explicitCarousel,
         heroArticle,
@@ -613,15 +633,15 @@ function renderHomeFeed(container) {
     const bookCovers = allArticles.filter(a => a.type === "BOOK");
 
     // 4. Category Feed: Standard categorized list with prominent Featured card & compact subsequent list
-    // Discover all unique categories present across articles
-    const existingCats = new Set(allArticles.map(a => (a.category || "").toUpperCase()).filter(Boolean));
-    const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c))];
+    // Discover all unique categories present across regular standalone articles (No book categories!)
+    const existingCats = new Set(regularArticles.map(a => (a.category || "").toUpperCase()).filter(Boolean));
+    const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c) && c !== "BOOKS" && c !== "BOOK" && c !== "PREMIUM BOOK")];
     const middleCatIndex = Math.max(1, Math.floor(orderedCats.length / 2));
 
     let renderedCatCount = 0;
     orderedCats.forEach((cat, catIdx) => {
         // Collect articles for this category that can appear in the feed
-        const catArticles = allArticles.filter(a => (a.category || "").toUpperCase() === cat).sort(comparePriority);
+        const catArticles = regularArticles.filter(a => (a.category || "").toUpperCase() === cat).sort(comparePriority);
         if (catArticles.length === 0) return;
         renderedCatCount++;
 
@@ -670,8 +690,8 @@ function renderHomeFeed(container) {
     }
 
     // If no categorized articles exist, list remaining articles in a default section
-    if (orderedCats.length === 0 && allArticles.length > 1) {
-        const rest = allArticles.filter(a => a.id !== heroArticle.id);
+    if (orderedCats.length === 0 && regularArticles.length > 1) {
+        const rest = regularArticles.filter(a => a.id !== heroArticle.id);
         const theme = getCategoryTheme("ALL");
         const featuredArt = rest[0];
         const subsequentArticles = rest.slice(1, 5);
@@ -699,7 +719,7 @@ function renderHomeFeed(container) {
 
 /* ─── CATEGORY VIEW: full filtered feed ─── */
 function renderCategoryFeed(container, category) {
-    const filtered = allArticles.filter(a => (a.category || "").toUpperCase() === category);
+    const filtered = allArticles.filter(a => !isBookEntity(a) && (a.category || "").toUpperCase() === category);
 
     if (filtered.length === 0) {
         renderEmpty(`${category} വിഭാഗത്തിൽ ലേഖനങ്ങൾ ഇപ്പോൾ ലഭ്യമല്ല.`);
