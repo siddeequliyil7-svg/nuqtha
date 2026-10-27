@@ -153,15 +153,15 @@
                 <h1 id="art-title" class="article-title-text text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e1b18] dark:text-white tracking-tight leading-snug">
                     ലോഡ് ചെയ്യുന്നു...
                 </h1>
-                
                 <div class="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-xs sm:shadow-sm my-2 sm:my-3.5">
-                    <div class="flex items-center gap-3">
-                        <div id="art-author-avatar" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#b4532c] text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-sm flex-shrink-0">
+                    <a id="art-author-link" href="#" class="group/author inline-flex items-center gap-3 hover:opacity-90 transition cursor-pointer flex-1">
+                        <div id="art-author-avatar" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#b4532c] text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-sm flex-shrink-0 group-hover/author:scale-105 transition-transform overflow-hidden">
                             N
                         </div>
-                        <div class="space-y-0.5">
+                        <div class="space-y-0.5 min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <span id="art-author" class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam'] tracking-wide">NUQTHA</span>
+                                <span id="art-author" class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam'] tracking-wide group-hover/author:text-[#b4532c] transition-colors">NUQTHA</span>
+                                <span class="text-[9px] sm:text-[10px] uppercase font-english px-2 py-0.5 rounded-full bg-[#b4532c]/10 dark:bg-white/10 text-[#b4532c] dark:text-[#f87171] font-bold group-hover/author:bg-[#b4532c] group-hover/author:text-white transition">PROFILE &rarr;</span>
                             </div>
                             <div id="art-transcription-container" class="hidden flex items-center gap-2 flex-wrap text-xs font-semibold">
                                 <span class="text-[#8c7a6b] dark:text-[#a0aec0]">📝 കേട്ടെഴുത്ത്:</span>
@@ -171,7 +171,7 @@
                                 📅 <span id="art-date">Date</span>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </div>
 
@@ -211,6 +211,54 @@
                 </div>
             </div>
 
+            <!-- ═══════════ Clean Comments Section ═══════════ -->
+            <section id="article-comments-section" class="pt-8 sm:pt-10 border-t border-[#ebdccb] dark:border-white/10 space-y-5">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="category-glass-badge">
+                        <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">COMMENTS · </span>
+                        <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-[#f1f5f9]">അഭിപ്രായങ്ങൾ</span>
+                        <span id="comments-count-badge" class="ml-1 text-[11px] px-2 py-0.5 rounded-full bg-[#b4532c]/10 text-[#b4532c] dark:text-white font-bold">0</span>
+                    </div>
+                    <span class="text-xs text-[#8c7a6b] dark:text-[#a0aec0]">
+                        നിങ്ങളുടെ അഭിപ്രായം പങ്കുവെക്കൂ
+                    </span>
+                </div>
+
+                <!-- Comment Input Box (Frosted Glass Card) -->
+                <div class="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-xs space-y-3">
+                    <div class="flex items-center gap-2.5">
+                        <div id="commenter-avatar" class="w-8 h-8 rounded-full bg-[#b4532c] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                            ?
+                        </div>
+                        <input type="text" id="commenter-name" placeholder="നിങ്ങളുടെ പേര് (Your Name)" class="flex-1 px-3.5 py-1.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[#ebdccb] dark:border-white/10 text-xs font-bold text-[#1e1b18] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c]" />
+                    </div>
+
+                    <textarea id="comment-text" rows="3" placeholder="ഈ ലേഖനത്തെക്കുറിച്ചുള്ള നിങ്ങളുടെ വിലയേറിയ അഭിപ്രായം ഇവിടെ എഴുതുക... (Write your thoughts here...)" class="w-full p-3.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[#ebdccb] dark:border-white/10 text-xs sm:text-sm text-[#1e1b18] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c] resize-y leading-relaxed font-sans"></textarea>
+
+                    <div class="flex items-center justify-between pt-1 gap-2 flex-wrap">
+                        <button type="button" id="comment-signin-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-[#7a6758] dark:text-[#cbd5e1] hover:text-[#b4532c] dark:hover:text-white transition font-english cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span>SIGN IN / ലോഗിൻ</span>
+                        </button>
+
+                        <div class="flex items-center gap-2 ml-auto">
+                            <span id="comment-success-toast" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hidden">✓ അഭിപ്രായം രേഖപ്പെടുത്തി!</span>
+                            <button type="button" id="comment-submit-btn" class="px-5 py-2 rounded-full bg-[#b4532c] hover:bg-[#923e1b] active:scale-95 text-white text-xs font-bold uppercase font-english transition shadow-sm inline-flex items-center gap-1.5 cursor-pointer">
+                                <span>POST COMMENT</span>
+                                <span>&rarr;</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comments List Feed -->
+                <div id="comments-list" class="space-y-3 pt-1">
+                    <div id="comments-empty-state" class="p-6 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8] rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-dashed border-[#ebdccb] dark:border-white/10">
+                        ആദ്യത്തെ അഭിപ്രായം രേഖപ്പെടുത്തൂ (Be the first to share your thoughts)
+                    </div>
+                </div>
+            </section>
+
             <!-- Article Footer Back Link -->
             <div class="pt-8 border-t border-[#ebdccb] dark:border-white/10 flex justify-center">
                 <a href="index.html" class="px-6 py-3 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
@@ -242,7 +290,7 @@
 
     <!-- Script to load article details from Firestore -->
     <script type="module">
-        import { db, doc, getDoc, collection, getDocs } from "./firebase-config.js";
+        import { db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -306,6 +354,7 @@
             if (article) {
                 renderArticle(article);
                 loadRelatedArticles(article);
+                initComments(article.id);
             } else {
                 showError("ഈ ലേഖനം കണ്ടെത്താനായില്ല അല്ലെങ്കിൽ നീക്കം ചെയ്തിരിക്കുന്നു.");
             }
@@ -432,7 +481,6 @@
         function renderArticle(article) {
             // article is already normalized — all fields are guaranteed to exist
             document.title = `${article.title || "NUQTHA"} | NUQTHA`;
-            
             const titleEl = document.getElementById('art-title');
             titleEl.textContent = article.title || "ലേഖനം";
             if (article.titleColor) {
@@ -470,7 +518,6 @@
                 }
             }
             document.getElementById('art-date').textContent = dateStr || "Recent";
-            
             if (article.imageUrl && !article.imageUrl.includes("placeholder")) {
                 const img = document.getElementById('art-image');
                 img.src = article.imageUrl;
@@ -482,7 +529,6 @@
             }
 
             const contentEl = document.getElementById('art-content');
-            
             // IF TYPE IS BOOK, RENDER INDEX PAGE
             if (article.type === "BOOK") {
                 renderBookIndex(article, contentEl);
@@ -501,7 +547,6 @@
             if (article.contentColor) contentStyleParts.push(`color: ${article.contentColor}`);
             if (chosenSize) contentStyleParts.push(`font-size: ${chosenSize}`);
             const contentStyleAttr = contentStyleParts.length > 0 ? `style="${contentStyleParts.join('; ')};"` : '';
-            
             contentEl.innerHTML = (article.content || article.excerpt || "")
                 .split('\n\n')
                 .filter(p => p.trim())
@@ -562,7 +607,6 @@
         async function renderBookIndex(book, container) {
             // Hide default cover/header if it's a BOOK type as we will build a custom one
             document.getElementById('art-image-wrapper')?.classList.add('hidden');
-            
             container.innerHTML = `
                 <div class="space-y-12">
                     <!-- ═══════════ RISALA STYLE EDITION HEADER & COVER ═══════════ -->
@@ -606,7 +650,6 @@
                                 TABLE OF CONTENTS / ഇൻഡക്സ്
                             </h3>
                         </div>
-                        
                         <div id="book-articles-list" class="space-y-4">
                             <!-- Injected by JS -->
                             <div class="flex items-center gap-2 text-slate-400 py-16 justify-center">
@@ -637,7 +680,6 @@
 
                 const listEl = document.getElementById("book-articles-list");
                 const countLabel = document.getElementById("book-count-label");
-                
                 if (countLabel) countLabel.textContent = items.length;
 
                 if (items.length === 0) {
@@ -673,6 +715,187 @@
                     <a href="index.html" class="inline-block mt-2 px-4 py-2 rounded-xl bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition shadow">ഹോം പേജിലേക്ക് മടങ്ങുക</a>
                 </div>
             `;
+        }
+
+        // ═══════════ COMMENTS SYSTEM (Realtime & Safe Fallback) ═══════════
+        function initComments(artId) {
+            const commentsList = document.getElementById("comments-list");
+            const countBadge = document.getElementById("comments-count-badge");
+            const submitBtn = document.getElementById("comment-submit-btn");
+            const textInput = document.getElementById("comment-text");
+            const nameInput = document.getElementById("commenter-name");
+            const toast = document.getElementById("comment-success-toast");
+            const avatar = document.getElementById("commenter-avatar");
+            const signinBtn = document.getElementById("comment-signin-btn");
+
+            if (!commentsList || !submitBtn || !textInput) return;
+
+            // Load remembered commenter name
+            const savedName = localStorage.getItem("nuqtha_commenter_name");
+            if (savedName && nameInput) {
+                nameInput.value = savedName;
+                if (avatar) avatar.textContent = savedName.charAt(0).toUpperCase();
+            }
+
+            if (nameInput) {
+                nameInput.addEventListener("input", (e) => {
+                    const val = e.target.value.trim();
+                    if (avatar) avatar.textContent = val ? val.charAt(0).toUpperCase() : "?";
+                    if (val) localStorage.setItem("nuqtha_commenter_name", val);
+                });
+            }
+
+            if (signinBtn) {
+                signinBtn.addEventListener("click", () => {
+                    const promptName = prompt("നിങ്ങളുടെ പേര് നൽകുക (Enter your name to sign in):", nameInput ? nameInput.value : "");
+                    if (promptName && promptName.trim()) {
+                        const trimmed = promptName.trim();
+                        if (nameInput) nameInput.value = trimmed;
+                        if (avatar) avatar.textContent = trimmed.charAt(0).toUpperCase();
+                        localStorage.setItem("nuqtha_commenter_name", trimmed);
+                        alert(`സ്വാഗതം ${trimmed}! ഇനി നിങ്ങളുടെ അഭിപ്രായങ്ങൾ പങ്കുവെക്കാം.`);
+                    }
+                });
+            }
+
+            // Local storage fallback helper
+            const localKey = `nuqtha_comments_${artId}`;
+            const getLocalComments = () => {
+                try {
+                    return JSON.parse(localStorage.getItem(localKey) || "[]");
+                } catch { return []; }
+            };
+            const saveLocalComment = (cmt) => {
+                const list = getLocalComments();
+                list.unshift(cmt);
+                localStorage.setItem(localKey, JSON.stringify(list));
+                return list;
+            };
+
+            function renderCommentsUI(comments) {
+                if (countBadge) countBadge.textContent = comments.length;
+
+                if (!comments || comments.length === 0) {
+                    commentsList.innerHTML = `
+                    <div class="p-6 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8] rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-dashed border-[#ebdccb] dark:border-white/10">
+                        ആദ്യത്തെ അഭിപ്രായം രേഖപ്പെടുത്തൂ (Be the first to share your thoughts on this story)
+                    </div>
+                    `;
+                    return;
+                }
+
+                commentsList.innerHTML = comments.map(c => {
+                    const initial = (c.name || "G").trim().charAt(0).toUpperCase() || "W";
+                    let timeStr = "ഇപ്പോൾ";
+                    if (c.createdAt) {
+                        try {
+                            const ms = typeof c.createdAt === "number" ? c.createdAt : (c.createdAt.toMillis ? c.createdAt.toMillis() : Date.parse(c.createdAt));
+                            if (ms) {
+                                const diffMin = Math.round((Date.now() - ms) / 60000);
+                                if (diffMin < 1) timeStr = "ഇപ്പോൾ (Just now)";
+                                else if (diffMin < 60) timeStr = `${diffMin} മിനിറ്റ് മുൻപ്`;
+                                else if (diffMin < 1440) timeStr = `${Math.round(diffMin / 60)} മണിക്കൂർ മുൻപ്`;
+                                else timeStr = new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+                            }
+                        } catch {}
+                    }
+
+                    const cleanComment = (c.comment || "").replace(/<[^>]*>?/gm, '');
+                    const cleanName = (c.name || "വായനക്കാരൻ").replace(/<[^>]*>?/gm, '');
+
+                    return `
+                    <div class="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb]/80 dark:border-white/10 shadow-xs space-y-2 transition hover:bg-white dark:hover:bg-white/10">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                    ${initial}
+                                </div>
+                                <span class="text-xs font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
+                                    ${cleanName}
+                                </span>
+                            </div>
+                            <span class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">
+                                ${timeStr}
+                            </span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-[#4a3c33] dark:text-[#cbd5e1] leading-relaxed pl-9 font-sans">
+                            ${cleanComment}
+                        </p>
+                    </div>
+                    `;
+                }).join('');
+            }
+
+            // Realtime Firestore Listener
+            try {
+                const commentsCol = collection(db, "articles", artId, "comments");
+                const q = query(commentsCol, orderBy("createdAt", "desc"));
+                onSnapshot(q, (snapshot) => {
+                    const firestoreList = [];
+                    snapshot.forEach(docSnap => {
+                        firestoreList.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+                    const localList = getLocalComments();
+                    const combined = [...firestoreList];
+                    localList.forEach(lc => {
+                        if (!combined.some(c => c.comment === lc.comment && Math.abs(c.createdAt - lc.createdAt) < 5000)) {
+                            combined.push(lc);
+                        }
+                    });
+                    renderCommentsUI(combined);
+                }, (err) => {
+                    console.warn("[article.html] Comments onSnapshot warning, using local fallback:", err);
+                    renderCommentsUI(getLocalComments());
+                });
+            } catch (err) {
+                console.warn("[article.html] Firestore comments listener init error:", err);
+                renderCommentsUI(getLocalComments());
+            }
+
+            // Post comment handler
+            submitBtn.addEventListener("click", async () => {
+                const commentText = textInput.value.trim();
+                if (!commentText) {
+                    textInput.focus();
+                    return;
+                }
+
+                const authorName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : "വായനക്കാരൻ";
+                localStorage.setItem("nuqtha_commenter_name", authorName);
+
+                submitBtn.disabled = true;
+                submitBtn.classList.add("opacity-60");
+
+                const newCommentObj = {
+                    name: authorName,
+                    comment: commentText,
+                    createdAt: Date.now()
+                };
+
+                // Save locally first for instant feedback
+                saveLocalComment(newCommentObj);
+                renderCommentsUI(getLocalComments());
+
+                // Try saving to Firestore
+                try {
+                    await addDoc(collection(db, "articles", artId, "comments"), {
+                        name: authorName,
+                        comment: commentText,
+                        createdAt: serverTimestamp()
+                    });
+                } catch (e) {
+                    console.warn("[article.html] Cloud comment save failed, saved locally:", e);
+                }
+
+                textInput.value = "";
+                if (toast) {
+                    toast.classList.remove("hidden");
+                    setTimeout(() => toast.classList.add("hidden"), 3000);
+                }
+
+                submitBtn.disabled = false;
+                submitBtn.classList.remove("opacity-60");
+            });
         }
 
         function setupTheme() {

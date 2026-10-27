@@ -5,6 +5,10 @@
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/admin/", "destination": "/admin.html" },
+    { "source": "/profile/author/:id", "destination": "/author.html?id=:id" },
+    { "source": "/profile/author", "destination": "/author.html" },
+    { "source": "/author/:id", "destination": "/author.html?id=:id" },
+    { "source": "/author", "destination": "/author.html" },
     { "source": "/(.*)", "destination": "/$1" }
   ],
   "headers": [

@@ -3,7 +3,7 @@
  * 4-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
  * With Strict Data Validation & Schema Sanitization
  */
-import { db, collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
+import { db, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
 import {
     validateAndSanitizeArticleForSave,
     normalizeArticleDoc,
@@ -38,6 +38,7 @@ function initAdminDashboard() {
     initPublishedSearchFilter();
     initBookCoverUpload();
     listenToFirestoreArticles();
+    initAuthorManager();
 }
 
 function initAdminSecurity() {
@@ -169,6 +170,10 @@ export function switchAdminTab(tabName) {
     }
 
     // If switching to layout tab, refresh layout manager cards
+    if (tabName === "authors") {
+        renderAdminAuthorsTab();
+    }
+
     if (tabName === "layout") {
         renderLayoutManagerList(currentArticlesList);
     }
@@ -1824,3 +1829,261 @@ window.saveArticleLayoutQuick = async function(articleId) {
         }
     }
 };
+
+
+/* ═══════════════════════════════════════════════════════════
+   AUTHORS PROFILE MANAGER LOGIC
+   ═══════════════════════════════════════════════════════════ */
+let managedAuthorsList = [];
+let authorPhotoBase64 = "";
+
+function slugifyAuthor(name) {
+    return (name || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
+}
+
+function initAuthorManager() {
+    const authorForm = document.getElementById("admin-author-form");
+    const photoFileInput = document.getElementById("admin-author-photo-file");
+    const photoUrlInput = document.getElementById("admin-author-photo");
+    const photoPreview = document.getElementById("admin-author-photo-preview");
+    const newAuthorBtn = document.getElementById("admin-author-new-btn");
+
+    if (photoFileInput) {
+        photoFileInput.addEventListener("change", (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                authorPhotoBase64 = evt.target.result;
+                if (photoUrlInput) photoUrlInput.value = authorPhotoBase64;
+                if (photoPreview) {
+                    photoPreview.innerHTML = `<img src="${authorPhotoBase64}" class="w-full h-full object-cover rounded-2xl" />`;
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (photoUrlInput) {
+        photoUrlInput.addEventListener("input", (e) => {
+            const val = e.target.value.trim();
+            if (val && photoPreview) {
+                photoPreview.innerHTML = `<img src="${val}" class="w-full h-full object-cover rounded-2xl" onerror="this.onerror=null;this.parentElement.textContent='?'" />`;
+            }
+        });
+    }
+
+    if (newAuthorBtn) {
+        newAuthorBtn.addEventListener("click", () => {
+            resetAuthorForm();
+        });
+    }
+
+    if (authorForm) {
+        authorForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("admin-author-name").value.trim();
+            const role = document.getElementById("admin-author-role").value.trim() || "CONTRIBUTOR";
+            const photoUrl = document.getElementById("admin-author-photo").value.trim() || authorPhotoBase64;
+            const bio = document.getElementById("admin-author-bio").value.trim();
+            const editSlug = document.getElementById("author-edit-slug").value.trim();
+
+            if (!name) {
+                alert("എഴുത്തുകാരന്റെ പേര് നൽകേണ്ടതുണ്ട്.");
+                return;
+            }
+
+            const slug = editSlug || slugifyAuthor(name);
+            const submitBtn = document.getElementById("admin-author-submit-btn");
+            const toast = document.getElementById("admin-author-save-toast");
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add("opacity-60");
+
+            const payload = {
+                name,
+                role,
+                photoUrl,
+                bio,
+                slug,
+                updatedAt: serverTimestamp()
+            };
+
+            try {
+                await setDoc(doc(db, "authors", slug), payload);
+                if (toast) {
+                    toast.classList.remove("hidden");
+                    setTimeout(() => toast.classList.add("hidden"), 3000);
+                }
+                resetAuthorForm();
+            } catch (err) {
+                console.error("[admin.js] Author save error:", err);
+                alert("പ്രൊഫൈൽ സേവ് ചെയ്യുമ്പോൾ തടസ്സം നേരിട്ടു: " + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove("opacity-60");
+            }
+        });
+    }
+
+    listenToFirestoreAuthors();
+}
+
+function resetAuthorForm() {
+    const editSlug = document.getElementById("author-edit-slug");
+    const nameInput = document.getElementById("admin-author-name");
+    const roleInput = document.getElementById("admin-author-role");
+    const photoInput = document.getElementById("admin-author-photo");
+    const bioInput = document.getElementById("admin-author-bio");
+    const photoPreview = document.getElementById("admin-author-photo-preview");
+    const heading = document.getElementById("author-form-heading");
+    const newBtn = document.getElementById("admin-author-new-btn");
+
+    if (editSlug) editSlug.value = "";
+    if (nameInput) nameInput.value = "";
+    if (roleInput) roleInput.value = "";
+    if (photoInput) photoInput.value = "";
+    if (bioInput) bioInput.value = "";
+    if (photoPreview) photoPreview.textContent = "?";
+    if (heading) heading.textContent = "എഴുത്തുകാരന്റെ പ്രൊഫൈൽ മാനേജർ (Author Profile Manager)";
+    if (newBtn) newBtn.classList.add("hidden");
+    authorPhotoBase64 = "";
+}
+
+function listenToFirestoreAuthors() {
+    try {
+        const authorsCol = collection(db, "authors");
+        onSnapshot(authorsCol, (snapshot) => {
+            const list = [];
+            snapshot.forEach(docSnap => {
+                list.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            managedAuthorsList = list;
+            renderAdminAuthorsTab();
+        }, (err) => {
+            console.warn("[admin.js] Authors listener warning:", err);
+        });
+    } catch (e) {
+        console.warn("[admin.js] Authors listener init failed:", e);
+    }
+}
+
+function renderAdminAuthorsTab() {
+    const grid = document.getElementById("admin-authors-grid");
+    const badge = document.getElementById("admin-authors-count");
+    const tabBadge = document.getElementById("tab-authors-badge");
+
+    if (!grid) return;
+
+    // Combine managed authors with any unique authors found in published articles
+    const articleAuthorsMap = {};
+    currentArticlesList.forEach(art => {
+        const aName = (art.author || "").trim();
+        if (aName) {
+            const s = slugifyAuthor(aName);
+            if (!articleAuthorsMap[s]) articleAuthorsMap[s] = { name: aName, count: 0 };
+            articleAuthorsMap[s].count++;
+        }
+    });
+
+    const allKeys = new Set([...managedAuthorsList.map(a => a.id || a.slug), ...Object.keys(articleAuthorsMap)]);
+    const count = allKeys.size;
+    if (badge) badge.textContent = count;
+    if (tabBadge) tabBadge.textContent = count;
+
+    if (count === 0) {
+        grid.innerHTML = `
+        <div class="col-span-full py-8 text-center text-xs text-[#8c7a6b]">
+            എഴുത്തുകാരെ ചേർത്തിട്ടില്ല. മുകളിലെ ഫോമിലൂടെ ചേർക്കാം.
+        </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = Array.from(allKeys).map(key => {
+        const managed = managedAuthorsList.find(a => (a.id || a.slug) === key);
+        const artInfo = articleAuthorsMap[key];
+        const name = (managed && managed.name) || (artInfo && artInfo.name) || key;
+        const role = (managed && managed.role) || "Contributor";
+        const photo = (managed && managed.photoUrl) || "";
+        const bio = (managed && managed.bio) || "NUQTHA രചയിതാവ്";
+        const articleCount = (artInfo && artInfo.count) || 0;
+        const initial = name.trim().charAt(0).toUpperCase() || "A";
+
+        return `
+        <div class="p-4 rounded-2xl border border-[#ebdccb] bg-[#fbf7ee]/40 space-y-3 flex flex-col justify-between">
+            <div class="flex items-start gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-base flex-shrink-0 overflow-hidden border border-white">
+                    ${photo ? `<img src="${photo}" alt="${name}" class="w-full h-full object-cover" />` : initial}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h4 class="text-xs sm:text-sm font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">
+                        ${name}
+                    </h4>
+                    <p class="text-[10px] text-[#b4532c] font-black uppercase font-english">
+                        ${role}
+                    </p>
+                    <p class="text-[11px] text-[#7a6758] line-clamp-2 mt-1">
+                        ${bio}
+                    </p>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-[#ebdccb]/60 flex items-center justify-between text-[11px] font-english">
+                <span class="font-bold text-[#1e1b18]">
+                    📚 ${articleCount} Articles
+                </span>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="editAuthorProfile('${key}')" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold transition text-[10px]">
+                        ✏️ Edit
+                    </button>
+                    <a href="/profile/author/${key}" target="_blank" class="px-2.5 py-1 rounded-lg bg-[#b4532c]/10 hover:bg-[#b4532c]/20 text-[#b4532c] font-bold transition text-[10px]">
+                        👁️ View
+                    </a>
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+window.editAuthorProfile = function(key) {
+    const managed = managedAuthorsList.find(a => (a.id || a.slug) === key);
+    let name = key;
+    if (managed && managed.name) name = managed.name;
+    else {
+        currentArticlesList.forEach(art => {
+            if (slugifyAuthor(art.author) === key) name = art.author;
+        });
+    }
+
+    const editSlug = document.getElementById("author-edit-slug");
+    const nameInput = document.getElementById("admin-author-name");
+    const roleInput = document.getElementById("admin-author-role");
+    const photoInput = document.getElementById("admin-author-photo");
+    const bioInput = document.getElementById("admin-author-bio");
+    const photoPreview = document.getElementById("admin-author-photo-preview");
+    const heading = document.getElementById("author-form-heading");
+    const newBtn = document.getElementById("admin-author-new-btn");
+
+    if (editSlug) editSlug.value = key;
+    if (nameInput) nameInput.value = name;
+    if (roleInput) roleInput.value = (managed && managed.role) || "";
+    if (photoInput) photoInput.value = (managed && managed.photoUrl) || "";
+    if (bioInput) bioInput.value = (managed && managed.bio) || "";
+    if (heading) heading.textContent = `എഡിറ്റ് ചെയ്യുന്നു: ${name}`;
+    if (newBtn) newBtn.classList.remove("hidden");
+
+    if (photoPreview) {
+        if (managed && managed.photoUrl) {
+            photoPreview.innerHTML = `<img src="${managed.photoUrl}" class="w-full h-full object-cover rounded-2xl" />`;
+        } else {
+            photoPreview.textContent = name.charAt(0).toUpperCase() || "?";
+        }
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.renderAdminAuthorsTab = renderAdminAuthorsTab;

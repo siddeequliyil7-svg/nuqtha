@@ -285,6 +285,7 @@ export function validateAndSanitizeArticleForSave(raw) {
         title,
         category,
         author,
+        authorId,
         transcription,
         imageUrl,
         excerpt,
@@ -312,6 +313,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
             title: "തലക്കെട്ടില്ല (Untitled)",
             category: "GENERAL",
             author: "NUQTHA",
+            authorId: "",
             transcription: "",
             imageUrl: "",
             excerpt: "",
@@ -332,6 +334,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const title = sanitizeString(rawDoc.title, 300, "തലക്കെട്ടില്ല (Untitled)");
     const category = sanitizeCategory(rawDoc.category);
     const author = sanitizeString(rawDoc.author, 100, "NUQTHA");
+    const authorId = sanitizeString(rawDoc.authorId || "", 100, "");
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
     const imageUrl = sanitizeImageUrl(rawDoc.imageUrl);
     const content = sanitizeString(rawDoc.content, 500000, "");
