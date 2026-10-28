@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NUQTHA | Article Reader</title>
-    <!-- Google Fonts Preconnect & Load (Noto Sans Malayalam, Manjari, Plus Jakarta Sans) -->
+    <!-- Google Fonts Preconnect & Load with display=swap (Noto Sans Malayalam, Manjari, Plus Jakarta Sans) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@100..800&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
     <link rel="stylesheet" href="styles.css">
     <style>
         .article-body p {
@@ -59,7 +59,7 @@
             color: #fde68a;
         }
 
-        /* Related Articles Section (Matching Editorial Card Style) */
+        /* Related Articles Section */
         .related-card {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(16px);
@@ -89,45 +89,19 @@
             border-color: rgba(255, 255, 255, 0.22);
             box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.65);
         }
-        .related-img-container {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 16 / 9;
-            overflow: hidden;
-            background: linear-gradient(135deg, #b8542c 0%, #803113 100%);
-        }
-        .related-read-badge {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.68);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 4px 9px;
-            border-radius: 6px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            letter-spacing: 0.02em;
-            z-index: 2;
-        }
     </style>
 </head>
 <body class="bg-[#fbf7ee] text-[#1e1b18] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col justify-between">
 
     <!-- Top Minimal Sticky Header -->
-    <header class="sticky top-0 z-40 bg-[#fbf7ee]/90 backdrop-blur-md border-b border-[#ebdccb]">
+    <header class="sticky top-0 z-40 bg-[#fbf7ee]/90 dark:bg-[#090a0f]/90 backdrop-blur-md border-b border-[#ebdccb] dark:border-white/10 transition-colors">
         <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
             <!-- Clickable NUQTHA Brand Logo returning to Home -->
             <a href="index.html" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20" title="Return to Home Page / ഹോം പേജ്">
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-sm flex items-center justify-center p-1.5 text-white flex-shrink-0 group-hover:scale-110 transition-transform">
                     <svg class="w-full h-full" viewBox="0 0 24 24" fill="currentColor"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z"/></svg>
                 </div>
-                <span class="text-base sm:text-xl font-black uppercase font-english tracking-tight text-[#1e1b18] group-hover:text-[#b4532c] transition-colors">NUQTHA</span>
+                <span translate="no" class="notranslate text-base sm:text-xl font-black uppercase font-english tracking-tight text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] transition-colors">NUQTHA</span>
             </a>
 
             <div class="flex items-center gap-3">
@@ -136,7 +110,7 @@
                     <svg id="sun-icon" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
-                    <svg id="moon-icon" class="w-4 h-4 text-[#4a3c33]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg id="moon-icon" class="w-4 h-4 text-[#4a3c33] dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                     </svg>
                 </button>
@@ -144,10 +118,57 @@
         </div>
     </header>
 
-    <!-- Main Article Container -->
+    <!-- Main Container -->
     <main class="w-full max-w-4xl lg:max-w-5xl mx-auto px-3.5 sm:px-6 md:px-8 py-3.5 sm:py-8 md:py-12 flex-1">
-        <!-- Article Header -->
-        <article class="space-y-3.5 sm:space-y-6 md:space-y-8">
+
+        <!-- ═══════════ 1. HIGH-FIDELITY SKELETON LOADER (ZERO FLICKER) ═══════════ -->
+        <div id="page-skeleton-loader" class="space-y-6 sm:space-y-8 animate-fade-in">
+            <!-- Top Breadcrumb Placeholder -->
+            <div class="flex items-center justify-between pb-1">
+                <div class="h-8 w-44 rounded-full skeleton-shimmer-light"></div>
+                <div class="h-8 w-24 rounded-full skeleton-shimmer-light"></div>
+            </div>
+
+            <!-- Hero Card Skeleton -->
+            <div class="rounded-3xl p-6 sm:p-8 lg:p-10 bg-[#12151f] border border-white/10 shadow-2xl">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-start">
+                    <div class="md:col-span-5 lg:col-span-4 w-full max-w-[260px] mx-auto md:mx-0">
+                        <div class="aspect-[3/4] rounded-2xl skeleton-shimmer border border-white/10"></div>
+                        <div class="h-10 mt-4 rounded-xl skeleton-shimmer"></div>
+                    </div>
+                    <div class="md:col-span-7 lg:col-span-8 space-y-4">
+                        <div class="flex gap-2">
+                            <div class="h-6 w-32 rounded-full skeleton-shimmer"></div>
+                            <div class="h-6 w-24 rounded-full skeleton-shimmer"></div>
+                        </div>
+                        <div class="h-10 w-3/4 rounded-xl skeleton-shimmer"></div>
+                        <div class="h-5 w-1/2 rounded-lg skeleton-shimmer"></div>
+                        <div class="h-16 w-full rounded-xl skeleton-shimmer mt-2"></div>
+                        <div class="border-t border-white/10 my-3"></div>
+                        <div class="h-4 w-5/6 rounded skeleton-shimmer"></div>
+                        <div class="h-4 w-4/6 rounded skeleton-shimmer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Articles List Section Skeleton -->
+            <div class="space-y-3 pt-4">
+                <div class="h-6 w-48 rounded skeleton-shimmer-light"></div>
+                <div class="space-y-3">
+                    <div class="h-24 rounded-2xl skeleton-shimmer-light"></div>
+                    <div class="h-24 rounded-2xl skeleton-shimmer-light"></div>
+                    <div class="h-24 rounded-2xl skeleton-shimmer-light"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════ 2. DEDICATED BOOK EDITION VIEW CONTAINER ═══════════ -->
+        <div id="book-edition-container" class="hidden space-y-6 sm:space-y-8 animate-fade-in">
+            <!-- Content injected dynamically by renderBookIndex() -->
+        </div>
+
+        <!-- ═══════════ 3. STANDARD ARTICLE VIEW CONTAINER ═══════════ -->
+        <article id="standard-article-view" class="hidden space-y-3.5 sm:space-y-6 md:space-y-8">
             <div class="space-y-2 sm:space-y-3.5">
                 <div id="art-book-badge-container" class="hidden mb-1">
                     <a id="art-book-link" href="#" class="inline-flex items-center gap-1.5 text-xs font-bold text-[#b4532c] dark:text-[#f87171] bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-3 py-1 rounded-full hover:bg-[#b4532c]/20 transition shadow-2xs">
@@ -156,7 +177,7 @@
                 </div>
                 <span id="art-category" class="category-badge font-english uppercase">GENERAL</span>
                 <h1 id="art-title" class="article-title-text text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e1b18] dark:text-white tracking-tight leading-snug">
-                    ലോഡ് ചെയ്യുന്നു...
+                    ലേഖനം
                 </h1>
                 <div class="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-xs sm:shadow-sm my-2 sm:my-3.5">
                     <a id="art-author-link" href="#" class="group/author inline-flex items-center gap-3 hover:opacity-90 transition cursor-pointer flex-1">
@@ -182,10 +203,10 @@
 
             <!-- Optional Article Cover Image -->
             <div id="art-image-wrapper" class="hidden rounded-2xl sm:rounded-3xl overflow-hidden border border-[#ebdccb] dark:border-white/10 shadow-sm">
-                <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px]">
+                <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px]" loading="eager" decoding="async">
             </div>
 
-            <!-- Social Share Buttons Directly Underneath Main Featured Image (Centered & Striking) -->
+            <!-- Social Share Buttons -->
             <div id="art-share-bar" class="flex items-center justify-center gap-2 sm:gap-2.5 py-2 sm:py-2.5 my-1 sm:my-1.5 border-y border-[#ebdccb]/60 dark:border-white/10 flex-nowrap overflow-x-auto">
                 <span class="text-[10px] sm:text-[11px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-1 sm:mr-1.5 flex-shrink-0">SHARE:</span>
                 <button onclick="shareArticlePage('whatsapp')" class="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl flex items-center justify-center text-white bg-[#25D366] hover:bg-[#20ba59] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#25D366]/25 flex-shrink-0" title="Share on WhatsApp" aria-label="Share on WhatsApp">
@@ -200,9 +221,9 @@
                 <button onclick="shareArticlePage('instagram')" class="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl flex items-center justify-center text-white bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-90 hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#dc2743]/25 flex-shrink-0" title="Share on Instagram" aria-label="Share on Instagram">
                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
                 </button>
-                <button onclick="shareArticlePage('copy')" id="page-copy-btn" class="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl flex items-center justify-center text-white bg-[#b4532c] hover:bg-[#923e1b] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#b4532c]/25 flex-shrink-0 relative group" title="Copy Article Link" aria-label="Copy Article Link">
-                    <svg id="page-copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                    <svg id="page-copy-check" class="w-4 h-4 hidden text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                <button onclick="shareArticlePage('copy')" class="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-[#ebdccb] dark:border-white/15 hover:scale-110 active:scale-95 transition-all shadow-sm flex-shrink-0" title="Copy Article Link" aria-label="Copy Article Link">
+                    <svg id="page-copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg id="page-copy-check" class="w-4 h-4 hidden text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                     <span id="page-copy-label" class="sr-only">Copy Link</span>
                 </button>
                 <span id="page-copy-toast" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hidden flex-shrink-0">✓ Copied!</span>
@@ -210,113 +231,10 @@
 
             <!-- Full Article Body -->
             <div id="art-content" class="article-body font-sans text-lg pt-1.5 sm:pt-4 leading-relaxed">
-                <div class="flex items-center gap-2 text-slate-400">
-                    <span class="inline-block w-4 h-4 border-2 border-[#b4532c] border-t-transparent rounded-full animate-spin"></span>
-                    <span>ലേഖനം ലോഡ് ചെയ്യുന്നു...</span>
-                </div>
+                <!-- Article text injected dynamically -->
             </div>
 
-            <!-- ═══════════ Clean Comments Section ═══════════ -->
-            <section id="article-comments-section" class="pt-8 sm:pt-10 border-t border-[#ebdccb] dark:border-white/10 space-y-5">
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                    <div class="category-glass-badge">
-                        <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">COMMENTS · </span>
-                        <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-[#f1f5f9]">അഭിപ്രായങ്ങൾ</span>
-                        <span id="comments-count-badge" class="ml-1 text-[11px] px-2 py-0.5 rounded-full bg-[#b4532c]/10 text-[#b4532c] dark:text-white font-bold">0</span>
-                    </div>
-                    <span class="text-xs text-[#8c7a6b] dark:text-[#a0aec0]">
-                        നിങ്ങളുടെ അഭിപ്രായം പങ്കുവെക്കൂ
-                    </span>
-                </div>
-
-                <!-- Comment Input Box (Frosted Glass Card) -->
-                <div class="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-xs space-y-3.5">
-                    <!-- 1. AUTH STATE BAR: Signed-Out View (Fast Google Sign-In) -->
-                    <div id="comment-auth-logged-out" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-xl bg-[#fbf7ee]/70 dark:bg-white/[0.03] border border-[#ebdccb] dark:border-white/10 transition">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-full bg-amber-100/80 dark:bg-white/10 text-amber-900 dark:text-amber-200 flex items-center justify-center text-sm flex-shrink-0">
-                                💬
-                            </div>
-                            <div class="min-w-0">
-                                <p class="text-xs font-bold text-[#1e1b18] dark:text-white leading-tight">അഭിപ്രായം രേഖപ്പെടുത്താം</p>
-                                <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">Sign in with Google to post your thoughts</p>
-                            </div>
-                        </div>
-
-                        <!-- Non-blocking Google Sign-In Button -->
-                        <button type="button" id="google-signin-btn" class="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/20 border border-[#ebdccb] dark:border-white/15 text-xs font-bold text-[#1e1b18] dark:text-white shadow-xs hover:shadow transition-all cursor-pointer font-english active:scale-95 flex-shrink-0">
-                            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                            </svg>
-                            <span>Sign in with Google</span>
-                        </button>
-                    </div>
-
-                    <!-- 2. AUTH STATE BAR: Signed-In Profile View (Name + Avatar + Logout) -->
-                    <div id="comment-auth-logged-in" class="hidden items-center justify-between gap-3 p-2.5 sm:p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-500/20 transition">
-                        <div class="flex items-center gap-2.5 min-w-0">
-                            <div class="relative flex-shrink-0">
-                                <img id="user-avatar-img" class="w-8 h-8 rounded-full object-cover border border-emerald-300 dark:border-emerald-500/30" src="" alt="User Avatar" />
-                                <div id="user-avatar-fallback" class="w-8 h-8 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white font-bold text-xs flex items-center justify-center hidden">?</div>
-                            </div>
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-1.5 flex-wrap">
-                                    <span id="user-display-name" class="text-xs font-bold text-[#1e1b18] dark:text-white truncate">User Name</span>
-                                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-bold font-english flex items-center gap-0.5">
-                                        <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                                        Verified
-                                    </span>
-                                </div>
-                                <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english truncate">Google Account</p>
-                            </div>
-                        </div>
-
-                        <button type="button" id="google-signout-btn" class="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:underline px-2.5 py-1 rounded-lg transition font-english flex items-center gap-1 cursor-pointer flex-shrink-0">
-                            <span>Logout</span>
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                        </button>
-                    </div>
-
-                    <!-- 3. COMMENT TEXTAREA -->
-                    <div class="relative">
-                        <textarea id="comment-text" rows="3" placeholder="ഈ ലേഖനത്തെക്കുറിച്ചുള്ള നിങ്ങളുടെ അഭിപ്രായം ഇവിടെ എഴുതുക... (Write your thoughts here...)" class="w-full p-3.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[#ebdccb] dark:border-white/10 text-xs sm:text-sm text-[#1e1b18] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c] resize-y leading-relaxed font-sans"></textarea>
-                    </div>
-
-                    <!-- 4. ACTION BAR & SUBMIT BUTTON -->
-                    <div class="flex items-center justify-between pt-1 gap-2 flex-wrap">
-                        <span id="comment-login-hint" class="text-[11px] text-[#8c7a6b] dark:text-[#94a3b8]">
-                            ലോഗിൻ ചെയ്ത് നേരിട്ട് അഭിപ്രായം പോസ്റ്റ് ചെയ്യാം
-                        </span>
-
-                        <div class="flex items-center gap-2 ml-auto">
-                            <span id="comment-success-toast" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hidden">✓ അഭിപ്രായം രേഖപ്പെടുത്തി!</span>
-                            <button type="button" id="comment-submit-btn" class="px-5 py-2 rounded-full bg-[#b4532c] hover:bg-[#923e1b] active:scale-95 text-white text-xs font-bold uppercase font-english transition shadow-sm inline-flex items-center gap-1.5 cursor-pointer">
-                                <span>POST COMMENT</span>
-                                <span>&rarr;</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Comments List Feed -->
-                <div id="comments-list" class="space-y-3 pt-1">
-                    <div id="comments-empty-state" class="p-6 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8] rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-dashed border-[#ebdccb] dark:border-white/10">
-                        ആദ്യത്തെ അഭിപ്രായം രേഖപ്പെടുത്തൂ (Be the first to share your thoughts)
-                    </div>
-                </div>
-            </section>
-
-            <!-- Article Footer Back Link -->
-            <div class="pt-8 border-t border-[#ebdccb] dark:border-white/10 flex justify-center">
-                <a href="index.html" class="px-6 py-3 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
-                    &larr; Back to all stories
-                </a>
-            </div>
-
-            <!-- Related Articles Grid Section -->
+            <!-- Related Articles Section -->
             <section id="related-articles-section" class="pt-10 border-t border-[#ebdccb] dark:border-white/10 hidden">
                 <div class="flex items-center justify-between mb-6">
                     <div class="category-glass-badge">
@@ -329,16 +247,120 @@
                 </div>
             </section>
         </article>
+
+        <!-- ═══════════ 4. ERROR STATE VIEW ═══════════ -->
+        <div id="page-error-container" class="hidden">
+            <!-- Injected by showErrorWithRetry() -->
+        </div>
+
+        <!-- ═══════════ 5. COMMENTS SECTION (UNIVERSAL) ═══════════ -->
+        <section id="article-comments-section" class="mt-12 pt-8 sm:pt-10 border-t border-[#ebdccb] dark:border-white/10 space-y-5">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <div class="category-glass-badge">
+                    <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">COMMENTS · </span>
+                    <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-[#f1f5f9]">അഭിപ്രായങ്ങൾ</span>
+                    <span id="comments-count-badge" class="ml-1 text-[11px] px-2 py-0.5 rounded-full bg-[#b4532c]/10 text-[#b4532c] dark:text-white font-bold">0</span>
+                </div>
+                <span class="text-xs text-[#8c7a6b] dark:text-[#a0aec0]">
+                    നിങ്ങളുടെ അഭിപ്രായം പങ്കുവെക്കൂ
+                </span>
+            </div>
+
+            <!-- Comment Input Box -->
+            <div class="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-xs space-y-3.5">
+                <!-- 1. AUTH STATE BAR: Signed-Out View -->
+                <div id="comment-auth-logged-out" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-xl bg-[#fbf7ee]/70 dark:bg-white/[0.03] border border-[#ebdccb] dark:border-white/10 transition">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-amber-100/80 dark:bg-white/10 text-amber-900 dark:text-amber-200 flex items-center justify-center text-sm flex-shrink-0">
+                            💬
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-[#1e1b18] dark:text-white leading-tight">അഭിപ്രായം രേഖപ്പെടുത്താം</p>
+                            <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">Sign in with Google to post your thoughts</p>
+                        </div>
+                    </div>
+
+                    <button type="button" id="google-signin-btn" class="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/20 border border-[#ebdccb] dark:border-white/15 text-xs font-bold text-[#1e1b18] dark:text-white shadow-xs hover:shadow transition-all cursor-pointer font-english active:scale-95 flex-shrink-0">
+                        <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                        </svg>
+                        <span>Sign in with Google</span>
+                    </button>
+                </div>
+
+                <!-- 2. AUTH STATE BAR: Signed-In Profile View -->
+                <div id="comment-auth-logged-in" class="hidden items-center justify-between gap-3 p-2.5 sm:p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-500/20 transition">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="relative flex-shrink-0">
+                            <img id="user-avatar-img" class="w-8 h-8 rounded-full object-cover border border-emerald-300 dark:border-emerald-500/30" src="" alt="User Avatar" />
+                            <div id="user-avatar-fallback" class="w-8 h-8 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white font-bold text-xs flex items-center justify-center hidden">?</div>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span id="user-display-name" class="text-xs font-bold text-[#1e1b18] dark:text-white truncate">User Name</span>
+                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-bold font-english flex items-center gap-0.5">
+                                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                    Verified
+                                </span>
+                            </div>
+                            <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english truncate">Google Account</p>
+                        </div>
+                    </div>
+
+                    <button type="button" id="google-signout-btn" class="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:underline px-2.5 py-1 rounded-lg transition font-english flex items-center gap-1 cursor-pointer flex-shrink-0">
+                        <span>Logout</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    </button>
+                </div>
+
+                <!-- 3. COMMENT TEXTAREA -->
+                <div class="relative">
+                    <textarea id="comment-text" rows="3" placeholder="ഈ ലേഖനത്തെക്കുറിച്ചുള്ള നിങ്ങളുടെ അഭിപ്രായം ഇവിടെ എഴുതുക... (Write your thoughts here...)" class="w-full p-3.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[#ebdccb] dark:border-white/10 text-xs sm:text-sm text-[#1e1b18] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c] resize-y leading-relaxed font-sans"></textarea>
+                </div>
+
+                <!-- 4. ACTION BAR & SUBMIT BUTTON -->
+                <div class="flex items-center justify-between pt-1 gap-2 flex-wrap">
+                    <span id="comment-login-hint" class="text-[11px] text-[#8c7a6b] dark:text-[#94a3b8]">
+                        ലോഗിൻ ചെയ്ത് നേരിട്ട് അഭിപ്രായം പോസ്റ്റ് ചെയ്യാം
+                    </span>
+
+                    <div class="flex items-center gap-2 ml-auto">
+                        <span id="comment-success-toast" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hidden">✓ അഭിപ്രായം രേഖപ്പെടുത്തി!</span>
+                        <button type="button" id="comment-submit-btn" class="px-5 py-2 rounded-full bg-[#b4532c] hover:bg-[#923e1b] active:scale-95 text-white text-xs font-bold uppercase font-english transition shadow-sm inline-flex items-center gap-1.5 cursor-pointer">
+                            <span>POST COMMENT</span>
+                            <span>&rarr;</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comments List Feed -->
+            <div id="comments-list" class="space-y-3 pt-1">
+                <div id="comments-empty-state" class="p-6 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8] rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-dashed border-[#ebdccb] dark:border-white/10">
+                    ആദ്യത്തെ അഭിപ്രായം രേഖപ്പെടുത്തൂ (Be the first to share your thoughts)
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer Back Link -->
+        <div class="pt-8 border-t border-[#ebdccb] dark:border-white/10 flex justify-center">
+            <a href="index.html" class="px-6 py-3 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
+                &larr; Back to all stories
+            </a>
+        </div>
     </main>
 
     <!-- Footer -->
     <footer class="bg-[#241711] text-[#cbbba9] border-t border-[#3d2c22] py-8 mt-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs font-english tracking-wider">
+        <div translate="no" class="notranslate max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs font-english tracking-wider">
             &copy; 2026 NUQTHA. All rights reserved.
         </div>
     </footer>
 
-    <!-- Script to load article details from Firestore -->
+    <!-- Main Module Script -->
     <script type="module">
         import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
@@ -346,319 +368,24 @@
         const urlParams = new URLSearchParams(window.location.search);
         const articleId = urlParams.get('id');
 
-        async function loadArticle() {
-            if (!articleId) {
-                showError("ലേഖനത്തിന്റെ ഐഡി നൽകിയിട്ടില്ല.");
-                return;
-            }
+        // Fast In-Memory Cache
+        const memoryCache = window.__NUQTHA_MEM_CACHE__ || new Map();
+        window.__NUQTHA_MEM_CACHE__ = memoryCache;
 
-            let article = null;
-
-            // 1. First fetch directly by Document ID (fast & reliable)
-            try {
-                const docRef = doc(db, "articles", articleId);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    // Normalize & sanitize all fields — safe fallbacks, no crashes
-                    article = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                }
-            } catch (e) {
-                console.warn("[article.html] Direct doc fetch error, fallback to collection query:", e);
-            }
-
-            // 2. Fallback: Query all documents if direct fetch had issues
-            if (!article) {
-                try {
-                    const snap = await getDocs(collection(db, "articles"));
-                    snap.forEach(docSnap => {
-                        if (docSnap.id === articleId) {
-                            article = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                        }
-                    });
-                } catch (e) {
-                    console.error("[article.html] Firestore read error:", e);
-                }
-            }
-
-            // 3. Fallback: Direct Firestore REST API (immune to gRPC/WebSocket blocking)
-            if (!article) {
-                try {
-                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(articleId)}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`);
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json && json.fields) {
-                            const data = {};
-                            for (const [k, v] of Object.entries(json.fields)) {
-                                data[k] = v.stringValue !== undefined ? v.stringValue :
-                                          v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
-                                          v.timestampValue !== undefined ? v.timestampValue : null;
-                            }
-                            article = normalizeArticleDoc(data, articleId);
-                        }
-                    }
-                } catch (err) {
-                    console.warn("[article.html] REST fallback error:", err);
-                }
-            }
-
-            if (article) {
-                renderArticle(article);
-                loadRelatedArticles(article);
-                initComments(article.id);
-            } else {
-                showError("ഈ ലേഖനം കണ്ടെത്താനായില്ല അല്ലെങ്കിൽ നീക്കം ചെയ്തിരിക്കുന്നു.");
+        // Dynamic Image Preloader
+        function preloadCoverImage(url) {
+            if (!url || url.includes("placeholder")) return;
+            const existing = document.querySelector(`link[rel="preload"][href="${url}"]`);
+            if (!existing) {
+                const link = document.createElement("link");
+                link.rel = "preload";
+                link.as = "image";
+                link.href = url;
+                document.head.appendChild(link);
             }
         }
 
-        async function loadRelatedArticles(currentArticle) {
-            const relatedSection = document.getElementById("related-articles-section");
-            const relatedGrid = document.getElementById("related-articles-grid");
-            if (!relatedSection || !relatedGrid) return;
-
-            let allDocs = [];
-
-            // 1. Fetch articles from Firestore collection
-            try {
-                const snap = await getDocs(collection(db, "articles"));
-                snap.forEach(docSnap => {
-                    allDocs.push(normalizeArticleDoc(docSnap.data(), docSnap.id));
-                });
-            } catch (e) {
-                console.warn("[article.html] Failed to get docs for related articles, trying REST:", e);
-            }
-
-            // 2. Fallback to REST API if Firestore SDK returned empty
-            if (allDocs.length === 0) {
-                try {
-                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?pageSize=20&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`);
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json && json.documents) {
-                            json.documents.forEach(docItem => {
-                                const docId = docItem.name.split("/").pop();
-                                const data = {};
-                                if (docItem.fields) {
-                                    for (const [k, v] of Object.entries(docItem.fields)) {
-                                        data[k] = v.stringValue !== undefined ? v.stringValue :
-                                                  v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
-                                                  v.timestampValue !== undefined ? v.timestampValue : null;
-                                    }
-                                }
-                                allDocs.push(normalizeArticleDoc(data, docId));
-                            });
-                        }
-                    }
-                } catch (err) {
-                    console.warn("[article.html] REST fetch error for related articles:", err);
-                }
-            }
-
-            // Filter out current article
-            const candidates = allDocs.filter(a => a.id !== currentArticle.id);
-            if (candidates.length === 0) return;
-
-            // Prioritize articles from the SAME category first, then others
-            const sameCat = candidates.filter(a => (a.category || "").toUpperCase() === (currentArticle.category || "").toUpperCase());
-            const diffCat = candidates.filter(a => (a.category || "").toUpperCase() !== (currentArticle.category || "").toUpperCase());
-            const sortedRelated = [...sameCat, ...diffCat].slice(0, 4);
-
-            if (sortedRelated.length === 0) return;
-
-            const categoryEnglishMap = {
-                "HISTORY": "HISTORY",
-                "STUDY": "STUDY",
-                "STORY": "STORY",
-                "GENERAL": "GENERAL"
-            };
-
-            relatedGrid.innerHTML = sortedRelated.map(item => {
-                const catName = categoryEnglishMap[(item.category || "").toUpperCase()] || (item.category || "GENERAL").toUpperCase();
-                let dateStr = item.date || "";
-                if (!dateStr) {
-                    try {
-                        const ms = parseTimestampMillis(item.createdAt);
-                        if (ms) dateStr = new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-                    } catch(e) {}
-                }
-
-                const cleanTitle = (item.title || "").replace(/[*_#~`]/g, "");
-                const rawExcerpt = item.excerpt || (item.content ? item.content.substring(0, 100) : "");
-                const cleanExcerpt = rawExcerpt.replace(/[*_#~`]/g, "").trim();
-
-                return `
-                    <a href="article.html?id=${item.id}" class="related-card group">
-                        <!-- Image Container -->
-                        <div class="related-img-container">
-                            ${item.imageUrl ? `
-                                <img src="${item.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                            ` : `
-                                <div class="w-full h-full flex flex-col items-center justify-center p-4 text-white/80">
-                                    <div class="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-1 border border-white/20">
-                                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                                    </div>
-                                    <span class="text-[10px] font-bold font-english uppercase tracking-widest">${catName}</span>
-                                </div>
-                            `}
-                        </div>
-
-                        <!-- Card Body -->
-                        <div class="p-4 sm:p-4.5 flex flex-col justify-between flex-1 gap-2">
-                            <div class="space-y-1.5">
-                                <span class="text-[11px] font-black text-[#b4532c] dark:text-[#f87171] uppercase tracking-wider font-english">
-                                    ${catName}
-                                </span>
-                                <h4 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[#b4532c] transition-colors text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
-                                    ${cleanTitle}
-                                </h4>
-                                ${cleanExcerpt ? `
-                                    <p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed font-['Noto_Sans_Malayalam']">
-                                        ${cleanExcerpt}
-                                    </p>
-                                ` : ''}
-                            </div>
-                            <div class="pt-2.5 border-t border-[#ebdccb]/60 dark:border-white/10 flex items-center justify-between text-[11px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
-                                <span class="font-bold text-[#1e1b18] dark:text-white">${item.author || "NUQTHA"}</span>
-                                <span>${dateStr || "Recent"}</span>
-                            </div>
-                        </div>
-                    </a>
-                `;
-            }).join('');
-
-            relatedSection.classList.remove("hidden");
-        }
-
-        function renderArticle(article) {
-            // article is already normalized — all fields are guaranteed to exist
-            document.title = `${article.title || "NUQTHA"} | NUQTHA`;
-            const titleEl = document.getElementById('art-title');
-            titleEl.textContent = article.title || "ലേഖനം";
-            if (article.titleColor) {
-                titleEl.style.color = article.titleColor;
-            }
-
-            const authorName = (article.author && article.author.trim()) ? article.author.trim() : "NUQTHA";
-            document.getElementById('art-author').textContent = authorName;
-            const avatarEl = document.getElementById('art-author-avatar');
-            if (avatarEl) {
-                avatarEl.textContent = authorName.charAt(0).toUpperCase() || "N";
-            }
-
-            const transContainer = document.getElementById('art-transcription-container');
-            const transEl = document.getElementById('art-transcription');
-            if (transContainer && transEl) {
-                if (article.transcription && article.transcription.trim()) {
-                    transEl.textContent = article.transcription.trim();
-                    transContainer.classList.remove('hidden');
-                } else {
-                    transContainer.classList.add('hidden');
-                }
-            }
-
-            // Use formatDateSafe via parseTimestampMillis for robust date handling
-            let dateStr = article.date || "";
-            if (!dateStr) {
-                try {
-                    const ms = parseTimestampMillis(article.createdAt);
-                    if (ms) {
-                        dateStr = new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-                    }
-                } catch(e) {
-                    console.warn("[article.html] Date parse error:", e);
-                }
-            }
-            document.getElementById('art-date').textContent = dateStr || "Recent";
-            if (article.imageUrl && !article.imageUrl.includes("placeholder")) {
-                const img = document.getElementById('art-image');
-                img.src = article.imageUrl;
-                img.onerror = () => {
-                    document.getElementById('art-image-wrapper').classList.add('hidden');
-                    console.warn("[article.html] Cover image failed to load.");
-                };
-                document.getElementById('art-image-wrapper').classList.remove('hidden');
-            }
-
-            const contentEl = document.getElementById('art-content');
-            // IF TYPE IS BOOK, RENDER INDEX PAGE
-            if (article.type === "BOOK") {
-                const headerWrapper = document.getElementById('art-title')?.parentElement;
-                if (headerWrapper) headerWrapper.classList.add('hidden');
-                document.getElementById('art-share-bar')?.classList.add('hidden');
-                document.getElementById('art-image-wrapper')?.classList.add('hidden');
-                document.getElementById('related-articles-section')?.classList.add('hidden');
-                renderBookIndex(article, contentEl);
-                return;
-            }
-
-            // Map font size presets to rem values
-            const fontSizeMap = {
-                small: "1.05rem",
-                medium: "1.22rem",
-                large: "1.38rem",
-                xlarge: "1.55rem"
-            };
-            const chosenSize = fontSizeMap[article.fontSize] || "1.22rem";
-            const contentStyleParts = [];
-            if (article.contentColor) contentStyleParts.push(`color: ${article.contentColor}`);
-            if (chosenSize) contentStyleParts.push(`font-size: ${chosenSize}`);
-            const contentStyleAttr = contentStyleParts.length > 0 ? `style="${contentStyleParts.join('; ')};"` : '';
-            contentEl.innerHTML = (article.content || article.excerpt || "")
-                .split('\n\n')
-                .filter(p => p.trim())
-                .map(paragraph => {
-                    const p = paragraph.trim();
-
-                    // Dedicated Highlight Card Callout: :::highlight ... :::
-                    if (p.startsWith(":::highlight") && p.endsWith(":::")) {
-                        const inner = p.replace(/^:::highlight\s*/, "").replace(/\s*:::$/, "").trim();
-                        const formattedInner = inner
-                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
-                            .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
-                        return `<div class="highlight-glass-card"><p>${formattedInner}</p></div>`;
-                    }
-
-                    // Subheading H2
-                    if (p.startsWith("## ")) {
-                        return `<h2 class="article-h2">${p.replace("## ", "")}</h2>`;
-                    }
-                    // Subheading H3
-                    if (p.startsWith("### ")) {
-                        return `<h3 class="article-h3">${p.replace("### ", "")}</h3>`;
-                    }
-
-                    // Blockquote: > quote text
-                    if (p.startsWith("> ")) {
-                        const quoteText = p.replace(/^>\s*/, "").trim()
-                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
-                            .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
-                        return `<blockquote class="editorial-quote"><p>${quoteText}</p></blockquote>`;
-                    }
-
-                    // Inline Image with Layout/Size: ![caption|size](url) or ![caption](url)
-                    const imgMatch = p.match(/^!\[(.*?)(?:\|(small|medium|full))?\]\((.*?)\)$/);
-                    if (imgMatch) {
-                        const caption = imgMatch[1] || "";
-                        const size = imgMatch[2] || "full";
-                        const url = imgMatch[3];
-                        const sizeClass = size === "small" ? "img-small" : size === "medium" ? "img-medium" : "img-full";
-                        return `
-                            <div class="article-img-wrap ${sizeClass}">
-                                <img src="${url}" alt="${caption}">
-                                ${caption && caption !== "ചിത്രം" ? `<div class="article-img-caption">${caption}</div>` : ''}
-                            </div>
-                        `;
-                    }
-
-                    // Bold and Highlight (==വാക്ക്==)
-                    let formatted = p
-                        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18]">$1</strong>')
-                        .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
-
-                    return `<p ${contentStyleAttr}>${formatted}</p>`;
-                })
-                .join('');
-        }
-
+        // Clean text matching helper for single-author book binding
         function matchesBook(art, targetBook) {
             if (!art || !targetBook) return false;
             if (art.id === targetBook.id) return false;
@@ -689,153 +416,363 @@
             return false;
         }
 
-        async function renderBookIndex(book, container) {
+        // ═══════════ PARALLEL DATA FETCHERS WITH FIELD PROJECTION ═══════════
+
+        // 1. Fetch Target Book Document (Direct SDK + REST fallback with timeout)
+        async function fetchTargetDocument(id, signal) {
+            // Check memory cache first
+            if (memoryCache.has(`doc_${id}`)) {
+                return memoryCache.get(`doc_${id}`);
+            }
+
+            // 1. Direct Firestore SDK GetDoc
+            try {
+                const docRef = doc(db, "articles", id);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                    memoryCache.set(`doc_${id}`, normalized);
+                    return normalized;
+                }
+            } catch (err) {
+                console.warn("[Reader] Direct getDoc error, trying REST:", err);
+            }
+
+            // 2. Direct REST API Fallback
+            try {
+                const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(id)}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`, { signal });
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json.fields) {
+                        const data = {};
+                        for (const [k, v] of Object.entries(json.fields)) {
+                            data[k] = v.stringValue !== undefined ? v.stringValue :
+                                      v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
+                                      v.timestampValue !== undefined ? v.timestampValue : null;
+                        }
+                        const normalized = normalizeArticleDoc(data, id);
+                        memoryCache.set(`doc_${id}`, normalized);
+                        return normalized;
+                    }
+                }
+            } catch (err) {
+                console.warn("[Reader] REST direct fetch error:", err);
+            }
+
+            return null;
+        }
+
+        // 2. Fetch Lightweight Articles Collection (Projected Fields Only - ~95% smaller payload)
+        async function fetchLightweightArticles(signal) {
+            if (memoryCache.has("lightweight_articles")) {
+                return memoryCache.get("lightweight_articles");
+            }
+
+            const projectedFields = [
+                "title", "bookName", "bookId", "playlistName",
+                "priority", "imageUrl", "excerpt", "author",
+                "date", "createdAt", "type", "category"
+            ];
+            const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+
+            try {
+                const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?pageSize=100&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e&${maskParams}`, { signal });
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json.documents) {
+                        const articles = json.documents.map(docItem => {
+                            const docId = docItem.name.split("/").pop();
+                            const data = {};
+                            if (docItem.fields) {
+                                for (const [k, v] of Object.entries(docItem.fields)) {
+                                    data[k] = v.stringValue !== undefined ? v.stringValue :
+                                              v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
+                                              v.timestampValue !== undefined ? v.timestampValue : null;
+                                }
+                            }
+                            return normalizeArticleDoc(data, docId);
+                        });
+                        memoryCache.set("lightweight_articles", articles);
+                        return articles;
+                    }
+                }
+            } catch (err) {
+                console.warn("[Reader] Projected REST fetch failed, fallback to SDK getDocs:", err);
+            }
+
+            // Fallback: SDK getDocs
+            try {
+                const snap = await getDocs(collection(db, "articles"));
+                const articles = [];
+                snap.forEach(d => articles.push(normalizeArticleDoc(d.data(), d.id)));
+                memoryCache.set("lightweight_articles", articles);
+                return articles;
+            } catch (e) {
+                console.error("[Reader] Collection fetch failed:", e);
+                return [];
+            }
+        }
+
+        // ═══════════ MAIN LOADING ORCHESTRATOR ═══════════
+        async function loadArticle() {
+            if (!articleId) {
+                showErrorWithRetry("ലേഖനത്തിന്റെ ഐഡി നൽകിയിട്ടില്ല.");
+                return;
+            }
+
+            const skeletonEl = document.getElementById("page-skeleton-loader");
+            const articleViewEl = document.getElementById("standard-article-view");
+            const bookContainerEl = document.getElementById("book-edition-container");
+            const errorContainerEl = document.getElementById("page-error-container");
+
+            // 1. FAST CACHE PATH (Instant Paint in 0ms)
+            let cachedBook = null;
+            let cachedChapters = null;
+            try {
+                const cachedBookStr = sessionStorage.getItem(`nuqtha_book_${articleId}`);
+                const cachedChaptersStr = sessionStorage.getItem(`nuqtha_book_articles_${articleId}`);
+                if (cachedBookStr) cachedBook = JSON.parse(cachedBookStr);
+                if (cachedChaptersStr) cachedChapters = JSON.parse(cachedChaptersStr);
+            } catch (e) {
+                console.warn("[Cache] Read error:", e);
+            }
+
+            if (cachedBook) {
+                if (skeletonEl) skeletonEl.classList.add("hidden");
+                if (cachedBook.type === "BOOK") {
+                    if (articleViewEl) articleViewEl.classList.add("hidden");
+                    if (bookContainerEl) {
+                        bookContainerEl.classList.remove("hidden");
+                        renderBookIndex(cachedBook, bookContainerEl, cachedChapters || []);
+                    }
+                    if (cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
+                    initComments(cachedBook.id);
+                } else {
+                    if (bookContainerEl) bookContainerEl.classList.add("hidden");
+                    if (articleViewEl) articleViewEl.classList.remove("hidden");
+                    renderArticle(cachedBook);
+                    initComments(cachedBook.id);
+                }
+            }
+
+            // 2. PARALLEL REVALIDATION / FRESH FETCH (Promise.allSettled)
+            const controller = new AbortController();
+            const timeoutTimer = setTimeout(() => controller.abort(), 6500);
+
+            try {
+                const [targetDocResult, allArticlesResult] = await Promise.allSettled([
+                    fetchTargetDocument(articleId, controller.signal),
+                    fetchLightweightArticles(controller.signal)
+                ]);
+                clearTimeout(timeoutTimer);
+
+                const currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
+                const allArticles = allArticlesResult.status === "fulfilled" ? (allArticlesResult.value || []) : [];
+
+                if (!currentDoc) {
+                    if (!cachedBook) {
+                        showErrorWithRetry("ഈ ലേഖനം / പുസ്തകം കണ്ടെത്താനായില്ല അല്ലെങ്കിൽ നെറ്റ്‌വർക്ക് തകരാർ സംഭവിച്ചു.");
+                    }
+                    return;
+                }
+
+                // Update session storage
+                sessionStorage.setItem(`nuqtha_book_${articleId}`, JSON.stringify(currentDoc));
+                if (currentDoc.imageUrl) preloadCoverImage(currentDoc.imageUrl);
+
+                if (skeletonEl) skeletonEl.classList.add("hidden");
+                if (errorContainerEl) errorContainerEl.classList.add("hidden");
+
+                // Route according to type:
+                if (currentDoc.type === "BOOK") {
+                    if (articleViewEl) articleViewEl.classList.add("hidden");
+                    if (bookContainerEl) bookContainerEl.classList.remove("hidden");
+
+                    // Filter and sort attached chapters
+                    const bookChapters = allArticles.filter(art => matchesBook(art, currentDoc));
+                    bookChapters.sort((a, b) => {
+                        if (a.priority !== b.priority) return (a.priority || 1) - (b.priority || 1);
+                        return parseTimestampMillis(b.createdAt) - parseTimestampMillis(a.createdAt);
+                    });
+
+                    sessionStorage.setItem(`nuqtha_book_articles_${articleId}`, JSON.stringify(bookChapters));
+                    renderBookIndex(currentDoc, bookContainerEl, bookChapters);
+                    initComments(currentDoc.id);
+
+                } else {
+                    if (bookContainerEl) bookContainerEl.classList.add("hidden");
+                    if (articleViewEl) articleViewEl.classList.remove("hidden");
+
+                    renderArticle(currentDoc);
+                    loadRelatedArticlesFromList(currentDoc, allArticles);
+                    initComments(currentDoc.id);
+                }
+
+            } catch (err) {
+                clearTimeout(timeoutTimer);
+                console.error("[Reader] Load error:", err);
+                if (!cachedBook) {
+                    showErrorWithRetry("വിവരങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു.");
+                }
+            }
+        }
+
+        // ═══════════ POLISHED NUQTHA BOOK EDITION VIEW ═══════════
+        function renderBookIndex(book, container, attachedArticles = []) {
+            document.title = `${book.title || "NUQTHA Edition"} | NUQTHA`;
+
+            const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "");
+            const editionTag = (book.category && book.category.trim()) ? book.category.trim() : "NUQTHA SPECIAL EDITION";
+
+            // Format volume, issue, and date
+            const volumeStr = book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Volume ' + book.volume) : 'Volume 36';
+            const issueStr = book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue: ' + book.issue) : 'Issue: 27';
+            const dateStr = book.date || '28 October 2026';
+
             container.innerHTML = `
-                <div class="space-y-6 sm:space-y-8">
-                    <!-- Back to Books Category Button -->
-                    <div class="flex items-center justify-between pb-1">
-                        <a href="index.html#category=BOOKS" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-white/10 transition shadow-2xs font-english">
-                            <span>&larr;</span>
-                            <span>ALL BOOKS & EDITIONS (എല്ലാ പുസ്തകങ്ങളും)</span>
+                <div class="space-y-6 sm:space-y-8 animate-fade-in">
+                    <!-- 1. Top Breadcrumb & Action Bar -->
+                    <div class="flex items-center justify-between pb-1 flex-wrap gap-3">
+                        <a href="index.html#category=BOOKS" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-[#1c2030] transition-all shadow-2xs font-english group">
+                            <span class="group-hover:-translate-x-0.5 transition-transform">&larr;</span>
+                            <span>ALL BOOKS & EDITIONS (എല്ലാ പതിപ്പുകളും)</span>
                         </a>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="shareArticlePage('whatsapp')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 text-xs font-bold font-english transition cursor-pointer">
+                                <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                                <span>SHARE</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- ═══════════ DEDICATED BOOK EDITION HEADER VIEW (Exact Reference Screenshot) ═══════════ -->
-                    <div class="bg-[#181920] text-white rounded-3xl p-6 sm:p-8 lg:p-10 shadow-2xl border border-white/10">
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 lg:gap-10 items-center">
-                            <!-- Left: Large Vertical Magazine Cover (3:4) -->
-                            <div class="md:col-span-5 w-full max-w-[260px] sm:max-w-xs mx-auto md:mx-0">
-                                <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-[#0f1015] relative group border-2 border-white/15">
+                    <!-- 2. Polished NUQTHA Book Edition Hero Card (Guaranteed Isolation from .article-body p) -->
+                    <div class="book-edition-hero rounded-3xl p-6 sm:p-8 lg:p-10 shadow-2xl relative border">
+                        <div class="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 lg:gap-10 items-start">
+                            <!-- Left: Vertical Book Cover (3:4) -->
+                            <div class="md:col-span-5 lg:col-span-4 w-full max-w-[260px] sm:max-w-[280px] mx-auto md:mx-0 flex flex-col items-center">
+                                <div class="w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-[#090b10] relative group border-2 border-white/15 transition-transform duration-500 hover:scale-[1.02]">
                                     ${book.imageUrl ? `
-                                        <img src="${book.imageUrl}" alt="${book.title}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                                        <img src="${book.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover" loading="eager" decoding="async">
                                     ` : `
-                                        <div class="w-full h-full flex flex-col items-center justify-center text-white/50 text-3xl font-bold space-y-2">
-                                            <span>📚</span>
-                                            <span class="text-xs uppercase font-english">Edition Cover</span>
+                                        <div class="w-full h-full flex flex-col items-center justify-center text-white/50 space-y-3 p-4 text-center">
+                                            <span class="text-4xl">📚</span>
+                                            <span class="text-xs uppercase font-english font-bold text-slate-300">NUQTHA EDITION</span>
                                         </div>
                                     `}
                                 </div>
+                                <a href="#edition-articles-section" class="mt-3.5 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold text-white transition border border-white/10 font-english cursor-pointer">
+                                    <span>📖 വായിച്ചു തുടങ്ങുക (Start Reading)</span>
+                                </a>
                             </div>
 
-                            <!-- Right: Styled Banner Area (Highlighted in User Reference) -->
-                            <div class="md:col-span-7 space-y-3.5 text-left">
-                                <!-- Red / Crimson Title -->
-                                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-[#f87171] tracking-tight font-['Anek_Malayalam']">
-                                    ${book.title}
+                            <!-- Right: Editorial Header Metadata -->
+                            <div class="md:col-span-7 lg:col-span-8 space-y-4 text-left">
+                                <!-- Tags & Counter Line -->
+                                <div class="flex items-center gap-2.5 flex-wrap">
+                                    <span class="hero-badge px-3 py-1 rounded-full text-[11px] font-black uppercase font-english tracking-wider border">
+                                        ${editionTag}
+                                    </span>
+                                    <span class="px-3 py-1 rounded-full bg-white/10 text-white text-[11px] font-bold font-english border border-white/10">
+                                        📚 <strong id="book-count-label" class="text-white">${attachedArticles.length}</strong> ലേഖനങ്ങൾ ലഭ്യമാണ്
+                                    </span>
+                                </div>
+
+                                <!-- Edition Title -->
+                                <h1 class="hero-title text-2xl sm:text-3xl lg:text-4xl font-black font-['Anek_Malayalam'] tracking-tight leading-snug">
+                                    ${cleanTitle}
                                 </h1>
 
-                                <!-- Volume, Issue & Date Metadata -->
-                                <p class="text-xs sm:text-sm font-bold text-slate-400 font-english uppercase tracking-wider">
-                                    ${book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Volume ' + book.volume) : 'Volume 36'} • ${book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue: ' + book.issue) : 'Issue: 27'} | ${book.date || '28 October 2026'}
-                                </p>
+                                <!-- Volume, Issue, Date Line (High Contrast WCAG AA/AAA) -->
+                                <div class="hero-meta flex items-center gap-2 flex-wrap text-xs sm:text-sm font-bold font-english uppercase tracking-wider">
+                                    <span>${volumeStr}</span>
+                                    <span class="opacity-50">•</span>
+                                    <span>${issueStr}</span>
+                                    <span class="opacity-50">|</span>
+                                    <span>📅 ${dateStr}</span>
+                                </div>
 
-                                <!-- Lead Editorial Heading & Subtitle -->
+                                <!-- Lead Editorial Highlight Box -->
                                 ${book.leadTitle ? `
-                                    <div class="pt-2 space-y-0.5">
-                                        <h2 class="text-lg sm:text-xl lg:text-2xl font-bold text-white font-['Anek_Malayalam'] leading-snug">
+                                    <div class="p-3.5 sm:p-4 rounded-xl bg-white/[0.05] border-l-4 border-[#f59e0b] space-y-1">
+                                        <h2 class="text-base sm:text-xl font-bold text-white font-['Anek_Malayalam'] leading-snug">
                                             ${book.leadTitle}
                                         </h2>
-                                        ${book.author ? `<p class="text-xs text-slate-400 font-['Noto_Sans_Malayalam']">${book.author.startsWith('-') ? book.author : '- ' + book.author}</p>` : ''}
+                                        ${book.author ? `
+                                            <p class="hero-meta text-xs font-['Noto_Sans_Malayalam']">
+                                                ${book.author.startsWith('-') ? book.author : '- ' + book.author}
+                                            </p>
+                                        ` : ''}
                                     </div>
-                                ` : (book.author ? `<p class="text-xs text-slate-400 font-['Noto_Sans_Malayalam']">- ${book.author}</p>` : '')}
+                                ` : (book.author ? `
+                                    <p class="hero-meta text-xs sm:text-sm font-['Noto_Sans_Malayalam']">
+                                        - ${book.author}
+                                    </p>
+                                ` : '')}
 
-                                <!-- Divider Line (Exact to screenshot) -->
-                                <hr class="border-white/15 my-3">
+                                <!-- Divider Line -->
+                                <div class="border-t border-white/15 my-2.5"></div>
 
                                 <!-- Cover Story / Featured Title -->
                                 ${book.featuredTitle ? `
-                                    <h3 class="text-base sm:text-lg font-bold text-white font-['Anek_Malayalam'] pt-0.5">
-                                        ${book.featuredTitle}
-                                    </h3>
+                                    <div class="space-y-1">
+                                        <span class="hero-accent-coral text-[10px] font-black uppercase tracking-widest font-english">COVER STORY</span>
+                                        <h3 class="text-base sm:text-lg font-bold text-white font-['Anek_Malayalam'] leading-snug">
+                                            ${book.featuredTitle}
+                                        </h3>
+                                    </div>
                                 ` : ''}
 
                                 <!-- Editorial Note / Description / Excerpt -->
                                 ${(book.excerpt || book.content) ? `
-                                    <p class="text-xs sm:text-sm text-slate-300 font-['Noto_Sans_Malayalam'] leading-relaxed pt-1">
+                                    <p class="hero-text text-xs sm:text-sm font-['Noto_Sans_Malayalam'] leading-relaxed pt-1 opacity-90">
                                         ${book.excerpt || book.content}
                                     </p>
                                 ` : ''}
-
-                                <!-- Available Articles Pill -->
-                                <div class="pt-2 flex items-center gap-3 text-xs font-bold text-slate-300 font-english">
-                                    <span class="px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 flex items-center gap-1.5">
-                                        <span>📚</span>
-                                        <span><strong id="book-count-label" class="text-white">...</strong> ലേഖനങ്ങൾ ലഭ്യമാണ്</span>
-                                    </span>
-                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- SEQUENTIAL ARTICLES LIST -->
-                    <div class="space-y-3.5">
-                        <div class="border-b border-[#ebdccb] dark:border-white/10 pb-2.5 flex items-center justify-between">
+                    <!-- 3. Sequential Articles Section -->
+                    <div id="edition-articles-section" class="space-y-4 pt-4">
+                        <div class="border-b border-[#ebdccb] dark:border-white/10 pb-3 flex items-center justify-between flex-wrap gap-2">
                             <h3 class="text-sm sm:text-base font-black text-[#1e1b18] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-[#b4532c]"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-[#b4532c] dark:bg-[#f87171]"></span>
                                 <span>EDITION ARTICLES (ലേഖനങ്ങൾ)</span>
                             </h3>
-                            <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-english">Sequential Reading</span>
+                            <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-english bg-white/70 dark:bg-white/5 px-2.5 py-1 rounded-full border border-[#ebdccb]/60 dark:border-white/10">
+                                Sequential Reading &bull; അധ്യായങ്ങൾ
+                            </span>
                         </div>
+
+                        <!-- Sequential Chapter Feed -->
                         <div id="book-articles-list" class="space-y-3">
-                            <div class="flex items-center gap-2 text-slate-400 py-12 justify-center">
-                                <span class="inline-block w-5 h-5 border-2 border-[#b4532c] border-t-transparent rounded-full animate-spin"></span>
-                                <span class="font-bold text-xs uppercase tracking-widest font-english">Loading articles...</span>
-                            </div>
+                            <!-- Injected by renderPaginatedChapters() -->
+                        </div>
+
+                        <!-- Load More Button Container -->
+                        <div id="book-load-more-container" class="pt-3 text-center hidden">
+                            <button id="book-load-more-btn" class="px-6 py-2.5 rounded-full bg-white dark:bg-[#1a1e2e] border border-[#ebdccb] dark:border-white/15 text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-[#fff7ee] dark:hover:bg-[#22273a] shadow-2xs active:scale-95 transition-all cursor-pointer font-english">
+                                കൂടുതൽ അധ്യായങ്ങൾ കാണുക (Load More) ↓
+                            </button>
                         </div>
                     </div>
                 </div>
             `;
 
-            try {
-                let allArticlesList = [];
-                try {
-                    const snap = await getDocs(collection(db, "articles"));
-                    snap.forEach(d => {
-                        allArticlesList.push(normalizeArticleDoc(d.data(), d.id));
-                    });
-                } catch (e) {
-                    console.warn("[article.html] getDocs error in renderBookIndex:", e);
-                }
+            renderPaginatedChapters(attachedArticles);
+        }
 
-                // REST API Fallback
-                if (allArticlesList.length === 0) {
-                    try {
-                        const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?pageSize=100&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`);
-                        if (res.ok) {
-                            const json = await res.json();
-                            if (json && json.documents) {
-                                json.documents.forEach(docItem => {
-                                    const docId = docItem.name.split("/").pop();
-                                    const data = {};
-                                    if (docItem.fields) {
-                                        for (const [k, v] of Object.entries(docItem.fields)) {
-                                            data[k] = v.stringValue !== undefined ? v.stringValue :
-                                                      v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
-                                                      v.timestampValue !== undefined ? v.timestampValue : null;
-                                        }
-                                    }
-                                    allArticlesList.push(normalizeArticleDoc(data, docId));
-                                });
-                            }
-                        }
-                    } catch (err) {
-                        console.warn("[article.html] REST fetch error in renderBookIndex:", err);
-                    }
-                }
+        // ═══════════ PAGINATED CHAPTER RENDERING (10 at a time) ═══════════
+        let visibleChapterCount = 10;
+        function renderPaginatedChapters(articles) {
+            const listEl = document.getElementById("book-articles-list");
+            const loadMoreContainer = document.getElementById("book-load-more-container");
+            const loadMoreBtn = document.getElementById("book-load-more-btn");
+            if (!listEl) return;
 
-                const items = allArticlesList.filter(art => matchesBook(art, book));
-
-                items.sort((a, b) => {
-                    if (a.priority !== b.priority) return (a.priority || 1) - (b.priority || 1);
-                    return parseTimestampMillis(b.createdAt) - parseTimestampMillis(a.createdAt);
-                });
-
-                const listEl = document.getElementById("book-articles-list");
-                const countLabel = document.getElementById("book-count-label");
-                if (countLabel) countLabel.textContent = items.length;
-
-                if (items.length === 0) {
-                    listEl.innerHTML = `
+            if (articles.length === 0) {
+                listEl.innerHTML = `
                     <div class="p-8 sm:p-12 text-center rounded-2xl bg-white/60 dark:bg-white/5 border border-dashed border-[#ebdccb] dark:border-white/10 space-y-2">
                         <span class="text-3xl">📖</span>
                         <p class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Noto_Sans_Malayalam']">
@@ -845,68 +782,309 @@
                             അഡ്മിൻ ഡാഷ്‌ബോർഡിൽ നിന്ന് ലേഖനങ്ങൾ ഈ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യാവുന്നതാണ്.
                         </p>
                     </div>
-                    `;
-                    return;
-                }
+                `;
+                if (loadMoreContainer) loadMoreContainer.classList.add("hidden");
+                return;
+            }
 
-                listEl.innerHTML = items.map((art, idx) => {
-                    const cleanTitle = (art.title || "").replace(/[*_#~`]/g, "");
-                    const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 140) : "")).replace(/[*_#~`]/g, "").trim();
+            const currentBatch = articles.slice(0, visibleChapterCount);
 
-                    return `
-                    <a href="article.html?id=${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300">
-                        ${art.imageUrl ? `
-                            <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10">
-                                <img src="${art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
-                            </div>
-                        ` : `
-                            <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 text-[#b4532c]">
-                                📄
-                            </div>
-                        `}
-                        <div class="flex-1 min-w-0 space-y-1.5">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
-                                    അധ്യായം ${idx + 1}
-                                </span>
-                                <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-['Anek_Malayalam']">
-                                    ${art.author || "NUQTHA"}
-                                </span>
-                                <span class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">
-                                    • ${art.date || "Recent"}
-                                </span>
-                            </div>
-                            <h4 class="text-sm sm:text-base font-bold text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
-                                ${cleanTitle}
-                            </h4>
-                            ${cleanExcerpt ? `
-                                <p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed font-sans">
-                                    ${cleanExcerpt}
-                                </p>
-                            ` : ""}
-                            ${art.transcription ? `<p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${art.transcription}</p>` : ""}
+            listEl.innerHTML = currentBatch.map((art, idx) => {
+                const cleanTitle = (art.title || "അധ്യായം").replace(/[*_#~`]/g, "");
+                const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 140) : "")).replace(/[*_#~`]/g, "").trim();
+
+                return `
+                <a href="article.html?id=${art.id}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300">
+                    ${art.imageUrl ? `
+                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 aspect-[16/10]">
+                            <img src="${art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
                         </div>
-                    </a>
-                    `;
-                }).join("");
+                    ` : `
+                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
+                            📄
+                        </div>
+                    `}
+                    <div class="flex-1 min-w-0 space-y-1.5">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
+                                അധ്യായം ${idx + 1}
+                            </span>
+                            <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-['Anek_Malayalam']">
+                                ${art.author || "NUQTHA"}
+                            </span>
+                            <span class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">
+                                • ${art.date || "Recent"}
+                            </span>
+                        </div>
+                        <h4 class="text-sm sm:text-base font-bold text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
+                            ${cleanTitle}
+                        </h4>
+                        ${cleanExcerpt ? `
+                            <p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed font-sans">
+                                ${cleanExcerpt}
+                            </p>
+                        ` : ""}
+                        ${art.transcription ? `<p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${art.transcription}</p>` : ""}
+                    </div>
+                    <div class="hidden sm:flex items-center pr-2 text-[#b4532c] dark:text-[#f87171] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
+                        &rarr;
+                    </div>
+                </a>
+                `;
+            }).join("");
 
-            } catch (err) {
-                console.error("Book index load error:", err);
-                document.getElementById("book-articles-list").innerHTML = `<p class="text-rose-500 text-xs text-center py-4">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു.</p>`;
+            // Setup hover prefetching for instant transition
+            attachChapterPrefetch();
+
+            if (articles.length > visibleChapterCount) {
+                if (loadMoreContainer) {
+                    loadMoreContainer.classList.remove("hidden");
+                    const remaining = articles.length - visibleChapterCount;
+                    if (loadMoreBtn) {
+                        loadMoreBtn.textContent = `കൂടുതൽ അധ്യായങ്ങൾ കാണുക (${remaining} ബാക്കി) ↓`;
+                        loadMoreBtn.onclick = () => {
+                            visibleChapterCount += 10;
+                            renderPaginatedChapters(articles);
+                        };
+                    }
+                }
+            } else {
+                if (loadMoreContainer) loadMoreContainer.classList.add("hidden");
             }
         }
 
-        function showError(msg) {
-            document.getElementById('art-title').textContent = "ലേഖനം കണ്ടെത്താനായില്ല";
-            document.getElementById('art-content').innerHTML = `
-                <div class="p-6 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-center space-y-3">
-                    <p class="font-bold text-base">${msg}</p>
-                    <a href="index.html" class="inline-block mt-2 px-4 py-2 rounded-xl bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition shadow">ഹോം പേജിലേക്ക് മടങ്ങുക</a>
-                </div>
-            `;
+        // Prefetch chapter documents on hover / touchstart for instant navigation
+        function attachChapterPrefetch() {
+            const links = document.querySelectorAll("#book-articles-list a[data-article-id]");
+            links.forEach(link => {
+                const id = link.getAttribute("data-article-id");
+                if (!id) return;
+                const prefetch = () => {
+                    if (sessionStorage.getItem(`nuqtha_book_${id}`) || memoryCache.has(`doc_${id}`)) return;
+                    fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(id)}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`)
+                        .then(r => r.ok ? r.json() : null)
+                        .then(json => {
+                            if (json && json.fields) {
+                                const data = {};
+                                for (const [k, v] of Object.entries(json.fields)) {
+                                    data[k] = v.stringValue !== undefined ? v.stringValue :
+                                              v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
+                                              v.timestampValue !== undefined ? v.timestampValue : null;
+                                }
+                                const norm = normalizeArticleDoc(data, id);
+                                memoryCache.set(`doc_${id}`, norm);
+                                sessionStorage.setItem(`nuqtha_book_${id}`, JSON.stringify(norm));
+                            }
+                        })
+                        .catch(() => {});
+                };
+                link.addEventListener("mouseenter", prefetch, { once: true, passive: true });
+                link.addEventListener("touchstart", prefetch, { once: true, passive: true });
+            });
         }
 
-        // ═══════════ LIGHTWEIGHT GOOGLE AUTH & COMMENTS SYSTEM ═══════════
+        // ═══════════ STANDARD ARTICLE RENDERER ═══════════
+        function renderArticle(article) {
+            document.title = `${article.title || "NUQTHA"} | NUQTHA`;
+            const titleEl = document.getElementById('art-title');
+            if (titleEl) {
+                titleEl.textContent = article.title || "ലേഖനം";
+                if (article.titleColor) titleEl.style.color = article.titleColor;
+            }
+
+            const authorName = (article.author && article.author.trim()) ? article.author.trim() : "NUQTHA";
+            const authorEl = document.getElementById('art-author');
+            if (authorEl) authorEl.textContent = authorName;
+            const avatarEl = document.getElementById('art-author-avatar');
+            if (avatarEl) avatarEl.textContent = authorName.charAt(0).toUpperCase() || "N";
+
+            // If article is part of a book, show connected book badge
+            const bookBadgeContainer = document.getElementById('art-book-badge-container');
+            const bookBadgeLink = document.getElementById('art-book-link');
+            const bookBadgeText = document.getElementById('art-book-badge-text');
+            if (bookBadgeContainer && article.bookName) {
+                if (bookBadgeText) {
+                    bookBadgeText.textContent = `📚 ${article.bookName}${article.priority ? ' • അധ്യായം ' + article.priority : ''}`;
+                }
+                if (bookBadgeLink && article.bookId) {
+                    bookBadgeLink.href = `article.html?id=${article.bookId}`;
+                }
+                bookBadgeContainer.classList.remove('hidden');
+            } else if (bookBadgeContainer) {
+                bookBadgeContainer.classList.add('hidden');
+            }
+
+            const transContainer = document.getElementById('art-transcription-container');
+            const transEl = document.getElementById('art-transcription');
+            if (transContainer && transEl) {
+                if (article.transcription && article.transcription.trim()) {
+                    transEl.textContent = article.transcription.trim();
+                    transContainer.classList.remove('hidden');
+                } else {
+                    transContainer.classList.add('hidden');
+                }
+            }
+
+            let dateStr = article.date || "";
+            if (!dateStr) {
+                try {
+                    const ms = parseTimestampMillis(article.createdAt);
+                    if (ms) dateStr = new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                } catch(e) {}
+            }
+            const dateEl = document.getElementById('art-date');
+            if (dateEl) dateEl.textContent = dateStr || "Recent";
+
+            if (article.imageUrl && !article.imageUrl.includes("placeholder")) {
+                const img = document.getElementById('art-image');
+                if (img) {
+                    img.src = article.imageUrl;
+                    img.onerror = () => {
+                        document.getElementById('art-image-wrapper')?.classList.add('hidden');
+                    };
+                    document.getElementById('art-image-wrapper')?.classList.remove('hidden');
+                }
+            }
+
+            const contentEl = document.getElementById('art-content');
+            if (!contentEl) return;
+
+            const fontSizeMap = { small: "1.05rem", medium: "1.22rem", large: "1.38rem", xlarge: "1.55rem" };
+            const chosenSize = fontSizeMap[article.fontSize] || "1.22rem";
+            const contentStyleParts = [];
+            if (article.contentColor) contentStyleParts.push(`color: ${article.contentColor}`);
+            if (chosenSize) contentStyleParts.push(`font-size: ${chosenSize}`);
+            const contentStyleAttr = contentStyleParts.length > 0 ? `style="${contentStyleParts.join('; ')};"` : '';
+
+            contentEl.innerHTML = (article.content || article.excerpt || "")
+                .split('\n\n')
+                .filter(p => p.trim())
+                .map(paragraph => {
+                    const p = paragraph.trim();
+
+                    if (p.startsWith(":::highlight") && p.endsWith(":::")) {
+                        const inner = p.replace(/^:::highlight\s*/, "").replace(/\s*:::$/, "").trim();
+                        const formattedInner = inner
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
+                            .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
+                        return `<div class="highlight-glass-card"><p>${formattedInner}</p></div>`;
+                    }
+
+                    if (p.startsWith("## ")) {
+                        return `<h2 class="article-h2 text-xl font-bold mt-6 mb-2 text-[#1e1b18] dark:text-white">${p.replace("## ", "")}</h2>`;
+                    }
+                    if (p.startsWith("### ")) {
+                        return `<h3 class="article-h3 text-lg font-bold mt-4 mb-2 text-[#1e1b18] dark:text-white">${p.replace("### ", "")}</h3>`;
+                    }
+
+                    if (p.startsWith("> ")) {
+                        const quoteText = p.replace(/^>\s*/, "").trim()
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
+                            .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
+                        return `<blockquote class="editorial-quote"><p>${quoteText}</p></blockquote>`;
+                    }
+
+                    const imgMatch = p.match(/^!\[(.*?)(?:\|(small|medium|full))?\]\((.*?)\)$/);
+                    if (imgMatch) {
+                        const caption = imgMatch[1] || "";
+                        const url = imgMatch[3];
+                        return `
+                            <div class="my-6 rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10">
+                                <img src="${url}" alt="${caption}" class="w-full h-auto" loading="lazy">
+                                ${caption && caption !== "ചിത്രം" ? `<div class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</div>` : ''}
+                            </div>
+                        `;
+                    }
+
+                    let formatted = p
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18] dark:text-white">$1</strong>')
+                        .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
+
+                    return `<p ${contentStyleAttr}>${formatted}</p>`;
+                })
+                .join('');
+        }
+
+        // ═══════════ RELATED ARTICLES LOADER (Uses Cached List) ═══════════
+        function loadRelatedArticlesFromList(currentArticle, articlesList) {
+            const relatedSection = document.getElementById("related-articles-section");
+            const relatedGrid = document.getElementById("related-articles-grid");
+            if (!relatedSection || !relatedGrid || !articlesList || articlesList.length === 0) return;
+
+            const candidates = articlesList.filter(a => a.id !== currentArticle.id && a.type !== "BOOK");
+            if (candidates.length === 0) return;
+
+            // Prioritize same category
+            candidates.sort((a, b) => {
+                if (a.category === currentArticle.category && b.category !== currentArticle.category) return -1;
+                if (b.category === currentArticle.category && a.category !== currentArticle.category) return 1;
+                return parseTimestampMillis(b.createdAt) - parseTimestampMillis(a.createdAt);
+            });
+
+            const topRelated = candidates.slice(0, 4);
+
+            relatedGrid.innerHTML = topRelated.map(item => {
+                const cleanTitle = (item.title || "").replace(/[*_#~`]/g, "");
+                const cleanExcerpt = (item.excerpt || (item.content ? item.content.substring(0, 100) : "")).replace(/[*_#~`]/g, "").trim();
+                return `
+                    <a href="article.html?id=${item.id}" class="related-card group">
+                        ${item.imageUrl ? `
+                            <div class="related-img-container">
+                                <img src="${item.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+                            </div>
+                        ` : ''}
+                        <div class="p-4 flex flex-col justify-between flex-1 gap-2">
+                            <div class="space-y-1">
+                                <span class="text-[10px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english">${item.category || "GENERAL"}</span>
+                                <h4 class="text-sm font-bold line-clamp-2 text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
+                                    ${cleanTitle}
+                                </h4>
+                                ${cleanExcerpt ? `<p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed">${cleanExcerpt}</p>` : ''}
+                            </div>
+                            <div class="pt-2 border-t border-[#ebdccb]/60 dark:border-white/10 flex items-center justify-between text-[10px] text-[#8c7a6b] dark:text-[#94a3b8]">
+                                <span class="font-bold text-[#1e1b18] dark:text-white">${item.author || "NUQTHA"}</span>
+                                <span>${item.date || "Recent"}</span>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            }).join('');
+
+            relatedSection.classList.remove("hidden");
+        }
+
+        // ═══════════ ERROR STATE WITH RETRY ═══════════
+        function showErrorWithRetry(msg) {
+            const skeletonEl = document.getElementById("page-skeleton-loader");
+            const articleViewEl = document.getElementById("standard-article-view");
+            const bookContainerEl = document.getElementById("book-edition-container");
+            const errorContainerEl = document.getElementById("page-error-container");
+
+            if (skeletonEl) skeletonEl.classList.add("hidden");
+            if (articleViewEl) articleViewEl.classList.add("hidden");
+            if (bookContainerEl) bookContainerEl.classList.add("hidden");
+
+            if (errorContainerEl) {
+                errorContainerEl.innerHTML = `
+                    <div class="p-8 sm:p-12 text-center rounded-3xl bg-amber-50/90 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 space-y-4 max-w-lg mx-auto my-8">
+                        <span class="text-4xl block">⚠️</span>
+                        <h3 class="font-bold text-base sm:text-lg font-['Anek_Malayalam']">${msg}</h3>
+                        <p class="text-xs text-amber-800/80 dark:text-amber-300/80">ദയവായി ഇന്റർനെറ്റ് കണക്ഷൻ പരിശോധിക്കുക അല്ലെങ്കിൽ അല്പം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കുക.</p>
+                        <div class="pt-2 flex items-center justify-center gap-3">
+                            <button onclick="window.location.reload()" class="px-5 py-2.5 rounded-full bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold font-english transition shadow-sm active:scale-95 inline-flex items-center gap-1.5 cursor-pointer">
+                                <span>🔄 വീണ്ടും ശ്രമിക്കുക (Retry)</span>
+                            </button>
+                            <a href="index.html" class="px-5 py-2.5 rounded-full bg-white dark:bg-white/10 hover:bg-amber-100 dark:hover:bg-white/15 text-[#1e1b18] dark:text-white text-xs font-bold font-english transition border border-amber-300 dark:border-white/10">
+                                <span>ഹോം പേജ് (Home)</span>
+                            </a>
+                        </div>
+                    </div>
+                `;
+                errorContainerEl.classList.remove("hidden");
+            }
+        }
+
+        // ═══════════ GOOGLE AUTH & REALTIME COMMENTS ═══════════
         function initComments(artId) {
             const commentsList = document.getElementById("comments-list");
             const countBadge = document.getElementById("comments-count-badge");
@@ -914,7 +1092,6 @@
             const textInput = document.getElementById("comment-text");
             const toast = document.getElementById("comment-success-toast");
 
-            // Google Auth UI Elements
             const loggedOutView = document.getElementById("comment-auth-logged-out");
             const loggedInView = document.getElementById("comment-auth-logged-in");
             const googleSigninBtn = document.getElementById("google-signin-btn");
@@ -929,7 +1106,6 @@
             let authModulePromise = null;
             let currentGoogleUser = null;
 
-            // 1. Asynchronous non-blocking loader for Firebase Auth (zero impact on initial page load)
             function loadFirebaseAuth() {
                 if (!authModulePromise) {
                     authModulePromise = import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js")
@@ -948,7 +1124,6 @@
                 return authModulePromise;
             }
 
-            // 2. User Profile State Updater
             function updateUserUI(user) {
                 currentGoogleUser = user;
                 if (user && user.name) {
@@ -963,13 +1138,6 @@
                         userAvatarImg.src = user.avatar;
                         userAvatarImg.classList.remove("hidden");
                         if (userAvatarFallback) userAvatarFallback.classList.add("hidden");
-                        userAvatarImg.onerror = () => {
-                            userAvatarImg.classList.add("hidden");
-                            if (userAvatarFallback) {
-                                userAvatarFallback.textContent = user.name.charAt(0).toUpperCase();
-                                userAvatarFallback.classList.remove("hidden");
-                            }
-                        };
                     } else if (userAvatarFallback) {
                         userAvatarFallback.textContent = user.name.charAt(0).toUpperCase();
                         userAvatarFallback.classList.remove("hidden");
@@ -986,19 +1154,14 @@
                 }
             }
 
-            // Read cached user immediately for zero-lag instant UI paint
             try {
                 const cached = JSON.parse(localStorage.getItem("nuqtha_google_user") || "null");
-                if (cached && cached.name) {
-                    updateUserUI(cached);
-                } else {
-                    updateUserUI(null);
-                }
+                updateUserUI(cached && cached.name ? cached : null);
             } catch {
                 updateUserUI(null);
             }
 
-            // 3. Schedule non-blocking background auth listener on browser idle
+            // Non-blocking background auth sync on idle
             const scheduleAuthSync = () => {
                 const runner = async () => {
                     try {
@@ -1018,19 +1181,16 @@
                                 updateUserUI(null);
                             }
                         });
-                    } catch (e) {
-                        console.warn("[Auth] Background auth listener skipped:", e);
-                    }
+                    } catch (e) {}
                 };
                 if ("requestIdleCallback" in window) {
-                    window.requestIdleCallback(runner, { timeout: 2500 });
+                    window.requestIdleCallback(runner, { timeout: 3000 });
                 } else {
-                    setTimeout(runner, 1000);
+                    setTimeout(runner, 1500);
                 }
             };
             scheduleAuthSync();
 
-            // 4. Trigger Google Sign-In with popup
             async function triggerGoogleSignIn() {
                 try {
                     if (googleSigninBtn) {
@@ -1053,9 +1213,6 @@
                     return null;
                 } catch (err) {
                     console.warn("[Auth] Sign in popup error:", err);
-                    if (err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request") {
-                        alert("Google Sign-In പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.");
-                    }
                     return null;
                 } finally {
                     if (googleSigninBtn) {
@@ -1066,31 +1223,23 @@
             }
 
             if (googleSigninBtn) {
-                googleSigninBtn.addEventListener("click", () => {
-                    triggerGoogleSignIn();
-                });
+                googleSigninBtn.addEventListener("click", () => triggerGoogleSignIn());
             }
 
-            // 5. Sign out
             if (googleSignoutBtn) {
                 googleSignoutBtn.addEventListener("click", async () => {
                     try {
                         const { auth, signOut } = await loadFirebaseAuth();
                         await signOut(auth);
-                    } catch (e) {
-                        console.warn("[Auth] Sign out error:", e);
-                    }
+                    } catch (e) {}
                     localStorage.removeItem("nuqtha_google_user");
                     updateUserUI(null);
                 });
             }
 
-            // Local storage fallback helper
             const localKey = `nuqtha_comments_${artId}`;
             const getLocalComments = () => {
-                try {
-                    return JSON.parse(localStorage.getItem(localKey) || "[]");
-                } catch { return []; }
+                try { return JSON.parse(localStorage.getItem(localKey) || "[]"); } catch { return []; }
             };
             const saveLocalComment = (cmt) => {
                 const list = getLocalComments();
@@ -1099,15 +1248,13 @@
                 return list;
             };
 
-            // 6. Render comments UI (Public view: Name & Avatar visible, Email strictly hidden)
             function renderCommentsUI(comments) {
                 if (countBadge) countBadge.textContent = comments.length;
-
                 if (!comments || comments.length === 0) {
                     commentsList.innerHTML = `
-                    <div class="p-6 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8] rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-dashed border-[#ebdccb] dark:border-white/10">
-                        ആദ്യത്തെ അഭിപ്രായം രേഖപ്പെടുത്തൂ (Be the first to share your thoughts on this story)
-                    </div>
+                        <div class="p-6 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8] rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-dashed border-[#ebdccb] dark:border-white/10">
+                            ആദ്യത്തെ അഭിപ്രായം രേഖപ്പെടുത്തൂ (Be the first to share your thoughts)
+                        </div>
                     `;
                     return;
                 }
@@ -1121,49 +1268,45 @@
                             const ms = typeof c.createdAt === "number" ? c.createdAt : (c.createdAt.toMillis ? c.createdAt.toMillis() : Date.parse(c.createdAt));
                             if (ms) {
                                 const diffMin = Math.round((Date.now() - ms) / 60000);
-                                if (diffMin < 1) timeStr = "ഇപ്പോൾ (Just now)";
+                                if (diffMin < 1) timeStr = "ഇപ്പോൾ";
                                 else if (diffMin < 60) timeStr = `${diffMin} മിനിറ്റ് മുൻപ്`;
                                 else if (diffMin < 1440) timeStr = `${Math.round(diffMin / 60)} മണിക്കൂർ മുൻപ്`;
                                 else timeStr = new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
                             }
                         } catch {}
                     }
-
                     const cleanComment = (c.comment || "").replace(/<[^>]*>?/gm, '');
 
                     return `
-                    <div class="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb]/80 dark:border-white/10 shadow-xs space-y-2 transition hover:bg-white dark:hover:bg-white/10">
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                ${c.avatar ? `
-                                    <img src="${c.avatar}" alt="${cleanName}" class="w-7 h-7 rounded-full object-cover flex-shrink-0 border border-[#ebdccb] dark:border-white/10" onerror="this.onerror=null;this.replaceWith(document.createElement('div'))" />
-                                ` : `
-                                    <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
-                                        ${initial}
+                        <div class="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb]/80 dark:border-white/10 shadow-2xs space-y-2 transition hover:bg-white dark:hover:bg-white/10">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    ${c.avatar ? `
+                                        <img src="${c.avatar}" alt="${cleanName}" class="w-7 h-7 rounded-full object-cover flex-shrink-0 border border-[#ebdccb] dark:border-white/10" onerror="this.onerror=null;this.replaceWith(document.createElement('div'))" />
+                                    ` : `
+                                        <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                            ${initial}
+                                        </div>
+                                    `}
+                                    <div class="flex items-center gap-1.5 min-w-0">
+                                        <span class="text-xs font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam'] truncate">
+                                            ${cleanName}
+                                        </span>
+                                        ${(c.uid || c.email) ? `<span class="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold font-english">✓</span>` : ''}
                                     </div>
-                                `}
-                                <div class="flex items-center gap-1.5 min-w-0">
-                                    <span class="text-xs font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam'] truncate">
-                                        ${cleanName}
-                                    </span>
-                                    ${(c.uid || c.email) ? `
-                                        <span class="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold font-english" title="Verified reader">✓</span>
-                                    ` : ''}
                                 </div>
+                                <span class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english flex-shrink-0">
+                                    ${timeStr}
+                                </span>
                             </div>
-                            <span class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english flex-shrink-0">
-                                ${timeStr}
-                            </span>
+                            <p class="text-xs sm:text-sm text-[#4a3c33] dark:text-[#cbd5e1] leading-relaxed pl-9 font-sans">
+                                ${cleanComment}
+                            </p>
                         </div>
-                        <p class="text-xs sm:text-sm text-[#4a3c33] dark:text-[#cbd5e1] leading-relaxed pl-9 font-sans">
-                            ${cleanComment}
-                        </p>
-                    </div>
                     `;
                 }).join('');
             }
 
-            // Realtime Firestore Listener
             try {
                 const commentsCol = collection(db, "articles", artId, "comments");
                 const q = query(commentsCol, orderBy("createdAt", "desc"));
@@ -1181,15 +1324,12 @@
                     });
                     renderCommentsUI(combined);
                 }, (err) => {
-                    console.warn("[article.html] Comments onSnapshot warning, using local fallback:", err);
                     renderCommentsUI(getLocalComments());
                 });
             } catch (err) {
-                console.warn("[article.html] Firestore comments listener init error:", err);
                 renderCommentsUI(getLocalComments());
             }
 
-            // 7. Post comment handler
             submitBtn.addEventListener("click", async () => {
                 const commentText = textInput.value.trim();
                 if (!commentText) {
@@ -1197,13 +1337,10 @@
                     return;
                 }
 
-                // If user is not yet logged in, prompt Google Sign-In
                 let user = currentGoogleUser;
                 if (!user || !user.name) {
                     user = await triggerGoogleSignIn();
-                    if (!user) {
-                        return; // User cancelled or aborted popup
-                    }
+                    if (!user) return;
                 }
 
                 submitBtn.disabled = true;
@@ -1216,15 +1353,13 @@
                     createdAt: Date.now()
                 };
 
-                // Instant local optimistic render
                 saveLocalComment(newCommentObj);
                 renderCommentsUI(getLocalComments());
 
-                // Persist to Firestore: Logs email & uid for admin tracking, completely private from public view
                 try {
                     await addDoc(collection(db, "articles", artId, "comments"), {
                         name: user.name,
-                        email: user.email || "", // SECURE ADMIN TRACKING
+                        email: user.email || "",
                         avatar: user.avatar || "",
                         uid: user.uid || "",
                         comment: commentText,
@@ -1246,6 +1381,7 @@
             });
         }
 
+        // ═══════════ THEME SWITCHER ═══════════
         function setupTheme() {
             const themeBtn = document.getElementById("theme-toggle-btn");
             const sunIcon = document.getElementById("sun-icon");
@@ -1256,6 +1392,8 @@
                 document.body.classList.add("dark-mode");
                 if (sunIcon) sunIcon.classList.remove("hidden");
                 if (moonIcon) moonIcon.classList.add("hidden");
+            } else if (savedTheme === "sepia") {
+                document.body.classList.add("sepia-mode");
             }
 
             if (themeBtn) {
@@ -1274,6 +1412,7 @@
             }
         }
 
+        // ═══════════ SOCIAL SHARE ═══════════
         window.shareArticlePage = function(platform) {
             const url = window.location.href;
             const title = document.title || "NUQTHA Article";
@@ -1285,29 +1424,20 @@
                 window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
             } else if (platform === 'instagram') {
                 navigator.clipboard.writeText(url).then(() => {
-                    const label = document.getElementById('page-copy-label');
-                    if (label) {
-                        const original = label.textContent;
-                        label.textContent = 'Link Copied!';
-                        setTimeout(() => { label.textContent = original; }, 2000);
-                    }
                     window.open('https://www.instagram.com/', '_blank');
                 }).catch(() => {
                     window.open('https://www.instagram.com/', '_blank');
                 });
             } else if (platform === 'copy') {
                 navigator.clipboard.writeText(url).then(() => {
-                    const label = document.getElementById('page-copy-label');
                     const toast = document.getElementById('page-copy-toast');
                     const icon = document.getElementById('page-copy-icon');
                     const check = document.getElementById('page-copy-check');
                     if (icon && check) { icon.classList.add('hidden'); check.classList.remove('hidden'); }
                     if (toast) toast.classList.remove('hidden');
-                    if (label) label.textContent = 'Copied!';
                     setTimeout(() => {
                         if (icon && check) { icon.classList.remove('hidden'); check.classList.add('hidden'); }
                         if (toast) toast.classList.add('hidden');
-                        if (label) label.textContent = 'Copy Link';
                     }, 2000);
                 }).catch(() => {
                     alert('Article Link: ' + url);
@@ -1320,4 +1450,3 @@
     </script>
 </body>
 </html>
-

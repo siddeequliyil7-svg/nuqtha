@@ -11,7 +11,20 @@
     --card-glass-border: rgba(255, 255, 255, 0.7);
     --header-card-bg: rgba(255, 255, 255, 0.72);
     --footer-bg: #241711;
-    --footer-text: #cbbba9;
+        --footer-text: #cbbba9;
+
+    /* ══════ HERO CARD DESIGN TOKENS (WCAG AA & AAA COMPLIANT) ══════ */
+    --hero-bg: #12151f;
+    --hero-surface: #1a1e2e;
+    --hero-title: #ffffff;
+    --hero-meta: #cbd5e1;
+    --hero-text: #e2e8f0;
+    --hero-accent: #f59e0b;
+    --hero-accent-coral: #fb7185;
+    --hero-border: rgba(255, 255, 255, 0.12);
+    --hero-badge-bg: rgba(245, 158, 11, 0.15);
+    --hero-badge-border: rgba(245, 158, 11, 0.35);
+    --hero-badge-text: #fbbf24;
 }
 
 /* ═══════════ DARK MODE / BLACK & WHITE PALETTE ═══════════ */
@@ -26,10 +39,55 @@ body.dark-mode {
     --card-glass-border: rgba(255, 255, 255, 0.12);
     --header-card-bg: rgba(15, 17, 26, 0.82);
     --footer-bg: #050608;
-    --footer-text: #64748b;
+        --footer-text: #64748b;
+
+    /* Hero tokens for dark mode */
+    --hero-bg: #0b0d14;
+    --hero-surface: #141724;
+    --hero-title: #ffffff;
+    --hero-meta: #cbd5e1;
+    --hero-text: #e2e8f0;
+    --hero-accent: #f59e0b;
+    --hero-accent-coral: #fb7185;
+    --hero-border: rgba(255, 255, 255, 0.16);
+    --hero-badge-bg: rgba(245, 158, 11, 0.2);
+    --hero-badge-border: rgba(245, 158, 11, 0.4);
+    --hero-badge-text: #fcd34d;
+
     background-color: #090a0f !important;
     color: #f8fafc !important;
 }
+
+/* ═══════════ SEPIA MODE PALETTE ═══════════ */
+body.sepia-mode {
+    --terracotta: #8c3b17;
+    --terracotta-dark: #6e2c0e;
+    --bg-cream: #f4ecd8;
+    --text-primary: #2d241e;
+    --text-muted: #735d4f;
+    --border-warm: #dfcfba;
+    --card-glass-bg: rgba(244, 236, 216, 0.65);
+    --card-glass-border: rgba(223, 207, 186, 0.7);
+    --header-card-bg: rgba(244, 236, 216, 0.85);
+    --footer-bg: #221913;
+    --footer-text: #d4c4b0;
+
+    --hero-bg: #28201a;
+    --hero-surface: #362c24;
+    --hero-title: #fffaf0;
+    --hero-meta: #e6dac8;
+    --hero-text: #f5eee4;
+    --hero-accent: #d97706;
+    --hero-accent-coral: #e06d53;
+    --hero-border: rgba(230, 218, 200, 0.2);
+    --hero-badge-bg: rgba(217, 119, 6, 0.2);
+    --hero-badge-border: rgba(217, 119, 6, 0.4);
+    --hero-badge-text: #fde68a;
+
+    background-color: #f4ecd8 !important;
+    color: #2d241e !important;
+}
+
 
 body.dark-mode .top-canopy-band {
     background: linear-gradient(180deg, #181b26 0%, #0c0e14 100%);
@@ -2091,4 +2149,85 @@ body.dark-mode .category-featured-card {
 
 body.dark-mode .category-featured-card:hover {
     background: rgba(26, 30, 43, 0.9);
+}
+
+/* ═══════════ BOOK EDITION HERO SPECIFIC ISOLATION & STYLES ═══════════ */
+.book-edition-hero,
+.article-body .book-edition-hero {
+    background: var(--hero-bg) !important;
+    color: var(--hero-text) !important;
+    border: 1px solid var(--hero-border) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Hard isolation: ensure .article-body p or global typography NEVER overrides hero colors */
+.book-edition-hero p,
+.article-body .book-edition-hero p {
+    color: var(--hero-text) !important;
+    margin-bottom: 0 !important;
+    line-height: 1.65 !important;
+    font-size: 0.92rem !important;
+    font-family: 'Noto Sans Malayalam', sans-serif !important;
+}
+
+.book-edition-hero .hero-title,
+.article-body .book-edition-hero .hero-title {
+    color: var(--hero-title) !important;
+    font-family: 'Anek Malayalam', sans-serif !important;
+}
+
+.book-edition-hero .hero-meta,
+.article-body .book-edition-hero .hero-meta,
+.book-edition-hero p.hero-meta,
+.article-body .book-edition-hero p.hero-meta {
+    color: var(--hero-meta) !important;
+}
+
+.book-edition-hero .hero-text,
+.article-body .book-edition-hero .hero-text {
+    color: var(--hero-text) !important;
+}
+
+.book-edition-hero .hero-accent,
+.article-body .book-edition-hero .hero-accent {
+    color: var(--hero-accent) !important;
+}
+
+.book-edition-hero .hero-accent-coral,
+.article-body .book-edition-hero .hero-accent-coral {
+    color: var(--hero-accent-coral) !important;
+}
+
+.book-edition-hero .hero-badge {
+    background: var(--hero-badge-bg) !important;
+    border-color: var(--hero-badge-border) !important;
+    color: var(--hero-badge-text) !important;
+}
+
+/* ═══════════ SHIMMER SKELETON LOADERS ═══════════ */
+@keyframes shimmerPulse {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.14) 50%, rgba(255, 255, 255, 0.05) 75%);
+    background-size: 200% 100%;
+    animation: shimmerPulse 1.8s infinite ease-in-out;
+}
+
+.skeleton-shimmer-light {
+    background: linear-gradient(90deg, rgba(235, 220, 203, 0.35) 25%, rgba(235, 220, 203, 0.7) 50%, rgba(235, 220, 203, 0.35) 75%);
+    background-size: 200% 100%;
+    animation: shimmerPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes nuqthaFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: nuqthaFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
