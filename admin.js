@@ -18,6 +18,7 @@ let editingArticleId = null; // null = create mode, string = edit mode
 let currentArticlesList = [];
 let activeTab = "create";
 let selectedBase64Image = "";
+let selectedBookCoverBase64 = "";
 let pendingInlineBase64 = "";
 
 const ADMIN_PASSWORD = "admin768";
@@ -1003,28 +1004,18 @@ function initBookSwitcherAndStep1() {
         publishBtn.addEventListener("click", async (e) => {
             if (e) e.preventDefault();
 
-            const name = document.getElementById("book-meta-name")?.value.trim() || "";
+            const nameInput = document.getElementById("book-meta-name") || document.querySelector('[name="book-meta-name"]') || document.querySelector('[data-book-title-input]');
+            const name = (nameInput?.value || "").trim();
+            const tagInput = document.getElementById("book-meta-tag") || document.querySelector('[name="book-meta-tag"]');
+            const tag = (tagInput?.value || "").trim() || "Premium Book";
+
             const volume = document.getElementById("book-meta-volume")?.value.trim() || "";
             const issue = document.getElementById("book-meta-issue")?.value.trim() || "";
             const dateVal = document.getElementById("book-meta-date")?.value.trim() || new Date().toLocaleDateString("en-GB");
             const leadTitle = document.getElementById("book-meta-lead-title")?.value.trim() || "";
             const author = document.getElementById("book-meta-author")?.value.trim() || "- എഡിറ്റോറിയൽ";
             const featuredTitle = document.getElementById("book-meta-featured-title")?.value.trim() || "";
-            const tag = document.getElementById("book-meta-tag")?.value.trim() || "Premium Book";
             const desc = document.getElementById("book-meta-desc")?.value.trim() || "";
-
-            // Streamlined validation for single-author books:
-            // Require ONLY: Book Title, Cover Image (3:4), and Publication Tag
-            if (!name) {
-                alert("ദയവായി പുസ്തകത്തിന്റെ പേര് (Book / Edition Title) നൽകുക.");
-                document.getElementById("book-meta-name")?.focus();
-                return;
-            }
-            if (!tag) {
-                alert("ദയവായി പതിപ്പ് ടാഗ് (Publication Tag) നൽകുക.");
-                document.getElementById("book-meta-tag")?.focus();
-                return;
-            }
 
             // Check if existing
             const existing = currentArticlesList.find(a => a.type === "BOOK" && (
@@ -1033,6 +1024,25 @@ function initBookSwitcherAndStep1() {
             ));
 
             const coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "") || "";
+
+            // Streamlined validation for single-author books:
+            // Require ONLY: Book Title, Cover Image (3:4), and Publication Tag
+            if (!name) {
+                alert("ദയവായി പുസ്തകത്തിന്റെ പേര് (Book / Edition Title) നൽകുക.");
+                nameInput?.focus();
+                return;
+            }
+            if (!coverImage) {
+                alert("ദയവായി പുസ്തകത്തിന് ഒരു കവർ ചിത്രം (Cover Image 3:4) അപ്‌ലോഡ് ചെയ്യുക.");
+                const fileInput = document.getElementById("book-cover-input");
+                if (fileInput) fileInput.click();
+                return;
+            }
+            if (!tag) {
+                alert("ദയവായി പതിപ്പ് ടാഗ് (Publication Tag) നൽകുക.");
+                tagInput?.focus();
+                return;
+            }
 
             publishBtn.disabled = true;
             publishBtn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span><span>സേവ് ചെയ്യുന്നു...</span>`;

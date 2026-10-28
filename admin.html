@@ -523,7 +523,7 @@
                                     Cover Image (Vertical Aspect 3:4) <span class="text-rose-500">*</span>
                                 </label>
                                 <div id="book-cover-dropzone" class="border-2 border-dashed border-blue-300 hover:border-blue-600 rounded-2xl p-4 text-center bg-white/70 transition cursor-pointer relative group">
-                                    <input id="book-cover-input" type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                    <input id="book-cover-input" name="book-cover-input" type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                                     <div id="book-upload-placeholder" class="space-y-1.5 py-4 pointer-events-none">
                                         <svg class="w-10 h-10 mx-auto text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                         <p class="text-xs font-bold text-blue-900">പുസ്തക കവർ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക (Upload Cover)</p>
@@ -542,7 +542,7 @@
                                     <label for="book-meta-name" class="block text-[11px] font-bold uppercase tracking-wider text-blue-950 mb-1">
                                         Book / Edition Title (പുസ്തകത്തിന്റെ പേര്) <span class="text-rose-500">*</span>
                                     </label>
-                                    <input type="text" id="book-meta-name" placeholder="e.g. Risala - 1703 അല്ലെങ്കിൽ ഇമാമുമാരുടെ ചരിത്രം" class="w-full text-xs font-bold p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                    <input type="text" id="book-meta-name" name="book-meta-name" data-book-title-input="true" placeholder="e.g. Risala - 1703 അല്ലെങ്കിൽ ഇമാമുമാരുടെ ചരിത്രം" class="w-full text-xs font-bold p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
                                 </div>
 
                                 <!-- Volume, Issue & Date (Matching Screenshot Ref) -->
@@ -601,9 +601,9 @@
 
                                 <div>
                                     <label for="book-meta-tag" class="block text-[10px] font-bold uppercase tracking-wider text-blue-950 mb-1">
-                                        Publication Tag / Category (പതിപ്പ് ടാഗ്)
+                                        Publication Tag / Category (പതിപ്പ് ടാഗ്) <span class="text-rose-500">*</span>
                                     </label>
-                                    <input type="text" id="book-meta-tag" placeholder="e.g. Risala Weekly / Premium Book" value="Premium Book" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                    <input type="text" id="book-meta-tag" name="book-meta-tag" placeholder="e.g. Risala Weekly / Premium Book" value="Premium Book" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
                                 </div>
                             </div>
                         </div>
