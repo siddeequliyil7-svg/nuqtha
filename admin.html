@@ -546,65 +546,37 @@
                                     <p id="book-title-error" class="hidden text-[11px] font-bold text-rose-600 mt-1"></p>
                                 </div>
 
-                                <!-- Volume, Issue & Date (Matching Screenshot Ref) -->
-                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <!-- Author & Publication Date -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                     <div>
-                                        <label for="book-meta-volume" class="block text-[10px] font-bold uppercase tracking-wider text-blue-900 mb-1">
-                                            Volume (വോളിയം)
+                                        <label for="book-meta-author" class="block text-[10px] font-bold uppercase tracking-wider text-blue-900 mb-1">
+                                            Author (രചയിതാവ്) <span class="text-rose-500">*</span>
                                         </label>
-                                        <input type="text" id="book-meta-volume" placeholder="e.g. Volume 36" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
-                                    </div>
-                                    <div>
-                                        <label for="book-meta-issue" class="block text-[10px] font-bold uppercase tracking-wider text-blue-900 mb-1">
-                                            Issue (ലക്കം)
-                                        </label>
-                                        <input type="text" id="book-meta-issue" placeholder="e.g. Issue: 27" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                        <input type="text" id="book-meta-author" placeholder="e.g. സിദ്ദീഖ് ഉളിയിൽ അല്ലെങ്കിൽ രചയിതാവിന്റെ പേര്" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
                                     </div>
                                     <div>
                                         <label for="book-meta-date" class="block text-[10px] font-bold uppercase tracking-wider text-blue-900 mb-1">
-                                            Date (തീയതി)
+                                            Publication Date (പ്രസിദ്ധീകരിച്ച തീയതി)
                                         </label>
                                         <input type="text" id="book-meta-date" placeholder="e.g. 28 October 2026" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
                                     </div>
                                 </div>
 
-                                <!-- Lead Editorial Heading & Author Note -->
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                    <div>
-                                        <label for="book-meta-lead-title" class="block text-[10px] font-bold uppercase tracking-wider text-blue-900 mb-1">
-                                            Lead Editorial Title (പ്രധാന എഡിറ്റോറിയൽ തലക്കെട്ട്)
-                                        </label>
-                                        <input type="text" id="book-meta-lead-title" placeholder="e.g. നിരത്തുകളിൽ ജീവൻ പൊലിയാതിരിക്കാൻ" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white font-['Anek_Malayalam']">
-                                    </div>
-                                    <div>
-                                        <label for="book-meta-author" class="block text-[10px] font-bold uppercase tracking-wider text-blue-900 mb-1">
-                                            Lead Note / Author (ഉപശീർഷകം / രചയിതാവ്)
-                                        </label>
-                                        <input type="text" id="book-meta-author" placeholder="e.g. - എഡിറ്റോറിയൽ അല്ലെങ്കിൽ രചയിതാവിന്റെ പേര്" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
-                                    </div>
-                                </div>
-
-                                <!-- Cover Story / Featured Highlight Title -->
-                                <div>
-                                    <label for="book-meta-featured-title" class="block text-[10px] font-bold uppercase tracking-wider text-blue-900 mb-1">
-                                        Cover Story / Featured Highlight Title (കവർ സ്റ്റോറി തലക്കെട്ട്)
-                                    </label>
-                                    <input type="text" id="book-meta-featured-title" placeholder="e.g. യൂറോപ്പെന്ന ജന്തർ മന്തർ" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white font-['Anek_Malayalam']">
-                                </div>
-
-                                <!-- Editorial Note / Description / Excerpt -->
-                                <div>
-                                    <label for="book-meta-desc" class="block text-[10px] font-bold uppercase tracking-wider text-blue-950 mb-1">
-                                        Editorial Note / Quote / Excerpt (എഡിറ്റോറിയൽ കുറിപ്പ് അല്ലെങ്കിൽ ഉദ്ധരണി)
-                                    </label>
-                                    <textarea id="book-meta-desc" rows="2" placeholder="e.g. 'മതകാര്യങ്ങളിൽ എല്ലാ പൗരന്മാർക്കും മനസ്സാക്ഷിയുടെ സ്വാതന്ത്ര്യവും രാഷ്ട്രം ഉറപ്പുനൽകുന്നു...' " class="w-full text-xs p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white font-['Noto_Sans_Malayalam']"></textarea>
-                                </div>
-
+                                <!-- Publication Tag / Category -->
                                 <div>
                                     <label for="book-meta-tag" class="block text-[10px] font-bold uppercase tracking-wider text-blue-950 mb-1">
                                         Publication Tag / Category (പതിപ്പ് ടാഗ്) <span class="text-rose-500">*</span>
                                     </label>
-                                    <input type="text" id="book-meta-tag" name="book-meta-tag" placeholder="e.g. Risala Weekly / Premium Book" value="Premium Book" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                    <input type="text" id="book-meta-tag" name="book-meta-tag" placeholder="e.g. ചരിത്രം / പഠനം / Premium Book" value="Premium Book" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                </div>
+
+                                <!-- ആമുഖം (Book Introduction / Foreword) -->
+                                <div>
+                                    <label for="book-meta-intro" class="block text-[11px] font-bold uppercase tracking-wider text-blue-950 mb-1">
+                                        ആമുഖം (Book Introduction / Foreword) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <textarea id="book-meta-intro" name="book-meta-intro" rows="4" placeholder="പുസ്തകത്തിന്റെ ആമുഖം, രചയിതാവിന്റെ സന്ദേശം അല്ലെങ്കിൽ സംഗ്രഹം ഇവിടെ എഴുതുക..." class="w-full text-xs p-3 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white font-['Noto_Sans_Malayalam'] leading-relaxed"></textarea>
+                                    <p id="book-intro-error" class="hidden text-[11px] font-bold text-rose-600 mt-1"></p>
                                 </div>
                             </div>
                         </div>

@@ -1073,33 +1073,51 @@ async function handleSaveBookStep1(e) {
     // Clear previous inline errors
     const titleErrEl = document.getElementById("book-title-error");
     const coverErrEl = document.getElementById("book-cover-error");
+    const introErrEl = document.getElementById("book-intro-error");
     if (titleErrEl) { titleErrEl.textContent = ""; titleErrEl.classList.add("hidden"); }
     if (coverErrEl) { coverErrEl.textContent = ""; coverErrEl.classList.add("hidden"); }
+    if (introErrEl) { introErrEl.textContent = ""; introErrEl.classList.add("hidden"); }
 
     const nameInput = document.getElementById("book-meta-name") || document.querySelector('[name="book-meta-name"]') || document.querySelector('[data-book-title-input]');
     const name = (nameInput?.value || "").trim();
+
+    const authorInput = document.getElementById("book-meta-author");
+    const author = (authorInput?.value || "").trim() || "Single Author";
+
     const tagInput = document.getElementById("book-meta-tag") || document.querySelector('[name="book-meta-tag"]');
     const tag = (tagInput?.value || "").trim() || "Premium Book";
 
-    const volume = document.getElementById("book-meta-volume")?.value.trim() || "";
-    const issue = document.getElementById("book-meta-issue")?.value.trim() || "";
-    const dateVal = document.getElementById("book-meta-date")?.value.trim() || new Date().toLocaleDateString("en-GB");
-    const leadTitle = document.getElementById("book-meta-lead-title")?.value.trim() || "";
-    const author = document.getElementById("book-meta-author")?.value.trim() || "- എഡിറ്റോറിയൽ";
-    const featuredTitle = document.getElementById("book-meta-featured-title")?.value.trim() || "";
-    const desc = document.getElementById("book-meta-desc")?.value.trim() || "";
+    const dateVal = document.getElementById("book-meta-date")?.value.trim() || new Date().toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' });
 
+    const introInput = document.getElementById("book-meta-intro") || document.getElementById("book-meta-desc");
+    const intro = (introInput?.value || "").trim();
+
+    let hasError = false;
     if (!name) {
         if (titleErrEl) {
-            titleErrEl.textContent = "ദയവായി പുസ്തകത്തിന്റെ പേര് (Book / Edition Title) നൽകുക.";
+            titleErrEl.textContent = "ദയവായി പുസ്തകത്തിന്റെ പേര് (Book Title) നൽകുക.";
             titleErrEl.classList.remove("hidden");
         }
         nameInput?.classList.add("border-rose-500", "focus:border-rose-600");
         nameInput?.focus();
-        return;
+        hasError = true;
     } else {
         nameInput?.classList.remove("border-rose-500", "focus:border-rose-600");
     }
+
+    if (!intro) {
+        if (introErrEl) {
+            introErrEl.textContent = "ദയവായി പുസ്തകത്തിന്റെ ആമുഖം (Book Introduction) നൽകുക.";
+            introErrEl.classList.remove("hidden");
+        }
+        introInput?.classList.add("border-rose-500", "focus:border-rose-600");
+        if (!hasError) introInput?.focus();
+        hasError = true;
+    } else {
+        introInput?.classList.remove("border-rose-500", "focus:border-rose-600");
+    }
+
+    if (hasError) return;
 
     // Check if existing in Firestore
     const existing = currentArticlesList.find(a => a.type === "BOOK" && (
@@ -1123,21 +1141,26 @@ async function handleSaveBookStep1(e) {
         const payload = {
             title: name,
             bookName: name,
-            volume: volume,
-            issue: issue,
-            leadTitle: leadTitle,
-            featuredTitle: featuredTitle,
             author: author,
             category: tag,
             imageUrl: coverImage,
-            excerpt: desc || "Book Collection",
-            content: desc || "This is a curated book collection.",
+            introduction: intro,
+            excerpt: intro,
+            content: intro,
             type: "BOOK",
             placement: "AUTO",
             priority: 1,
             date: dateVal,
             updatedAt: serverTimestamp()
         };
+
+        // Clean out legacy magazine fields if updating existing book
+        if (existing) {
+            payload.leadTitle = "";
+            payload.featuredTitle = "";
+            payload.volume = "";
+            payload.issue = "";
+        }
 
         let savedDocId = "";
         if (existing) {
@@ -1199,7 +1222,7 @@ function initBookSwitcherAndStep1() {
     if (newBookBtn) {
         newBookBtn.addEventListener("click", () => {
             resetBookManagerForm();
-            showGlobalStatus("✨ പുതിയ പുസ്തകം തയ്യാറാക്കുക: കവറും വിവരങ്ങളും നൽകി സേവ് ചെയ്യുക.", "info");
+            showGlobalStatus("✨ പുതിയ പുസ്തകം തയ്യാറാക്കുക: വിവരങ്ങൾ നൽകി സേവ് ചെയ്യുക.", "info");
         });
     }
 
@@ -1213,6 +1236,18 @@ function initBookSwitcherAndStep1() {
                 titleErrEl.classList.add("hidden");
             }
             nameInputEl.classList.remove("border-rose-500", "focus:border-rose-600");
+        });
+    }
+
+    const introInputEl = document.getElementById("book-meta-intro") || document.getElementById("book-meta-desc");
+    if (introInputEl) {
+        introInputEl.addEventListener("input", () => {
+            const introErrEl = document.getElementById("book-intro-error");
+            if (introErrEl) {
+                introErrEl.textContent = "";
+                introErrEl.classList.add("hidden");
+            }
+            introInputEl.classList.remove("border-rose-500", "focus:border-rose-600");
         });
     }
 
@@ -1230,8 +1265,10 @@ function resetBookManagerForm() {
 
     const titleErrEl = document.getElementById("book-title-error");
     const coverErrEl = document.getElementById("book-cover-error");
+    const introErrEl = document.getElementById("book-intro-error");
     if (titleErrEl) { titleErrEl.textContent = ""; titleErrEl.classList.add("hidden"); }
     if (coverErrEl) { coverErrEl.textContent = ""; coverErrEl.classList.add("hidden"); }
+    if (introErrEl) { introErrEl.textContent = ""; introErrEl.classList.add("hidden"); }
 
     const activeSelect = document.getElementById("bm-active-book-select");
     if (activeSelect) activeSelect.value = "";
@@ -1240,23 +1277,16 @@ function resetBookManagerForm() {
     nameInput?.classList.remove("border-rose-500", "focus:border-rose-600");
     const authorInput = document.getElementById("book-meta-author");
     const tagInput = document.getElementById("book-meta-tag");
-    const descInput = document.getElementById("book-meta-desc");
+    const introInput = document.getElementById("book-meta-intro") || document.getElementById("book-meta-desc");
+    introInput?.classList.remove("border-rose-500", "focus:border-rose-600");
+    const dateInput = document.getElementById("book-meta-date");
     const removeBtn = document.getElementById("remove-book-img-btn");
 
     if (nameInput) nameInput.value = "";
     if (authorInput) authorInput.value = "";
     if (tagInput) tagInput.value = "Premium Book";
-    if (descInput) descInput.value = "";
-    const volInput = document.getElementById("book-meta-volume");
-    const issInput = document.getElementById("book-meta-issue");
-    const dateInput = document.getElementById("book-meta-date");
-    const leadInput = document.getElementById("book-meta-lead-title");
-    const featInput = document.getElementById("book-meta-featured-title");
-    if (volInput) volInput.value = "";
-    if (issInput) issInput.value = "";
+    if (introInput) introInput.value = "";
     if (dateInput) dateInput.value = "";
-    if (leadInput) leadInput.value = "";
-    if (featInput) featInput.value = "";
     if (removeBtn) removeBtn.click();
 
     const wrapper = document.getElementById("bm-step2-3-wrapper");
@@ -1290,7 +1320,8 @@ function selectActiveBook(bookName) {
     const nameInput = document.getElementById("book-meta-name");
     const authorInput = document.getElementById("book-meta-author");
     const tagInput = document.getElementById("book-meta-tag");
-    const descInput = document.getElementById("book-meta-desc");
+    const introInput = document.getElementById("book-meta-intro") || document.getElementById("book-meta-desc");
+    const dateInput = document.getElementById("book-meta-date");
     const previewImg = document.getElementById("book-image-preview");
     const previewContainer = document.getElementById("book-image-preview-container");
     const placeholder = document.getElementById("book-upload-placeholder");
@@ -1298,17 +1329,8 @@ function selectActiveBook(bookName) {
     if (nameInput) nameInput.value = activeBookName;
     if (authorInput) authorInput.value = activeBookAuthor;
     if (tagInput) tagInput.value = bookCover?.category || "Premium Book";
-    if (descInput) descInput.value = bookCover?.excerpt || bookCover?.content || "";
-    const volInput = document.getElementById("book-meta-volume");
-    const issInput = document.getElementById("book-meta-issue");
-    const dateInput = document.getElementById("book-meta-date");
-    const leadInput = document.getElementById("book-meta-lead-title");
-    const featInput = document.getElementById("book-meta-featured-title");
-    if (volInput) volInput.value = bookCover?.volume || "";
-    if (issInput) issInput.value = bookCover?.issue || "";
+    if (introInput) introInput.value = bookCover?.introduction || bookCover?.excerpt || bookCover?.content || "";
     if (dateInput) dateInput.value = bookCover?.date || "";
-    if (leadInput) leadInput.value = bookCover?.leadTitle || "";
-    if (featInput) featInput.value = bookCover?.featuredTitle || "";
 
     if (bookCover?.imageUrl && previewImg && previewContainer && placeholder) {
         previewImg.src = bookCover.imageUrl;

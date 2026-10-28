@@ -776,7 +776,7 @@
                                 </div>
                             </div>
 
-                            <!-- Right: Editorial Header Metadata -->
+                            <!-- Right: Single-Author Book Header & Details -->
                             <div class="flex-1 w-full space-y-4 text-left">
                                 <!-- Category & Progress Pill -->
                                 <div class="flex items-center gap-2 flex-wrap">
@@ -791,63 +791,37 @@
                                     ` : ''}
                                 </div>
 
-                                <!-- Edition Title -->
+                                <!-- Book Title -->
                                 <h1 class="hero-title text-2xl sm:text-3xl lg:text-4xl font-black font-['Anek_Malayalam'] tracking-tight leading-snug">
                                     ${cleanTitle}
                                 </h1>
 
-                                <!-- Readable Meta Chips: "Vol 36 · Issue 27 · 28 Oct 2026" -->
-                                <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                                    <span class="px-2.5 py-1 rounded-lg bg-white/[0.08] text-xs font-bold font-english hero-meta border border-white/10">
-                                        ${volumeStr}
+                                <!-- Single-Author Meta Chips: Author, Date, Chapters -->
+                                <div class="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                                    <span class="px-3 py-1.5 rounded-xl bg-white/[0.08] text-xs font-bold text-white border border-white/10 flex items-center gap-1.5 font-['Anek_Malayalam']">
+                                        <span>✍️</span>
+                                        <span>${cleanAuthor}</span>
                                     </span>
-                                    <span class="opacity-40 hero-meta">•</span>
-                                    <span class="px-2.5 py-1 rounded-lg bg-white/[0.08] text-xs font-bold font-english hero-meta border border-white/10">
-                                        ${issueStr}
+                                    <span class="px-3 py-1.5 rounded-xl bg-white/[0.08] text-xs font-bold text-slate-300 border border-white/10 flex items-center gap-1.5 font-english">
+                                        <span>📅</span>
+                                        <span>${dateStr}</span>
                                     </span>
-                                    <span class="opacity-40 hero-meta">•</span>
-                                    <span class="px-2.5 py-1 rounded-lg bg-white/[0.08] text-xs font-bold font-english hero-meta border border-white/10 flex items-center gap-1">
-                                        📅 ${dateStr}
+                                    <span class="px-3 py-1.5 rounded-xl bg-white/[0.08] text-xs font-bold text-amber-400 border border-white/10 flex items-center gap-1.5 font-english">
+                                        <span>📚</span>
+                                        <span>${attachedArticles.length} അധ്യായങ്ങൾ</span>
                                     </span>
                                 </div>
 
-                                <!-- Lead Editorial Box -->
-                                ${book.leadTitle ? `
-                                    <div class="p-3.5 sm:p-4 rounded-xl bg-white/[0.05] border-l-4 border-[#f59e0b] space-y-1">
-                                        <h2 class="text-base sm:text-xl font-bold text-white font-['Anek_Malayalam'] leading-snug">
-                                            ${book.leadTitle}
-                                        </h2>
-                                        ${book.author ? `
-                                            <p class="hero-meta text-xs font-['Noto_Sans_Malayalam']">
-                                                ${book.author.startsWith('-') ? book.author : '- ' + book.author}
-                                            </p>
-                                        ` : ''}
-                                    </div>
-                                ` : (book.author ? `
-                                    <p class="hero-meta text-xs sm:text-sm font-['Noto_Sans_Malayalam']">
-                                        - ${book.author}
-                                    </p>
-                                ` : '')}
-
-                                <!-- Cover Story Highlight (Accent Left Border) -->
-                                ${book.featuredTitle ? `
-                                    <div class="p-3 rounded-xl bg-white/[0.03] border-l-3 border-[#fb7185] space-y-0.5">
-                                        <span class="hero-accent-coral text-[9px] sm:text-[10px] font-black uppercase tracking-widest font-english block">COVER STORY</span>
-                                        <h3 class="text-sm sm:text-base font-bold text-white font-['Anek_Malayalam'] leading-snug">
-                                            ${book.featuredTitle}
-                                        </h3>
-                                    </div>
-                                ` : ''}
-
-                                <!-- Pull-Quote Excerpt (Clamped to 4 lines with toggle) -->
-                                ${(book.excerpt || book.content) ? `
-                                    <div class="relative pt-1">
-                                        <div id="hero-excerpt-text" class="line-clamp-4 font-['Noto_Sans_Malayalam'] text-xs sm:text-sm leading-relaxed hero-text opacity-95">
-                                            “${book.excerpt || book.content}”
+                                <!-- ആമുഖം (Book Introduction / Foreword) -->
+                                ${introText ? `
+                                    <div class="book-intro-card p-4 sm:p-5 rounded-2xl bg-white/[0.04] border border-white/10 space-y-2 mt-2">
+                                        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#f59e0b] font-english">
+                                            <span>📖</span>
+                                            <span>ആമുഖം (BOOK INTRODUCTION)</span>
                                         </div>
-                                        <button id="hero-excerpt-toggle" onclick="toggleExcerptClamp()" class="text-xs font-bold text-[#f59e0b] hover:underline mt-1 cursor-pointer">
-                                            കൂടുതൽ വായിക്കുക (Read more) &darr;
-                                        </button>
+                                        <div class="font-['Noto_Sans_Malayalam'] text-xs sm:text-sm leading-relaxed text-slate-200 dark:text-slate-300 whitespace-pre-line">
+                                            ${introText}
+                                        </div>
                                     </div>
                                 ` : ''}
 
@@ -896,7 +870,7 @@
                         <div class="border-b border-[#ebdccb] dark:border-white/10 pb-3 flex items-center justify-between flex-wrap gap-2">
                             <h3 class="text-sm sm:text-base font-black text-[#1e1b18] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#b4532c] dark:bg-[#f87171]"></span>
-                                <span>EDITION ARTICLES (ലേഖനങ്ങൾ)</span>
+                                <span>പുസ്തകത്തിലെ അധ്യായങ്ങൾ (BOOK CHAPTERS & ARTICLES)</span>
                             </h3>
                             <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-english bg-white/70 dark:bg-white/5 px-2.5 py-1 rounded-full border border-[#ebdccb]/60 dark:border-white/10">
                                 Sequential Reading &bull; അധ്യായങ്ങൾ
