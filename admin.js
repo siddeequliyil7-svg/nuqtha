@@ -27,17 +27,39 @@ let isDashboardInitialized = false;
 function initAdminDashboard() {
     if (isDashboardInitialized) return;
     isDashboardInitialized = true;
-    initTabNavigation();
-    initArticleForm();
-    initFormattingToolbar();
-    initColorCustomizer();
-    initImageUpload();
-    initPlaylistPresets();
-    initLayoutManagerControls();
-    initPublishedSearchFilter();
-    initBookManagerSuite();
-    listenToFirestoreArticles();
-    initAuthorManager();
+
+    const safeInit = (fnName, fn) => {
+        try {
+            fn();
+        } catch (err) {
+            console.error(`[Admin Dashboard] Error initializing ${fnName}:`, err);
+        }
+    };
+
+    safeInit("initTabNavigation", initTabNavigation);
+    safeInit("initArticleForm", initArticleForm);
+    safeInit("initFormattingToolbar", initFormattingToolbar);
+    safeInit("initColorCustomizer", initColorCustomizer);
+    safeInit("initImageUpload", initImageUpload);
+    safeInit("initPlaylistPresets", initPlaylistPresets);
+    safeInit("initLayoutManagerControls", initLayoutManagerControls);
+    safeInit("initPublishedSearchFilter", initPublishedSearchFilter);
+    safeInit("initBookManagerSuite", initBookManagerSuite);
+    safeInit("listenToFirestoreArticles", listenToFirestoreArticles);
+    safeInit("initAuthorManager", initAuthorManager);
+}
+
+function initPlaylistPresets() {
+    const playlistInput = document.getElementById("art-playlist-name");
+    document.querySelectorAll(".playlist-preset-chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+            const seriesName = chip.dataset.name || chip.textContent.replace("+", "").trim();
+            if (playlistInput) {
+                playlistInput.value = seriesName;
+                playlistInput.focus();
+            }
+        });
+    });
 }
 
 function initAdminSecurity() {
@@ -110,9 +132,13 @@ function initAdminSecurity() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+        initAdminSecurity();
+    });
+} else {
     initAdminSecurity();
-});
+}
 
 /* ═══════════════════════════════════════════════════════════
    1. 4-FOLDER TAB NAVIGATION LOGIC
@@ -165,8 +191,9 @@ export function switchAdminTab(tabName) {
 
     // If switching to book tab, refresh the active book overview and all articles
     if (tabName === "book") {
+        initBookManagerSuite();
         updateActiveBookOverview(currentArticlesList);
-        renderBookManagerCompactArticles(currentArticlesList);
+        renderBookManagerCompactArticles(currentArticlesList, activeBookName);
     }
 
     // If switching to layout tab, refresh layout manager cards
@@ -914,6 +941,11 @@ function initBookCoverUploader() {
     });
 
     if (dropzone) {
+        dropzone.addEventListener("click", (e) => {
+            if (e.target !== fileInput && !e.target.closest("#remove-book-img-btn")) {
+                fileInput.click();
+            }
+        });
         ["dragenter", "dragover"].forEach(evt => {
             dropzone.addEventListener(evt, (e) => {
                 e.preventDefault();
@@ -1000,11 +1032,7 @@ function initBookSwitcherAndStep1() {
                 normalizeStringClean(a.title) === normalizeStringClean(name)
             ));
 
-            const coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "");
-            if (!coverImage) {
-                alert("ദയവായി പുസ്തകത്തിന് ഒരു കവർ ചിത്രം (Cover Image 3:4) അപ്‌ലോഡ് ചെയ്യുക.");
-                return;
-            }
+            const coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "") || "";
 
             publishBtn.disabled = true;
             publishBtn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span><span>സേവ് ചെയ്യുന്നു...</span>`;
@@ -1254,6 +1282,11 @@ function initChapterWriter() {
         });
 
         if (dropzone) {
+            dropzone.addEventListener("click", (e) => {
+                if (e.target !== fileInput && !e.target.closest("#bm-remove-art-img-btn")) {
+                    fileInput.click();
+                }
+            });
             ["dragenter", "dragover"].forEach(evt => {
                 dropzone.addEventListener(evt, (e) => {
                     e.preventDefault();
