@@ -8,7 +8,7 @@
 export const ALLOWED_CATEGORIES = ["HISTORY", "STUDY", "STORY", "GENERAL"];
 
 // Permitted placement slots (Hero section removed)
-export const ALLOWED_PLACEMENTS = ["AUTO", "CAROUSEL", "FEED"];
+export const ALLOWED_PLACEMENTS = ["AUTO", "HERO", "CAROUSEL", "FEED"];
 
 // Category English label mappings
 export const CATEGORY_LABELS = {
