@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUQTHA | Article Reader</title>
-    <!-- Google Fonts Preconnect & Load with display=swap (Noto Sans Malayalam, Manjari, Plus Jakarta Sans) -->
+    <title>NUQTHA | Article & Edition Reader</title>
+    <!-- Google Fonts Preconnect & Load with display=swap -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@100..800&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@100..800&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800;900&family=Noto+Serif+Malayalam:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com" defer></script>
     <link rel="stylesheet" href="styles.css">
     <style>
@@ -59,7 +59,7 @@
             color: #fde68a;
         }
 
-        /* Related Articles Section */
+        /* Related Articles Cards */
         .related-card {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(16px);
@@ -74,7 +74,7 @@
             box-shadow: 0 4px 18px -3px rgba(70, 35, 15, 0.07);
         }
         .related-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-4px);
             box-shadow: 0 16px 36px -6px rgba(70, 35, 15, 0.16);
             border-color: rgba(180, 83, 44, 0.45);
             background: #ffffff;
@@ -97,7 +97,7 @@
     <header class="sticky top-0 z-40 bg-[#fbf7ee]/90 dark:bg-[#090a0f]/90 backdrop-blur-md border-b border-[#ebdccb] dark:border-white/10 transition-colors">
         <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
             <!-- Clickable NUQTHA Brand Logo returning to Home -->
-            <a href="index.html" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20" title="Return to Home Page / ഹോം പേജ്">
+            <a href="index.html" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20 touch-target-44" title="Return to Home Page / ഹോം പേജ്">
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-sm flex items-center justify-center p-1.5 text-white flex-shrink-0 group-hover:scale-110 transition-transform">
                     <svg class="w-full h-full" viewBox="0 0 24 24" fill="currentColor"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z"/></svg>
                 </div>
@@ -106,7 +106,7 @@
 
             <div class="flex items-center gap-3">
                 <!-- Theme Toggle Button -->
-                <button id="theme-toggle-btn" class="more-dots-btn w-8 h-8 rounded-full flex items-center justify-center" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+                <button id="theme-toggle-btn" class="more-dots-btn w-9 h-9 rounded-full flex items-center justify-center touch-target-44 cursor-pointer" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
                     <svg id="sun-icon" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
@@ -121,20 +121,20 @@
     <!-- Main Container -->
     <main class="w-full max-w-4xl lg:max-w-5xl mx-auto px-3.5 sm:px-6 md:px-8 py-3.5 sm:py-8 md:py-12 flex-1">
 
-        <!-- ═══════════ 1. HIGH-FIDELITY SKELETON LOADER (ZERO FLICKER) ═══════════ -->
-        <div id="page-skeleton-loader" class="space-y-6 sm:space-y-8 animate-fade-in">
-            <!-- Top Breadcrumb Placeholder -->
+        <!-- ═══════════ 1. HIGH-FIDELITY ADAPTIVE SKELETON (ZERO PLACEHOLDER TEXT) ═══════════ -->
+        <div id="page-skeleton-loader" class="space-y-6 sm:space-y-8 animate-fade-in" aria-busy="true" aria-label="Loading content">
+            <!-- Top Action Placeholder -->
             <div class="flex items-center justify-between pb-1">
                 <div class="h-8 w-44 rounded-full skeleton-shimmer-light"></div>
                 <div class="h-8 w-24 rounded-full skeleton-shimmer-light"></div>
             </div>
 
-            <!-- Hero Card Skeleton -->
+            <!-- Hero Skeleton Card -->
             <div class="rounded-3xl p-6 sm:p-8 lg:p-10 bg-[#12151f] border border-white/10 shadow-2xl">
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-start">
-                    <div class="md:col-span-5 lg:col-span-4 w-full max-w-[260px] mx-auto md:mx-0">
+                    <div class="md:col-span-5 lg:col-span-4 w-full max-w-[240px] sm:max-w-[280px] mx-auto md:mx-0">
                         <div class="aspect-[3/4] rounded-2xl skeleton-shimmer border border-white/10"></div>
-                        <div class="h-10 mt-4 rounded-xl skeleton-shimmer"></div>
+                        <div class="h-12 mt-4 rounded-xl skeleton-shimmer"></div>
                     </div>
                     <div class="md:col-span-7 lg:col-span-8 space-y-4">
                         <div class="flex gap-2">
@@ -143,7 +143,7 @@
                         </div>
                         <div class="h-10 w-3/4 rounded-xl skeleton-shimmer"></div>
                         <div class="h-5 w-1/2 rounded-lg skeleton-shimmer"></div>
-                        <div class="h-16 w-full rounded-xl skeleton-shimmer mt-2"></div>
+                        <div class="h-20 w-full rounded-xl skeleton-shimmer mt-2"></div>
                         <div class="border-t border-white/10 my-3"></div>
                         <div class="h-4 w-5/6 rounded skeleton-shimmer"></div>
                         <div class="h-4 w-4/6 rounded skeleton-shimmer"></div>
@@ -162,31 +162,31 @@
             </div>
         </div>
 
-        <!-- ═══════════ 2. DEDICATED BOOK EDITION VIEW CONTAINER ═══════════ -->
+        <!-- ═══════════ 2. DEDICATED MOBILE-FIRST BOOK EDITION VIEW CONTAINER ═══════════ -->
         <div id="book-edition-container" class="hidden space-y-6 sm:space-y-8 animate-fade-in">
-            <!-- Content injected dynamically by renderBookIndex() -->
+            <!-- Injected dynamically by renderBookIndex() -->
         </div>
 
-        <!-- ═══════════ 3. STANDARD ARTICLE VIEW CONTAINER ═══════════ -->
-        <article id="standard-article-view" class="hidden space-y-3.5 sm:space-y-6 md:space-y-8">
+        <!-- ═══════════ 3. STANDARD ARTICLE VIEW CONTAINER (NEVER SHOWS "Date" / "ലോഡ് ചെയ്യുന്നു...") ═══════════ -->
+        <article id="standard-article-view" class="hidden space-y-3.5 sm:space-y-6 md:space-y-8 animate-fade-in">
             <div class="space-y-2 sm:space-y-3.5">
                 <div id="art-book-badge-container" class="hidden mb-1">
                     <a id="art-book-link" href="#" class="inline-flex items-center gap-1.5 text-xs font-bold text-[#b4532c] dark:text-[#f87171] bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-3 py-1 rounded-full hover:bg-[#b4532c]/20 transition shadow-2xs">
-                        <span id="art-book-badge-text">📚 Book Name • അധ്യായം 1</span>
+                        <span id="art-book-badge-text"></span>
                     </a>
                 </div>
-                <span id="art-category" class="category-badge font-english uppercase">GENERAL</span>
-                <h1 id="art-title" class="article-title-text text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e1b18] dark:text-white tracking-tight leading-snug">
-                    ലേഖനം
-                </h1>
+                <span id="art-category" class="category-badge font-english uppercase"></span>
+                <h1 id="art-title" class="article-title-text text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e1b18] dark:text-white tracking-tight leading-snug"></h1>
+
+                <!-- Author & Date Profile Bar -->
                 <div class="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-xs sm:shadow-sm my-2 sm:my-3.5">
-                    <a id="art-author-link" href="#" class="group/author inline-flex items-center gap-3 hover:opacity-90 transition cursor-pointer flex-1">
+                    <a id="art-author-link" href="#" class="group/author inline-flex items-center gap-3 hover:opacity-90 transition cursor-pointer flex-1 touch-target-44">
                         <div id="art-author-avatar" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#b4532c] text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-sm flex-shrink-0 group-hover/author:scale-105 transition-transform overflow-hidden">
                             N
                         </div>
                         <div class="space-y-0.5 min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <span id="art-author" class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam'] tracking-wide group-hover/author:text-[#b4532c] transition-colors">NUQTHA</span>
+                                <span id="art-author" class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam'] tracking-wide group-hover/author:text-[#b4532c] transition-colors"></span>
                                 <span class="text-[9px] sm:text-[10px] uppercase font-english px-2 py-0.5 rounded-full bg-[#b4532c]/10 dark:bg-white/10 text-[#b4532c] dark:text-[#f87171] font-bold group-hover/author:bg-[#b4532c] group-hover/author:text-white transition">PROFILE &rarr;</span>
                             </div>
                             <div id="art-transcription-container" class="hidden flex items-center gap-2 flex-wrap text-xs font-semibold">
@@ -194,7 +194,7 @@
                                 <span id="art-transcription" class="font-bold text-[#1e1b18] dark:text-slate-200 font-['Anek_Malayalam']"></span>
                             </div>
                             <div class="text-xs font-medium text-[#7a6758] dark:text-[#94a3b8] font-english pt-0.5">
-                                📅 <span id="art-date">Date</span>
+                                📅 <span id="art-date"></span>
                             </div>
                         </div>
                     </a>
@@ -209,19 +209,16 @@
             <!-- Social Share Buttons -->
             <div id="art-share-bar" class="flex items-center justify-center gap-2 sm:gap-2.5 py-2 sm:py-2.5 my-1 sm:my-1.5 border-y border-[#ebdccb]/60 dark:border-white/10 flex-nowrap overflow-x-auto">
                 <span class="text-[10px] sm:text-[11px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-1 sm:mr-1.5 flex-shrink-0">SHARE:</span>
-                <button onclick="shareArticlePage('whatsapp')" class="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl flex items-center justify-center text-white bg-[#25D366] hover:bg-[#20ba59] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#25D366]/25 flex-shrink-0" title="Share on WhatsApp" aria-label="Share on WhatsApp">
+                <button onclick="shareArticlePage('whatsapp')" class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-[#25D366] hover:bg-[#20ba59] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#25D366]/25 flex-shrink-0 cursor-pointer" title="Share on WhatsApp" aria-label="Share on WhatsApp">
                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                 </button>
-                <button onclick="shareArticlePage('telegram')" class="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl flex items-center justify-center text-white bg-[#229ED9] hover:bg-[#1e8ec3] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#229ED9]/25 flex-shrink-0" title="Share on Telegram" aria-label="Share on Telegram">
+                <button onclick="shareArticlePage('telegram')" class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-[#229ED9] hover:bg-[#1e8ec3] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#229ED9]/25 flex-shrink-0 cursor-pointer" title="Share on Telegram" aria-label="Share on Telegram">
                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.562 8.161c-.18.717-.962 4.084-1.362 5.411-.168.56-.457.747-.736.765-.607.039-1.069-.408-1.657-.793-.921-.603-1.442-.977-2.336-1.565-1.033-.679-.363-1.053.226-1.664.154-.16 2.83-2.593 2.882-2.816.006-.028.012-.135-.051-.191-.064-.056-.157-.037-.225-.022-.097.022-1.64 1.044-4.629 3.061-.438.301-.835.449-1.191.441-.393-.008-1.15-.222-1.712-.405-.69-.225-1.238-.344-1.19-.726.025-.199.301-.403.827-.613 3.246-1.413 5.412-2.345 6.498-2.797 3.097-1.292 3.741-1.516 4.161-1.523.092-.002.298.021.432.13.113.092.144.218.159.307.015.089.034.295.019.456z"/></svg>
                 </button>
-                <button onclick="shareArticlePage('facebook')" class="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl flex items-center justify-center text-white bg-[#1877F2] hover:bg-[#166fe5] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#1877F2]/25 flex-shrink-0" title="Share on Facebook" aria-label="Share on Facebook">
+                <button onclick="shareArticlePage('facebook')" class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-[#1877F2] hover:bg-[#166fe5] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#1877F2]/25 flex-shrink-0 cursor-pointer" title="Share on Facebook" aria-label="Share on Facebook">
                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                 </button>
-                <button onclick="shareArticlePage('instagram')" class="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl flex items-center justify-center text-white bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-90 hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#dc2743]/25 flex-shrink-0" title="Share on Instagram" aria-label="Share on Instagram">
-                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-                </button>
-                <button onclick="shareArticlePage('copy')" class="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-[#ebdccb] dark:border-white/15 hover:scale-110 active:scale-95 transition-all shadow-sm flex-shrink-0" title="Copy Article Link" aria-label="Copy Article Link">
+                <button onclick="shareArticlePage('copy')" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-[#ebdccb] dark:border-white/15 hover:scale-110 active:scale-95 transition-all shadow-sm flex-shrink-0 cursor-pointer" title="Copy Article Link" aria-label="Copy Article Link">
                     <svg id="page-copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                     <svg id="page-copy-check" class="w-4 h-4 hidden text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                     <span id="page-copy-label" class="sr-only">Copy Link</span>
@@ -230,9 +227,7 @@
             </div>
 
             <!-- Full Article Body -->
-            <div id="art-content" class="article-body font-sans text-lg pt-1.5 sm:pt-4 leading-relaxed">
-                <!-- Article text injected dynamically -->
-            </div>
+            <div id="art-content" class="article-body font-sans text-lg pt-1.5 sm:pt-4 leading-relaxed"></div>
 
             <!-- Related Articles Section -->
             <section id="related-articles-section" class="pt-10 border-t border-[#ebdccb] dark:border-white/10 hidden">
@@ -242,18 +237,26 @@
                         <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-[#f1f5f9]">കൂടുതൽ ലേഖനങ്ങൾ</span>
                     </div>
                 </div>
-                <div id="related-articles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
-                    <!-- Related cards injected here -->
-                </div>
+                <div id="related-articles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5"></div>
             </section>
         </article>
 
         <!-- ═══════════ 4. ERROR STATE VIEW ═══════════ -->
-        <div id="page-error-container" class="hidden">
-            <!-- Injected by showErrorWithRetry() -->
-        </div>
+        <div id="page-error-container" class="hidden"></div>
 
-        <!-- ═══════════ 5. COMMENTS SECTION (UNIVERSAL) ═══════════ -->
+        <!-- ═══════════ 5. RELATED EDITIONS ("More from NUQTHA / കൂടുതൽ പതിപ്പുകൾ") ═══════════ -->
+        <section id="related-books-section" class="mt-12 pt-8 border-t border-[#ebdccb] dark:border-white/10 hidden space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm sm:text-base font-black text-[#1e1b18] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span>
+                    <span>MORE EDITIONS (കൂടുതൽ പുസ്തകങ്ങൾ)</span>
+                </h3>
+                <a href="index.html#category=BOOKS" class="text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:underline font-english">View all &rarr;</a>
+            </div>
+            <div id="related-books-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+        </section>
+
+        <!-- ═══════════ 6. COMMENTS SECTION (UNIVERSAL) ═══════════ -->
         <section id="article-comments-section" class="mt-12 pt-8 sm:pt-10 border-t border-[#ebdccb] dark:border-white/10 space-y-5">
             <div class="flex items-center justify-between flex-wrap gap-2">
                 <div class="category-glass-badge">
@@ -268,7 +271,7 @@
 
             <!-- Comment Input Box -->
             <div class="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-xs space-y-3.5">
-                <!-- 1. AUTH STATE BAR: Signed-Out View -->
+                <!-- Signed-Out View -->
                 <div id="comment-auth-logged-out" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-xl bg-[#fbf7ee]/70 dark:bg-white/[0.03] border border-[#ebdccb] dark:border-white/10 transition">
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-full bg-amber-100/80 dark:bg-white/10 text-amber-900 dark:text-amber-200 flex items-center justify-center text-sm flex-shrink-0">
@@ -280,7 +283,7 @@
                         </div>
                     </div>
 
-                    <button type="button" id="google-signin-btn" class="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/20 border border-[#ebdccb] dark:border-white/15 text-xs font-bold text-[#1e1b18] dark:text-white shadow-xs hover:shadow transition-all cursor-pointer font-english active:scale-95 flex-shrink-0">
+                    <button type="button" id="google-signin-btn" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/20 border border-[#ebdccb] dark:border-white/15 text-xs font-bold text-[#1e1b18] dark:text-white shadow-xs hover:shadow transition-all cursor-pointer font-english active:scale-95 flex-shrink-0 touch-target-44">
                         <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -291,7 +294,7 @@
                     </button>
                 </div>
 
-                <!-- 2. AUTH STATE BAR: Signed-In Profile View -->
+                <!-- Signed-In View -->
                 <div id="comment-auth-logged-in" class="hidden items-center justify-between gap-3 p-2.5 sm:p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-500/20 transition">
                     <div class="flex items-center gap-2.5 min-w-0">
                         <div class="relative flex-shrink-0">
@@ -310,18 +313,18 @@
                         </div>
                     </div>
 
-                    <button type="button" id="google-signout-btn" class="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:underline px-2.5 py-1 rounded-lg transition font-english flex items-center gap-1 cursor-pointer flex-shrink-0">
+                    <button type="button" id="google-signout-btn" class="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:underline px-2.5 py-1.5 rounded-lg transition font-english flex items-center gap-1 cursor-pointer flex-shrink-0 touch-target-44">
                         <span>Logout</span>
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     </button>
                 </div>
 
-                <!-- 3. COMMENT TEXTAREA -->
+                <!-- Comment Textarea -->
                 <div class="relative">
-                    <textarea id="comment-text" rows="3" placeholder="ഈ ലേഖനത്തെക്കുറിച്ചുള്ള നിങ്ങളുടെ അഭിപ്രായം ഇവിടെ എഴുതുക... (Write your thoughts here...)" class="w-full p-3.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[#ebdccb] dark:border-white/10 text-xs sm:text-sm text-[#1e1b18] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c] resize-y leading-relaxed font-sans"></textarea>
+                    <textarea id="comment-text" rows="3" placeholder="ഈ പുസ്തകത്തെക്കുറിച്ചുള്ള നിങ്ങളുടെ അഭിപ്രായം ഇവിടെ എഴുതുക... (Write your thoughts here...)" class="w-full p-3.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[#ebdccb] dark:border-white/10 text-xs sm:text-sm text-[#1e1b18] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c] resize-y leading-relaxed font-sans"></textarea>
                 </div>
 
-                <!-- 4. ACTION BAR & SUBMIT BUTTON -->
+                <!-- Action Bar -->
                 <div class="flex items-center justify-between pt-1 gap-2 flex-wrap">
                     <span id="comment-login-hint" class="text-[11px] text-[#8c7a6b] dark:text-[#94a3b8]">
                         ലോഗിൻ ചെയ്ത് നേരിട്ട് അഭിപ്രായം പോസ്റ്റ് ചെയ്യാം
@@ -329,7 +332,7 @@
 
                     <div class="flex items-center gap-2 ml-auto">
                         <span id="comment-success-toast" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hidden">✓ അഭിപ്രായം രേഖപ്പെടുത്തി!</span>
-                        <button type="button" id="comment-submit-btn" class="px-5 py-2 rounded-full bg-[#b4532c] hover:bg-[#923e1b] active:scale-95 text-white text-xs font-bold uppercase font-english transition shadow-sm inline-flex items-center gap-1.5 cursor-pointer">
+                        <button type="button" id="comment-submit-btn" class="px-5 py-2.5 rounded-full bg-[#b4532c] hover:bg-[#923e1b] active:scale-95 text-white text-xs font-bold uppercase font-english transition shadow-sm inline-flex items-center gap-1.5 cursor-pointer touch-target-44">
                             <span>POST COMMENT</span>
                             <span>&rarr;</span>
                         </button>
@@ -337,21 +340,36 @@
                 </div>
             </div>
 
-            <!-- Comments List Feed -->
-            <div id="comments-list" class="space-y-3 pt-1">
-                <div id="comments-empty-state" class="p-6 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8] rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-dashed border-[#ebdccb] dark:border-white/10">
-                    ആദ്യത്തെ അഭിപ്രായം രേഖപ്പെടുത്തൂ (Be the first to share your thoughts)
-                </div>
-            </div>
+            <!-- Comments List -->
+            <div id="comments-list" class="space-y-3 pt-1"></div>
         </section>
 
         <!-- Footer Back Link -->
         <div class="pt-8 border-t border-[#ebdccb] dark:border-white/10 flex justify-center">
-            <a href="index.html" class="px-6 py-3 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
+            <a href="index.html" class="px-6 py-3 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md touch-target-44 inline-flex items-center">
                 &larr; Back to all stories
             </a>
         </div>
     </main>
+
+    <!-- ═══════════ STICKY "CONTINUE READING" BAR (MOBILE ONLY) ═══════════ -->
+    <div id="mobile-sticky-continue-bar" class="fixed bottom-0 inset-x-0 z-40 p-3 sm:hidden bg-[#12151f]/95 border-t border-white/15 bar-hidden">
+        <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0 flex-1">
+                <span id="sticky-bar-progress" class="text-[10px] uppercase font-english font-bold text-[#f59e0b] block">READING PROGRESS</span>
+                <h4 id="sticky-bar-title" class="text-xs font-bold text-white truncate font-['Anek_Malayalam']">NUQTHA EDITION</h4>
+            </div>
+            <a id="sticky-bar-btn" href="#" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#b4532c] to-[#d97706] text-white text-xs font-bold font-english uppercase tracking-wider flex items-center gap-1.5 shadow-md flex-shrink-0 touch-target-44">
+                <span>തുടങ്ങുക</span>
+                <span>&rarr;</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Bookmark Feedback Toast -->
+    <div id="bookmark-toast" class="fixed top-20 right-4 z-50 px-4 py-2.5 rounded-2xl bg-[#12151f] text-white text-xs font-bold shadow-2xl border border-white/15 hidden transition-all">
+        <span id="bookmark-toast-text">✓ ലൈബ്രറിയിൽ സേവ് ചെയ്തു</span>
+    </div>
 
     <!-- Footer -->
     <footer class="bg-[#241711] text-[#cbbba9] border-t border-[#3d2c22] py-8 mt-16">
@@ -371,6 +389,65 @@
         // Fast In-Memory Cache
         const memoryCache = window.__NUQTHA_MEM_CACHE__ || new Map();
         window.__NUQTHA_MEM_CACHE__ = memoryCache;
+
+        // Reading History Helpers
+        function getReadArticleIds() {
+            try { return JSON.parse(localStorage.getItem("nuqtha_read_articles") || "[]"); } catch { return []; }
+        }
+        function markArticleAsRead(id) {
+            if (!id) return;
+            const ids = getReadArticleIds();
+            if (!ids.includes(id)) {
+                ids.push(id);
+                localStorage.setItem("nuqtha_read_articles", JSON.stringify(ids));
+            }
+        }
+
+        // Bookmark Helpers
+        function getSavedBookIds() {
+            try { return JSON.parse(localStorage.getItem("nuqtha_saved_books") || "[]"); } catch { return []; }
+        }
+        window.toggleBookBookmark = function() {
+            if (!articleId) return;
+            const saved = getSavedBookIds();
+            const idx = saved.indexOf(articleId);
+            const btnText = document.getElementById("bookmark-text");
+            const btnIcon = document.getElementById("bookmark-icon");
+            const toast = document.getElementById("bookmark-toast");
+            const toastText = document.getElementById("bookmark-toast-text");
+
+            if (idx >= 0) {
+                saved.splice(idx, 1);
+                if (btnText) btnText.textContent = "Save";
+                if (btnIcon) btnIcon.setAttribute("fill", "none");
+                if (toastText) toastText.textContent = "ലൈബ്രറിയിൽ നിന്ന് നീക്കം ചെയ്തു";
+            } else {
+                saved.push(articleId);
+                if (btnText) btnText.textContent = "Saved";
+                if (btnIcon) btnIcon.setAttribute("fill", "#f59e0b");
+                if (toastText) toastText.textContent = "✓ ലൈബ്രറിയിൽ സേവ് ചെയ്തു";
+            }
+            localStorage.setItem("nuqtha_saved_books", JSON.stringify(saved));
+
+            if (toast) {
+                toast.classList.remove("hidden");
+                setTimeout(() => toast.classList.add("hidden"), 2500);
+            }
+        };
+
+        // Excerpt Clamp Toggle
+        window.toggleExcerptClamp = function() {
+            const el = document.getElementById("hero-excerpt-text");
+            const btn = document.getElementById("hero-excerpt-toggle");
+            if (!el || !btn) return;
+            if (el.classList.contains("line-clamp-4")) {
+                el.classList.remove("line-clamp-4");
+                btn.innerHTML = "ചുരുക്കുക (Show less) &uarr;";
+            } else {
+                el.classList.add("line-clamp-4");
+                btn.innerHTML = "കൂടുതൽ വായിക്കുക (Read more) &darr;";
+            }
+        };
 
         // Dynamic Image Preloader
         function preloadCoverImage(url) {
@@ -418,14 +495,12 @@
 
         // ═══════════ PARALLEL DATA FETCHERS WITH FIELD PROJECTION ═══════════
 
-        // 1. Fetch Target Book Document (Direct SDK + REST fallback with timeout)
+        // 1. Fetch Target Document (Direct SDK + REST fallback with timeout)
         async function fetchTargetDocument(id, signal) {
-            // Check memory cache first
             if (memoryCache.has(`doc_${id}`)) {
                 return memoryCache.get(`doc_${id}`);
             }
 
-            // 1. Direct Firestore SDK GetDoc
             try {
                 const docRef = doc(db, "articles", id);
                 const docSnap = await getDoc(docRef);
@@ -438,7 +513,6 @@
                 console.warn("[Reader] Direct getDoc error, trying REST:", err);
             }
 
-            // 2. Direct REST API Fallback
             try {
                 const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(id)}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`, { signal });
                 if (res.ok) {
@@ -471,7 +545,7 @@
             const projectedFields = [
                 "title", "bookName", "bookId", "playlistName",
                 "priority", "imageUrl", "excerpt", "author",
-                "date", "createdAt", "type", "category"
+                "date", "createdAt", "type", "category", "content"
             ];
             const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
 
@@ -500,7 +574,6 @@
                 console.warn("[Reader] Projected REST fetch failed, fallback to SDK getDocs:", err);
             }
 
-            // Fallback: SDK getDocs
             try {
                 const snap = await getDocs(collection(db, "articles"));
                 const articles = [];
@@ -533,9 +606,7 @@
                 const cachedChaptersStr = sessionStorage.getItem(`nuqtha_book_articles_${articleId}`);
                 if (cachedBookStr) cachedBook = JSON.parse(cachedBookStr);
                 if (cachedChaptersStr) cachedChapters = JSON.parse(cachedChaptersStr);
-            } catch (e) {
-                console.warn("[Cache] Read error:", e);
-            }
+            } catch (e) {}
 
             if (cachedBook) {
                 if (skeletonEl) skeletonEl.classList.add("hidden");
@@ -551,6 +622,7 @@
                     if (bookContainerEl) bookContainerEl.classList.add("hidden");
                     if (articleViewEl) articleViewEl.classList.remove("hidden");
                     renderArticle(cachedBook);
+                    markArticleAsRead(cachedBook.id);
                     initComments(cachedBook.id);
                 }
             }
@@ -576,19 +648,16 @@
                     return;
                 }
 
-                // Update session storage
                 sessionStorage.setItem(`nuqtha_book_${articleId}`, JSON.stringify(currentDoc));
                 if (currentDoc.imageUrl) preloadCoverImage(currentDoc.imageUrl);
 
                 if (skeletonEl) skeletonEl.classList.add("hidden");
                 if (errorContainerEl) errorContainerEl.classList.add("hidden");
 
-                // Route according to type:
                 if (currentDoc.type === "BOOK") {
                     if (articleViewEl) articleViewEl.classList.add("hidden");
                     if (bookContainerEl) bookContainerEl.classList.remove("hidden");
 
-                    // Filter and sort attached chapters
                     const bookChapters = allArticles.filter(art => matchesBook(art, currentDoc));
                     bookChapters.sort((a, b) => {
                         if (a.priority !== b.priority) return (a.priority || 1) - (b.priority || 1);
@@ -597,6 +666,7 @@
 
                     sessionStorage.setItem(`nuqtha_book_articles_${articleId}`, JSON.stringify(bookChapters));
                     renderBookIndex(currentDoc, bookContainerEl, bookChapters);
+                    renderRelatedBooks(currentDoc, allArticles);
                     initComments(currentDoc.id);
 
                 } else {
@@ -604,6 +674,7 @@
                     if (articleViewEl) articleViewEl.classList.remove("hidden");
 
                     renderArticle(currentDoc);
+                    markArticleAsRead(currentDoc.id);
                     loadRelatedArticlesFromList(currentDoc, allArticles);
                     initComments(currentDoc.id);
                 }
@@ -617,41 +688,81 @@
             }
         }
 
-        // ═══════════ POLISHED NUQTHA BOOK EDITION VIEW ═══════════
+        // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
         function renderBookIndex(book, container, attachedArticles = []) {
             document.title = `${book.title || "NUQTHA Edition"} | NUQTHA`;
 
             const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "");
             const editionTag = (book.category && book.category.trim()) ? book.category.trim() : "NUQTHA SPECIAL EDITION";
 
-            // Format volume, issue, and date
-            const volumeStr = book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Volume ' + book.volume) : 'Volume 36';
-            const issueStr = book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue: ' + book.issue) : 'Issue: 27';
-            const dateStr = book.date || '28 October 2026';
+            const volumeStr = book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Vol ' + book.volume) : 'Vol 36';
+            const issueStr = book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue ' + book.issue) : 'Issue 27';
+            const dateStr = book.date || '28 Oct 2026';
+
+            // Calculate reading progress
+            const readArticleIds = getReadArticleIds();
+            const readChapters = attachedArticles.filter(ch => readArticleIds.includes(ch.id));
+            const progressPercent = attachedArticles.length > 0 ? Math.round((readChapters.length / attachedArticles.length) * 100) : 0;
+
+            // Estimate total reading time (average 160 words per minute)
+            let totalWords = 0;
+            attachedArticles.forEach(ch => {
+                const words = ((ch.content || ch.excerpt || "") + " " + ch.title).split(/\s+/).length;
+                totalWords += words;
+            });
+            const totalReadingTime = Math.max(5, Math.round(totalWords / 160)) || (attachedArticles.length * 4);
+
+            // Bookmark status
+            const savedBookIds = getSavedBookIds();
+            const isBookmarked = savedBookIds.includes(book.id);
+
+            // Determine "Start Reading" vs "Continue Reading"
+            let startReadingHref = "#edition-articles-section";
+            let startReadingLabel = "വായന ആരംഭിക്കുക (Start Reading)";
+            let nextChapterTitle = "";
+
+            if (attachedArticles.length > 0) {
+                const unreadChapter = attachedArticles.find(ch => !readArticleIds.includes(ch.id));
+                const targetChapter = unreadChapter || attachedArticles[0];
+                startReadingHref = `article.html?id=${targetChapter.id}`;
+                if (readChapters.length > 0) {
+                    const chapterNum = attachedArticles.indexOf(targetChapter) + 1;
+                    startReadingLabel = `വായന തുടരുക (Continue · Ch. ${chapterNum})`;
+                    nextChapterTitle = targetChapter.title || "";
+                } else {
+                    startReadingLabel = "വായന ആരംഭിക്കുക (Start Reading · Ch. 1)";
+                    nextChapterTitle = attachedArticles[0].title || "";
+                }
+            }
 
             container.innerHTML = `
                 <div class="space-y-6 sm:space-y-8 animate-fade-in">
-                    <!-- 1. Top Breadcrumb & Action Bar -->
-                    <div class="flex items-center justify-between pb-1 flex-wrap gap-3">
-                        <a href="index.html#category=BOOKS" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-[#1c2030] transition-all shadow-2xs font-english group">
+                    <!-- Top Navigation & Action Row -->
+                    <div class="flex items-center justify-between pb-1 flex-wrap gap-2 text-xs font-english">
+                        <a href="index.html#category=BOOKS" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-[#1c2030] transition shadow-2xs group touch-target-44">
                             <span class="group-hover:-translate-x-0.5 transition-transform">&larr;</span>
-                            <span>ALL BOOKS & EDITIONS (എല്ലാ പതിപ്പുകളും)</span>
+                            <span>ALL EDITIONS (എല്ലാ പതിപ്പുകളും)</span>
                         </a>
 
                         <div class="flex items-center gap-2">
-                            <button onclick="shareArticlePage('whatsapp')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 text-xs font-bold font-english transition cursor-pointer">
-                                <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
-                                <span>SHARE</span>
+                            <button id="book-bookmark-btn" onclick="toggleBookBookmark()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 font-bold text-slate-700 dark:text-slate-200 hover:text-[#b4532c] dark:hover:text-[#f87171] transition shadow-2xs cursor-pointer touch-target-44">
+                                <svg id="bookmark-icon" class="w-4 h-4 text-amber-500" fill="${isBookmarked ? '#f59e0b' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+                                <span id="bookmark-text">${isBookmarked ? 'Saved' : 'Save'}</span>
+                            </button>
+
+                            <button onclick="shareArticlePage('whatsapp')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 font-bold transition cursor-pointer touch-target-44">
+                                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                                <span>Share</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- 2. Polished NUQTHA Book Edition Hero Card (Guaranteed Isolation from .article-body p) -->
-                    <div class="book-edition-hero rounded-3xl p-6 sm:p-8 lg:p-10 shadow-2xl relative border">
-                        <div class="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 lg:gap-10 items-start">
-                            <!-- Left: Vertical Book Cover (3:4) -->
-                            <div class="md:col-span-5 lg:col-span-4 w-full max-w-[260px] sm:max-w-[280px] mx-auto md:mx-0 flex flex-col items-center">
-                                <div class="w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-[#090b10] relative group border-2 border-white/15 transition-transform duration-500 hover:scale-[1.02]">
+                    <!-- Polished NUQTHA Edition Hero Card -->
+                    <div class="book-edition-hero rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl relative border">
+                        <div class="relative z-10 flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
+                            <!-- Left: Vertical Book Cover (Stacked on mobile, 3D Tilt on Desktop) -->
+                            <div class="w-full max-w-[240px] sm:max-w-[280px] md:w-[280px] lg:w-[310px] flex-shrink-0 flex flex-col items-center">
+                                <div class="book-cover-3d w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-[#090b10] relative group border-2 border-white/15">
                                     ${book.imageUrl ? `
                                         <img src="${book.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover" loading="eager" decoding="async">
                                     ` : `
@@ -660,22 +771,24 @@
                                             <span class="text-xs uppercase font-english font-bold text-slate-300">NUQTHA EDITION</span>
                                         </div>
                                     `}
+                                    <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.04] to-white/[0.12] pointer-events-none"></div>
+                                    <div class="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/50 via-white/15 to-transparent pointer-events-none"></div>
                                 </div>
-                                <a href="#edition-articles-section" class="mt-3.5 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold text-white transition border border-white/10 font-english cursor-pointer">
-                                    <span>📖 വായിച്ചു തുടങ്ങുക (Start Reading)</span>
-                                </a>
                             </div>
 
                             <!-- Right: Editorial Header Metadata -->
-                            <div class="md:col-span-7 lg:col-span-8 space-y-4 text-left">
-                                <!-- Tags & Counter Line -->
-                                <div class="flex items-center gap-2.5 flex-wrap">
-                                    <span class="hero-badge px-3 py-1 rounded-full text-[11px] font-black uppercase font-english tracking-wider border">
+                            <div class="flex-1 w-full space-y-4 text-left">
+                                <!-- Category & Progress Pill -->
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="hero-badge px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase font-english tracking-wider border">
                                         ${editionTag}
                                     </span>
-                                    <span class="px-3 py-1 rounded-full bg-white/10 text-white text-[11px] font-bold font-english border border-white/10">
-                                        📚 <strong id="book-count-label" class="text-white">${attachedArticles.length}</strong> ലേഖനങ്ങൾ ലഭ്യമാണ്
-                                    </span>
+                                    ${progressPercent > 0 ? `
+                                        <span class="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] sm:text-[11px] font-bold font-english flex items-center gap-1">
+                                            <span>✓</span>
+                                            <span>${progressPercent}% വായിച്ചു</span>
+                                        </span>
+                                    ` : ''}
                                 </div>
 
                                 <!-- Edition Title -->
@@ -683,16 +796,22 @@
                                     ${cleanTitle}
                                 </h1>
 
-                                <!-- Volume, Issue, Date Line (High Contrast WCAG AA/AAA) -->
-                                <div class="hero-meta flex items-center gap-2 flex-wrap text-xs sm:text-sm font-bold font-english uppercase tracking-wider">
-                                    <span>${volumeStr}</span>
-                                    <span class="opacity-50">•</span>
-                                    <span>${issueStr}</span>
-                                    <span class="opacity-50">|</span>
-                                    <span>📅 ${dateStr}</span>
+                                <!-- Readable Meta Chips: "Vol 36 · Issue 27 · 28 Oct 2026" -->
+                                <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                    <span class="px-2.5 py-1 rounded-lg bg-white/[0.08] text-xs font-bold font-english hero-meta border border-white/10">
+                                        ${volumeStr}
+                                    </span>
+                                    <span class="opacity-40 hero-meta">•</span>
+                                    <span class="px-2.5 py-1 rounded-lg bg-white/[0.08] text-xs font-bold font-english hero-meta border border-white/10">
+                                        ${issueStr}
+                                    </span>
+                                    <span class="opacity-40 hero-meta">•</span>
+                                    <span class="px-2.5 py-1 rounded-lg bg-white/[0.08] text-xs font-bold font-english hero-meta border border-white/10 flex items-center gap-1">
+                                        📅 ${dateStr}
+                                    </span>
                                 </div>
 
-                                <!-- Lead Editorial Highlight Box -->
+                                <!-- Lead Editorial Box -->
                                 ${book.leadTitle ? `
                                     <div class="p-3.5 sm:p-4 rounded-xl bg-white/[0.05] border-l-4 border-[#f59e0b] space-y-1">
                                         <h2 class="text-base sm:text-xl font-bold text-white font-['Anek_Malayalam'] leading-snug">
@@ -710,30 +829,69 @@
                                     </p>
                                 ` : '')}
 
-                                <!-- Divider Line -->
-                                <div class="border-t border-white/15 my-2.5"></div>
-
-                                <!-- Cover Story / Featured Title -->
+                                <!-- Cover Story Highlight (Accent Left Border) -->
                                 ${book.featuredTitle ? `
-                                    <div class="space-y-1">
-                                        <span class="hero-accent-coral text-[10px] font-black uppercase tracking-widest font-english">COVER STORY</span>
-                                        <h3 class="text-base sm:text-lg font-bold text-white font-['Anek_Malayalam'] leading-snug">
+                                    <div class="p-3 rounded-xl bg-white/[0.03] border-l-3 border-[#fb7185] space-y-0.5">
+                                        <span class="hero-accent-coral text-[9px] sm:text-[10px] font-black uppercase tracking-widest font-english block">COVER STORY</span>
+                                        <h3 class="text-sm sm:text-base font-bold text-white font-['Anek_Malayalam'] leading-snug">
                                             ${book.featuredTitle}
                                         </h3>
                                     </div>
                                 ` : ''}
 
-                                <!-- Editorial Note / Description / Excerpt -->
+                                <!-- Pull-Quote Excerpt (Clamped to 4 lines with toggle) -->
                                 ${(book.excerpt || book.content) ? `
-                                    <p class="hero-text text-xs sm:text-sm font-['Noto_Sans_Malayalam'] leading-relaxed pt-1 opacity-90">
-                                        ${book.excerpt || book.content}
-                                    </p>
+                                    <div class="relative pt-1">
+                                        <div id="hero-excerpt-text" class="line-clamp-4 font-['Noto_Sans_Malayalam'] text-xs sm:text-sm leading-relaxed hero-text opacity-95">
+                                            “${book.excerpt || book.content}”
+                                        </div>
+                                        <button id="hero-excerpt-toggle" onclick="toggleExcerptClamp()" class="text-xs font-bold text-[#f59e0b] hover:underline mt-1 cursor-pointer">
+                                            കൂടുതൽ വായിക്കുക (Read more) &darr;
+                                        </button>
+                                    </div>
                                 ` : ''}
+
+                                <!-- Primary Actions Bar -->
+                                <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                    <a id="hero-start-reading-btn" href="${startReadingHref}" class="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#b4532c] to-[#d97706] hover:from-[#923e1b] hover:to-[#b4532c] text-white font-bold text-xs sm:text-sm font-english uppercase tracking-wider shadow-lg active:scale-98 transition-all cursor-pointer touch-target-44">
+                                        <span>${startReadingLabel}</span>
+                                        <span>&rarr;</span>
+                                    </a>
+                                </div>
+
+                                <!-- Reading Progress Bar (if reading started) -->
+                                ${attachedArticles.length > 0 ? `
+                                    <div class="space-y-1.5 pt-1">
+                                        <div class="flex items-center justify-between text-[11px] font-english hero-meta">
+                                            <span>Progress: ${readChapters.length} / ${attachedArticles.length} chapters read</span>
+                                            <span class="font-bold text-white">${progressPercent}%</span>
+                                        </div>
+                                        <div class="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-[#f59e0b] to-emerald-400 rounded-full transition-all duration-700" style="width: ${progressPercent}%;"></div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Stats Row -->
+                        <div class="mt-6 pt-5 border-t border-white/10 grid grid-cols-3 gap-2 sm:gap-4 text-center">
+                            <div class="space-y-0.5">
+                                <span class="block text-[10px] sm:text-xs font-english uppercase opacity-60 hero-meta">Articles</span>
+                                <span class="text-sm sm:text-base font-black text-white font-english">${attachedArticles.length} ലേഖനങ്ങൾ</span>
+                            </div>
+                            <div class="space-y-0.5 border-x border-white/10">
+                                <span class="block text-[10px] sm:text-xs font-english uppercase opacity-60 hero-meta">Total Reading</span>
+                                <span class="text-sm sm:text-base font-black text-white font-english">~${totalReadingTime} മിനിറ്റ്</span>
+                            </div>
+                            <div class="space-y-0.5">
+                                <span class="block text-[10px] sm:text-xs font-english uppercase opacity-60 hero-meta">Publication</span>
+                                <span class="text-xs sm:text-sm font-bold text-white font-english">${dateStr}</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 3. Sequential Articles Section -->
+                    <!-- Sequential Articles Section ("EDITION ARTICLES") -->
                     <div id="edition-articles-section" class="space-y-4 pt-4">
                         <div class="border-b border-[#ebdccb] dark:border-white/10 pb-3 flex items-center justify-between flex-wrap gap-2">
                             <h3 class="text-sm sm:text-base font-black text-[#1e1b18] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
@@ -746,13 +904,11 @@
                         </div>
 
                         <!-- Sequential Chapter Feed -->
-                        <div id="book-articles-list" class="space-y-3">
-                            <!-- Injected by renderPaginatedChapters() -->
-                        </div>
+                        <div id="book-articles-list" class="space-y-3"></div>
 
                         <!-- Load More Button Container -->
                         <div id="book-load-more-container" class="pt-3 text-center hidden">
-                            <button id="book-load-more-btn" class="px-6 py-2.5 rounded-full bg-white dark:bg-[#1a1e2e] border border-[#ebdccb] dark:border-white/15 text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-[#fff7ee] dark:hover:bg-[#22273a] shadow-2xs active:scale-95 transition-all cursor-pointer font-english">
+                            <button id="book-load-more-btn" class="px-6 py-3 rounded-full bg-white dark:bg-[#1a1e2e] border border-[#ebdccb] dark:border-white/15 text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-[#fff7ee] dark:hover:bg-[#22273a] shadow-2xs active:scale-95 transition-all cursor-pointer font-english touch-target-44">
                                 കൂടുതൽ അധ്യായങ്ങൾ കാണുക (Load More) ↓
                             </button>
                         </div>
@@ -760,10 +916,42 @@
                 </div>
             `;
 
+            // Configure Mobile Sticky Continue Bar
+            setupMobileStickyBar(cleanTitle, startReadingHref, progressPercent, nextChapterTitle);
+
+            // Render chapters
             renderPaginatedChapters(attachedArticles);
         }
 
-        // ═══════════ PAGINATED CHAPTER RENDERING (10 at a time) ═══════════
+        // ═══════════ MOBILE STICKY CONTINUE BAR ═══════════
+        function setupMobileStickyBar(title, href, progress, chapterTitle) {
+            const bar = document.getElementById("mobile-sticky-continue-bar");
+            const btn = document.getElementById("sticky-bar-btn");
+            const titleEl = document.getElementById("sticky-bar-title");
+            const progEl = document.getElementById("sticky-bar-progress");
+            if (!bar || !btn) return;
+
+            btn.href = href;
+            if (titleEl) titleEl.textContent = chapterTitle || title;
+            if (progEl) progEl.textContent = `${progress}% COMPLETED`;
+
+            let lastScrollY = window.scrollY;
+            window.addEventListener("scroll", () => {
+                const heroEl = document.querySelector(".book-edition-hero");
+                if (!heroEl) return;
+                const rect = heroEl.getBoundingClientRect();
+                // Show sticky bar once hero has scrolled out of view
+                if (rect.bottom < 60) {
+                    bar.classList.remove("bar-hidden");
+                    bar.classList.add("bar-visible");
+                } else {
+                    bar.classList.add("bar-hidden");
+                    bar.classList.remove("bar-visible");
+                }
+            }, { passive: true });
+        }
+
+        // ═══════════ PAGINATED CHAPTER RENDERING ═══════════
         let visibleChapterCount = 10;
         function renderPaginatedChapters(articles) {
             const listEl = document.getElementById("book-articles-list");
@@ -788,16 +976,23 @@
             }
 
             const currentBatch = articles.slice(0, visibleChapterCount);
+            const readArticleIds = getReadArticleIds();
 
             listEl.innerHTML = currentBatch.map((art, idx) => {
-                const cleanTitle = (art.title || "അധ്യായം").replace(/[*_#~`]/g, "");
-                const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 140) : "")).replace(/[*_#~`]/g, "").trim();
+                const cleanArtTitle = (art.title || "അധ്യായം").replace(/[*_#~`]/g, "");
+                const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
+                const isRead = readArticleIds.includes(art.id);
+
+                // Word count reading time estimate
+                const words = ((art.content || art.excerpt || "") + " " + art.title).split(/\s+/).length;
+                const readingMinutes = Math.max(2, Math.round(words / 150)) || 3;
 
                 return `
-                <a href="article.html?id=${art.id}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300">
+                <a href="article.html?id=${art.id}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isRead ? 'opacity-85' : ''}">
+                    <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${art.imageUrl ? `
                         <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 aspect-[16/10]">
-                            <img src="${art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
+                            <img src="${art.imageUrl}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
                         </div>
                     ` : `
                         <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
@@ -813,14 +1008,19 @@
                                 ${art.author || "NUQTHA"}
                             </span>
                             <span class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">
-                                • ${art.date || "Recent"}
+                                • ⏱ ${readingMinutes} min read
                             </span>
+                            ${isRead ? `
+                                <span class="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-md font-english flex items-center gap-0.5">
+                                    ✓ വായിച്ചു
+                                </span>
+                            ` : ''}
                         </div>
                         <h4 class="text-sm sm:text-base font-bold text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
-                            ${cleanTitle}
+                            ${cleanArtTitle}
                         </h4>
                         ${cleanExcerpt ? `
-                            <p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed font-sans">
+                            <p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-1 leading-relaxed font-sans">
                                 ${cleanExcerpt}
                             </p>
                         ` : ""}
@@ -833,7 +1033,6 @@
                 `;
             }).join("");
 
-            // Setup hover prefetching for instant transition
             attachChapterPrefetch();
 
             if (articles.length > visibleChapterCount) {
@@ -853,7 +1052,7 @@
             }
         }
 
-        // Prefetch chapter documents on hover / touchstart for instant navigation
+        // Prefetch on hover / touchstart
         function attachChapterPrefetch() {
             const links = document.querySelectorAll("#book-articles-list a[data-article-id]");
             links.forEach(link => {
@@ -883,7 +1082,37 @@
             });
         }
 
-        // ═══════════ STANDARD ARTICLE RENDERER ═══════════
+        // ═══════════ MORE EDITIONS ("More from NUQTHA") ═══════════
+        function renderRelatedBooks(currentBook, allArticles) {
+            const section = document.getElementById("related-books-section");
+            const grid = document.getElementById("related-books-grid");
+            if (!section || !grid) return;
+
+            const otherBooks = allArticles.filter(a => a.type === "BOOK" && a.id !== currentBook.id);
+            if (otherBooks.length === 0) return;
+
+            grid.innerHTML = otherBooks.slice(0, 4).map(b => `
+                <a href="article.html?id=${b.id}" class="group flex flex-col p-2.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 transition-all shadow-2xs hover:shadow-md">
+                    <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 mb-2 border border-black/5 dark:border-white/10">
+                        ${b.imageUrl ? `
+                            <img src="${b.imageUrl}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+                        ` : `
+                            <div class="w-full h-full flex items-center justify-center text-2xl">📚</div>
+                        `}
+                    </div>
+                    <h5 class="text-xs font-bold text-[#1e1b18] dark:text-white line-clamp-2 leading-snug font-['Anek_Malayalam'] group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors">
+                        ${b.title}
+                    </h5>
+                    <span class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english pt-1">
+                        ${b.volume ? 'Vol ' + b.volume : 'Edition'} &bull; ${b.date || 'Recent'}
+                    </span>
+                </a>
+            `).join('');
+
+            section.classList.remove("hidden");
+        }
+
+        // ═══════════ STANDARD ARTICLE RENDERER (NO "Date" / "ലോഡ് ചെയ്യുന്നു...") ═══════════
         function renderArticle(article) {
             document.title = `${article.title || "NUQTHA"} | NUQTHA`;
             const titleEl = document.getElementById('art-title');
@@ -898,7 +1127,9 @@
             const avatarEl = document.getElementById('art-author-avatar');
             if (avatarEl) avatarEl.textContent = authorName.charAt(0).toUpperCase() || "N";
 
-            // If article is part of a book, show connected book badge
+            const catEl = document.getElementById('art-category');
+            if (catEl) catEl.textContent = article.category || "GENERAL";
+
             const bookBadgeContainer = document.getElementById('art-book-badge-container');
             const bookBadgeLink = document.getElementById('art-book-link');
             const bookBadgeText = document.getElementById('art-book-badge-text');
@@ -1014,7 +1245,6 @@
             const candidates = articlesList.filter(a => a.id !== currentArticle.id && a.type !== "BOOK");
             if (candidates.length === 0) return;
 
-            // Prioritize same category
             candidates.sort((a, b) => {
                 if (a.category === currentArticle.category && b.category !== currentArticle.category) return -1;
                 if (b.category === currentArticle.category && a.category !== currentArticle.category) return 1;
@@ -1027,7 +1257,7 @@
                 const cleanTitle = (item.title || "").replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (item.excerpt || (item.content ? item.content.substring(0, 100) : "")).replace(/[*_#~`]/g, "").trim();
                 return `
-                    <a href="article.html?id=${item.id}" class="related-card group">
+                    <a href="article.html?id=${item.id}" class="related-card group touch-target-44">
                         ${item.imageUrl ? `
                             <div class="related-img-container">
                                 <img src="${item.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
@@ -1071,10 +1301,10 @@
                         <h3 class="font-bold text-base sm:text-lg font-['Anek_Malayalam']">${msg}</h3>
                         <p class="text-xs text-amber-800/80 dark:text-amber-300/80">ദയവായി ഇന്റർനെറ്റ് കണക്ഷൻ പരിശോധിക്കുക അല്ലെങ്കിൽ അല്പം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കുക.</p>
                         <div class="pt-2 flex items-center justify-center gap-3">
-                            <button onclick="window.location.reload()" class="px-5 py-2.5 rounded-full bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold font-english transition shadow-sm active:scale-95 inline-flex items-center gap-1.5 cursor-pointer">
+                            <button onclick="window.location.reload()" class="px-5 py-2.5 rounded-full bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold font-english transition shadow-sm active:scale-95 inline-flex items-center gap-1.5 cursor-pointer touch-target-44">
                                 <span>🔄 വീണ്ടും ശ്രമിക്കുക (Retry)</span>
                             </button>
-                            <a href="index.html" class="px-5 py-2.5 rounded-full bg-white dark:bg-white/10 hover:bg-amber-100 dark:hover:bg-white/15 text-[#1e1b18] dark:text-white text-xs font-bold font-english transition border border-amber-300 dark:border-white/10">
+                            <a href="index.html" class="px-5 py-2.5 rounded-full bg-white dark:bg-white/10 hover:bg-amber-100 dark:hover:bg-white/15 text-[#1e1b18] dark:text-white text-xs font-bold font-english transition border border-amber-300 dark:border-white/10 touch-target-44 inline-flex items-center">
                                 <span>ഹോം പേജ് (Home)</span>
                             </a>
                         </div>
@@ -1161,7 +1391,6 @@
                 updateUserUI(null);
             }
 
-            // Non-blocking background auth sync on idle
             const scheduleAuthSync = () => {
                 const runner = async () => {
                     try {
@@ -1422,12 +1651,6 @@
                 window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, '_blank');
             } else if (platform === 'facebook') {
                 window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
-            } else if (platform === 'instagram') {
-                navigator.clipboard.writeText(url).then(() => {
-                    window.open('https://www.instagram.com/', '_blank');
-                }).catch(() => {
-                    window.open('https://www.instagram.com/', '_blank');
-                });
             } else if (platform === 'copy') {
                 navigator.clipboard.writeText(url).then(() => {
                     const toast = document.getElementById('page-copy-toast');
