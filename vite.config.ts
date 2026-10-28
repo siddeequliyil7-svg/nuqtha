@@ -6,7 +6,7 @@ import { defineConfig } from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [
-      react(), 
+      react(),
       tailwindcss(),
       {
         name: 'admin-route-rewrite',
@@ -37,9 +37,12 @@ export default defineConfig(() => {
           main: path.resolve(__dirname, 'index.html'),
           admin: path.resolve(__dirname, 'admin.html'),
           article: path.resolve(__dirname, 'article.html'),
+          author: path.resolve(__dirname, 'author.html'),
           contact: path.resolve(__dirname, 'contact.html'),
         },
       },
     },
   };
+
+
 });
