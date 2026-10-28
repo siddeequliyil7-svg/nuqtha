@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@100..800&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800;900&family=Noto+Serif+Malayalam:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com" defer></script>
+    <script type="module" src="site-config.js"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
         .article-body p {
@@ -691,6 +692,13 @@
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
         function renderBookIndex(book, container, attachedArticles = []) {
             document.title = `${book.title || "NUQTHA Edition"} | NUQTHA`;
+            if (window.NUQTHA_SITE_CONFIG?.updatePageMeta) {
+                window.NUQTHA_SITE_CONFIG.updatePageMeta({
+                    title: `${book.title || "NUQTHA Edition"} | NUQTHA`,
+                    description: book.introduction || book.excerpt || "NUQTHA Malayalam Publishing",
+                    imageUrl: book.imageUrl || ""
+                });
+            }
 
             const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "");
             const editionTag = (book.category && book.category.trim()) ? book.category.trim() : "NUQTHA SPECIAL EDITION";
@@ -1089,6 +1097,13 @@
         // ═══════════ STANDARD ARTICLE RENDERER (NO "Date" / "ലോഡ് ചെയ്യുന്നു...") ═══════════
         function renderArticle(article) {
             document.title = `${article.title || "NUQTHA"} | NUQTHA`;
+            if (window.NUQTHA_SITE_CONFIG?.updatePageMeta) {
+                window.NUQTHA_SITE_CONFIG.updatePageMeta({
+                    title: `${article.title || "NUQTHA"} | NUQTHA`,
+                    description: article.excerpt || "NUQTHA Malayalam Publishing",
+                    imageUrl: article.imageUrl || ""
+                });
+            }
             const titleEl = document.getElementById('art-title');
             if (titleEl) {
                 titleEl.textContent = article.title || "ലേഖനം";

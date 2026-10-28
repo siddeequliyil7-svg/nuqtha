@@ -5,6 +5,7 @@
  */
 import { db, collection, onSnapshot } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
+import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 
 let allArticles = [];
 let currentCategory = "ALL";
@@ -270,6 +271,9 @@ function setupThemeToggle() {
 }
 
 /* ═══════════ Category Tab Switching ═══════════ */
+// Ensure canonical & OG URL reflect current active domain
+updatePageMeta();
+
 function setupCategoryNav() {
     const links = document.querySelectorAll("#category-nav .nav-category-link");
     links.forEach(link => {
