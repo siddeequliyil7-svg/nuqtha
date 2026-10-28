@@ -19,6 +19,14 @@ let currentArticlesList = [];
 let activeTab = "create";
 let selectedBase64Image = "";
 let selectedBookCoverBase64 = "";
+let bmSelectedArticleImageBase64 = "";
+let bmPresentationFileBase64 = "";
+let bmPresentationFileName = "";
+let activeBookName = "";
+let activeBookAuthor = "";
+let activeBookCoverDoc = null;
+let activeBookChapters = [];
+let dragSrcChapterIndex = null;
 let pendingInlineBase64 = "";
 
 const ADMIN_PASSWORD = "admin768";
@@ -845,14 +853,6 @@ function initImageUpload() {
 /* ═══════════════════════════════════════════════════════════
    6B. SINGLE-AUTHOR BOOK MANAGER SUITE (STEP-BY-STEP WORKFLOW & REORDERING)
    ═══════════════════════════════════════════════════════════ */
-let activeBookName = "";
-let activeBookAuthor = "";
-let activeBookCoverDoc = null;
-let activeBookChapters = [];
-let bmSelectedArticleImageBase64 = "";
-let bmPresentationFileBase64 = "";
-let bmPresentationFileName = "";
-let dragSrcChapterIndex = null;
 
 function normalizeStringClean(s) {
     return (s || "")
@@ -892,7 +892,7 @@ function initBookManagerSuite() {
 
 /* ═══════════ 1. BOOK COVER UPLOADER (STEP 1) ═══════════ */
 function initBookCoverUploader() {
-    const fileInput = document.getElementById("book-cover-input");
+    const fileInput = document.getElementById("book-cover-input") || document.querySelector('input[name="book-cover-input"]');
     const placeholder = document.getElementById("book-upload-placeholder");
     const previewContainer = document.getElementById("book-image-preview-container");
     const previewImg = document.getElementById("book-image-preview");
@@ -901,35 +901,82 @@ function initBookCoverUploader() {
 
     if (!fileInput) return;
 
+    function showCoverError(msg) {
+        const errEl = document.getElementById("book-cover-error");
+        if (errEl) {
+            errEl.textContent = msg;
+            errEl.classList.remove("hidden");
+        }
+    }
+
+    function clearCoverError() {
+        const errEl = document.getElementById("book-cover-error");
+        if (errEl) {
+            errEl.textContent = "";
+            errEl.classList.add("hidden");
+        }
+    }
+
     function handleCoverFile(file) {
-        if (!file || !file.type.startsWith("image/")) {
-            alert("ദയവായി ഒരു സാധുവായ ചിത്രം (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.");
+        clearCoverError();
+
+        if (!file) return;
+
+        // Strict type validation
+        const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+        if (!validTypes.includes(file.type.toLowerCase())) {
+            showCoverError("സാധുവായ ചിത്രം (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.");
+            return;
+        }
+
+        // Strict size validation (max 5 MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showCoverError("ഫയൽ വലുപ്പം 5MB-ൽ താഴെയായിരിക്കണം.");
             return;
         }
 
         const reader = new FileReader();
+        reader.onerror = (err) => {
+            console.error("FileReader error:", err);
+            showCoverError("ചിത്രം വായിക്കുന്നതിൽ തടസ്സം നേരിട്ടു.");
+        };
+
         reader.onload = (event) => {
             const img = new Image();
+            img.onerror = (err) => {
+                console.error("Image load error:", err);
+                showCoverError("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
+            };
+
             img.onload = () => {
+                // Resize & compress on canvas (max width/height 800px, JPEG quality 0.82)
                 const canvas = document.createElement("canvas");
-                const maxDim = 1000;
+                const maxDim = 800;
                 let width = img.width;
                 let height = img.height;
-                if (width > height && width > maxDim) {
-                    height = Math.round((height * maxDim) / width);
-                    width = maxDim;
-                } else if (height > maxDim) {
-                    width = Math.round((width * maxDim) / height);
-                    height = maxDim;
+
+                if (width > maxDim || height > maxDim) {
+                    if (width > height) {
+                        height = Math.round((height * maxDim) / width);
+                        width = maxDim;
+                    } else {
+                        width = Math.round((width * maxDim) / height);
+                        height = maxDim;
+                    }
                 }
+
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(img, 0, 0, width, height);
-                selectedBookCoverBase64 = canvas.toDataURL("image/jpeg", 0.85);
+
+                // Store base64 safely in module-scoped selectedBookCoverBase64
+                selectedBookCoverBase64 = canvas.toDataURL("image/jpeg", 0.82);
+
                 if (previewImg) previewImg.src = selectedBookCoverBase64;
                 if (placeholder) placeholder.classList.add("hidden");
                 if (previewContainer) previewContainer.classList.remove("hidden");
+                clearCoverError();
             };
             img.src = event.target.result;
         };
@@ -962,6 +1009,9 @@ function initBookCoverUploader() {
             });
         });
         dropzone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove("border-blue-600", "bg-blue-100/60");
             const dt = e.dataTransfer;
             const file = dt && dt.files && dt.files[0];
             if (file) handleCoverFile(file);
@@ -976,6 +1026,7 @@ function initBookCoverUploader() {
             if (previewImg) previewImg.src = "";
             if (previewContainer) previewContainer.classList.add("hidden");
             if (placeholder) placeholder.classList.remove("hidden");
+            clearCoverError();
         });
     }
 }
@@ -1000,9 +1051,28 @@ function initBookSwitcherAndStep1() {
         });
     }
 
+    // Attach real-time input listener to clear error border/message on typing
+    const nameInputEl = document.getElementById("book-meta-name") || document.querySelector('[name="book-meta-name"]') || document.querySelector('[data-book-title-input]');
+    if (nameInputEl) {
+        nameInputEl.addEventListener("input", () => {
+            const titleErrEl = document.getElementById("book-title-error");
+            if (titleErrEl) {
+                titleErrEl.textContent = "";
+                titleErrEl.classList.add("hidden");
+            }
+            nameInputEl.classList.remove("border-rose-500", "focus:border-rose-600");
+        });
+    }
+
     if (publishBtn) {
         publishBtn.addEventListener("click", async (e) => {
             if (e) e.preventDefault();
+
+            // Clear previous inline errors
+            const titleErrEl = document.getElementById("book-title-error");
+            const coverErrEl = document.getElementById("book-cover-error");
+            if (titleErrEl) { titleErrEl.textContent = ""; titleErrEl.classList.add("hidden"); }
+            if (coverErrEl) { coverErrEl.textContent = ""; coverErrEl.classList.add("hidden"); }
 
             const nameInput = document.getElementById("book-meta-name") || document.querySelector('[name="book-meta-name"]') || document.querySelector('[data-book-title-input]');
             const name = (nameInput?.value || "").trim();
@@ -1017,7 +1087,7 @@ function initBookSwitcherAndStep1() {
             const featuredTitle = document.getElementById("book-meta-featured-title")?.value.trim() || "";
             const desc = document.getElementById("book-meta-desc")?.value.trim() || "";
 
-            // Check if existing
+            // Check if existing in Firestore
             const existing = currentArticlesList.find(a => a.type === "BOOK" && (
                 normalizeStringClean(a.bookName) === normalizeStringClean(name) ||
                 normalizeStringClean(a.title) === normalizeStringClean(name)
@@ -1025,24 +1095,33 @@ function initBookSwitcherAndStep1() {
 
             const coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "") || "";
 
-            // Streamlined validation for single-author books:
-            // Require ONLY: Book Title, Cover Image (3:4), and Publication Tag
+            // Streamlined validation: Inline errors under fields (not alert())
+            let hasError = false;
             if (!name) {
-                alert("ദയവായി പുസ്തകത്തിന്റെ പേര് (Book / Edition Title) നൽകുക.");
+                if (titleErrEl) {
+                    titleErrEl.textContent = "ദയവായി പുസ്തകത്തിന്റെ പേര് (Book / Edition Title) നൽകുക.";
+                    titleErrEl.classList.remove("hidden");
+                }
+                nameInput?.classList.add("border-rose-500", "focus:border-rose-600");
                 nameInput?.focus();
-                return;
+                hasError = true;
+            } else {
+                nameInput?.classList.remove("border-rose-500", "focus:border-rose-600");
             }
+
             if (!coverImage) {
-                alert("ദയവായി പുസ്തകത്തിന് ഒരു കവർ ചിത്രം (Cover Image 3:4) അപ്‌ലോഡ് ചെയ്യുക.");
-                const fileInput = document.getElementById("book-cover-input");
-                if (fileInput) fileInput.click();
-                return;
+                if (coverErrEl) {
+                    coverErrEl.textContent = "ദയവായി പുസ്തകത്തിന് ഒരു കവർ ചിത്രം (Cover Image 3:4) അപ്‌ലോഡ് ചെയ്യുക.";
+                    coverErrEl.classList.remove("hidden");
+                }
+                if (!hasError) {
+                    const fileInput = document.getElementById("book-cover-input");
+                    if (fileInput) fileInput.click();
+                }
+                hasError = true;
             }
-            if (!tag) {
-                alert("ദയവായി പതിപ്പ് ടാഗ് (Publication Tag) നൽകുക.");
-                tagInput?.focus();
-                return;
-            }
+
+            if (hasError) return;
 
             publishBtn.disabled = true;
             publishBtn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span><span>സേവ് ചെയ്യുന്നു...</span>`;
@@ -1115,11 +1194,18 @@ function resetBookManagerForm() {
     activeBookAuthor = "";
     activeBookCoverDoc = null;
     activeBookChapters = [];
+    selectedBookCoverBase64 = "";
+
+    const titleErrEl = document.getElementById("book-title-error");
+    const coverErrEl = document.getElementById("book-cover-error");
+    if (titleErrEl) { titleErrEl.textContent = ""; titleErrEl.classList.add("hidden"); }
+    if (coverErrEl) { coverErrEl.textContent = ""; coverErrEl.classList.add("hidden"); }
 
     const activeSelect = document.getElementById("bm-active-book-select");
     if (activeSelect) activeSelect.value = "";
 
     const nameInput = document.getElementById("book-meta-name");
+    nameInput?.classList.remove("border-rose-500", "focus:border-rose-600");
     const authorInput = document.getElementById("book-meta-author");
     const tagInput = document.getElementById("book-meta-tag");
     const descInput = document.getElementById("book-meta-desc");
