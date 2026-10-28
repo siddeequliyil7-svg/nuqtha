@@ -869,12 +869,15 @@ function initBookCoverUploader() {
     const previewContainer = document.getElementById("book-image-preview-container");
     const previewImg = document.getElementById("book-image-preview");
     const removeBtn = document.getElementById("remove-book-img-btn");
+    const dropzone = document.getElementById("book-cover-dropzone") || (fileInput ? fileInput.parentElement : null);
 
     if (!fileInput) return;
 
-    fileInput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    function handleCoverFile(file) {
+        if (!file || !file.type.startsWith("image/")) {
+            alert("ദയവായി ഒരു സാധുവായ ചിത്രം (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.");
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -903,10 +906,38 @@ function initBookCoverUploader() {
             img.src = event.target.result;
         };
         reader.readAsDataURL(file);
+    }
+
+    fileInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) handleCoverFile(file);
     });
 
+    if (dropzone) {
+        ["dragenter", "dragover"].forEach(evt => {
+            dropzone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add("border-blue-600", "bg-blue-100/60");
+            });
+        });
+        ["dragleave", "drop"].forEach(evt => {
+            dropzone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove("border-blue-600", "bg-blue-100/60");
+            });
+        });
+        dropzone.addEventListener("drop", (e) => {
+            const dt = e.dataTransfer;
+            const file = dt && dt.files && dt.files[0];
+            if (file) handleCoverFile(file);
+        });
+    }
+
     if (removeBtn) {
-        removeBtn.addEventListener("click", () => {
+        removeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
             selectedBookCoverBase64 = "";
             fileInput.value = "";
             if (previewImg) previewImg.src = "";
@@ -937,8 +968,10 @@ function initBookSwitcherAndStep1() {
     }
 
     if (publishBtn) {
-        publishBtn.addEventListener("click", async () => {
-            const name = document.getElementById("book-meta-name")?.value.trim();
+        publishBtn.addEventListener("click", async (e) => {
+            if (e) e.preventDefault();
+
+            const name = document.getElementById("book-meta-name")?.value.trim() || "";
             const volume = document.getElementById("book-meta-volume")?.value.trim() || "";
             const issue = document.getElementById("book-meta-issue")?.value.trim() || "";
             const dateVal = document.getElementById("book-meta-date")?.value.trim() || new Date().toLocaleDateString("en-GB");
@@ -948,14 +981,16 @@ function initBookSwitcherAndStep1() {
             const tag = document.getElementById("book-meta-tag")?.value.trim() || "Premium Book";
             const desc = document.getElementById("book-meta-desc")?.value.trim() || "";
 
+            // Streamlined validation for single-author books:
+            // Require ONLY: Book Title, Cover Image (3:4), and Publication Tag
             if (!name) {
-                alert("ദയവായി പുസ്തകത്തിന്റെ പേര് (Book Title) നൽകുക.");
+                alert("ദയവായി പുസ്തകത്തിന്റെ പേര് (Book / Edition Title) നൽകുക.");
                 document.getElementById("book-meta-name")?.focus();
                 return;
             }
-            if (!author) {
-                alert("ദയവായി രചയിതാവിന്റെ പേര് (Author Name) നൽകുക.");
-                document.getElementById("book-meta-author")?.focus();
+            if (!tag) {
+                alert("ദയവായി പതിപ്പ് ടാഗ് (Publication Tag) നൽകുക.");
+                document.getElementById("book-meta-tag")?.focus();
                 return;
             }
 
@@ -965,16 +1000,16 @@ function initBookSwitcherAndStep1() {
                 normalizeStringClean(a.title) === normalizeStringClean(name)
             ));
 
-            if (!existing && !selectedBookCoverBase64) {
-                alert("ദയവായി പുസ്തകത്തിന് ഒരു കവർ ചിത്രം (Cover Image) അപ്‌ലോഡ് ചെയ്യുക.");
+            const coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "");
+            if (!coverImage) {
+                alert("ദയവായി പുസ്തകത്തിന് ഒരു കവർ ചിത്രം (Cover Image 3:4) അപ്‌ലോഡ് ചെയ്യുക.");
                 return;
             }
 
             publishBtn.disabled = true;
-            publishBtn.innerHTML = "സേവ് ചെയ്യുന്നു...";
+            publishBtn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span><span>സേവ് ചെയ്യുന്നു...</span>`;
 
             try {
-                const coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "");
                 const payload = {
                     title: name,
                     bookName: name,
@@ -999,7 +1034,7 @@ function initBookSwitcherAndStep1() {
                     await updateDoc(doc(db, "articles", existing.id), payload);
                     savedDocId = existing.id;
                     Object.assign(existing, payload);
-                    showGlobalStatus(`✨ പുസ്തകം '${name}' അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
+                    showGlobalStatus(`✨ പുസ്തകം '${name}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
                 } else {
                     const docRef = await addDoc(collection(db, "articles"), {
                         ...payload,
@@ -1010,19 +1045,25 @@ function initBookSwitcherAndStep1() {
                     showGlobalStatus(`📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
                 }
 
-                // Update author on all existing chapters in this book if needed
+                // Update author & name on active book session
                 activeBookName = name;
                 activeBookAuthor = author;
 
                 updateActiveBookOverview(currentArticlesList);
                 selectActiveBook(name);
 
-                // Scroll smoothly to Step 2
-                document.getElementById("bm-step2-3-wrapper")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                // Instantly reveal and scroll smoothly to Step 2
+                const step2Wrapper = document.getElementById("bm-step2-3-wrapper");
+                if (step2Wrapper) {
+                    step2Wrapper.classList.remove("hidden");
+                    setTimeout(() => {
+                        step2Wrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }, 80);
+                }
 
             } catch (err) {
                 console.error("Save book error:", err);
-                showGlobalStatus("പുസ്തകം സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + err.message, "error");
+                showGlobalStatus("പുസ്തകം സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
             } finally {
                 publishBtn.disabled = false;
                 publishBtn.innerHTML = `<span>സേവ് ചെയ്ത് അധ്യായങ്ങൾ ചേർക്കലിലേക്ക് കടക്കുക (Save & Continue to Step 2)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
@@ -1169,11 +1210,14 @@ function initChapterWriter() {
     const previewImg = document.getElementById("bm-art-image-preview");
     const removeBtn = document.getElementById("bm-remove-art-img-btn");
     const publishBtn = document.getElementById("bm-publish-article-btn");
+    const dropzone = document.getElementById("bm-art-image-dropzone") || (fileInput ? fileInput.parentElement : null);
 
     if (fileInput) {
-        fileInput.addEventListener("change", (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        function handleChapterImg(file) {
+            if (!file || !file.type.startsWith("image/")) {
+                alert("ദയവായി ഒരു സാധുവായ ചിത്രം തിരഞ്ഞെടുക്കുക.");
+                return;
+            }
 
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -1202,7 +1246,34 @@ function initChapterWriter() {
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
+        }
+
+        fileInput.addEventListener("change", (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (file) handleChapterImg(file);
         });
+
+        if (dropzone) {
+            ["dragenter", "dragover"].forEach(evt => {
+                dropzone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.add("border-emerald-600", "bg-emerald-100/40");
+                });
+            });
+            ["dragleave", "drop"].forEach(evt => {
+                dropzone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.remove("border-emerald-600", "bg-emerald-100/40");
+                });
+            });
+            dropzone.addEventListener("drop", (e) => {
+                const dt = e.dataTransfer;
+                const file = dt && dt.files && dt.files[0];
+                if (file) handleChapterImg(file);
+            });
+        }
     }
 
     if (removeBtn) {
@@ -1706,9 +1777,256 @@ function updateActiveBookOverview(articles) {
 window.setPlaylistInput = function(name) {
     selectActiveBook(name);
 };
+
+window.manageBookFromPublished = function(bookName) {
+    switchAdminTab("book");
+    selectActiveBook(bookName);
+};
+
 /* ═══════════════════════════════════════════════════════════
    7. LIVE FIRESTORE SYNC & PUBLISHED ARTICLES LIST (TAB 4)
    ═══════════════════════════════════════════════════════════ */
+function listenToFirestoreArticles() {
+    const listContainer = document.getElementById("admin-articles-list");
+    const colRef = collection(db, "articles");
+    let restReadPromise = null;
+
+    function processArticlesData(rawItems) {
+        if (!Array.isArray(rawItems)) return;
+
+        const items = rawItems.map(d => normalizeArticleDoc(d, d?.id));
+
+        items.sort((a, b) => {
+            const getMillis = (item) => {
+                return parseTimestampMillis(item.createdAt) ||
+                       parseTimestampMillis(item.updatedAt) ||
+                       parseTimestampMillis(item.date) || 0;
+            };
+            return getMillis(b) - getMillis(a);
+        });
+
+        if (items.length === 0 && currentArticlesList.length > 0) return;
+
+        currentArticlesList = items;
+        updateArticleCounters(items.length);
+        renderAdminPublishedList(items);
+        updateActiveBookOverview(items);
+        renderBookManagerCompactArticles(items, activeBookName);
+        renderLayoutManagerList(items);
+    }
+
+    function decodeFirestoreValue(value) {
+        if (!value || typeof value !== "object") return value;
+        if ("nullValue" in value) return null;
+        if ("stringValue" in value) return value.stringValue;
+        if ("integerValue" in value) return Number(value.integerValue);
+        if ("doubleValue" in value) return Number(value.doubleValue);
+        if ("booleanValue" in value) return value.booleanValue;
+        if ("timestampValue" in value) return value.timestampValue;
+        if ("referenceValue" in value) return value.referenceValue;
+        if ("bytesValue" in value) return value.bytesValue;
+        if ("geoPointValue" in value) return value.geoPointValue;
+        if ("arrayValue" in value) {
+            return (value.arrayValue.values || []).map(decodeFirestoreValue);
+        }
+        if ("mapValue" in value) {
+            return Object.fromEntries(
+                Object.entries(value.mapValue.fields || {})
+                    .map(([key, fieldValue]) => [key, decodeFirestoreValue(fieldValue)])
+            );
+        }
+        return value;
+    }
+
+    function decodeFirestoreFields(fields) {
+        return Object.fromEntries(
+            Object.entries(fields).map(([key, value]) => [key, decodeFirestoreValue(value)])
+        );
+    }
+
+    function reportLoadError(error) {
+        console.error("[NUQTHA ADMIN] Unable to load articles from Firestore:", error);
+        if (currentArticlesList.length === 0 && listContainer) {
+            listContainer.innerHTML = '<p class="text-xs text-rose-500 font-semibold p-4 text-center">ലേഖനങ്ങൾ Firestore-ൽ നിന്ന് ലോഡ് ചെയ്യാനായില്ല. നെറ്റ്‌വർക്ക്, Firebase project ID, Firestore Rules എന്നിവ പരിശോധിക്കുക.</p>';
+        }
+    }
+
+    try {
+        onSnapshot(colRef, (snapshot) => {
+            const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
+            if (items.length > 0) processArticlesData(items);
+        }, (err) => {
+            console.warn("[NUQTHA ADMIN] Realtime listener failed; trying a one-time Firestore read:", err);
+            getDocs(colRef).then(snapshot => {
+                if (snapshot.empty) return;
+                const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
+                processArticlesData(items);
+            }).catch(fallbackErr => {
+                console.warn("[NUQTHA ADMIN] One-time Firestore read failed:", fallbackErr);
+            });
+        });
+    } catch (error) {
+        console.error("[NUQTHA ADMIN] Could not start Firestore listener:", error);
+    }
+
+    getDocs(colRef).then(snapshot => {
+        if (!snapshot.empty) {
+            const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
+            processArticlesData(items);
+        }
+    }).catch(error => {
+        console.warn("[NUQTHA ADMIN] Initial Firestore read failed; REST fallback will be used:", error);
+    });
+
+    async function fetchAdminViaRest() {
+        if (restReadPromise) return restReadPromise;
+
+        restReadPromise = (async () => {
+            try {
+                const { apiKey, projectId } = db.app.options;
+                if (!apiKey || !projectId) {
+                    throw new Error("Firebase project ID or API key is missing.");
+                }
+
+                const documents = [];
+                let nextPageToken = "";
+                do {
+                    const params = new URLSearchParams({ pageSize: "300", key: apiKey });
+                    if (nextPageToken) params.set("pageToken", nextPageToken);
+                    const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/articles?${params}`;
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Firestore REST request failed (${response.status}): ${await response.text()}`);
+                    }
+
+                    const page = await response.json();
+                    documents.push(...(page.documents || []));
+                    nextPageToken = page.nextPageToken || "";
+                } while (nextPageToken);
+
+                const restArticles = documents.map(document => {
+                    const id = document.name?.split("/").pop();
+                    if (!id) throw new Error("Firestore returned an article without a document ID.");
+                    const fields = decodeFirestoreFields(document.fields || {});
+                    return normalizeArticleDoc({
+                        ...fields,
+                        createdAt: fields.createdAt || document.createTime,
+                        updatedAt: fields.updatedAt || document.updateTime
+                    }, id);
+                });
+
+                if (restArticles.length > 0 || currentArticlesList.length === 0) {
+                    processArticlesData(restArticles);
+                }
+            } catch (error) {
+                reportLoadError(error);
+            } finally {
+                restReadPromise = null;
+            }
+        })();
+
+        return restReadPromise;
+    }
+
+    fetchAdminViaRest();
+}
+
+function updateArticleCounters(count) {
+    const countBadge = document.getElementById("article-count");
+    const tabBadge = document.getElementById("tab-published-badge");
+    if (countBadge) countBadge.textContent = count;
+    if (tabBadge) tabBadge.textContent = count;
+}
+
+function renderAdminPublishedList(items) {
+    const listContainer = document.getElementById("admin-articles-list");
+    if (!listContainer) return;
+
+    if (items.length === 0) {
+        listContainer.innerHTML = `
+            <div class="text-center py-12 px-4 bg-white/60 dark:bg-white/5 rounded-3xl border border-[#ebdccb] dark:border-white/10 space-y-3">
+                <div class="w-12 h-12 mx-auto rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center text-xl">📄</div>
+                <h4 class="text-sm font-bold text-[#1e1b18] dark:text-[#f8fafc]">ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല</h4>
+                <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8]">ആദ്യത്തെ ലേഖനം പ്രസിദ്ധീകരിക്കാൻ 'പുതിയ ലേഖനം' ടാബ് തുറക്കുക.</p>
+                <button type="button" onclick="window.switchAdminTab('create')" class="px-4 py-2 bg-[#b4532c] text-white text-xs font-bold rounded-xl shadow-sm hover:bg-[#923e1b] transition">
+                    + പുതിയ ലേഖനം എഴുതുക
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    listContainer.innerHTML = items.map(data => {
+        const titleCol = data.titleColor || "#1e1b18";
+        const placementLabel = data.placement === 'HERO' ? '⭐ HERO' : data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
+        const priorityBadge = (data.priority !== undefined && data.priority !== null) ? `P${data.priority}` : '';
+        const playlistBadge = data.playlistName ? `📚 ${data.playlistName}` : '';
+        const isBook = data.type === 'BOOK';
+
+        return `
+            <div class="p-4 bg-white/90 dark:bg-[#12141d]/90 rounded-2xl border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/60 dark:hover:border-white/20 transition shadow-sm space-y-3">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] font-black text-[#b4532c] dark:text-[#f87171] uppercase font-english bg-[#b4532c]/10 px-2 py-0.5 rounded-md">
+                            ${data.category || 'General'}
+                        </span>
+                        <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#fbf7ee] dark:bg-white/10 border border-[#ebdccb] dark:border-white/10 text-[#4a3c33] dark:text-[#cbd5e1] font-english">
+                            ${placementLabel}
+                        </span>
+                        ${priorityBadge ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-400/30 text-amber-800 dark:text-amber-300 font-mono">${priorityBadge}</span>` : ''}
+                        ${isBook ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-english">📘 BOOK COVER</span>` : ''}
+                        ${data.bookName ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-english">📖 ${data.bookName}</span>` : ''}
+                    </div>
+                    <span class="text-[10px] text-slate-400 font-english">${data.date || ''}</span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    ${data.imageUrl ? `
+                        <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border border-[#ebdccb]">
+                            <img src="${data.imageUrl}" alt="Cover" class="w-full h-full object-cover">
+                        </div>
+                    ` : ''}
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-extrabold line-clamp-2 leading-snug" style="color: ${titleCol};">${data.title}</h4>
+                        <p class="text-[11px] font-bold text-[#1e1b18] dark:text-white mt-1"><span class="text-[#1e1b18] dark:text-white font-bold">${data.author || 'NUQTHA'}</span> ${data.transcription ? `<span class="text-[#8c7a6b] dark:text-[#94a3b8] font-semibold ml-2">(📝 കേട്ടെഴുത്ത്: ${data.transcription})</span>` : ''}</p>
+                    </div>
+                </div>
+
+                ${playlistBadge ? `
+                    <div class="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-900 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/40 px-2.5 py-1 rounded-lg">
+                        <span>${playlistBadge}</span>
+                    </div>
+                ` : ''}
+
+                <div class="flex items-center justify-between pt-2.5 border-t border-[#ebdccb]/60 dark:border-white/10">
+                    <a href="${isBook ? `article.html?edition=${encodeURIComponent(data.bookName || data.title)}` : `article.html?id=${data.id}`}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#b4532c] hover:underline font-english">
+                        <span>Live Preview</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
+
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="window.viewArticleComments('${data.id}', '${(data.title || '').replace(/'/g, "\\'")}')" title="ലേഖന അഭിപ്രായങ്ങളും ഇമെയിലുകളും കാണുക" class="inline-flex items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/20 border border-blue-200 px-3 py-1 rounded-xl transition font-english">
+                            <span>💬 Comments</span>
+                        </button>
+                        ${isBook ? `
+                            <button type="button" onclick="window.manageBookFromPublished('${(data.bookName || data.title).replace(/'/g, "\\'")}')" title="പുസ്തകം മാനേജ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english">
+                                <span>📚 Manage</span>
+                            </button>
+                        ` : `
+                            <button type="button" onclick="window.startEditArticle('${data.id}')" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                <span>Edit</span>
+                            </button>
+                        `}
+                        <button type="button" onclick="window.deleteArticle('${data.id}')" title="ലേഖനം ഒഴിവാക്കുക" class="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 border border-rose-200 px-3 py-1 rounded-xl transition font-english">
+                            <span>✕ Delete</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
 
 /* ═══════════════════════════════════════════════════════════
    8. TAB 3 SEARCH & FILTER IN ARTICLES LIST
