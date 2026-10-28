@@ -881,7 +881,38 @@ function matchesBookExact(art, bName, bTitle, bId) {
     return false;
 }
 
+let isBookManagerSuiteInitialized = false;
+
+function generateDefaultBookCover(title, category = "Book") {
+    const escapedTitle = (title || "NUQTHA BOOK").replace(/[<>&"]/g, "");
+    const escapedCat = (category || "PREMIUM BOOK").replace(/[<>&"]/g, "");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="600" height="800">
+        <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
+                <stop offset="50%" style="stop-color:#172554;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+            </linearGradient>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+            </pattern>
+        </defs>
+        <rect width="600" height="800" fill="url(#grad)"/>
+        <rect width="600" height="800" fill="url(#grid)"/>
+        <rect x="25" y="25" width="550" height="750" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" rx="12"/>
+        <text x="300" y="160" font-family="sans-serif" font-size="16" font-weight="bold" fill="#93c5fd" letter-spacing="4" text-anchor="middle">${escapedCat.toUpperCase()}</text>
+        <line x1="260" y1="180" x2="340" y2="180" stroke="#60a5fa" stroke-width="2"/>
+        <text x="300" y="380" font-family="'Noto Serif Malayalam', serif, sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle" width="500">${escapedTitle}</text>
+        <circle cx="300" cy="520" r="30" fill="rgba(255,255,255,0.1)"/>
+        <text x="300" y="528" font-family="sans-serif" font-size="24" fill="#ffffff" text-anchor="middle">📖</text>
+        <text x="300" y="720" font-family="sans-serif" font-size="14" font-weight="bold" fill="#94a3b8" letter-spacing="3" text-anchor="middle">NUQTHA PUBLICATIONS</text>
+    </svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 function initBookManagerSuite() {
+    if (isBookManagerSuiteInitialized) return;
+    isBookManagerSuiteInitialized = true;
     initBookCoverUploader();
     initBookSwitcherAndStep1();
     initChapterWriter();
@@ -897,9 +928,7 @@ function initBookCoverUploader() {
     const previewContainer = document.getElementById("book-image-preview-container");
     const previewImg = document.getElementById("book-image-preview");
     const removeBtn = document.getElementById("remove-book-img-btn");
-    const dropzone = document.getElementById("book-cover-dropzone") || (fileInput ? fileInput.parentElement : null);
-
-    if (!fileInput) return;
+    const dropzone = document.getElementById("book-cover-dropzone");
 
     function showCoverError(msg) {
         const errEl = document.getElementById("book-cover-error");
@@ -919,20 +948,16 @@ function initBookCoverUploader() {
 
     function handleCoverFile(file) {
         clearCoverError();
-
         if (!file) return;
 
-        // Strict type validation
-        const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-        if (!validTypes.includes(file.type.toLowerCase())) {
-            showCoverError("സാധുവായ ചിത്രം (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.");
-            return;
-        }
-
-        // Strict size validation (max 5 MB)
-        if (file.size > 5 * 1024 * 1024) {
-            showCoverError("ഫയൽ വലുപ്പം 5MB-ൽ താഴെയായിരിക്കണം.");
-            return;
+        // Instant visual feedback with ObjectURL
+        try {
+            const objectUrl = URL.createObjectURL(file);
+            if (previewImg) previewImg.src = objectUrl;
+            if (placeholder) placeholder.classList.add("hidden");
+            if (previewContainer) previewContainer.classList.remove("hidden");
+        } catch (e) {
+            console.warn("ObjectURL fallback:", e);
         }
 
         const reader = new FileReader();
@@ -942,56 +967,63 @@ function initBookCoverUploader() {
         };
 
         reader.onload = (event) => {
+            const rawBase64 = event.target.result;
+            selectedBookCoverBase64 = rawBase64;
+
             const img = new Image();
-            img.onerror = (err) => {
-                console.error("Image load error:", err);
-                showCoverError("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
-            };
-
-            img.onload = () => {
-                // Resize & compress on canvas (max width/height 800px, JPEG quality 0.82)
-                const canvas = document.createElement("canvas");
-                const maxDim = 800;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > maxDim || height > maxDim) {
-                    if (width > height) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    } else {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Store base64 safely in module-scoped selectedBookCoverBase64
-                selectedBookCoverBase64 = canvas.toDataURL("image/jpeg", 0.82);
-
-                if (previewImg) previewImg.src = selectedBookCoverBase64;
-                if (placeholder) placeholder.classList.add("hidden");
-                if (previewContainer) previewContainer.classList.remove("hidden");
+            img.onerror = () => {
                 clearCoverError();
             };
-            img.src = event.target.result;
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement("canvas");
+                    const maxDim = 800;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const compressed = canvas.toDataURL("image/jpeg", 0.82);
+                    if (compressed && compressed.length > 100) {
+                        selectedBookCoverBase64 = compressed;
+                        if (previewImg) previewImg.src = compressed;
+                    }
+                } catch (cErr) {
+                    console.warn("Canvas compression fallback:", cErr);
+                }
+                clearCoverError();
+            };
+            img.src = rawBase64;
         };
         reader.readAsDataURL(file);
     }
 
-    fileInput.addEventListener("change", (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (file) handleCoverFile(file);
-    });
+    window.handleCoverFileSelected = handleCoverFile;
+
+    if (fileInput) {
+        fileInput.addEventListener("change", (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (file) handleCoverFile(file);
+        });
+    }
 
     if (dropzone) {
         dropzone.addEventListener("click", (e) => {
             if (e.target !== fileInput && !e.target.closest("#remove-book-img-btn")) {
-                fileInput.click();
+                if (fileInput) fileInput.click();
             }
         });
         ["dragenter", "dragover"].forEach(evt => {
@@ -1018,20 +1050,140 @@ function initBookCoverUploader() {
         });
     }
 
+    function handleRemoveBookCover(e) {
+        if (e) e.stopPropagation();
+        selectedBookCoverBase64 = "";
+        if (fileInput) fileInput.value = "";
+        if (previewImg) previewImg.src = "";
+        if (previewContainer) previewContainer.classList.add("hidden");
+        if (placeholder) placeholder.classList.remove("hidden");
+        clearCoverError();
+    }
+
+    window.handleRemoveBookCover = handleRemoveBookCover;
     if (removeBtn) {
-        removeBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            selectedBookCoverBase64 = "";
-            fileInput.value = "";
-            if (previewImg) previewImg.src = "";
-            if (previewContainer) previewContainer.classList.add("hidden");
-            if (placeholder) placeholder.classList.remove("hidden");
-            clearCoverError();
-        });
+        removeBtn.addEventListener("click", handleRemoveBookCover);
     }
 }
 
 /* ═══════════ 2. BOOK SWITCHER & STEP 1 SAVING ═══════════ */
+async function handleSaveBookStep1(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    // Clear previous inline errors
+    const titleErrEl = document.getElementById("book-title-error");
+    const coverErrEl = document.getElementById("book-cover-error");
+    if (titleErrEl) { titleErrEl.textContent = ""; titleErrEl.classList.add("hidden"); }
+    if (coverErrEl) { coverErrEl.textContent = ""; coverErrEl.classList.add("hidden"); }
+
+    const nameInput = document.getElementById("book-meta-name") || document.querySelector('[name="book-meta-name"]') || document.querySelector('[data-book-title-input]');
+    const name = (nameInput?.value || "").trim();
+    const tagInput = document.getElementById("book-meta-tag") || document.querySelector('[name="book-meta-tag"]');
+    const tag = (tagInput?.value || "").trim() || "Premium Book";
+
+    const volume = document.getElementById("book-meta-volume")?.value.trim() || "";
+    const issue = document.getElementById("book-meta-issue")?.value.trim() || "";
+    const dateVal = document.getElementById("book-meta-date")?.value.trim() || new Date().toLocaleDateString("en-GB");
+    const leadTitle = document.getElementById("book-meta-lead-title")?.value.trim() || "";
+    const author = document.getElementById("book-meta-author")?.value.trim() || "- എഡിറ്റോറിയൽ";
+    const featuredTitle = document.getElementById("book-meta-featured-title")?.value.trim() || "";
+    const desc = document.getElementById("book-meta-desc")?.value.trim() || "";
+
+    if (!name) {
+        if (titleErrEl) {
+            titleErrEl.textContent = "ദയവായി പുസ്തകത്തിന്റെ പേര് (Book / Edition Title) നൽകുക.";
+            titleErrEl.classList.remove("hidden");
+        }
+        nameInput?.classList.add("border-rose-500", "focus:border-rose-600");
+        nameInput?.focus();
+        return;
+    } else {
+        nameInput?.classList.remove("border-rose-500", "focus:border-rose-600");
+    }
+
+    // Check if existing in Firestore
+    const existing = currentArticlesList.find(a => a.type === "BOOK" && (
+        normalizeStringClean(a.bookName) === normalizeStringClean(name) ||
+        normalizeStringClean(a.title) === normalizeStringClean(name)
+    ));
+
+    // Provide default SVG cover if no image was uploaded
+    let coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "") || "";
+    if (!coverImage) {
+        coverImage = generateDefaultBookCover(name, tag);
+    }
+
+    const publishBtn = document.getElementById("publish-book-cover-btn");
+    if (publishBtn) {
+        publishBtn.disabled = true;
+        publishBtn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span><span>സേവ് ചെയ്യുന്നു...</span>`;
+    }
+
+    try {
+        const payload = {
+            title: name,
+            bookName: name,
+            volume: volume,
+            issue: issue,
+            leadTitle: leadTitle,
+            featuredTitle: featuredTitle,
+            author: author,
+            category: tag,
+            imageUrl: coverImage,
+            excerpt: desc || "Book Collection",
+            content: desc || "This is a curated book collection.",
+            type: "BOOK",
+            placement: "AUTO",
+            priority: 1,
+            date: dateVal,
+            updatedAt: serverTimestamp()
+        };
+
+        let savedDocId = "";
+        if (existing) {
+            await updateDoc(doc(db, "articles", existing.id), payload);
+            savedDocId = existing.id;
+            Object.assign(existing, payload);
+            showGlobalStatus(`✨ പുസ്തകം '${name}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
+        } else {
+            const docRef = await addDoc(collection(db, "articles"), {
+                ...payload,
+                createdAt: serverTimestamp()
+            });
+            savedDocId = docRef.id;
+            currentArticlesList.unshift({ id: savedDocId, ...payload });
+            showGlobalStatus(`📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
+        }
+
+        // Update author & name on active book session
+        activeBookName = name;
+        activeBookAuthor = author;
+
+        updateActiveBookOverview(currentArticlesList);
+        selectActiveBook(name);
+
+        // Instantly reveal and scroll smoothly to Step 2
+        const step2Wrapper = document.getElementById("bm-step2-3-wrapper");
+        if (step2Wrapper) {
+            step2Wrapper.classList.remove("hidden");
+            setTimeout(() => {
+                step2Wrapper.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 80);
+        }
+
+    } catch (err) {
+        console.error("Save book error:", err);
+        showGlobalStatus("പുസ്തകം സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
+    } finally {
+        if (publishBtn) {
+            publishBtn.disabled = false;
+            publishBtn.innerHTML = `<span>സേവ് ചെയ്ത് അധ്യായങ്ങൾ ചേർക്കലിലേക്ക് കടക്കുക (Save & Continue to Step 2)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+        }
+    }
+}
+
+window.handleSaveBookStep1 = handleSaveBookStep1;
+
 function initBookSwitcherAndStep1() {
     const activeSelect = document.getElementById("bm-active-book-select");
     const newBookBtn = document.getElementById("bm-new-book-btn");
@@ -1065,127 +1217,7 @@ function initBookSwitcherAndStep1() {
     }
 
     if (publishBtn) {
-        publishBtn.addEventListener("click", async (e) => {
-            if (e) e.preventDefault();
-
-            // Clear previous inline errors
-            const titleErrEl = document.getElementById("book-title-error");
-            const coverErrEl = document.getElementById("book-cover-error");
-            if (titleErrEl) { titleErrEl.textContent = ""; titleErrEl.classList.add("hidden"); }
-            if (coverErrEl) { coverErrEl.textContent = ""; coverErrEl.classList.add("hidden"); }
-
-            const nameInput = document.getElementById("book-meta-name") || document.querySelector('[name="book-meta-name"]') || document.querySelector('[data-book-title-input]');
-            const name = (nameInput?.value || "").trim();
-            const tagInput = document.getElementById("book-meta-tag") || document.querySelector('[name="book-meta-tag"]');
-            const tag = (tagInput?.value || "").trim() || "Premium Book";
-
-            const volume = document.getElementById("book-meta-volume")?.value.trim() || "";
-            const issue = document.getElementById("book-meta-issue")?.value.trim() || "";
-            const dateVal = document.getElementById("book-meta-date")?.value.trim() || new Date().toLocaleDateString("en-GB");
-            const leadTitle = document.getElementById("book-meta-lead-title")?.value.trim() || "";
-            const author = document.getElementById("book-meta-author")?.value.trim() || "- എഡിറ്റോറിയൽ";
-            const featuredTitle = document.getElementById("book-meta-featured-title")?.value.trim() || "";
-            const desc = document.getElementById("book-meta-desc")?.value.trim() || "";
-
-            // Check if existing in Firestore
-            const existing = currentArticlesList.find(a => a.type === "BOOK" && (
-                normalizeStringClean(a.bookName) === normalizeStringClean(name) ||
-                normalizeStringClean(a.title) === normalizeStringClean(name)
-            ));
-
-            const coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "") || "";
-
-            // Streamlined validation: Inline errors under fields (not alert())
-            let hasError = false;
-            if (!name) {
-                if (titleErrEl) {
-                    titleErrEl.textContent = "ദയവായി പുസ്തകത്തിന്റെ പേര് (Book / Edition Title) നൽകുക.";
-                    titleErrEl.classList.remove("hidden");
-                }
-                nameInput?.classList.add("border-rose-500", "focus:border-rose-600");
-                nameInput?.focus();
-                hasError = true;
-            } else {
-                nameInput?.classList.remove("border-rose-500", "focus:border-rose-600");
-            }
-
-            if (!coverImage) {
-                if (coverErrEl) {
-                    coverErrEl.textContent = "ദയവായി പുസ്തകത്തിന് ഒരു കവർ ചിത്രം (Cover Image 3:4) അപ്‌ലോഡ് ചെയ്യുക.";
-                    coverErrEl.classList.remove("hidden");
-                }
-                if (!hasError) {
-                    const fileInput = document.getElementById("book-cover-input");
-                    if (fileInput) fileInput.click();
-                }
-                hasError = true;
-            }
-
-            if (hasError) return;
-
-            publishBtn.disabled = true;
-            publishBtn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span><span>സേവ് ചെയ്യുന്നു...</span>`;
-
-            try {
-                const payload = {
-                    title: name,
-                    bookName: name,
-                    volume: volume,
-                    issue: issue,
-                    leadTitle: leadTitle,
-                    featuredTitle: featuredTitle,
-                    author: author,
-                    category: tag,
-                    imageUrl: coverImage,
-                    excerpt: desc || "Book Collection",
-                    content: desc || "This is a curated book collection.",
-                    type: "BOOK",
-                    placement: "AUTO",
-                    priority: 1,
-                    date: dateVal,
-                    updatedAt: serverTimestamp()
-                };
-
-                let savedDocId = "";
-                if (existing) {
-                    await updateDoc(doc(db, "articles", existing.id), payload);
-                    savedDocId = existing.id;
-                    Object.assign(existing, payload);
-                    showGlobalStatus(`✨ പുസ്തകം '${name}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
-                } else {
-                    const docRef = await addDoc(collection(db, "articles"), {
-                        ...payload,
-                        createdAt: serverTimestamp()
-                    });
-                    savedDocId = docRef.id;
-                    currentArticlesList.unshift({ id: savedDocId, ...payload });
-                    showGlobalStatus(`📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
-                }
-
-                // Update author & name on active book session
-                activeBookName = name;
-                activeBookAuthor = author;
-
-                updateActiveBookOverview(currentArticlesList);
-                selectActiveBook(name);
-
-                // Instantly reveal and scroll smoothly to Step 2
-                const step2Wrapper = document.getElementById("bm-step2-3-wrapper");
-                if (step2Wrapper) {
-                    step2Wrapper.classList.remove("hidden");
-                    setTimeout(() => {
-                        step2Wrapper.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }, 80);
-                }
-
-            } catch (err) {
-                console.error("Save book error:", err);
-                showGlobalStatus("പുസ്തകം സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
-            } finally {
-                publishBtn.disabled = false;
-                publishBtn.innerHTML = `<span>സേവ് ചെയ്ത് അധ്യായങ്ങൾ ചേർക്കലിലേക്ക് കടക്കുക (Save & Continue to Step 2)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
-            }
-        });
+        publishBtn.addEventListener("click", handleSaveBookStep1);
     }
 }
 
@@ -2087,7 +2119,7 @@ function renderAdminPublishedList(items) {
 
     listContainer.innerHTML = items.map(data => {
         const titleCol = data.titleColor || "#1e1b18";
-        const placementLabel = data.placement === 'HERO' ? '⭐ HERO' : data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
+        const placementLabel = data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
         const priorityBadge = (data.priority !== undefined && data.priority !== null) ? `P${data.priority}` : '';
         const playlistBadge = data.playlistName ? `📚 ${data.playlistName}` : '';
         const isBook = data.type === 'BOOK';
@@ -2305,7 +2337,6 @@ export function renderLayoutManagerList(items) {
                         <label class="block text-[10px] font-bold uppercase text-[#4a3c33] font-english mb-1">സ്ഥാനം (Placement)</label>
                         <select id="placement-select-${art.id}" class="w-full text-xs font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#1e1b18]">
                             <option value="AUTO" ${currentPlacement === 'AUTO' ? 'selected' : ''}>⚡ Automatic</option>
-                            <option value="HERO" ${currentPlacement === 'HERO' ? 'selected' : ''}>⭐ Hero Featured</option>
                             <option value="CAROUSEL" ${currentPlacement === 'CAROUSEL' ? 'selected' : ''}>🎠 Carousel</option>
                             <option value="FEED" ${currentPlacement === 'FEED' ? 'selected' : ''}>📰 Feed</option>
                         </select>
