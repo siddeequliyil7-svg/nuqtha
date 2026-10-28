@@ -2141,7 +2141,7 @@ function renderAdminPublishedList(items) {
 
     listContainer.innerHTML = items.map(data => {
         const titleCol = data.titleColor || "#1e1b18";
-        const placementLabel = data.placement === 'HERO' ? '⭐ HERO' : data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
+        const placementLabel = data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
         const priorityBadge = (data.priority !== undefined && data.priority !== null) ? `P${data.priority}` : '';
         const playlistBadge = data.playlistName ? `📚 ${data.playlistName}` : '';
         const isBook = data.type === 'BOOK';
@@ -2359,7 +2359,6 @@ export function renderLayoutManagerList(items) {
                         <label class="block text-[10px] font-bold uppercase text-[#4a3c33] font-english mb-1">സ്ഥാനം (Placement)</label>
                         <select id="placement-select-${art.id}" class="w-full text-xs font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#1e1b18]">
                             <option value="AUTO" ${currentPlacement === 'AUTO' ? 'selected' : ''}>⚡ Automatic</option>
-                            <option value="HERO" ${currentPlacement === 'HERO' ? 'selected' : ''}>⭐ Hero Featured</option>
                             <option value="CAROUSEL" ${currentPlacement === 'CAROUSEL' ? 'selected' : ''}>🎠 Carousel</option>
                             <option value="FEED" ${currentPlacement === 'FEED' ? 'selected' : ''}>📰 Feed</option>
                         </select>

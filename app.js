@@ -678,12 +678,7 @@ function renderHomeFeed(container) {
         html += buildCarouselSection(swipeArticles);
     }
 
-    // ════════════════════════════════════════════════════════════════
-    // 2. HERO FEATURED MAIN CARD (DIRECTLY BELOW CAROUSEL)
-    // ════════════════════════════════════════════════════════════════
-    if (heroArticle) {
-        html += buildFeaturedCard(heroArticle);
-    }
+    // 2. HERO FEATURED MAIN CARD REMOVED AS REQUESTED
 
     // ════════════════════════════════════════════════════════════════
     // 3. DEDICATED BOOK SECTION
