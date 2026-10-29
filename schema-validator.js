@@ -249,6 +249,7 @@ export function validateAndSanitizeArticleForSave(raw) {
 
     // 4. Author & Transcription
     const author = sanitizeString(raw.author, 100, "NUQTHA");
+    const authorId = sanitizeString(raw.authorId, 100, "");
     const transcription = sanitizeString(raw.transcription, 100, "");
 
     // 5. Excerpt (default first 160 chars of content)
@@ -273,6 +274,7 @@ export function validateAndSanitizeArticleForSave(raw) {
     const bookName = sanitizeString(raw.bookName || raw.playlistName, 120, "");
     const bookId = sanitizeString(raw.bookId, 120, "");
     const order = (raw.order !== undefined && raw.order !== null && !isNaN(raw.order)) ? parseInt(raw.order, 10) : ((raw.priority !== undefined && !isNaN(raw.priority)) ? parseInt(raw.priority, 10) : 10);
+    const status = sanitizeString(raw.status, 50, "published");
     const volume = sanitizeString(raw.volume, 50, "");
     const issue = sanitizeString(raw.issue, 50, "");
     const leadTitle = sanitizeString(raw.leadTitle, 250, "");
@@ -307,6 +309,7 @@ export function validateAndSanitizeArticleForSave(raw) {
         bookName,
         bookId,
         order,
+        status,
         volume,
         issue,
         leadTitle,
@@ -382,6 +385,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         title,
         category,
         author,
+        authorId,
         transcription,
         imageUrl,
         excerpt,
@@ -394,6 +398,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         bookName,
         bookId,
         order,
+        status,
         volume,
         issue,
         leadTitle,
