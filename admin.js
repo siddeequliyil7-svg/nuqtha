@@ -59,6 +59,7 @@ function initAdminDashboard() {
 function initPlaylistPresets() {
     const playlistInput = document.getElementById("art-playlist-name");
     document.querySelectorAll(".playlist-preset-chip").forEach(chip => {
+        if (!chip) return;
         chip.addEventListener("click", () => {
             const seriesName = chip.dataset.name || chip.textContent.replace("+", "").trim();
             if (playlistInput) {
@@ -175,7 +176,7 @@ function initTabNavigation() {
 
     // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=book)
     const hash = window.location.hash.replace("#tab=", "").trim();
-    if (["create", "book", "layout", "published"].includes(hash)) {
+    if (["create", "book", "layout", "published", "authors"].includes(hash)) {
         switchAdminTab(hash);
     }
 }
@@ -752,6 +753,7 @@ function initColorCustomizer() {
     const previewContent = document.getElementById("preview-body");
 
     fontSizeRadios.forEach(radio => {
+        if (!radio) return;
         radio.addEventListener("change", (e) => {
             const val = e.target.value;
             const labels = {
@@ -1765,6 +1767,7 @@ function renderBookChaptersReorderList(chapters) {
     // Bind Drag & Drop Listeners
     const items = listEl.querySelectorAll(".chapter-reorder-item");
     items.forEach(item => {
+        if (!item) return;
         item.addEventListener("dragstart", (e) => {
             dragSrcChapterIndex = parseInt(item.dataset.index, 10);
             item.style.opacity = "0.4";
@@ -1803,6 +1806,7 @@ function renderBookChaptersReorderList(chapters) {
 
     // Bind Up & Down Buttons
     listEl.querySelectorAll(".btn-move-up").forEach(btn => {
+        if (!btn) return;
         btn.addEventListener("click", (e) => {
             e.stopPropagation();
             const idx = parseInt(btn.dataset.index, 10);
@@ -1817,6 +1821,7 @@ function renderBookChaptersReorderList(chapters) {
     });
 
     listEl.querySelectorAll(".btn-move-down").forEach(btn => {
+        if (!btn) return;
         btn.addEventListener("click", (e) => {
             e.stopPropagation();
             const idx = parseInt(btn.dataset.index, 10);
@@ -1832,6 +1837,7 @@ function renderBookChaptersReorderList(chapters) {
 
     // Bind Detach Button
     listEl.querySelectorAll(".btn-detach-chapter").forEach(btn => {
+        if (!btn) return;
         btn.addEventListener("click", async (e) => {
             e.stopPropagation();
             const id = btn.dataset.id;
@@ -2737,11 +2743,17 @@ function initAuthorManager() {
     if (authorForm) {
         authorForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const name = document.getElementById("admin-author-name").value.trim();
-            const role = document.getElementById("admin-author-role").value.trim() || "CONTRIBUTOR";
-            const photoUrl = document.getElementById("admin-author-photo").value.trim() || authorPhotoBase64;
-            const bio = document.getElementById("admin-author-bio").value.trim();
-            const editSlug = document.getElementById("author-edit-slug").value.trim();
+            const nameEl = document.getElementById("admin-author-name");
+            const roleEl = document.getElementById("admin-author-role");
+            const photoEl = document.getElementById("admin-author-photo");
+            const bioEl = document.getElementById("admin-author-bio");
+            const editSlugEl = document.getElementById("author-edit-slug");
+
+            const name = nameEl ? nameEl.value.trim() : "";
+            const role = (roleEl ? roleEl.value.trim() : "") || "CONTRIBUTOR";
+            const photoUrl = (photoEl ? photoEl.value.trim() : "") || authorPhotoBase64;
+            const bio = bioEl ? bioEl.value.trim() : "";
+            const editSlug = editSlugEl ? editSlugEl.value.trim() : "";
 
             if (!name) {
                 showGlobalStatus("എഴുത്തുകാരന്റെ പേര് നൽകേണ്ടതുണ്ട്.", "error");
@@ -2752,8 +2764,10 @@ function initAuthorManager() {
             const submitBtn = document.getElementById("admin-author-submit-btn");
             const toast = document.getElementById("admin-author-save-toast");
 
-            submitBtn.disabled = true;
-            submitBtn.classList.add("opacity-60");
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add("opacity-60");
+            }
 
             const payload = {
                 name,
@@ -2775,8 +2789,10 @@ function initAuthorManager() {
                 console.error("[admin.js] Author save error:", err);
                 showGlobalStatus("പ്രൊഫൈൽ സേവ് ചെയ്യുമ്പോൾ തടസ്സം നേരിട്ടു: " + err.message, "error");
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.classList.remove("opacity-60");
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove("opacity-60");
+                }
             }
         });
     }

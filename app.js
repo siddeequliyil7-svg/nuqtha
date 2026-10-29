@@ -114,6 +114,7 @@ function setupMoreDropdown() {
     });
 
     document.querySelectorAll(".more-dropdown-item").forEach(item => {
+        if (!item) return;
         item.addEventListener("click", (e) => {
             e.preventDefault();
             const cat = item.dataset.category;
@@ -190,6 +191,7 @@ function updateMoreCategoriesMenu() {
     dropdown.innerHTML = html;
 
     dropdown.querySelectorAll(".more-dropdown-item").forEach(item => {
+        if (!item) return;
         item.addEventListener("click", (e) => {
             e.preventDefault();
             const cat = item.dataset.category;
@@ -240,6 +242,7 @@ updatePageMeta();
 function setupCategoryNav() {
     const links = document.querySelectorAll("#category-nav .nav-category-link:not(#more-categories-btn)");
     links.forEach(link => {
+        if (!link) return;
         link.addEventListener("click", (e) => {
             e.preventDefault();
             const cat = link.dataset.category;
@@ -283,6 +286,7 @@ function setupSidebarDrawer() {
     if (backdrop) backdrop.addEventListener("click", closeDrawer);
 
     document.querySelectorAll(".drawer-nav-item").forEach(item => {
+        if (!item) return;
         item.addEventListener("click", (e) => {
             const cat = item.dataset.category;
             if (cat) {
@@ -1342,21 +1346,23 @@ function setupBannerCarousel() {
     });
 
     // Pause on hover / touch
-    banner.addEventListener('mouseenter', stopAutoPlay);
-    banner.addEventListener('mouseleave', startAutoPlay);
-    banner.addEventListener('touchstart', stopAutoPlay, { passive: true });
-    banner.addEventListener('touchend', () => setTimeout(startAutoPlay, 1200), { passive: true });
+    if (banner) {
+        banner.addEventListener('mouseenter', stopAutoPlay);
+        banner.addEventListener('mouseleave', startAutoPlay);
+        banner.addEventListener('touchstart', stopAutoPlay, { passive: true });
+        banner.addEventListener('touchend', () => setTimeout(startAutoPlay, 1200), { passive: true });
 
-    // Touch / swipe support
-    let touchStartX = 0;
-    banner.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
-    banner.addEventListener('touchend', e => {
-        const dx = e.changedTouches[0].clientX - touchStartX;
-        if (Math.abs(dx) > 48) {
-            if (dx < 0) goNext(); else goPrev();
-            startAutoPlay();
-        }
-    }, { passive: true });
+        // Touch / swipe support
+        let touchStartX = 0;
+        banner.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+        banner.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            if (Math.abs(dx) > 48) {
+                if (dx < 0) goNext(); else goPrev();
+                startAutoPlay();
+            }
+        }, { passive: true });
+    }
 
     // Start auto-play
     startAutoPlay();
@@ -1419,9 +1425,9 @@ function setupCarousel() {
         );
     }
 
-    if (prevBtn) prevBtn.addEventListener('click', () => track.scrollBy({ left: -getCardStride() * 2, behavior: 'smooth' }));
-    if (nextBtn) nextBtn.addEventListener('click', () => track.scrollBy({ left: getCardStride() * 2, behavior: 'smooth' }));
-    track.addEventListener('scroll', updateDots, { passive: true });
+    if (prevBtn) prevBtn.addEventListener('click', () => track && track.scrollBy({ left: -getCardStride() * 2, behavior: 'smooth' }));
+    if (nextBtn) nextBtn.addEventListener('click', () => track && track.scrollBy({ left: getCardStride() * 2, behavior: 'smooth' }));
+    if (track) track.addEventListener('scroll', updateDots, { passive: true });
 
     // Auto-scroll every 3 seconds (3000ms) with smooth step
     let autoScrollInterval = null;
@@ -1450,10 +1456,12 @@ function setupCarousel() {
     }
 
     // Pause on hover & touch
-    track.addEventListener('mouseenter', stopAutoScroll);
-    track.addEventListener('mouseleave', startAutoScroll);
-    track.addEventListener('touchstart', stopAutoScroll, { passive: true });
-    track.addEventListener('touchend', () => setTimeout(startAutoScroll, 1500), { passive: true });
+    if (track) {
+        track.addEventListener('mouseenter', stopAutoScroll);
+        track.addEventListener('mouseleave', startAutoScroll);
+        track.addEventListener('touchstart', stopAutoScroll, { passive: true });
+        track.addEventListener('touchend', () => setTimeout(startAutoScroll, 1500), { passive: true });
+    }
 
     // Desktop Mouse Drag to Scroll with Click Protection
     let isDown = false;
@@ -1643,8 +1651,10 @@ window.openFullScreenReader = function(id) {
         readerTitleEl.style.color = '';
     }
 
-    document.getElementById("reader-category").textContent = categoryLabel(art.category);
-    document.getElementById("reader-author").textContent = art.author || "NUQTHA";
+    const catEl = document.getElementById("reader-category");
+    if (catEl) catEl.textContent = categoryLabel(art.category);
+    const authorEl = document.getElementById("reader-author");
+    if (authorEl) authorEl.textContent = art.author || "NUQTHA";
 
     const transContainer = document.getElementById("reader-transcription-container");
     const transEl = document.getElementById("reader-transcription");
@@ -1657,12 +1667,14 @@ window.openFullScreenReader = function(id) {
         }
     }
 
-    document.getElementById("reader-date").textContent = art.date || formatDate(art.createdAt);
+    const dateEl = document.getElementById("reader-date");
+    if (dateEl) dateEl.textContent = art.date || formatDate(art.createdAt);
 
     const contentColorStyle = art.contentColor ? `style="color: ${art.contentColor};"` : 'style="color: #2b2118;"';
 
-    document.getElementById("reader-content").innerHTML = formatRichContent(art.content || art.excerpt || "", contentColorStyle);
-    overlay.classList.remove("hidden");
+    const contentEl = document.getElementById("reader-content");
+    if (contentEl) contentEl.innerHTML = formatRichContent(art.content || art.excerpt || "", contentColorStyle);
+    if (overlay) overlay.classList.remove("hidden");
     document.body.style.overflow = "hidden";
 };
 
