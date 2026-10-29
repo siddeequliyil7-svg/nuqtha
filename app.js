@@ -608,7 +608,7 @@ function renderSearchFeed(container, query) {
     if (emptyResetBtn) emptyResetBtn.addEventListener("click", () => clearSearch(true));
 }
 
-/* ─── HOME FEED: Scrolling Carousel + Hero Featured + Dedicated Books + Category Feeds ─── */
+/* ─── HOME FEED: Strict Order (1. Top Categories Bar, 2. Primary Category, 3. Books Section, 4. Remaining Categories) ─── */
 function renderHomeFeed(container) {
     // Filter out book covers and chapters completely from standard home feed
     const regularArticles = allArticles.filter(a => !isBookEntity(a));
@@ -633,71 +633,65 @@ function renderHomeFeed(container) {
         return 0;
     };
 
-    // 1. Group regular articles by explicit Placement or AUTO (No books/chapters!)
-    const explicitHero = regularArticles.filter(a => a.placement === "HERO").sort(comparePriority);
-    const explicitCarousel = regularArticles.filter(a => a.placement === "CAROUSEL").sort(comparePriority);
-    const autoArticles = regularArticles.filter(a => !a.placement || a.placement === "AUTO");
-
-    // Determine Hero Article strictly from regular standalone articles
-    let heroArticle = null;
-    let usedIds = new Set();
-
-    if (explicitHero.length > 0) {
-        heroArticle = explicitHero[0];
-        usedIds.add(heroArticle.id);
-    } else if (autoArticles.length > 0) {
-        heroArticle = autoArticles[0];
-        usedIds.add(heroArticle.id);
-    } else {
-        heroArticle = regularArticles[0];
-        usedIds.add(heroArticle.id);
-    }
-
-    // 2. Determine Carousel Articles for Top Horizontal Swipe:
-    // Pool regular articles marked for CAROUSEL or HERO or recent AUTO (No books/chapters!)
-    const carouselPool = [
-        ...explicitCarousel,
-        heroArticle,
-        ...explicitHero.filter(a => a.id !== heroArticle.id),
-        ...autoArticles.filter(a => a.id !== heroArticle.id)
-    ].filter(Boolean);
-
-    // Deduplicate
-    const carouselSeen = new Set();
-    const swipeArticles = carouselPool.filter(a => {
-        if (carouselSeen.has(a.id)) return false;
-        carouselSeen.add(a.id);
-        return true;
-    }).slice(0, 10);
-
-    // Track used IDs for subsequent sections
-    swipeArticles.forEach(a => usedIds.add(a.id));
+    // Discover all unique categories present across regular standalone articles (No book categories!)
+    const existingCats = new Set(regularArticles.map(a => (a.category || "").toUpperCase().trim()).filter(Boolean));
+    const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c) && c !== "BOOKS" && c !== "BOOK" && c !== "PREMIUM BOOK")];
 
     let html = '';
 
     // ════════════════════════════════════════════════════════════════
-    // 1. TOP HORIZONTAL SCROLLING CAROUSEL (AS SEEN IN PICTURE)
+    // STRICT ORDER 2: PRIMARY / FEATURED CATEGORY SECTION
     // ════════════════════════════════════════════════════════════════
-    if (swipeArticles.length > 0) {
-        html += buildCarouselSection(swipeArticles);
+    const primaryCat = orderedCats[0] || (regularArticles[0]?.category || "GENERAL").toUpperCase().trim();
+    const primaryArticles = regularArticles.filter(a => (a.category || "").toUpperCase().trim() === primaryCat).sort(comparePriority);
+
+    if (primaryArticles.length > 0) {
+        const theme = getCategoryTheme(primaryCat);
+        const featuredArt = primaryArticles[0];
+        const subsequentArticles = primaryArticles.slice(1, 5);
+        const hasMore = primaryArticles.length > 5;
+        const catName = categoryLabel(primaryCat);
+
+        html += `
+        <section class="category-section-block category-section-${primaryCat.toLowerCase()} mt-4 sm:mt-6 p-4 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}">
+            ${buildCategorySectionHeader(primaryCat, hasMore, false, theme)}
+            
+            <!-- Featured Primary Category Article -->
+            <div class="category-featured-wrapper mt-3 mb-3 sm:mb-4">
+                ${buildCategoryFeaturedCard(featuredArt, theme)}
+            </div>
+
+            <!-- Subsequent Compact Cards -->
+            ${subsequentArticles.length > 0 ? `
+            <div class="category-cards-list space-y-2.5 sm:space-y-3">
+                ${subsequentArticles.map(art => buildCompactRecentCard(art, theme)).join('')}
+            </div>
+            ` : ''}
+
+            ${hasMore ? `
+            <div class="flex justify-end pt-3">
+                <button class="show-more-pill" data-category="${primaryCat}" title="${catName} വിഭാഗത്തിലെ കൂടുതൽ ലേഖനങ്ങൾ കാണുക" style="border-color: ${theme.color}40; color: ${theme.color};">
+                    <span class="font-english">VIEW ALL ${catName}</span>
+                    <span class="text-xs">&rarr;</span>
+                </button>
+            </div>
+            ` : ''}
+        </section>
+        `;
     }
 
-    // 2. HERO FEATURED MAIN CARD REMOVED AS REQUESTED
-
     // ════════════════════════════════════════════════════════════════
-    // 3. DEDICATED BOOK SECTION
+    // STRICT ORDER 3: DEDICATED BOOK SECTION
     // ════════════════════════════════════════════════════════════════
     if (bookCovers.length > 0) {
         html += buildBookShowcaseSection(bookCovers, allArticles);
     }
 
     // ════════════════════════════════════════════════════════════════
-    // 4. CATEGORY FEEDS
+    // STRICT ORDER 4: REMAINING CATEGORIES
     // ════════════════════════════════════════════════════════════════
-    const existingCats = new Set(regularArticles.map(a => (a.category || "").toUpperCase().trim()).filter(Boolean));
-    const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c) && c !== "BOOKS" && c !== "BOOK" && c !== "PREMIUM BOOK")];
-
-    orderedCats.forEach(cat => {
+    const remainingCats = orderedCats.slice(1);
+    remainingCats.forEach(cat => {
         const catArticles = regularArticles.filter(a => (a.category || "").toUpperCase().trim() === cat).sort(comparePriority);
         if (catArticles.length === 0) return;
 
