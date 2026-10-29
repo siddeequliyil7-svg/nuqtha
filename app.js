@@ -124,55 +124,6 @@ function setupMoreDropdown() {
     });
 }
 
-/* ═══════════ Dynamic Top Horizontal Scrolling Category Navigation Bar ═══════════ */
-function renderCategoryNavBar() {
-    const nav = document.getElementById("category-nav");
-    if (!nav) return;
-
-    // Discover all unique categories across standalone regular articles (excluding books/chapters)
-    const regularArticles = allArticles.filter(a => !isBookEntity(a));
-    const discovered = new Set();
-    regularArticles.forEach(a => {
-        const cat = (a.category || "").toUpperCase().trim();
-        if (cat && cat !== "BOOKS" && cat !== "BOOK" && cat !== "PREMIUM BOOK") {
-            discovered.add(cat);
-        }
-    });
-
-    // Preset order + any new categories added dynamically from admin!
-    const ordered = [...CATEGORY_ORDER.filter(c => discovered.has(c)), ...[...discovered].filter(c => !CATEGORY_ORDER.includes(c))];
-
-    if (ordered.length === 0) {
-        ordered.push("HISTORY", "STUDY", "STORY");
-    }
-
-    let html = `
-        <a href="#" data-category="ALL" class="nav-category-link px-3.5 py-1.5 rounded-full border text-xs font-bold transition uppercase tracking-wider shrink-0 ${currentCategory === 'ALL' ? 'bg-[#1e1b18] text-white dark:bg-white dark:text-[#12141d] border-transparent shadow-xs' : 'bg-white/70 dark:bg-white/5 border-[#ebdccb] dark:border-white/10 text-[#4a3c33] dark:text-[#cbbba9] hover:border-[#b4532c]/50'}">ALL</a>
-    `;
-
-    ordered.forEach(cat => {
-        const isActive = currentCategory === cat;
-        html += `
-            <a href="#" data-category="${cat}" class="nav-category-link px-3.5 py-1.5 rounded-full border text-xs font-bold transition uppercase tracking-wider shrink-0 ${isActive ? 'bg-[#b4532c] text-white border-[#b4532c] shadow-xs' : 'bg-white/70 dark:bg-white/5 border-[#ebdccb] dark:border-white/10 text-[#4a3c33] dark:text-[#cbbba9] hover:border-[#b4532c]/50 hover:text-[#b4532c]'}">${cat}</a>
-        `;
-    });
-
-    // Dedicated Books tab
-    const isBooksActive = currentCategory === "BOOKS";
-    html += `
-        <a href="#" data-category="BOOKS" class="nav-category-link px-3.5 py-1.5 rounded-full border text-xs font-bold transition uppercase tracking-wider shrink-0 ${isBooksActive ? 'bg-[#b4532c] text-white border-[#b4532c] shadow-xs' : 'bg-white/70 dark:bg-white/5 border-[#ebdccb] dark:border-white/10 text-[#4a3c33] dark:text-[#cbbba9] hover:border-[#b4532c]/50 hover:text-[#b4532c]'}">BOOKS 📚</a>
-    `;
-
-    nav.innerHTML = html;
-
-    nav.querySelectorAll(".nav-category-link").forEach(link => {
-        link.addEventListener("click", (e) => {
-            e.preventDefault();
-            const cat = link.dataset.category;
-            if (cat) switchToCategory(cat);
-        });
-    });
-}
 
 /* ─── Helper: Identify Book Entities (Covers and Chapters) ─── */
 function isBookEntity(article) {
@@ -192,7 +143,7 @@ function updateMoreCategoriesMenu() {
 
     allArticles.forEach(a => {
         if (isBookEntity(a)) return; // Exclude books & chapters from categories dropdown
-        const cat = (a.category || "").toUpperCase();
+        const cat = (a.category || "").toUpperCase().trim();
         if (cat && !baseCats.has(cat) && cat !== "BOOKS" && cat !== "BOOK" && cat !== "PREMIUM BOOK") {
             extraCats.add(cat);
         }
@@ -213,6 +164,16 @@ function updateMoreCategoriesMenu() {
             <a href="#" data-category="GENERAL" class="more-dropdown-item flex items-center gap-2 px-3.5 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
                 <span>📌</span>
                 <span>GENERAL</span>
+            </a>
+        `;
+    }
+
+    const hasBooks = allArticles.some(a => a.type === "BOOK");
+    if (hasBooks) {
+        html += `
+            <a href="#" data-category="BOOKS" class="more-dropdown-item flex items-center gap-2 px-3.5 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
+                <span>📚</span>
+                <span>BOOKS &amp; EDITIONS</span>
             </a>
         `;
     }
@@ -275,11 +236,12 @@ function setupThemeToggle() {
 updatePageMeta();
 
 function setupCategoryNav() {
-    const links = document.querySelectorAll("#category-nav .nav-category-link");
+    const links = document.querySelectorAll("#category-nav .nav-category-link:not(#more-categories-btn)");
     links.forEach(link => {
         link.addEventListener("click", (e) => {
             e.preventDefault();
-            switchToCategory(link.dataset.category);
+            const cat = link.dataset.category;
+            if (cat) switchToCategory(cat);
         });
     });
 }
@@ -531,7 +493,6 @@ function sortArticles(articles) {
 
 /* ═══════════ Render Feed ═══════════ */
 function renderFeed() {
-    renderCategoryNavBar();
     const container = document.getElementById("feed-container");
     if (!container) return;
 
@@ -608,7 +569,7 @@ function renderSearchFeed(container, query) {
     if (emptyResetBtn) emptyResetBtn.addEventListener("click", () => clearSearch(true));
 }
 
-/* ─── HOME FEED: Strict Order (1. Top Categories Bar, 2. Primary Category, 3. Books Section, 4. Remaining Categories) ─── */
+/* ─── HOME FEED: Scrolling Carousel + Hero Featured + Dedicated Books + Category Feeds ─── */
 function renderHomeFeed(container) {
     // Filter out book covers and chapters completely from standard home feed
     const regularArticles = allArticles.filter(a => !isBookEntity(a));
@@ -633,65 +594,76 @@ function renderHomeFeed(container) {
         return 0;
     };
 
-    // Discover all unique categories present across regular standalone articles (No book categories!)
-    const existingCats = new Set(regularArticles.map(a => (a.category || "").toUpperCase().trim()).filter(Boolean));
-    const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c) && c !== "BOOKS" && c !== "BOOK" && c !== "PREMIUM BOOK")];
+    // 1. Group regular articles by explicit Placement or AUTO (No books/chapters!)
+    const explicitHero = regularArticles.filter(a => a.placement === "HERO").sort(comparePriority);
+    const explicitCarousel = regularArticles.filter(a => a.placement === "CAROUSEL").sort(comparePriority);
+    const autoArticles = regularArticles.filter(a => !a.placement || a.placement === "AUTO");
+
+    // Determine Hero Article strictly from regular standalone articles
+    let heroArticle = null;
+    let usedIds = new Set();
+
+    if (explicitHero.length > 0) {
+        heroArticle = explicitHero[0];
+        usedIds.add(heroArticle.id);
+    } else if (autoArticles.length > 0) {
+        heroArticle = autoArticles[0];
+        usedIds.add(heroArticle.id);
+    } else if (regularArticles.length > 0) {
+        heroArticle = regularArticles[0];
+        usedIds.add(heroArticle.id);
+    }
+
+    // 2. Determine Carousel Articles for Top Horizontal Swipe:
+    // Pool regular articles marked for CAROUSEL or HERO or recent AUTO (No books/chapters!)
+    const carouselPool = [
+        ...explicitCarousel,
+        heroArticle,
+        ...explicitHero.filter(a => a.id !== heroArticle?.id),
+        ...autoArticles.filter(a => a.id !== heroArticle?.id)
+    ].filter(Boolean);
+
+    // Deduplicate
+    const carouselSeen = new Set();
+    const swipeArticles = carouselPool.filter(a => {
+        if (carouselSeen.has(a.id)) return false;
+        carouselSeen.add(a.id);
+        return true;
+    }).slice(0, 10);
+
+    // Track used IDs for subsequent sections
+    swipeArticles.forEach(a => usedIds.add(a.id));
 
     let html = '';
 
-    // ════════════════════════════════════════════════════════════════
-    // STRICT ORDER 2: PRIMARY / FEATURED CATEGORY SECTION
-    // ════════════════════════════════════════════════════════════════
-    const primaryCat = orderedCats[0] || (regularArticles[0]?.category || "GENERAL").toUpperCase().trim();
-    const primaryArticles = regularArticles.filter(a => (a.category || "").toUpperCase().trim() === primaryCat).sort(comparePriority);
-
-    if (primaryArticles.length > 0) {
-        const theme = getCategoryTheme(primaryCat);
-        const featuredArt = primaryArticles[0];
-        const subsequentArticles = primaryArticles.slice(1, 5);
-        const hasMore = primaryArticles.length > 5;
-        const catName = categoryLabel(primaryCat);
-
-        html += `
-        <section class="category-section-block category-section-${primaryCat.toLowerCase()} mt-4 sm:mt-6 p-4 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}">
-            ${buildCategorySectionHeader(primaryCat, hasMore, false, theme)}
-            
-            <!-- Featured Primary Category Article -->
-            <div class="category-featured-wrapper mt-3 mb-3 sm:mb-4">
-                ${buildCategoryFeaturedCard(featuredArt, theme)}
-            </div>
-
-            <!-- Subsequent Compact Cards -->
-            ${subsequentArticles.length > 0 ? `
-            <div class="category-cards-list space-y-2.5 sm:space-y-3">
-                ${subsequentArticles.map(art => buildCompactRecentCard(art, theme)).join('')}
-            </div>
-            ` : ''}
-
-            ${hasMore ? `
-            <div class="flex justify-end pt-3">
-                <button class="show-more-pill" data-category="${primaryCat}" title="${catName} വിഭാഗത്തിലെ കൂടുതൽ ലേഖനങ്ങൾ കാണുക" style="border-color: ${theme.color}40; color: ${theme.color};">
-                    <span class="font-english">VIEW ALL ${catName}</span>
-                    <span class="text-xs">&rarr;</span>
-                </button>
-            </div>
-            ` : ''}
-        </section>
-        `;
+    // ═══════════════════════════════════════════════════════════
+    // 1. TOP HORIZONTAL SCROLLING CAROUSEL (AS SEEN IN PICTURE)
+    // ═══════════════════════════════════════════════════════════
+    if (swipeArticles.length > 0) {
+        html += buildCarouselSection(swipeArticles);
     }
 
-    // ════════════════════════════════════════════════════════════════
-    // STRICT ORDER 3: DEDICATED BOOK SECTION
-    // ════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════
+    // 2. HERO FEATURED MAIN CARD (DIRECTLY BELOW CAROUSEL)
+    // ═══════════════════════════════════════════════════════════
+    if (heroArticle) {
+        html += buildFeaturedCard(heroArticle);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 3. DEDICATED BOOK SECTION
+    // ═══════════════════════════════════════════════════════════
     if (bookCovers.length > 0) {
         html += buildBookShowcaseSection(bookCovers, allArticles);
     }
 
-    // ════════════════════════════════════════════════════════════════
-    // STRICT ORDER 4: REMAINING CATEGORIES
-    // ════════════════════════════════════════════════════════════════
-    const remainingCats = orderedCats.slice(1);
-    remainingCats.forEach(cat => {
+    // ═══════════════════════════════════════════════════════════
+    // 4. CATEGORY FEEDS
+    // ═══════════════════════════════════════════════════════════
+    const existingCats = new Set(regularArticles.map(a => (a.category || "").toUpperCase().trim()).filter(Boolean));
+    const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c) && c !== "BOOKS" && c !== "BOOK" && c !== "PREMIUM BOOK")];
+
+    orderedCats.forEach(cat => {
         const catArticles = regularArticles.filter(a => (a.category || "").toUpperCase().trim() === cat).sort(comparePriority);
         if (catArticles.length === 0) return;
 
@@ -813,7 +785,16 @@ function attachShowMoreListeners() {
 function switchToCategory(cat) {
     currentCategory = cat;
     clearSearch(false);
-    renderCategoryNavBar();
+    let matchedTop = false;
+    document.querySelectorAll("#category-nav > .nav-category-link").forEach(link => {
+        const isMatch = link.dataset.category === cat;
+        link.classList.toggle("active", isMatch);
+        if (isMatch) matchedTop = true;
+    });
+    const moreBtn = document.getElementById("more-categories-btn");
+    if (moreBtn) {
+        moreBtn.classList.toggle("active", !matchedTop && cat !== "ALL");
+    }
     renderFeed();
     // Scroll to top of feed
     const feedEl = document.getElementById("feed-container");
