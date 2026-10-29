@@ -1,3 +1,4 @@
+import { safeInit } from "./js/ui-safe.js";
 "use strict";
 /**
  * NUQTHA — Admin Dashboard Logic (admin.js)
@@ -39,13 +40,7 @@ function initAdminDashboard() {
     if (isDashboardInitialized) return;
     isDashboardInitialized = true;
 
-    const safeInit = (fnName, fn) => {
-        try {
-            fn();
-        } catch (err) {
-            console.error(`[Admin Dashboard] Error initializing ${fnName}:`, err);
-        }
-    };
+    // safeInit imported from ./js/ui-safe.js
 
     safeInit("initTabNavigation", initTabNavigation);
     safeInit("initArticleForm", initArticleForm);
@@ -615,7 +610,7 @@ function initFormattingToolbar() {
                         contentTextarea.focus();
                     }
                 } else {
-                    alert("മാറ്റാൻ ഹൈലൈറ്റുകളൊന്നും കണ്ടെത്തിയില്ല.");
+                    showGlobalStatus("മാറ്റാൻ ഹൈലൈറ്റുകളൊന്നും കണ്ടെത്തിയില്ല.", "error");
                 }
             }
         });
@@ -631,24 +626,24 @@ function initFormattingToolbar() {
 
             // Strict file validation
             if (!file.type.startsWith("image/")) {
-                alert("ദയവായി ഒരു സാധുവായ ചിത്രം (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.");
+                showGlobalStatus("ദയവായി ഒരു സാധുവായ ചിത്രം (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.", "error");
                 inlineImgFileInput.value = "";
                 return;
             }
             if (file.size > 12 * 1024 * 1024) {
-                alert("ചിത്രത്തിന്റെ വലിപ്പം 12MB-യിൽ കുറവായിരിക്കണം.");
+                showGlobalStatus("ചിത്രത്തിന്റെ വലിപ്പം 12MB-യിൽ കുറവായിരിക്കണം.", "error");
                 inlineImgFileInput.value = "";
                 return;
             }
 
             const reader = new FileReader();
             reader.onerror = function() {
-                alert("ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.");
+                showGlobalStatus("ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.", "error");
             };
             reader.onload = function (event) {
                 const img = new Image();
                 img.onerror = function() {
-                    alert("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
+                    showGlobalStatus("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
                 };
                 img.onload = function () {
                     const canvas = document.createElement("canvas");
@@ -791,24 +786,24 @@ function initImageUpload() {
 
         // Strict file validation
         if (!file.type.startsWith("image/")) {
-            alert("ദയവായി ഒരു സാധുവായ ഇമേജ് ഫയൽ (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.");
+            showGlobalStatus("ദയവായി ഒരു സാധുവായ ഇമേജ് ഫയൽ (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.", "error");
             fileInput.value = "";
             return;
         }
         if (file.size > 12 * 1024 * 1024) {
-            alert("ചിത്രത്തിന്റെ വലിപ്പം 12MB-യിൽ കുറവായിരിക്കണം.");
+            showGlobalStatus("ചിത്രത്തിന്റെ വലിപ്പം 12MB-യിൽ കുറവായിരിക്കണം.", "error");
             fileInput.value = "";
             return;
         }
 
         const reader = new FileReader();
         reader.onerror = function() {
-            alert("ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.");
+            showGlobalStatus("ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
         };
         reader.onload = function (event) {
             const img = new Image();
             img.onerror = function() {
-                alert("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
+                showGlobalStatus("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
             };
             img.onload = function () {
                 const canvas = document.createElement("canvas");
@@ -1390,7 +1385,7 @@ function initChapterWriter() {
     if (fileInput) {
         function handleChapterImg(file) {
             if (!file || !file.type.startsWith("image/")) {
-                alert("ദയവായി ഒരു സാധുവായ ചിത്രം തിരഞ്ഞെടുക്കുക.");
+                showGlobalStatus("ദയവായി ഒരു സാധുവായ ചിത്രം തിരഞ്ഞെടുക്കുക.", "error");
                 return;
             }
 
@@ -1469,7 +1464,7 @@ function initChapterWriter() {
     if (publishBtn) {
         publishBtn.addEventListener("click", async () => {
             if (!activeBookName) {
-                alert("ദയവായി ആദ്യം ഘട്ടം 1-ൽ ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ സേവ് ചെയ്യുക.");
+                showGlobalStatus("ദയവായി ആദ്യം ഘട്ടം 1-ൽ ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ സേവ് ചെയ്യുക.", "error");
                 return;
             }
 
@@ -1478,12 +1473,12 @@ function initChapterWriter() {
             const transcription = document.getElementById("bm-art-transcription")?.value.trim() || "";
 
             if (!title || title.length < 2) {
-                alert("ദയവായി അധ്യായത്തിന്റെ തലക്കെട്ട് (Title) നൽകുക.");
+                showGlobalStatus("ദയവായി അധ്യായത്തിന്റെ തലക്കെട്ട് (Title) നൽകുക.", "error");
                 document.getElementById("bm-art-title")?.focus();
                 return;
             }
             if (!content || content.length < 5) {
-                alert("ദയവായി അധ്യായത്തിന്റെ പൂർണ്ണ ഉള്ളടക്കം (Content) നൽകുക.");
+                showGlobalStatus("ദയവായി അധ്യായത്തിന്റെ പൂർണ്ണ ഉള്ളടക്കം (Content) നൽകുക.", "error");
                 document.getElementById("bm-art-content")?.focus();
                 return;
             }
@@ -1780,13 +1775,13 @@ function initBookAttachExistingArticles() {
         if (attachBtn) {
         const executeAttach = async () => {
             if (!activeBookName) {
-                alert("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.");
+                showGlobalStatus("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.", "error");
                 return;
             }
 
             const checked = Array.from(document.querySelectorAll(".bm-article-chk:checked"));
             if (checked.length === 0) {
-                alert("ദയവായി പുസ്തകത്തിലേക്ക് ചേർക്കാൻ ലേഖനങ്ങൾ തിരഞ്ഞെടുക്കുക.");
+                showGlobalStatus("ദയവായി പുസ്തകത്തിലേക്ക് ചേർക്കാൻ ലേഖനങ്ങൾ തിരഞ്ഞെടുക്കുക.", "error");
                 return;
             }
 
@@ -1919,7 +1914,7 @@ function initBookPresentationUpload() {
 
         // Size limit: 25MB
         if (file.size > 25 * 1024 * 1024) {
-            alert("ഫയൽ വലിപ്പം 25MB-ൽ താഴെയായിരിക്കണം.");
+            showGlobalStatus("ഫയൽ വലിപ്പം 25MB-ൽ താഴെയായിരിക്കണം.", "error");
             return;
         }
 
@@ -1927,7 +1922,7 @@ function initBookPresentationUpload() {
         const lowerName = file.name.toLowerCase();
         const hasValidExt = validExts.some(ext => lowerName.endsWith(ext));
         if (!hasValidExt && !file.type.includes("pdf") && !file.type.includes("presentation")) {
-            alert("സാധുവായ PDF അല്ലെങ്കിൽ Presentation ഫയൽ തിരഞ്ഞെടുക്കുക (.pdf, .ppt, .pptx).");
+            showGlobalStatus("സാധുവായ PDF അല്ലെങ്കിൽ Presentation ഫയൽ തിരഞ്ഞെടുക്കുക (.pdf, .ppt, .pptx).", "error");
             return;
         }
 
@@ -1937,7 +1932,7 @@ function initBookPresentationUpload() {
 
         const reader = new FileReader();
         reader.onerror = () => {
-            alert("ഫയൽ വായിക്കുന്നതിൽ തടസ്സം നേരിട്ടു.");
+            showGlobalStatus("ഫയൽ വായിക്കുന്നതിൽ തടസ്സം നേരിട്ടു.", "error");
             if (progressEl) progressEl.classList.add("hidden");
             if (placeholder) placeholder.classList.remove("hidden");
         };
@@ -2001,11 +1996,11 @@ function initBookPresentationUpload() {
     async function handleSavePresentation() {
         const externalLink = linkInput ? linkInput.value.trim() : "";
         if (!activeBookName) {
-            alert("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.");
+            showGlobalStatus("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.", "error");
             return;
         }
         if (!bmPresentationFileBase64 && !externalLink) {
-            alert("ദയവായി ഒരു PDF ഫയൽ അപ്‌ലോഡ് ചെയ്യുക അല്ലെങ്കിൽ ലിങ്ക് നൽകുക.");
+            showGlobalStatus("ദയവായി ഒരു PDF ഫയൽ അപ്‌ലോഡ് ചെയ്യുക അല്ലെങ്കിൽ ലിങ്ക് നൽകുക.", "error");
             return;
         }
 
@@ -2603,7 +2598,7 @@ function initAuthorManager() {
             const editSlug = document.getElementById("author-edit-slug").value.trim();
 
             if (!name) {
-                alert("എഴുത്തുകാരന്റെ പേര് നൽകേണ്ടതുണ്ട്.");
+                showGlobalStatus("എഴുത്തുകാരന്റെ പേര് നൽകേണ്ടതുണ്ട്.", "error");
                 return;
             }
 
@@ -2632,7 +2627,7 @@ function initAuthorManager() {
                 resetAuthorForm();
             } catch (err) {
                 console.error("[admin.js] Author save error:", err);
-                alert("പ്രൊഫൈൽ സേവ് ചെയ്യുമ്പോൾ തടസ്സം നേരിട്ടു: " + err.message);
+                showGlobalStatus("പ്രൊഫൈൽ സേവ് ചെയ്യുമ്പോൾ തടസ്സം നേരിട്ടു: " + err.message, "error");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.classList.remove("opacity-60");
@@ -2898,11 +2893,11 @@ window.deleteAdminComment = async function(articleId, commentId) {
     if (!confirm("ഈ അഭിപ്രായം ശാശ്വതമായി ഒഴിവാക്കണോ?")) return;
     try {
         await deleteDoc(doc(db, "articles", articleId, "comments", commentId));
-        alert("അഭിപ്രായം ഒഴിവാക്കി.");
+        showGlobalStatus("അഭിപ്രായം ഒഴിവാക്കി.", "error");
         window.viewArticleComments(articleId, document.getElementById("modal-article-title")?.textContent || "");
     } catch (err) {
         console.error("Delete comment error:", err);
-        alert("ഡിലീറ്റ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു: " + err.message);
+        showGlobalStatus("ഡിലീറ്റ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു: " + err.message, "error");
     }
 };
 

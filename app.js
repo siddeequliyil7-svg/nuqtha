@@ -1,3 +1,4 @@
+import { safeInit } from "./js/ui-safe.js";
 /**
  * NUQTHA — Frosted Glass Feed Engine
  * Realtime Firestore → Category-Sectioned Feed, Latest-First
@@ -1693,7 +1694,7 @@ window.shareArticle = function(platform) {
                 setTimeout(() => { label.textContent = 'Copy Link'; }, 2000);
             }
         }).catch(() => {
-            alert('Article Link: ' + url);
+            console.info('Article Link:', url);
         });
     }
 };
