@@ -1602,8 +1602,11 @@ function attachCardListeners() {
 }
 
 function openBookIndex(book) {
-    // We can use the existing full screen reader to show a "Book Index"
-    // Or just redirect to article.html which will handle showing the index if it's a BOOK type
+    if (book && book.id) {
+        try {
+            sessionStorage.setItem(`nuqtha_book_${book.id}`, JSON.stringify(book));
+        } catch (e) {}
+    }
     window.location.href = `article.html?id=${book.id}`;
 }
 

@@ -666,11 +666,14 @@
                     if (articleViewEl) articleViewEl.classList.add("hidden");
                     if (bookContainerEl) bookContainerEl.classList.remove("hidden");
 
-                    const bookChapters = allArticles.filter(art => matchesBook(art, currentDoc));
-                    bookChapters.sort((a, b) => {
-                        if (a.priority !== b.priority) return (a.priority || 1) - (b.priority || 1);
-                        return parseTimestampMillis(b.createdAt) - parseTimestampMillis(a.createdAt);
-                    });
+                    let bookChapters = filterAndSortChapters(currentDoc, allArticles);
+                    if (!bookChapters || bookChapters.length === 0) {
+                        try {
+                            bookChapters = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                        } catch (chErr) {
+                            console.warn("[Reader] Dynamic chapter resolution fallback:", chErr);
+                        }
+                    }
 
                     sessionStorage.setItem(`nuqtha_book_articles_${articleId}`, JSON.stringify(bookChapters));
                     renderBookIndex(currentDoc, bookContainerEl, bookChapters);

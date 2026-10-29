@@ -1,4 +1,5 @@
 import { safeInit } from "./js/ui-safe.js";
+import { getBookChapters, filterAndSortChapters, isArticleInBook } from "./js/book-data.js";
 "use strict";
 /**
  * NUQTHA — Admin Dashboard Logic (admin.js)
@@ -1355,7 +1356,7 @@ function selectActiveBook(bookName) {
     renderBookManagerCompactArticles(currentArticlesList, activeBookName);
 }
 
-function loadAndRenderBookChapters() {
+async function loadAndRenderBookChapters() {
     if (!activeBookName && !activeBookCoverDoc) {
         activeBookChapters = [];
         renderBookChaptersReorderList([]);
@@ -1369,6 +1370,26 @@ function loadAndRenderBookChapters() {
     };
 
     activeBookChapters = filterAndSortChapters(bookTarget, currentArticlesList);
+    
+    // If not found in current local list or 0 chapters, fetch asynchronously from Firestore
+    if (activeBookChapters.length === 0 && (bookTarget.id || activeBookName)) {
+        try {
+            const listEl = document.getElementById("book-chapters-reorder-list");
+            if (listEl) {
+                listEl.innerHTML = '<p class="text-xs text-center py-6 text-indigo-600 animate-pulse font-bold">അധ്യായങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>';
+            }
+            const fetched = await getBookChapters(bookTarget.id || activeBookName, {
+                articlesPool: currentArticlesList,
+                timeoutMs: 6000
+            });
+            if (fetched && fetched.length > 0) {
+                activeBookChapters = fetched;
+            }
+        } catch (fErr) {
+            console.warn("[Admin] Live chapters fetch fallback:", fErr);
+        }
+    }
+
     renderBookChaptersReorderList(activeBookChapters);
 }
 
