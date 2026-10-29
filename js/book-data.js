@@ -159,6 +159,12 @@ export async function getBookChapters(bookId, options = {}) {
         // If a pre-fetched pool is passed and contains the book:
         if (Array.isArray(options.articlesPool)) {
             bookDoc = options.articlesPool.find(a => a.id === bookId);
+            if (!bookDoc) {
+                const norm = normalizeBookKey(bookId);
+                bookDoc = options.articlesPool.find(a => 
+                    a.type === "BOOK" && (normalizeBookKey(a.bookName) === norm || normalizeBookKey(a.title) === norm)
+                );
+            }
         }
 
         // Otherwise fetch target book doc via REST direct

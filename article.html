@@ -392,7 +392,8 @@
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
 
         const urlParams = new URLSearchParams(window.location.search);
-        const articleId = urlParams.get('id');
+        let articleId = urlParams.get('id');
+        const editionParam = urlParams.get('edition') || urlParams.get('book');
 
         // Fast In-Memory Cache
         const memoryCache = window.__NUQTHA_MEM_CACHE__ || new Map();
@@ -596,7 +597,7 @@
 
         // ═══════════ MAIN LOADING ORCHESTRATOR ═══════════
         async function loadArticle() {
-            if (!articleId) {
+            if (!articleId && !editionParam) {
                 showErrorWithRetry("ലേഖനത്തിന്റെ ഐഡി നൽകിയിട്ടില്ല.");
                 return;
             }
@@ -609,45 +610,67 @@
             // 1. FAST CACHE PATH (Instant Paint in 0ms)
             let cachedBook = null;
             let cachedChapters = null;
-            try {
-                const cachedBookStr = sessionStorage.getItem(`nuqtha_book_${articleId}`);
-                const cachedChaptersStr = sessionStorage.getItem(`nuqtha_book_articles_${articleId}`);
-                if (cachedBookStr) cachedBook = JSON.parse(cachedBookStr);
-                if (cachedChaptersStr) cachedChapters = JSON.parse(cachedChaptersStr);
-            } catch (e) {}
+            if (articleId) {
+                try {
+                    const cachedBookStr = sessionStorage.getItem(`nuqtha_book_${articleId}`);
+                    const cachedChaptersStr = sessionStorage.getItem(`nuqtha_book_articles_${articleId}`);
+                    if (cachedBookStr) cachedBook = JSON.parse(cachedBookStr);
+                    if (cachedChaptersStr) cachedChapters = JSON.parse(cachedChaptersStr);
+                } catch (e) {}
 
-            if (cachedBook) {
-                if (skeletonEl) skeletonEl.classList.add("hidden");
-                if (cachedBook.type === "BOOK") {
-                    if (articleViewEl) articleViewEl.classList.add("hidden");
-                    if (bookContainerEl) {
-                        bookContainerEl.classList.remove("hidden");
-                        renderBookIndex(cachedBook, bookContainerEl, cachedChapters || []);
+                if (cachedBook) {
+                    if (skeletonEl) skeletonEl.classList.add("hidden");
+                    if (cachedBook.type === "BOOK") {
+                        if (articleViewEl) articleViewEl.classList.add("hidden");
+                        if (bookContainerEl) {
+                            bookContainerEl.classList.remove("hidden");
+                            renderBookIndex(cachedBook, bookContainerEl, cachedChapters || []);
+                        }
+                        if (cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
+                        initComments(cachedBook.id);
+                    } else {
+                        if (bookContainerEl) bookContainerEl.classList.add("hidden");
+                        if (articleViewEl) articleViewEl.classList.remove("hidden");
+                        renderArticle(cachedBook);
+                        markArticleAsRead(cachedBook.id);
+                        initComments(cachedBook.id);
                     }
-                    if (cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
-                    initComments(cachedBook.id);
-                } else {
-                    if (bookContainerEl) bookContainerEl.classList.add("hidden");
-                    if (articleViewEl) articleViewEl.classList.remove("hidden");
-                    renderArticle(cachedBook);
-                    markArticleAsRead(cachedBook.id);
-                    initComments(cachedBook.id);
                 }
             }
 
-            // 2. PARALLEL REVALIDATION / FRESH FETCH (Promise.allSettled)
+            // 2. PARALLEL REVALIDATION / FRESH FETCH
             const controller = new AbortController();
-            const timeoutTimer = setTimeout(() => controller.abort(), 6500);
+            const timeoutTimer = setTimeout(() => controller.abort(), 8000);
 
             try {
-                const [targetDocResult, allArticlesResult] = await Promise.allSettled([
-                    fetchTargetDocument(articleId, controller.signal),
-                    fetchLightweightArticles(controller.signal)
-                ]);
-                clearTimeout(timeoutTimer);
+                let currentDoc = null;
+                let allArticles = [];
 
-                const currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
-                const allArticles = allArticlesResult.status === "fulfilled" ? (allArticlesResult.value || []) : [];
+                if (articleId) {
+                    const [targetDocResult, allArticlesResult] = await Promise.allSettled([
+                        fetchTargetDocument(articleId, controller.signal),
+                        fetchLightweightArticles(controller.signal)
+                    ]);
+                    currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
+                    allArticles = allArticlesResult.status === "fulfilled" ? (allArticlesResult.value || []) : [];
+                } else if (editionParam) {
+                    allArticles = await fetchLightweightArticles(controller.signal);
+                    const cleanTarget = (editionParam || "").toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+                    currentDoc = allArticles.find(a => a.type === "BOOK" && (
+                        (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget) ||
+                        (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget)
+                    )) || allArticles.find(a => 
+                        (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget) ||
+                        (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget)
+                    );
+                    if (currentDoc) {
+                        articleId = currentDoc.id;
+                        try {
+                            window.history.replaceState(null, '', `article.html?id=${articleId}&edition=${encodeURIComponent(editionParam)}`);
+                        } catch (e) {}
+                    }
+                }
+                clearTimeout(timeoutTimer);
 
                 if (!currentDoc) {
                     if (!cachedBook) {
@@ -669,7 +692,8 @@
                     let bookChapters = filterAndSortChapters(currentDoc, allArticles);
                     if (!bookChapters || bookChapters.length === 0) {
                         try {
-                            bookChapters = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                            const fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                            bookChapters = Array.isArray(fetched) ? fetched : (fetched?.chapters || []);
                         } catch (chErr) {
                             console.warn("[Reader] Dynamic chapter resolution fallback:", chErr);
                         }
@@ -711,6 +735,8 @@
             }
 
             const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "");
+            const cleanAuthor = (book.author || "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ").replace(/[*_#~`]/g, "").trim();
+            const introText = (book.introduction || book.intro || book.excerpt || "").trim();
             const editionTag = (book.category && book.category.trim()) ? book.category.trim() : "NUQTHA SPECIAL EDITION";
 
             const volumeStr = book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Vol ' + book.volume) : 'Vol 36';

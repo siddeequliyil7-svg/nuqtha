@@ -7,7 +7,7 @@ import { safeInit } from "./js/ui-safe.js";
 import { db, collection, onSnapshot } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
-import { countBookChapters } from "./js/book-data.js";
+import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 
 let allArticles = [];
 let currentCategory = "ALL";
@@ -1605,6 +1605,10 @@ function openBookIndex(book) {
     if (book && book.id) {
         try {
             sessionStorage.setItem(`nuqtha_book_${book.id}`, JSON.stringify(book));
+            if (Array.isArray(allArticles)) {
+                const bookChapters = filterAndSortChapters(book, allArticles);
+                sessionStorage.setItem(`nuqtha_book_articles_${book.id}`, JSON.stringify(bookChapters));
+            }
         } catch (e) {}
     }
     window.location.href = `article.html?id=${book.id}`;

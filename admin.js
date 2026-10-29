@@ -1378,12 +1378,17 @@ async function loadAndRenderBookChapters() {
             if (listEl) {
                 listEl.innerHTML = '<p class="text-xs text-center py-6 text-indigo-600 animate-pulse font-bold">അധ്യായങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>';
             }
-            const fetched = await getBookChapters(bookTarget.id || activeBookName, {
+            const targetId = bookTarget.id || (currentArticlesList.find(a => 
+                a.type === "BOOK" && (normalizeStringClean(a.bookName) === normalizeStringClean(activeBookName) || normalizeStringClean(a.title) === normalizeStringClean(activeBookName))
+            )?.id) || activeBookName;
+
+            const fetched = await getBookChapters(targetId, {
                 articlesPool: currentArticlesList,
                 timeoutMs: 6000
             });
-            if (fetched && fetched.length > 0) {
-                activeBookChapters = fetched;
+            const chaptersArr = Array.isArray(fetched) ? fetched : (fetched?.chapters || []);
+            if (chaptersArr && chaptersArr.length > 0) {
+                activeBookChapters = chaptersArr;
             }
         } catch (fErr) {
             console.warn("[Admin] Live chapters fetch fallback:", fErr);
@@ -2324,7 +2329,7 @@ function renderAdminPublishedList(items) {
                 ` : ''}
 
                 <div class="flex items-center justify-between pt-2.5 border-t border-[#ebdccb]/60 dark:border-white/10">
-                    <a href="${isBook ? `article.html?edition=${encodeURIComponent(data.bookName || data.title)}` : `article.html?id=${data.id}`}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#b4532c] hover:underline font-english">
+                    <a href="${isBook ? `article.html?id=${data.id}&edition=${encodeURIComponent(data.bookName || data.title)}` : `article.html?id=${data.id}`}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#b4532c] hover:underline font-english">
                         <span>Live Preview</span>
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     </a>
