@@ -1487,97 +1487,194 @@ function initChapterWriter() {
         });
     }
 
-    if (publishBtn) {
-        publishBtn.addEventListener("click", async () => {
-            if (!activeBookName) {
-                showGlobalStatus("ദയവായി ആദ്യം ഘട്ടം 1-ൽ ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ സേവ് ചെയ്യുക.", "error");
-                return;
+    async function handleAddChapterToBook(e) {
+        if (e && typeof e.preventDefault === "function") e.preventDefault();
+
+        // 1. Automatic recovery of activeBookName from DOM if state variable is unset
+        if (!activeBookName) {
+            const selectEl = document.getElementById("bm-active-book-select");
+            const nameInput = document.getElementById("book-meta-name");
+            const titleBadge = document.getElementById("bm-active-book-title-badge");
+            const recovered = (selectEl?.value || nameInput?.value || titleBadge?.textContent || "").trim();
+            if (recovered && recovered !== "..." && !recovered.startsWith("--")) {
+                activeBookName = recovered;
             }
+        }
 
-            const title = document.getElementById("bm-art-title")?.value.trim();
-            const content = document.getElementById("bm-art-content")?.value.trim();
-            const transcription = document.getElementById("bm-art-transcription")?.value.trim() || "";
+        if (!activeBookName) {
+            showGlobalStatus("ദയവായി ആദ്യം ഘട്ടം 1-ൽ ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ സേവ് ചെയ്യുക.", "error");
+            console.warn("[ChapterWriter] Aborted: activeBookName is empty");
+            return;
+        }
 
-            if (!title || title.length < 2) {
-                showGlobalStatus("ദയവായി അധ്യായത്തിന്റെ തലക്കെട്ട് (Title) നൽകുക.", "error");
-                document.getElementById("bm-art-title")?.focus();
-                return;
+        // Automatic recovery of author
+        if (!activeBookAuthor) {
+            const authorInput = document.getElementById("book-meta-author");
+            const authorBadge = document.getElementById("bm-active-book-author-badge");
+            activeBookAuthor = (authorInput?.value || authorBadge?.textContent || "NUQTHA AUTHOR").trim();
+            if (activeBookAuthor === "...") activeBookAuthor = "NUQTHA AUTHOR";
+        }
+
+        // Resolve active target book cover document
+        let targetBookDoc = activeBookCoverDoc;
+        if (!targetBookDoc || !targetBookDoc.id) {
+            const cleanTarget = normalizeStringClean(activeBookName);
+            targetBookDoc = currentArticlesList.find(a => a.type === "BOOK" && (
+                normalizeStringClean(a.bookName) === cleanTarget ||
+                normalizeStringClean(a.title) === cleanTarget
+            )) || null;
+            if (targetBookDoc) activeBookCoverDoc = targetBookDoc;
+        }
+
+        const titleInput = document.getElementById("bm-art-title");
+        const contentInput = document.getElementById("bm-art-content");
+        const transcriptionInput = document.getElementById("bm-art-transcription");
+
+        const title = (titleInput?.value || "").trim();
+        const content = (contentInput?.value || "").trim();
+        const transcription = (transcriptionInput?.value || "").trim();
+
+        // Validate title
+        if (!title || title.length < 2) {
+            showGlobalStatus("ദയവായി അധ്യായത്തിന്റെ തലക്കെട്ട് (Chapter Title) നൽകുക.", "error");
+            if (titleInput) {
+                titleInput.focus();
+                titleInput.classList.add("border-rose-500", "ring-2", "ring-rose-200");
+                titleInput.scrollIntoView({ behavior: "smooth", block: "center" });
             }
-            if (!content || content.length < 5) {
-                showGlobalStatus("ദയവായി അധ്യായത്തിന്റെ പൂർണ്ണ ഉള്ളടക്കം (Content) നൽകുക.", "error");
-                document.getElementById("bm-art-content")?.focus();
-                return;
+            return;
+        }
+
+        // Validate content
+        if (!content || content.length < 5) {
+            showGlobalStatus("ദയവായി അധ്യായത്തിന്റെ പൂർണ്ണ ഉള്ളടക്കം (Chapter Content) നൽകുക.", "error");
+            if (contentInput) {
+                contentInput.focus();
+                contentInput.classList.add("border-rose-500", "ring-2", "ring-rose-200");
+                contentInput.scrollIntoView({ behavior: "smooth", block: "center" });
             }
+            return;
+        }
 
-            publishBtn.disabled = true;
-            publishBtn.innerHTML = "അധ്യായം ചേർക്കുന്നു...";
+        const btn = document.getElementById("bm-publish-article-btn");
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-pulse">അധ്യായം ചേർക്കുന്നു... (Saving chapter...)</span>';
+        }
 
-            try {
-                // Next sequential priority number
-                const nextPriority = activeBookChapters.length + 1;
-                const bookTag = document.getElementById("book-meta-tag")?.value.trim() || "Chapter";
+        try {
+            // Next sequential priority number
+            const nextPriority = (activeBookChapters && activeBookChapters.length > 0)
+                ? Math.max(...activeBookChapters.map(c => Number(c.priority || c.order || 0)), 0) + 1
+                : 1;
 
-                const raw = {
-                    title,
-                    author: activeBookAuthor || "NUQTHA AUTHOR",
-                    category: bookTag,
-                    transcription,
-                    priority: nextPriority,
-                    order: nextPriority,
-                    content,
-                    imageUrl: bmSelectedArticleImageBase64,
-                    bookId: activeBookCoverDoc?.id || "",
-                    bookName: activeBookName,
-                    type: "ARTICLE",
-                    placement: "AUTO",
-                    date: new Date().toLocaleDateString("en-GB")
-                };
+            const bookTag = document.getElementById("book-meta-tag")?.value.trim() || "Chapter";
 
-                const sanitized = validateAndSanitizeArticleForSave(raw);
+            const raw = {
+                title,
+                author: activeBookAuthor || targetBookDoc?.author || "NUQTHA AUTHOR",
+                category: bookTag,
+                transcription,
+                priority: nextPriority,
+                order: nextPriority,
+                content,
+                imageUrl: bmSelectedArticleImageBase64 || "",
+                bookId: targetBookDoc?.id || "",
+                bookName: activeBookName,
+                type: "ARTICLE",
+                placement: "AUTO",
+                date: new Date().toLocaleDateString("en-GB")
+            };
 
-                const docRef = await addDoc(collection(db, "articles"), {
-                    ...sanitized,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                });
+            console.log("[ChapterWriter] Validating and sanitizing chapter:", {
+                title,
+                bookName: activeBookName,
+                bookId: raw.bookId,
+                priority: nextPriority
+            });
 
-                const newArt = { id: docRef.id, ...sanitized };
-                currentArticlesList.unshift(newArt);
+            const sanitized = validateAndSanitizeArticleForSave(raw);
 
-                if (activeBookCoverDoc && activeBookCoverDoc.id) {
-                    try {
-                        const existingChapters = Array.isArray(activeBookCoverDoc.chapters) ? [...activeBookCoverDoc.chapters] : [];
-                        if (!existingChapters.includes(docRef.id)) {
-                            existingChapters.push(docRef.id);
-                            activeBookCoverDoc.chapters = existingChapters;
-                            await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
-                                chapters: existingChapters,
-                                updatedAt: serverTimestamp()
-                            });
-                        }
-                    } catch (bErr) {
-                        console.warn("Could not append chapter to book doc:", bErr);
+            // Save new chapter document into Firestore
+            const docRef = await addDoc(collection(db, "articles"), {
+                ...sanitized,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+
+            console.log("[ChapterWriter] Chapter saved to Firestore with ID:", docRef.id);
+
+            const newArt = { id: docRef.id, ...sanitized };
+            currentArticlesList.unshift(newArt);
+
+            // Append chapter ID to book document chapters array if target book doc exists
+            if (targetBookDoc && targetBookDoc.id) {
+                try {
+                    const existingChapters = Array.isArray(targetBookDoc.chapters) ? [...targetBookDoc.chapters] : [];
+                    if (!existingChapters.includes(docRef.id)) {
+                        existingChapters.push(docRef.id);
+                        targetBookDoc.chapters = existingChapters;
+                        await updateDoc(doc(db, "articles", targetBookDoc.id), {
+                            chapters: existingChapters,
+                            updatedAt: serverTimestamp()
+                        });
+                        console.log("[ChapterWriter] Appended chapter to book doc:", targetBookDoc.id);
                     }
+                } catch (bErr) {
+                    console.warn("[ChapterWriter] Could not append chapter ID to book doc:", bErr);
                 }
-
-                showGlobalStatus(`✨ അധ്യായം '${title}' (#${nextPriority}) വിജയകരമായി ചേർത്തു!`, "success");
-
-                // Reset chapter form
-                document.getElementById("bm-art-title").value = "";
-                document.getElementById("bm-art-content").value = "";
-                document.getElementById("bm-art-transcription").value = "";
-                if (removeBtn) removeBtn.click();
-
-                // Refresh chapters list
-                loadAndRenderBookChapters();
-
-            } catch (err) {
-                console.error("Add chapter error:", err);
-                showGlobalStatus("അധ്യായം ചേർക്കാൻ കഴിഞ്ഞില്ല: " + err.message, "error");
-            } finally {
-                publishBtn.disabled = false;
-                publishBtn.innerHTML = `<span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>`;
             }
+
+            // Immediately update in-memory chapters and render Step 3 without waiting
+            activeBookChapters = filterAndSortChapters(targetBookDoc || { id: raw.bookId, bookName: activeBookName, title: activeBookName }, currentArticlesList);
+            renderBookChaptersReorderList(activeBookChapters);
+            updateActiveBookOverview(currentArticlesList);
+            renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+
+            showGlobalStatus(`✨ അധ്യായം '${title}' (#${nextPriority}) വിജയകരമായി ചേർത്തു!`, "success");
+
+            // Reset inputs
+            if (titleInput) {
+                titleInput.value = "";
+                titleInput.classList.remove("border-rose-500", "ring-2", "ring-rose-200");
+            }
+            if (contentInput) {
+                contentInput.value = "";
+                contentInput.classList.remove("border-rose-500", "ring-2", "ring-rose-200");
+            }
+            if (transcriptionInput) transcriptionInput.value = "";
+
+            if (removeBtn) removeBtn.click();
+
+        } catch (err) {
+            console.error("[ChapterWriter] Add chapter error:", err);
+            showGlobalStatus("അധ്യായം ചേർക്കാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>`;
+            }
+        }
+    }
+
+    window.handleAddChapterToBook = handleAddChapterToBook;
+
+    if (publishBtn) {
+        publishBtn.addEventListener("click", handleAddChapterToBook);
+    }
+
+    // Attach input listeners to clear validation errors when user types
+    const chapterTitleInputEl = document.getElementById("bm-art-title");
+    if (chapterTitleInputEl) {
+        chapterTitleInputEl.addEventListener("input", () => {
+            chapterTitleInputEl.classList.remove("border-rose-500", "ring-2", "ring-rose-200");
+        });
+    }
+
+    const chapterContentInputEl = document.getElementById("bm-art-content");
+    if (chapterContentInputEl) {
+        chapterContentInputEl.addEventListener("input", () => {
+            chapterContentInputEl.classList.remove("border-rose-500", "ring-2", "ring-rose-200");
         });
     }
 }
@@ -2962,6 +3059,13 @@ document.addEventListener("click", (e) => {
             e.preventDefault();
             const btn = document.getElementById("bm-attach-selected-btn");
             if (btn && btn.click) btn.dispatchEvent(new CustomEvent("execute-attach"));
+            break;
+        }
+        case "add-chapter-to-book": {
+            e.preventDefault();
+            if (typeof window.handleAddChapterToBook === "function") {
+                window.handleAddChapterToBook(e);
+            }
             break;
         }
         case "upload-book-cover": {
