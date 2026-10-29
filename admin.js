@@ -1,3 +1,4 @@
+"use strict";
 /**
  * NUQTHA — Admin Dashboard Logic (admin.js)
  * 4-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
@@ -28,6 +29,7 @@ let activeBookCoverDoc = null;
 let activeBookChapters = [];
 let dragSrcChapterIndex = null;
 let pendingInlineBase64 = "";
+let compactArticlesDisplayLimit = 20;
 
 const ADMIN_PASSWORD = "admin768";
 const AUTH_STORAGE_KEY = "nuqtha_admin_authenticated";
@@ -1775,8 +1777,8 @@ function initBookAttachExistingArticles() {
         });
     }
 
-    if (attachBtn) {
-        attachBtn.addEventListener("click", async () => {
+        if (attachBtn) {
+        const executeAttach = async () => {
             if (!activeBookName) {
                 alert("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.");
                 return;
@@ -1810,6 +1812,8 @@ function initBookAttachExistingArticles() {
                             item.bookName = activeBookName;
                             item.author = activeBookAuthor || item.author;
                             item.priority = startPriority;
+                            item.order = startPriority;
+                            item.bookId = activeBookCoverDoc?.id || "";
                         }
                     }
                 }
@@ -1824,12 +1828,16 @@ function initBookAttachExistingArticles() {
                 attachBtn.disabled = false;
                 attachBtn.innerHTML = "തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക";
             }
-        });
+        };
+
+        attachBtn.addEventListener("click", executeAttach);
+        attachBtn.addEventListener("execute-attach", executeAttach);
     }
 }
 
 function renderBookManagerCompactArticles(articles, activeBookParam) {
     const listEl = document.getElementById("bm-compact-articles-list");
+    const loadMoreBtn = document.getElementById("bm-load-more-articles-btn");
     if (!listEl) return;
 
     const listToRender = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
@@ -1849,10 +1857,23 @@ function renderBookManagerCompactArticles(articles, activeBookParam) {
 
     if (filtered.length === 0) {
         listEl.innerHTML = `<p class="text-xs text-center py-4 text-slate-400">ലേഖനങ്ങളൊന്നും കണ്ടെത്താനായില്ല.</p>`;
+        if (loadMoreBtn) loadMoreBtn.classList.add("hidden");
         return;
     }
 
-    listEl.innerHTML = filtered.map(art => {
+    const totalCount = filtered.length;
+    const paginated = filtered.slice(0, compactArticlesDisplayLimit);
+
+    if (loadMoreBtn) {
+        if (totalCount > compactArticlesDisplayLimit) {
+            loadMoreBtn.classList.remove("hidden");
+            loadMoreBtn.textContent = `കൂടുതൽ കാണിക്കുക (Showing ${paginated.length} of ${totalCount})`;
+        } else {
+            loadMoreBtn.classList.add("hidden");
+        }
+    }
+
+    listEl.innerHTML = paginated.map(art => {
         const isBelong = Boolean(activeBook && normalizeStringClean(art.bookName) === normalizeStringClean(activeBook));
         const hasOtherBook = Boolean(art.bookName && art.bookName.trim() && !isBelong);
 
@@ -1884,81 +1905,148 @@ function renderBookManagerCompactArticles(articles, activeBookParam) {
 /* ═══════════ 6. PRESENTATION UPLOAD ═══════════ */
 function initBookPresentationUpload() {
     const fileInput = document.getElementById("bm-presentation-file-input");
+    const dropzone = document.getElementById("bm-presentation-dropzone");
     const placeholder = document.getElementById("bm-presentation-placeholder");
+    const progressEl = document.getElementById("bm-presentation-progress");
     const fileInfo = document.getElementById("bm-presentation-file-info");
     const fileNameEl = document.getElementById("bm-presentation-file-name");
     const removeBtn = document.getElementById("bm-remove-presentation-btn");
     const saveBtn = document.getElementById("bm-save-presentation-btn");
     const linkInput = document.getElementById("bm-presentation-link");
 
+    function validateAndProcessPdfFile(file) {
+        if (!file) return;
+
+        // Size limit: 25MB
+        if (file.size > 25 * 1024 * 1024) {
+            alert("ഫയൽ വലിപ്പം 25MB-ൽ താഴെയായിരിക്കണം.");
+            return;
+        }
+
+        const validExts = [".pdf", ".ppt", ".pptx", ".key"];
+        const lowerName = file.name.toLowerCase();
+        const hasValidExt = validExts.some(ext => lowerName.endsWith(ext));
+        if (!hasValidExt && !file.type.includes("pdf") && !file.type.includes("presentation")) {
+            alert("സാധുവായ PDF അല്ലെങ്കിൽ Presentation ഫയൽ തിരഞ്ഞെടുക്കുക (.pdf, .ppt, .pptx).");
+            return;
+        }
+
+        bmPresentationFileName = file.name;
+        if (placeholder) placeholder.classList.add("hidden");
+        if (progressEl) progressEl.classList.remove("hidden");
+
+        const reader = new FileReader();
+        reader.onerror = () => {
+            alert("ഫയൽ വായിക്കുന്നതിൽ തടസ്സം നേരിട്ടു.");
+            if (progressEl) progressEl.classList.add("hidden");
+            if (placeholder) placeholder.classList.remove("hidden");
+        };
+        reader.onload = (event) => {
+            bmPresentationFileBase64 = event.target.result;
+            if (progressEl) progressEl.classList.add("hidden");
+            if (fileNameEl) fileNameEl.textContent = file.name;
+            if (fileInfo) fileInfo.classList.remove("hidden");
+        };
+        reader.readAsDataURL(file);
+    }
+
     if (fileInput) {
         fileInput.addEventListener("change", (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            bmPresentationFileName = file.name;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                bmPresentationFileBase64 = event.target.result;
-                if (fileNameEl) fileNameEl.textContent = file.name;
-                if (placeholder) placeholder.classList.add("hidden");
-                if (fileInfo) fileInfo.classList.remove("hidden");
-            };
-            reader.readAsDataURL(file);
+            const file = e.target.files && e.target.files[0];
+            if (file) validateAndProcessPdfFile(file);
         });
+    }
+
+    if (dropzone) {
+        dropzone.addEventListener("click", (e) => {
+            if (e.target !== fileInput && !e.target.closest("button")) {
+                if (fileInput) fileInput.click();
+            }
+        });
+        ["dragenter", "dragover"].forEach(evt => {
+            dropzone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add("border-indigo-600", "bg-indigo-100/50");
+            });
+        });
+        ["dragleave", "drop"].forEach(evt => {
+            dropzone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove("border-indigo-600", "bg-indigo-100/50");
+            });
+        });
+        dropzone.addEventListener("drop", (e) => {
+            const dt = e.dataTransfer;
+            const file = dt && dt.files && dt.files[0];
+            if (file) validateAndProcessPdfFile(file);
+        });
+    }
+
+    function handleRemovePresentation() {
+        bmPresentationFileBase64 = "";
+        bmPresentationFileName = "";
+        if (fileInput) fileInput.value = "";
+        if (fileInfo) fileInfo.classList.add("hidden");
+        if (progressEl) progressEl.classList.add("hidden");
+        if (placeholder) placeholder.classList.remove("hidden");
     }
 
     if (removeBtn) {
-        removeBtn.addEventListener("click", () => {
-            bmPresentationFileBase64 = "";
-            bmPresentationFileName = "";
-            if (fileInput) fileInput.value = "";
-            if (fileInfo) fileInfo.classList.add("hidden");
-            if (placeholder) placeholder.classList.remove("hidden");
-        });
+        removeBtn.addEventListener("click", handleRemovePresentation);
+        removeBtn.addEventListener("execute-remove", handleRemovePresentation);
     }
 
-    if (saveBtn) {
-        saveBtn.addEventListener("click", async () => {
-            const externalLink = linkInput ? linkInput.value.trim() : "";
-            if (!activeBookName) {
-                alert("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.");
-                return;
-            }
-            if (!bmPresentationFileBase64 && !externalLink) {
-                alert("ദയവായി ഒരു PDF ഫയൽ അപ്‌ലോഡ് ചെയ്യുക അല്ലെങ്കിൽ ലിങ്ക് നൽകുക.");
-                return;
-            }
+    async function handleSavePresentation() {
+        const externalLink = linkInput ? linkInput.value.trim() : "";
+        if (!activeBookName) {
+            alert("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.");
+            return;
+        }
+        if (!bmPresentationFileBase64 && !externalLink) {
+            alert("ദയവായി ഒരു PDF ഫയൽ അപ്‌ലോഡ് ചെയ്യുക അല്ലെങ്കിൽ ലിങ്ക് നൽകുക.");
+            return;
+        }
 
+        if (saveBtn) {
             saveBtn.disabled = true;
             saveBtn.innerHTML = "സേവ് ചെയ്യുന്നു...";
+        }
 
-            try {
-                const existingBook = currentArticlesList.find(a => a.type === "BOOK" && (
-                    normalizeStringClean(a.bookName) === normalizeStringClean(activeBookName) ||
-                    normalizeStringClean(a.title) === normalizeStringClean(activeBookName)
-                ));
-                const payload = {
-                    presentationUrl: externalLink || bmPresentationFileBase64,
-                    presentationName: bmPresentationFileName || "Book Presentation",
-                    updatedAt: serverTimestamp()
-                };
+        try {
+            const existingBook = currentArticlesList.find(a => a.type === "BOOK" && (
+                normalizeStringClean(a.bookName) === normalizeStringClean(activeBookName) ||
+                normalizeStringClean(a.title) === normalizeStringClean(activeBookName)
+            ));
+            const payload = {
+                presentationUrl: externalLink || bmPresentationFileBase64,
+                presentationName: bmPresentationFileName || "Book Presentation",
+                updatedAt: serverTimestamp()
+            };
 
-                if (existingBook) {
-                    await updateDoc(doc(db, "articles", existingBook.id), payload);
-                }
+            if (existingBook) {
+                await updateDoc(doc(db, "articles", existingBook.id), payload);
+            }
 
-                showGlobalStatus(`പ്രസന്റേഷൻ '${activeBookName}' ലേക്ക് വിജയകരമായി സേവ് ചെയ്തു! 📑`, "success");
-            } catch (err) {
-                console.error("Presentation save error:", err);
-                showGlobalStatus("പ്രസന്റേഷൻ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
-            } finally {
+            showGlobalStatus(`പ്രസന്റേഷൻ '${activeBookName}' ലേക്ക് വിജയകരമായി സേവ് ചെയ്തു! 📑`, "success");
+        } catch (err) {
+            console.error("Presentation save error:", err);
+            showGlobalStatus("പ്രസന്റേഷൻ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
+        } finally {
+            if (saveBtn) {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = "Save Presentation to Book";
             }
-        });
+        }
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener("click", handleSavePresentation);
+        saveBtn.addEventListener("execute-save", handleSavePresentation);
     }
 }
+
 
 /* ═══════════ 7. ACTIVE BOOKS OVERVIEW & DROPDOWN POPULATION ═══════════ */
 function updateActiveBookOverview(articles) {
@@ -2234,12 +2322,12 @@ function renderAdminPublishedList(items) {
                                 <span>📚 Manage</span>
                             </button>
                         ` : `
-                            <button type="button" onclick="window.startEditArticle('${data.id}')" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english">
+                            <button type="button" data-action="edit-article" data-id="${data.id}" onclick="window.startEditArticle('${data.id}')" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                 <span>Edit</span>
                             </button>
                         `}
-                        <button type="button" onclick="window.deleteArticle('${data.id}')" title="ലേഖനം ഒഴിവാക്കുക" class="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 border border-rose-200 px-3 py-1 rounded-xl transition font-english">
+                        <button type="button" data-action="delete-article" data-id="${data.id}" onclick="window.deleteArticle('${data.id}')" title="ലേഖനം ഒഴിവാക്കുക" class="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 border border-rose-200 px-3 py-1 rounded-xl transition font-english">
                             <span>✕ Delete</span>
                         </button>
                     </div>
@@ -2817,3 +2905,91 @@ window.deleteAdminComment = async function(articleId, commentId) {
         alert("ഡിലീറ്റ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു: " + err.message);
     }
 };
+
+/* ═══════════ GLOBAL DELEGATED ACTION DISPATCHER (STABLE EVENT CONTAINER) ═══════════ */
+document.addEventListener("click", (e) => {
+    const actionEl = e.target.closest("[data-action]");
+    if (!actionEl) return;
+
+    const action = actionEl.dataset.action;
+    switch (action) {
+        case "toggle-collapsible": {
+            e.preventDefault();
+            const targetId = actionEl.dataset.target;
+            const targetEl = document.getElementById(targetId);
+            if (!targetEl) return;
+            const isExpanded = actionEl.getAttribute("aria-expanded") === "true";
+            actionEl.setAttribute("aria-expanded", String(!isExpanded));
+            targetEl.classList.toggle("hidden", isExpanded);
+            const icon = actionEl.querySelector(".collapsible-icon");
+            if (icon) icon.innerHTML = isExpanded ? "&darr;" : "&uarr;";
+
+            // If opening attach collapsible, lazy-render first 20 articles
+            if (!isExpanded && targetId === "bm-attach-collapsible-body") {
+                compactArticlesDisplayLimit = 20;
+                renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+            }
+            break;
+        }
+        case "load-more-articles": {
+            e.preventDefault();
+            compactArticlesDisplayLimit += 20;
+            renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+            break;
+        }
+        case "attach-selected-articles": {
+            e.preventDefault();
+            const btn = document.getElementById("bm-attach-selected-btn");
+            if (btn && btn.click) btn.dispatchEvent(new CustomEvent("execute-attach"));
+            break;
+        }
+        case "upload-book-cover": {
+            const fileInput = document.getElementById("book-cover-input");
+            if (fileInput && e.target !== fileInput && !e.target.closest("[data-action='remove-book-cover']")) {
+                fileInput.click();
+            }
+            break;
+        }
+        case "remove-book-cover": {
+            e.stopPropagation();
+            if (typeof window.handleRemoveBookCover === "function") {
+                window.handleRemoveBookCover(e);
+            }
+            break;
+        }
+        case "replace-presentation": {
+            e.stopPropagation();
+            const pInput = document.getElementById("bm-presentation-file-input");
+            if (pInput) pInput.click();
+            break;
+        }
+        case "remove-presentation": {
+            e.stopPropagation();
+            const removeBtn = document.getElementById("bm-remove-presentation-btn");
+            if (removeBtn && removeBtn.click) removeBtn.dispatchEvent(new CustomEvent("execute-remove"));
+            break;
+        }
+        case "save-presentation": {
+            e.preventDefault();
+            const saveBtn = document.getElementById("bm-save-presentation-btn");
+            if (saveBtn && saveBtn.click) saveBtn.dispatchEvent(new CustomEvent("execute-save"));
+            break;
+        }
+        case "edit-article": {
+            e.preventDefault();
+            const id = actionEl.dataset.id;
+            if (id && typeof window.startEditArticle === "function") {
+                window.startEditArticle(id);
+            }
+            break;
+        }
+        case "delete-article": {
+            e.preventDefault();
+            const id = actionEl.dataset.id;
+            if (id && typeof window.deleteArticle === "function") {
+                window.deleteArticle(id);
+            }
+            break;
+        }
+    }
+});

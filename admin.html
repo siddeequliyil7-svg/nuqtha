@@ -521,7 +521,7 @@
                                 <label class="block text-[11px] font-bold uppercase tracking-wider text-blue-900">
                                     Cover Image (Vertical Aspect 3:4) <span class="text-rose-500">*</span>
                                 </label>
-                                <div id="book-cover-dropzone" onclick="document.getElementById('book-cover-input').click()" class="border-2 border-dashed border-blue-300 hover:border-blue-600 rounded-2xl p-4 text-center bg-white/70 transition cursor-pointer relative group">
+                                <div id="book-cover-dropzone" data-action="upload-book-cover" class="border-2 border-dashed border-blue-300 hover:border-blue-600 rounded-2xl p-4 text-center bg-white/70 transition cursor-pointer relative group">
                                     <input id="book-cover-input" name="book-cover-input" type="file" accept="image/*" class="hidden" onchange="window.handleCoverFileSelected && window.handleCoverFileSelected(this.files[0])">
                                     <div id="book-upload-placeholder" class="space-y-1.5 py-4 pointer-events-none">
                                         <svg class="w-10 h-10 mx-auto text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -530,7 +530,7 @@
                                     </div>
                                     <div id="book-image-preview-container" class="hidden relative rounded-xl overflow-hidden max-h-56 mx-auto">
                                         <img id="book-image-preview" src="" alt="Cover Preview" class="w-full h-52 object-cover rounded-xl">
-                                        <button type="button" id="remove-book-img-btn" onclick="event.stopPropagation(); window.handleRemoveBookCover && window.handleRemoveBookCover(event);" class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded-full text-[10px] font-bold shadow-md z-20">✕ Remove</button>
+                                        <button type="button" id="remove-book-img-btn" data-action="remove-book-cover" class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded-full text-[10px] font-bold shadow-md z-20">✕ Remove</button>
                                     </div>
                                 </div>
                                 <p id="book-cover-error" class="hidden text-[11px] font-bold text-rose-600 mt-1"></p>
@@ -704,58 +704,65 @@
 
                         <!-- ═══════════ COLLAPSIBLE: ATTACH EXISTING ARTICLES ═══════════ -->
                         <div class="bg-white p-5 rounded-3xl border border-[#ebdccb] shadow-2xs space-y-3">
-                            <details class="group">
-                                <summary class="flex items-center justify-between cursor-pointer list-none font-bold text-xs text-slate-700 hover:text-amber-700 transition">
-                                    <div class="flex items-center gap-2">
-                                        <span>📋</span>
-                                        <span>നിലവിലുള്ള മറ്റ് ലേഖനങ്ങൾ ഈ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക (Attach Existing Articles)</span>
-                                    </div>
-                                    <span class="text-xs transform group-open:rotate-180 transition">&darr;</span>
-                                </summary>
-                                <div class="pt-4 space-y-3">
-                                    <!-- Search Filter Bar -->
-                                    <input type="text" id="bm-articles-search" placeholder="ലേഖനങ്ങൾ തിരയുക..." class="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none bg-slate-50">
-                                    <div id="bm-compact-articles-list" class="max-h-56 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 rounded-xl p-2 bg-slate-50/40">
-                                        <p class="text-xs text-center py-4 text-slate-400">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
-                                    </div>
-                                    <div class="flex justify-end">
-                                        <button type="button" id="bm-attach-selected-btn" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition">
-                                            തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക
-                                        </button>
-                                    </div>
+                            <button type="button" data-action="toggle-collapsible" data-target="bm-attach-collapsible-body" aria-expanded="false" class="w-full flex items-center justify-between cursor-pointer font-bold text-xs text-slate-700 hover:text-amber-700 transition">
+                                <div class="flex items-center gap-2 pointer-events-none">
+                                    <span>📋</span>
+                                    <span>നിലവിലുള്ള മറ്റ് ലേഖനങ്ങൾ ഈ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക (Attach Existing Articles)</span>
                                 </div>
-                            </details>
+                                <span class="collapsible-icon text-xs transition pointer-events-none">&darr;</span>
+                            </button>
+                            <div id="bm-attach-collapsible-body" class="hidden pt-4 space-y-3">
+                                <!-- Search Filter Bar -->
+                                <input type="text" id="bm-articles-search" placeholder="ലേഖനങ്ങൾ തിരയുക..." class="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:border-amber-500 outline-none bg-slate-50">
+                                <div id="bm-compact-articles-list" class="max-h-56 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 rounded-xl p-2 bg-slate-50/40">
+                                    <p class="text-xs text-center py-4 text-slate-400">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
+                                </div>
+                                <div class="flex items-center justify-between pt-1">
+                                    <button type="button" id="bm-load-more-articles-btn" data-action="load-more-articles" class="hidden text-xs text-amber-700 hover:underline font-bold">കൂടുതൽ കാണിക്കുക (Load More)</button>
+                                    <button type="button" id="bm-attach-selected-btn" data-action="attach-selected-articles" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition">
+                                        തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- ═══════════ PRESENTATION / PDF UPLOAD ═══════════ -->
                         <div class="bg-white p-5 rounded-3xl border border-[#ebdccb] shadow-2xs space-y-3">
-                            <details class="group">
-                                <summary class="flex items-center justify-between cursor-pointer list-none font-bold text-xs text-slate-700 hover:text-indigo-700 transition">
-                                    <div class="flex items-center gap-2">
-                                        <span>📑</span>
-                                        <span>പ്രസന്റേഷൻ / PDF ഫയൽ അപ്‌ലോഡ് (Upload PDF / Presentation)</span>
+                            <button type="button" data-action="toggle-collapsible" data-target="bm-pdf-collapsible-body" aria-expanded="false" class="w-full flex items-center justify-between cursor-pointer font-bold text-xs text-slate-700 hover:text-indigo-700 transition">
+                                <div class="flex items-center gap-2 pointer-events-none">
+                                    <span>📑</span>
+                                    <span>പ്രസന്റേഷൻ / PDF ഫയൽ അപ്‌ലോഡ് (Upload PDF / Presentation)</span>
+                                </div>
+                                <span class="collapsible-icon text-xs transition pointer-events-none">&darr;</span>
+                            </button>
+                            <div id="bm-pdf-collapsible-body" class="hidden pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                                <div id="bm-presentation-dropzone" class="border-2 border-dashed border-indigo-200 hover:border-indigo-500 rounded-xl p-3 text-center bg-indigo-50/20 cursor-pointer relative">
+                                    <input id="bm-presentation-file-input" type="file" accept=".pdf,.ppt,.pptx,.key" class="hidden">
+                                    <div id="bm-presentation-placeholder" class="space-y-1 py-1 pointer-events-none">
+                                        <p class="text-xs font-bold text-indigo-900">PDF / Slides അപ്‌ലോഡ് ചെയ്യുക (ക്ലിക്ക് ചെയ്യുക അല്ലെങ്കിൽ ഡ്രാഗ് ചെയ്യുക)</p>
+                                        <p class="text-[10px] text-indigo-600">Max 25MB • PDF, PPT, PPTX</p>
                                     </div>
-                                    <span class="text-xs transform group-open:rotate-180 transition">&darr;</span>
-                                </summary>
-                                <div class="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                                    <div class="border-2 border-dashed border-indigo-200 hover:border-indigo-500 rounded-xl p-3 text-center bg-indigo-50/20 cursor-pointer relative">
-                                        <input id="bm-presentation-file-input" type="file" accept=".pdf,.ppt,.pptx,.key" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                                        <div id="bm-presentation-placeholder" class="space-y-1 py-1">
-                                            <p class="text-xs font-bold text-indigo-900">PDF / Slides അപ്‌ലോഡ് ചെയ്യുക</p>
-                                        </div>
-                                        <div id="bm-presentation-file-info" class="hidden text-xs font-bold text-indigo-900 flex items-center justify-center gap-2 py-1">
-                                            <span id="bm-presentation-file-name" class="truncate max-w-xs">file.pdf</span>
-                                            <button type="button" id="bm-remove-presentation-btn" class="text-rose-600 text-xs font-bold z-20">✕</button>
+                                    <div id="bm-presentation-progress" class="hidden py-1">
+                                        <p class="text-[10px] font-bold text-indigo-700 mb-1">ഫയൽ പ്രോസസ്സ് ചെയ്യുന്നു...</p>
+                                        <div class="w-full bg-indigo-200 h-1.5 rounded-full overflow-hidden">
+                                            <div class="bg-indigo-600 h-full w-2/3 animate-pulse"></div>
                                         </div>
                                     </div>
-                                    <div class="space-y-2">
-                                        <input type="url" id="bm-presentation-link" placeholder="Drive ലിങ്ക് (ഓപ്ഷണൽ)..." class="w-full text-xs p-2.5 rounded-xl border border-indigo-200 outline-none">
-                                        <button type="button" id="bm-save-presentation-btn" class="w-full py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs transition">
-                                            Save Presentation to Book
-                                        </button>
+                                    <div id="bm-presentation-file-info" class="hidden text-xs font-bold text-indigo-900 flex items-center justify-between gap-2 py-1 px-2 bg-indigo-50 rounded-lg">
+                                        <span id="bm-presentation-file-name" class="truncate max-w-xs font-mono text-[11px]">file.pdf</span>
+                                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                                            <button type="button" data-action="replace-presentation" class="text-indigo-600 hover:underline text-[10px] font-bold">Replace</button>
+                                            <button type="button" id="bm-remove-presentation-btn" data-action="remove-presentation" class="text-rose-600 text-xs font-bold px-1 hover:bg-rose-100 rounded">✕</button>
+                                        </div>
                                     </div>
                                 </div>
-                            </details>
+                                <div class="space-y-2">
+                                    <input type="url" id="bm-presentation-link" placeholder="Drive ലിങ്ക് (ഓപ്ഷണൽ)..." class="w-full text-xs p-2.5 rounded-xl border border-indigo-200 outline-none">
+                                    <button type="button" id="bm-save-presentation-btn" data-action="save-presentation" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition">
+                                        Save Presentation to Book
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                     </div>
