@@ -1359,24 +1359,19 @@ function selectActiveBook(bookName) {
 }
 
 function loadAndRenderBookChapters() {
-    if (!activeBookName) {
+    if (!activeBookName && !activeBookCoverDoc) {
         activeBookChapters = [];
         renderBookChaptersReorderList([]);
         return;
     }
 
-    const bName = normalizeStringClean(activeBookName);
-    const bTitle = normalizeStringClean(activeBookCoverDoc?.title || activeBookName);
-    const bId = (activeBookCoverDoc?.id || "").trim();
+    const bookTarget = activeBookCoverDoc || {
+        id: activeBookCoverDoc?.id || "",
+        title: activeBookName,
+        bookName: activeBookName
+    };
 
-    activeBookChapters = currentArticlesList.filter(a => matchesBookExact(a, bName, bTitle, bId));
-
-    // Sort strictly by priority
-    activeBookChapters.sort((a, b) => {
-        if (a.priority !== b.priority) return (a.priority || 1) - (b.priority || 1);
-        return parseTimestampMillis(b.createdAt) - parseTimestampMillis(a.createdAt);
-    });
-
+    activeBookChapters = filterAndSortChapters(bookTarget, currentArticlesList);
     renderBookChaptersReorderList(activeBookChapters);
 }
 
@@ -1505,8 +1500,10 @@ function initChapterWriter() {
                     category: bookTag,
                     transcription,
                     priority: nextPriority,
+                    order: nextPriority,
                     content,
                     imageUrl: bmSelectedArticleImageBase64,
+                    bookId: activeBookCoverDoc?.id || "",
                     bookName: activeBookName,
                     type: "ARTICLE",
                     placement: "AUTO",
@@ -1523,6 +1520,22 @@ function initChapterWriter() {
 
                 const newArt = { id: docRef.id, ...sanitized };
                 currentArticlesList.unshift(newArt);
+
+                if (activeBookCoverDoc && activeBookCoverDoc.id) {
+                    try {
+                        const existingChapters = Array.isArray(activeBookCoverDoc.chapters) ? [...activeBookCoverDoc.chapters] : [];
+                        if (!existingChapters.includes(docRef.id)) {
+                            existingChapters.push(docRef.id);
+                            activeBookCoverDoc.chapters = existingChapters;
+                            await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+                                chapters: existingChapters,
+                                updatedAt: serverTimestamp()
+                            });
+                        }
+                    } catch (bErr) {
+                        console.warn("Could not append chapter to book doc:", bErr);
+                    }
+                }
 
                 showGlobalStatus(`✨ അധ്യായം '${title}' (#${nextPriority}) വിജയകരമായി ചേർത്തു!`, "success");
 
@@ -1706,19 +1719,42 @@ async function saveAndApplyChapterOrder(showToast = true) {
     if (!activeBookChapters || activeBookChapters.length === 0) return;
 
     try {
+        const chapterIds = [];
         for (let i = 0; i < activeBookChapters.length; i++) {
             const art = activeBookChapters[i];
             const newPriority = i + 1;
-            if (art.priority !== newPriority) {
+            chapterIds.push(art.id);
+            if (art.priority !== newPriority || art.order !== newPriority) {
                 art.priority = newPriority;
-                await updateDoc(doc(db, "articles", art.id), {
+                art.order = newPriority;
+                const updatePayload = {
                     priority: newPriority,
+                    order: newPriority,
                     updatedAt: serverTimestamp()
-                });
+                };
+                if (activeBookCoverDoc?.id && !art.bookId) {
+                    updatePayload.bookId = activeBookCoverDoc.id;
+                    art.bookId = activeBookCoverDoc.id;
+                }
+                await updateDoc(doc(db, "articles", art.id), updatePayload);
                 const globalItem = currentArticlesList.find(a => a.id === art.id);
-                if (globalItem) globalItem.priority = newPriority;
+                if (globalItem) {
+                    globalItem.priority = newPriority;
+                    globalItem.order = newPriority;
+                    if (updatePayload.bookId) globalItem.bookId = updatePayload.bookId;
+                }
             }
         }
+
+        // Also update book doc with ordered chapters array
+        if (activeBookCoverDoc && activeBookCoverDoc.id) {
+            activeBookCoverDoc.chapters = chapterIds;
+            await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+                chapters: chapterIds,
+                updatedAt: serverTimestamp()
+            });
+        }
+
         if (showToast) {
             showGlobalStatus("💾 വായനാ ക്രമം വിജയകരമായി സേവ് ചെയ്തു!", "success");
         }
@@ -1763,8 +1799,10 @@ function initBookAttachExistingArticles() {
                         startPriority++;
                         await updateDoc(doc(db, "articles", id), {
                             bookName: activeBookName,
+                            bookId: activeBookCoverDoc?.id || "",
                             author: activeBookAuthor || "NUQTHA AUTHOR",
                             priority: startPriority,
+                            order: startPriority,
                             updatedAt: serverTimestamp()
                         });
                         const item = currentArticlesList.find(a => a.id === id);

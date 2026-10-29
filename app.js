@@ -6,6 +6,7 @@
 import { db, collection, onSnapshot } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
+import { countBookChapters } from "./js/book-data.js";
 
 let allArticles = [];
 let currentCategory = "ALL";
@@ -1709,30 +1710,12 @@ function formatDate(ts) {
 
 /* ═══════════ HELPER: COUNT ARTICLES BELONGING TO A BOOK ═══════════ */
 function getBookArticleCount(book, articles) {
+    if (typeof countBookChapters === 'function') {
+        return countBookChapters(book, articles);
+    }
     if (!book || !articles) return 0;
-    const clean = (s) => (s || "")
-        .toString()
-        .normalize('NFC')
-        .replace(/[\u200B-\u200D\uFEFF]/g, '')
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, ' ');
-
-    const bTitle = clean(book.title);
-    const bName = clean(book.bookName);
     const bId = (book.id || "").trim();
-
-    return articles.filter(a => {
-        if (!a || a.id === book.id || a.type === "BOOK") return false;
-        const aBook = clean(a.bookName || a.playlistName);
-        const aBookId = (a.bookId || "").trim();
-        if (bId && aBookId && bId === aBookId) return true;
-        if (bName && aBook && bName === aBook) return true;
-        if (bTitle && aBook && bTitle === aBook) return true;
-        if (bName && aBook && bName.length >= 3 && (aBook.includes(bName) || bName.includes(aBook))) return true;
-        if (bTitle && aBook && bTitle.length >= 3 && (aBook.includes(bTitle) || bTitle.includes(aBook))) return true;
-        return false;
-    }).length;
+    return articles.filter(a => a && a.id !== book.id && a.type !== "BOOK" && ((bId && a.bookId === bId) || a.bookName === book.bookName || a.bookName === book.title)).length;
 }
 
 /* ═══════════ 1. HOME PAGE BOOK SHOWCASE / CAROUSEL SECTION (COMPACT IN MIDDLE) ═══════════ */
