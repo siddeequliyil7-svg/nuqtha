@@ -24,6 +24,10 @@ html.dark body {
 }
 
 :root {
+    --surface: #ffffff;
+    --border: #ebdccb;
+    --text: #1e1b18;
+    --accent: #b4532c;
     --terracotta: #b4532c;
     --terracotta-dark: #923e1b;
     --bg-cream: #fbf7ee;
@@ -2175,58 +2179,358 @@ body.dark-mode .category-featured-card:hover {
     background: rgba(26, 30, 43, 0.9);
 }
 
-/* ═══════════ BOOK EDITION HERO SPECIFIC ISOLATION & STYLES ═══════════ */
+/* ═══════════ BOOK HERO 3D ═══════════ */
+:root {
+    --book-hero-bg: linear-gradient(155deg, #ffffff 0%, #fdfbf7 50%, #fbf5eb 100%);
+    --book-hero-border: var(--border);
+    --book-hero-surface: #fdfaf5;
+    --book-hero-title: var(--text);
+    --book-hero-meta: var(--text-muted);
+    --book-hero-chip-bg: rgba(180, 83, 44, 0.06);
+    --book-hero-chip-border: rgba(180, 83, 44, 0.16);
+    --book-hero-tag-bg: rgba(180, 83, 44, 0.08);
+    --book-hero-tag-border: rgba(180, 83, 44, 0.25);
+    --book-hero-intro-bg: #faf6ee;
+    --book-hero-intro-border: #eddccb;
+    --book-spine: #8f3e1b;
+    --book-page-edge: #fdfbf7;
+    --book-page-edge-dark: #ebdccb;
+    --book-shadow: rgba(43, 33, 24, 0.16);
+    --book-shadow-floor: rgba(43, 33, 24, 0.18);
+}
+
+html.dark,
+body.dark-mode {
+    --book-hero-bg: linear-gradient(155deg, #181c2b 0%, #141724 55%, #10121d 100%);
+    --book-hero-border: var(--border);
+    --book-hero-surface: #141724;
+    --book-hero-title: var(--text);
+    --book-hero-meta: var(--text-muted);
+    --book-hero-chip-bg: rgba(255, 255, 255, 0.05);
+    --book-hero-chip-border: rgba(255, 255, 255, 0.12);
+    --book-hero-tag-bg: rgba(248, 113, 113, 0.12);
+    --book-hero-tag-border: rgba(248, 113, 113, 0.3);
+    --book-hero-intro-bg: #10131f;
+    --book-hero-intro-border: #23283a;
+    --book-spine: #1a1e2e;
+    --book-page-edge: #23293d;
+    --book-page-edge-dark: #191c2b;
+    --book-shadow: rgba(0, 0, 0, 0.6);
+    --book-shadow-floor: rgba(0, 0, 0, 0.7);
+}
+
+/* 1. Hero Card Container */
 .book-edition-hero,
-.article-body .book-edition-hero {
-    background: var(--hero-bg) !important;
-    color: var(--hero-text) !important;
-    border: 1px solid var(--hero-border) !important;
+.book-hero-card {
+    background: var(--book-hero-bg) !important;
+    border: 1px solid var(--book-hero-border) !important;
+    border-radius: 1.5rem;
+    padding: 1.25rem;
+    box-shadow: 0 10px 30px -10px var(--book-shadow), 0 1px 3px 0 rgba(0, 0, 0, 0.04);
     position: relative;
+    overflow: hidden;
+    color: var(--text) !important;
+    transition: background 300ms ease, border-color 300ms ease;
+}
+
+@media (min-width: 640px) {
+    .book-edition-hero,
+    .book-hero-card {
+        padding: 2rem;
+        border-radius: 2rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .book-edition-hero,
+    .book-hero-card {
+        padding: 2.5rem;
+    }
+}
+
+/* 2. 3D Book Presentation (Pure CSS) */
+.book3d-wrapper {
+    perspective: 1200px;
+    -webkit-perspective: 1200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.5rem 1rem 0.5rem;
+    width: 100%;
+}
+
+.book3d {
+    position: relative;
+    width: min(220px, 66vw);
+    aspect-ratio: 3 / 4;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    transform: rotateY(-18deg) rotateX(2deg);
+    transition: transform 380ms cubic-bezier(0.2, 0.8, 0.25, 1), box-shadow 380ms ease;
+    border-radius: 4px 10px 10px 4px;
+    outline: none;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.book3d:hover,
+.book3d:focus-visible {
+    transform: rotateY(-4deg) rotateX(1deg) translateY(-6px) scale(1.02);
+}
+
+.book3d:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 8px;
+}
+
+/* Spine Strip (Left Edge) */
+.book3d-spine {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 14px;
+    z-index: 4;
+    pointer-events: none;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+    background: linear-gradient(to right,
+        rgba(0, 0, 0, 0.42) 0%,
+        rgba(255, 255, 255, 0.16) 30%,
+        rgba(0, 0, 0, 0.18) 70%,
+        transparent 100%
+    );
+}
+
+/* Cover Image Container with Page-Edge Thickness (Right & Bottom Stacked Lines) */
+.book3d-cover {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: 4px 10px 10px 4px;
+    overflow: hidden;
+    background-color: var(--surface);
+    box-shadow:
+        1px 1px 0 var(--book-page-edge),
+        2px 2px 0 var(--book-page-edge-dark),
+        3px 3px 0 var(--book-page-edge),
+        4px 4px 0 var(--book-page-edge-dark),
+        5px 5px 0 var(--book-page-edge),
+        6px 6px 0 var(--book-page-edge-dark),
+        7px 7px 0 var(--book-page-edge),
+        8px 8px 0 var(--book-page-edge-dark),
+        10px 10px 0 var(--book-page-edge),
+        14px 18px 28px -4px var(--book-shadow);
+}
+
+.book3d-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    aspect-ratio: 3 / 4;
+}
+
+.book3d-cover-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    background: linear-gradient(135deg, var(--book-hero-surface) 0%, var(--surface) 100%);
+    border: 1px solid var(--border);
+}
+
+.book3d-glare {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(115deg,
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(255, 255, 255, 0.08) 25%,
+        transparent 55%
+    );
+    border-radius: inherit;
+}
+
+/* Soft Floor Shadow */
+.book3d-floor-shadow {
+    width: min(210px, 60vw);
+    height: 16px;
+    margin-top: 10px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, var(--book-shadow-floor) 0%, transparent 72%);
+    filter: blur(5px);
+    pointer-events: none;
+    transition: transform 380ms ease, opacity 380ms ease;
+}
+
+.book3d:hover ~ .book3d-floor-shadow,
+.book3d:focus-visible ~ .book3d-floor-shadow {
+    transform: scale(1.06) translateY(3px);
+    opacity: 0.85;
+}
+
+@media (min-width: 768px) {
+    .book3d {
+        width: 250px;
+    }
+    .book3d-floor-shadow {
+        width: 240px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .book3d {
+        width: 275px;
+    }
+    .book3d-floor-shadow {
+        width: 260px;
+    }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    .book3d {
+        transform: none !important;
+        transition: none !important;
+    }
+    .book3d:hover,
+    .book3d:focus-visible {
+        transform: none !important;
+    }
+    .book3d-floor-shadow {
+        transition: none !important;
+    }
+}
+
+/* 3. Info Side Elements */
+.book-hero-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    background-color: var(--book-hero-tag-bg);
+    border: 1px solid var(--book-hero-tag-border);
+}
+
+.book-hero-title {
+    font-family: 'Anek Malayalam', 'Noto Sans Malayalam', sans-serif !important;
+    font-size: clamp(1.45rem, 3.2vw, 2.25rem);
+    font-weight: 900 !important;
+    line-height: 1.35 !important;
+    letter-spacing: -0.015em;
+    color: var(--book-hero-title) !important;
+    margin: 0;
+}
+
+.book-hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.book-hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.75rem;
+    background-color: var(--book-hero-chip-bg);
+    border: 1px solid var(--book-hero-chip-border);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text) !important;
+    line-height: 1.25;
+}
+
+/* Introduction Box */
+.book-intro-box {
+    background-color: var(--book-hero-intro-bg);
+    border: 1px solid var(--book-hero-intro-border);
+    border-radius: 1rem;
+    padding: 1rem;
+    margin-top: 0.5rem;
+}
+
+@media (min-width: 640px) {
+    .book-intro-box {
+        padding: 1.25rem;
+        border-radius: 1.25rem;
+    }
+}
+
+.book-intro-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+}
+
+.book-intro-body {
+    font-family: 'Noto Sans Malayalam', sans-serif !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.7 !important;
+    color: var(--text-muted) !important;
+    white-space: pre-line;
+    margin: 0 !important;
+}
+
+@media (min-width: 640px) {
+    .book-intro-body {
+        font-size: 0.875rem !important;
+        line-height: 1.75 !important;
+    }
+}
+
+.book-intro-body.is-clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
-/* Hard isolation: ensure .article-body p or global typography NEVER overrides hero colors */
-.book-edition-hero p,
-.article-body .book-edition-hero p {
-    color: var(--hero-text) !important;
-    margin-bottom: 0 !important;
-    line-height: 1.65 !important;
-    font-size: 0.92rem !important;
-    font-family: 'Noto Sans Malayalam', sans-serif !important;
+.book-intro-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: transparent;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    min-height: 44px;
+    touch-action: manipulation;
+    transition: color 200ms ease, background-color 200ms ease;
 }
 
-.book-edition-hero .hero-title,
-.article-body .book-edition-hero .hero-title {
-    color: var(--hero-title) !important;
-    font-family: 'Anek Malayalam', sans-serif !important;
+.book-intro-toggle-btn:hover {
+    background-color: var(--book-hero-tag-bg);
 }
 
-.book-edition-hero .hero-meta,
-.article-body .book-edition-hero .hero-meta,
-.book-edition-hero p.hero-meta,
-.article-body .book-edition-hero p.hero-meta {
-    color: var(--hero-meta) !important;
-}
-
-.book-edition-hero .hero-text,
-.article-body .book-edition-hero .hero-text {
-    color: var(--hero-text) !important;
-}
-
-.book-edition-hero .hero-accent,
-.article-body .book-edition-hero .hero-accent {
-    color: var(--hero-accent) !important;
-}
-
-.book-edition-hero .hero-accent-coral,
-.article-body .book-edition-hero .hero-accent-coral {
-    color: var(--hero-accent-coral) !important;
-}
-
-.book-edition-hero .hero-badge {
-    background: var(--hero-badge-bg) !important;
-    border-color: var(--hero-badge-border) !important;
-    color: var(--hero-badge-text) !important;
+.book-intro-toggle-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 /* ═══════════ SHIMMER SKELETON LOADERS ═══════════ */

@@ -148,7 +148,7 @@
             </div>
 
             <!-- Hero Skeleton Card -->
-            <div class="rounded-3xl p-6 sm:p-8 lg:p-10 bg-[#12151f] border border-white/10 shadow-2xl">
+            <div class="rounded-3xl p-6 sm:p-8 lg:p-10 bg-[var(--book-hero-surface,#fdfaf5)] dark:bg-[#141724] border border-[#ebdccb] dark:border-white/10 shadow-sm">
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-start">
                     <div class="md:col-span-5 lg:col-span-4 w-full max-w-[240px] sm:max-w-[280px] mx-auto md:mx-0">
                         <div class="aspect-[3/4] rounded-2xl skeleton-shimmer border border-white/10"></div>
@@ -739,6 +739,27 @@
             }
         }
 
+        // ═══════════ BOOK INTRODUCTION TOGGLE ═══════════
+        window.toggleBookIntro = function() {
+            const textEl = document.getElementById("book-intro-text");
+            const btnEl = document.getElementById("book-intro-toggle-btn");
+            const labelEl = document.getElementById("book-intro-toggle-label");
+            if (!textEl || !btnEl) return;
+
+            const isClamped = textEl.classList.contains("is-clamped");
+            if (isClamped) {
+                textEl.classList.remove("is-clamped");
+                textEl.classList.remove("line-clamp-4");
+                btnEl.setAttribute("aria-expanded", "true");
+                if (labelEl) labelEl.textContent = "കുറയ്ക്കുക (Show Less) ↑";
+            } else {
+                textEl.classList.add("is-clamped");
+                textEl.classList.add("line-clamp-4");
+                btnEl.setAttribute("aria-expanded", "false");
+                if (labelEl) labelEl.textContent = "കൂടുതൽ വായിക്കുക (Read More) ↓";
+            }
+        };
+
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
         function renderBookIndex(book, container, attachedArticles = []) {
             document.title = `${book.title || "NUQTHA Edition"} | NUQTHA`;
@@ -753,177 +774,107 @@
             const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "");
             const cleanAuthor = (book.author || "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ").replace(/[*_#~`]/g, "").trim();
             const introText = (book.introduction || book.intro || book.excerpt || "").trim();
-            const editionTag = (book.category && book.category.trim()) ? book.category.trim() : "NUQTHA SPECIAL EDITION";
-
-            const volumeStr = book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Vol ' + book.volume) : 'Vol 36';
-            const issueStr = book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue ' + book.issue) : 'Issue 27';
+            const editionTag = (book.category && book.category.trim()) ? book.category.trim() : "PREMIUM BOOK";
             const dateStr = book.date || '28 Oct 2026';
-
-            // Calculate reading progress
-            const readArticleIds = getReadArticleIds();
-            const readChapters = attachedArticles.filter(ch => readArticleIds.includes(ch.id));
-            const progressPercent = attachedArticles.length > 0 ? Math.round((readChapters.length / attachedArticles.length) * 100) : 0;
-
-            // Estimate total reading time (average 160 words per minute)
-            let totalWords = 0;
-            attachedArticles.forEach(ch => {
-                const words = ((ch.content || ch.excerpt || "") + " " + ch.title).split(/\s+/).length;
-                totalWords += words;
-            });
-            const totalReadingTime = Math.max(5, Math.round(totalWords / 160)) || (attachedArticles.length * 4);
 
             // Bookmark status
             const savedBookIds = getSavedBookIds();
             const isBookmarked = savedBookIds.includes(book.id);
-
-            // Determine "Start Reading" vs "Continue Reading"
-            let startReadingHref = "#edition-articles-section";
-            let startReadingLabel = "വായന ആരംഭിക്കുക (Start Reading)";
-            let nextChapterTitle = "";
-
-            if (attachedArticles.length > 0) {
-                const unreadChapter = attachedArticles.find(ch => !readArticleIds.includes(ch.id));
-                const targetChapter = unreadChapter || attachedArticles[0];
-                startReadingHref = `article.html?id=${targetChapter.id}`;
-                if (readChapters.length > 0) {
-                    const chapterNum = attachedArticles.indexOf(targetChapter) + 1;
-                    startReadingLabel = `വായന തുടരുക (Continue · Ch. ${chapterNum})`;
-                    nextChapterTitle = targetChapter.title || "";
-                } else {
-                    startReadingLabel = "വായന ആരംഭിക്കുക (Start Reading · Ch. 1)";
-                    nextChapterTitle = attachedArticles[0].title || "";
-                }
-            }
 
             container.innerHTML = `
                 <div class="space-y-6 sm:space-y-8 animate-fade-in">
                     <!-- Top Navigation & Action Row -->
                     <div class="flex items-center justify-between pb-1 flex-wrap gap-2 text-xs font-english">
                         <a href="index.html#category=BOOKS" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-[#1c2030] transition shadow-2xs group touch-target-44">
-                            <span class="group-hover:-translate-x-0.5 transition-transform">&larr;</span>
-                            <span>ALL EDITIONS (എല്ലാ പതിപ്പുകളും)</span>
+                            <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">&larr;</span>
+                            <span class="notranslate" translate="no">ALL EDITIONS (എല്ലാ പതിപ്പുകളും)</span>
                         </a>
 
                         <div class="flex items-center gap-2">
-                            <button id="book-bookmark-btn" onclick="toggleBookBookmark()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 font-bold text-slate-700 dark:text-slate-200 hover:text-[#b4532c] dark:hover:text-[#f87171] transition shadow-2xs cursor-pointer touch-target-44">
+                            <button id="book-bookmark-btn" onclick="toggleBookBookmark()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 font-bold text-slate-700 dark:text-slate-200 hover:text-[#b4532c] dark:hover:text-[#f87171] transition shadow-2xs cursor-pointer touch-target-44" aria-label="${isBookmarked ? 'Remove bookmark' : 'Bookmark this book'}">
                                 <svg id="bookmark-icon" class="w-4 h-4 text-amber-500" fill="${isBookmarked ? '#f59e0b' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
                                 <span id="bookmark-text">${isBookmarked ? 'Saved' : 'Save'}</span>
                             </button>
 
-                            <button onclick="shareArticlePage('whatsapp')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 font-bold transition cursor-pointer touch-target-44">
+                            <button onclick="shareArticlePage('whatsapp')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 font-bold transition cursor-pointer touch-target-44" aria-label="Share on WhatsApp">
                                 <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
                                 <span>Share</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Polished NUQTHA Edition Hero Card -->
-                    <div class="book-edition-hero rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl relative border">
-                        <div class="relative z-10 flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
-                            <!-- Left: Vertical Book Cover (Stacked on mobile, 3D Tilt on Desktop) -->
-                            <div class="w-full max-w-[240px] sm:max-w-[280px] md:w-[280px] lg:w-[310px] flex-shrink-0 flex flex-col items-center">
-                                <div class="book-cover-3d w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-[#090b10] relative group border-2 border-white/15">
-                                    ${book.imageUrl ? `
-                                        <img src="${book.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover" loading="eager" decoding="async">
-                                    ` : `
-                                        <div class="w-full h-full flex flex-col items-center justify-center text-white/50 space-y-3 p-4 text-center">
-                                            <span class="text-4xl">📚</span>
-                                            <span class="text-xs uppercase font-english font-bold text-slate-300">NUQTHA EDITION</span>
-                                        </div>
-                                    `}
-                                    <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.04] to-white/[0.12] pointer-events-none"></div>
-                                    <div class="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/50 via-white/15 to-transparent pointer-events-none"></div>
+                    <!-- ═══════════ BOOK HERO CARD (3D COVER & DETAILS) ═══════════ -->
+                    <article class="book-hero-card book-edition-hero" aria-labelledby="book-hero-title">
+                        <div class="flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
+                            <!-- Left: 3D Book Cover Presentation -->
+                            <div class="book3d-wrapper md:w-[280px] lg:w-[310px] flex-shrink-0">
+                                <div class="book3d" tabindex="0" role="img" aria-label="${cleanTitle} Cover">
+                                    <div class="book3d-spine" aria-hidden="true"></div>
+                                    <div class="book3d-cover">
+                                        ${book.imageUrl ? `
+                                            <img src="${book.imageUrl}" alt="${cleanTitle} Cover" class="book3d-cover-img" width="300" height="400" loading="eager" decoding="async">
+                                        ` : `
+                                            <div class="book3d-cover-fallback">
+                                                <span class="text-4xl" aria-hidden="true">📚</span>
+                                                <span class="text-xs uppercase font-english font-bold notranslate" translate="no" style="color: var(--accent);">NUQTHA EDITION</span>
+                                            </div>
+                                        `}
+                                        <div class="book3d-glare" aria-hidden="true"></div>
+                                    </div>
                                 </div>
+                                <div class="book3d-floor-shadow" aria-hidden="true"></div>
                             </div>
 
-                            <!-- Right: Single-Author Book Header & Details -->
+                            <!-- Right: Book Info & Details -->
                             <div class="flex-1 w-full space-y-4 text-left">
-                                <!-- Category & Progress Pill -->
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <span class="hero-badge px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase font-english tracking-wider border">
-                                        ${editionTag}
-                                    </span>
-                                    ${progressPercent > 0 ? `
-                                        <span class="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] sm:text-[11px] font-bold font-english flex items-center gap-1">
-                                            <span>✓</span>
-                                            <span>${progressPercent}% വായിച്ചു</span>
+                                <header class="space-y-3">
+                                    <!-- Category Pill -->
+                                    <div>
+                                        <span class="book-hero-tag notranslate" translate="no">
+                                            ${editionTag}
                                         </span>
-                                    ` : ''}
-                                </div>
+                                    </div>
 
-                                <!-- Book Title -->
-                                <h1 class="hero-title text-2xl sm:text-3xl lg:text-4xl font-black font-['Anek_Malayalam'] tracking-tight leading-snug">
-                                    ${cleanTitle}
-                                </h1>
+                                    <!-- Book Title -->
+                                    <h1 id="book-hero-title" class="book-hero-title">
+                                        ${cleanTitle}
+                                    </h1>
 
-                                <!-- Single-Author Meta Chips: Author, Date, Chapters -->
-                                <div class="flex items-center gap-2 sm:gap-2.5 flex-wrap">
-                                    <span class="px-3 py-1.5 rounded-xl bg-white/[0.08] text-xs font-bold text-white border border-white/10 flex items-center gap-1.5 font-['Anek_Malayalam']">
-                                        <span>✍️</span>
-                                        <span>${cleanAuthor}</span>
-                                    </span>
-                                    <span class="px-3 py-1.5 rounded-xl bg-white/[0.08] text-xs font-bold text-slate-300 border border-white/10 flex items-center gap-1.5 font-english">
-                                        <span>📅</span>
-                                        <span>${dateStr}</span>
-                                    </span>
-                                    <span class="px-3 py-1.5 rounded-xl bg-white/[0.08] text-xs font-bold text-amber-400 border border-white/10 flex items-center gap-1.5 font-english">
-                                        <span>📚</span>
-                                        <span>${attachedArticles.length} അധ്യായങ്ങൾ</span>
-                                    </span>
-                                </div>
+                                    <!-- Meta Chips: Author, Date, Chapters -->
+                                    <div class="book-hero-chips font-english">
+                                        <span class="book-hero-chip">
+                                            <span aria-hidden="true">✍️</span>
+                                            <span class="font-['Anek_Malayalam']">${cleanAuthor}</span>
+                                        </span>
+                                        <span class="book-hero-chip">
+                                            <span aria-hidden="true">📅</span>
+                                            <span>${dateStr}</span>
+                                        </span>
+                                        <span class="book-hero-chip">
+                                            <span aria-hidden="true">📚</span>
+                                            <span>${attachedArticles.length} അധ്യായങ്ങൾ</span>
+                                        </span>
+                                    </div>
+                                </header>
 
-                                <!-- ആമുഖം (Book Introduction / Foreword) -->
+                                <!-- Introduction Box with Line-Clamp & Read More Toggle -->
                                 ${introText ? `
-                                    <div class="book-intro-card p-4 sm:p-5 rounded-2xl bg-white/[0.04] border border-white/10 space-y-2 mt-2">
-                                        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#f59e0b] font-english">
-                                            <span>📖</span>
+                                    <div class="book-intro-box">
+                                        <div class="book-intro-header font-english notranslate" translate="no">
+                                            <span aria-hidden="true">📖</span>
                                             <span>ആമുഖം (BOOK INTRODUCTION)</span>
                                         </div>
-                                        <div class="font-['Noto_Sans_Malayalam'] text-xs sm:text-sm leading-relaxed text-slate-200 dark:text-slate-300 whitespace-pre-line">
+                                        <div id="book-intro-text" class="book-intro-body line-clamp-4 is-clamped">
                                             ${introText}
                                         </div>
-                                    </div>
-                                ` : ''}
-
-                                <!-- Primary Actions Bar -->
-                                <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                                    <a id="hero-start-reading-btn" href="${startReadingHref}" class="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#b4532c] to-[#d97706] hover:from-[#923e1b] hover:to-[#b4532c] text-white font-bold text-xs sm:text-sm font-english uppercase tracking-wider shadow-lg active:scale-98 transition-all cursor-pointer touch-target-44">
-                                        <span>${startReadingLabel}</span>
-                                        <span>&rarr;</span>
-                                    </a>
-                                </div>
-
-                                <!-- Reading Progress Bar (if reading started) -->
-                                ${attachedArticles.length > 0 ? `
-                                    <div class="space-y-1.5 pt-1">
-                                        <div class="flex items-center justify-between text-[11px] font-english hero-meta">
-                                            <span>Progress: ${readChapters.length} / ${attachedArticles.length} chapters read</span>
-                                            <span class="font-bold text-white">${progressPercent}%</span>
-                                        </div>
-                                        <div class="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
-                                            <div class="h-full bg-gradient-to-r from-[#f59e0b] to-emerald-400 rounded-full transition-all duration-700" style="width: ${progressPercent}%;"></div>
-                                        </div>
+                                        <button type="button" id="book-intro-toggle-btn" class="book-intro-toggle-btn touch-target-44" onclick="toggleBookIntro()" aria-expanded="false" aria-controls="book-intro-text">
+                                            <span id="book-intro-toggle-label">കൂടുതൽ വായിക്കുക (Read More) ↓</span>
+                                        </button>
                                     </div>
                                 ` : ''}
                             </div>
                         </div>
-
-                        <!-- Stats Row -->
-                        <div class="mt-6 pt-5 border-t border-white/10 grid grid-cols-3 gap-2 sm:gap-4 text-center">
-                            <div class="space-y-0.5">
-                                <span class="block text-[10px] sm:text-xs font-english uppercase opacity-60 hero-meta">Articles</span>
-                                <span class="text-sm sm:text-base font-black text-white font-english">${attachedArticles.length} ലേഖനങ്ങൾ</span>
-                            </div>
-                            <div class="space-y-0.5 border-x border-white/10">
-                                <span class="block text-[10px] sm:text-xs font-english uppercase opacity-60 hero-meta">Total Reading</span>
-                                <span class="text-sm sm:text-base font-black text-white font-english">~${totalReadingTime} മിനിറ്റ്</span>
-                            </div>
-                            <div class="space-y-0.5">
-                                <span class="block text-[10px] sm:text-xs font-english uppercase opacity-60 hero-meta">Publication</span>
-                                <span class="text-xs sm:text-sm font-bold text-white font-english">${dateStr}</span>
-                            </div>
-                        </div>
-                    </div>
+                    </article>
 
                     <!-- Sequential Articles Section ("EDITION ARTICLES") -->
                     <div id="edition-articles-section" class="space-y-4 pt-4">
@@ -950,8 +901,16 @@
                 </div>
             `;
 
-            // Configure Mobile Sticky Continue Bar
-            setupMobileStickyBar(cleanTitle, startReadingHref, progressPercent, nextChapterTitle);
+            // If intro text doesn't exceed 4 lines, hide toggle button
+            setTimeout(() => {
+                const textEl = document.getElementById("book-intro-text");
+                const toggleBtn = document.getElementById("book-intro-toggle-btn");
+                if (textEl && toggleBtn) {
+                    if (textEl.scrollHeight <= textEl.clientHeight + 8) {
+                        toggleBtn.classList.add("hidden");
+                    }
+                }
+            }, 60);
 
             // Render chapters
             renderPaginatedChapters(attachedArticles);
