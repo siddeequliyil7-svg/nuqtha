@@ -132,8 +132,10 @@ function setupMoreDropdown() {
 function isBookEntity(article) {
     if (!article) return false;
     if (article.type === "BOOK") return true;
-    if (article.bookName && article.bookName.trim()) return true;
-    if (article.playlistName && article.playlistName.trim()) return true;
+    if (article.bookId && String(article.bookId).trim()) return true;
+    if (article.bookName && String(article.bookName).trim()) return true;
+    if (article.playlistName && String(article.playlistName).trim()) return true;
+    if (article.category && (article.category.toLowerCase() === "premium book" || article.category.toLowerCase() === "book")) return true;
     return false;
 }
 
@@ -523,6 +525,7 @@ function renderFeed() {
 function renderSearchFeed(container, query) {
     const lower = query.toLowerCase();
     const matched = allArticles.filter(art => {
+        if (isBookEntity(art)) return false;
         const title = (art.title || "").toLowerCase();
         const author = (art.author || "").toLowerCase();
         const excerpt = (art.excerpt || "").toLowerCase();

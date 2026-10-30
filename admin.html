@@ -138,6 +138,7 @@
             <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="book">
                 <span class="tab-icon">📚</span>
                 <span class="truncate">പുസ്തകങ്ങൾ (Books)</span>
+                <span id="tab-book-badge" class="tab-badge">0</span>
             </button>
             <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="layout">
                 <span class="tab-icon">🎯</span>
@@ -481,7 +482,10 @@
                             <div class="flex items-center gap-3">
                                 <span class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-900 flex items-center justify-center text-xl font-black shadow-xs">📚</span>
                                 <div>
+                                    <div class="flex items-center gap-2">
                                     <h2 class="text-xl font-extrabold text-[#1e1b18]">ബുക്ക് മാനേജർ (Book Manager)</h2>
+                                    <span id="bm-books-count-badge" class="text-xs font-black font-english text-amber-800 bg-amber-100 px-3 py-0.5 rounded-full">0 Books</span>
+                                </div>
                                     <p class="text-xs text-[#8c7a6b] mt-0.5">ഒരു രചയിതാവിന്റെ പുസ്തകം, കവർ, അധ്യായങ്ങൾ, വായനാ ക്രമം എന്നിവ പൂർണ്ണമായി നിയന്ത്രിക്കാം</p>
                                 </div>
                             </div>
@@ -501,7 +505,23 @@
                         </div>
                     </div>
 
-                    <!-- ═══════════ STEP 1: BOOK COVER & DETAILS (FIRST) ═══════════ -->
+                    <!-- ═══════════ DEDICATED PUBLISHED BOOKS LIST VIEW ═══════════ -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-[#f0e6d6] pb-3 flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-extrabold text-[#1e1b18]">പ്രസിദ്ധീകരിച്ച പുസ്തകങ്ങൾ (Published Books)</h3>
+                            <span id="bm-total-books-counter" class="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-english">0 Books</span>
+                        </div>
+                        <p class="text-xs text-[#8c7a6b]">അധ്യായങ്ങൾ ക്രമീകരിക്കാനോ വിവരങ്ങൾ തിരുത്താനോ താഴെയുള്ള ബട്ടണുകൾ ഉപയോഗിക്കുക</p>
+                    </div>
+
+                    <!-- Books Cards Grid -->
+                    <div id="bm-published-books-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <p class="text-xs text-slate-400 p-6 text-center col-span-full">പുസ്തകങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
+                    </div>
+                </div>
+
+                <!-- ═══════════ STEP 1: BOOK COVER & DETAILS (FIRST) ═══════════ -->
                     <div id="bm-step1-section" class="bg-blue-50/80 border-2 border-blue-200 rounded-3xl p-6 md:p-8 space-y-5 shadow-xs">
                         <div class="flex items-center justify-between border-b border-blue-200 pb-3 flex-wrap gap-2">
                             <div class="flex items-center gap-3">
@@ -846,7 +866,7 @@
                             <h2 class="text-xl font-extrabold text-[#1e1b18]">പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങൾ (Published Live Articles)</h2>
                             <span id="article-count" class="text-xs font-black font-english text-[#b4532c] bg-[#b4532c]/10 px-3 py-0.5 rounded-full">0</span>
                         </div>
-                        <p class="text-xs text-[#8c7a6b] mt-0.5">തത്സമയം Firestore-ൽ ലഭ്യമായ ലേഖനങ്ങൾ എഡിറ്റ് ചെയ്യുകയോ നീക്കം ചെയ്യുകയോ ചെയ്യാം</p>
+                        <p class="text-xs text-[#8c7a6b] mt-0.5">തത്സമയം Firestore-ൽ ലഭ്യമായ ലേഖനങ്ങൾ എഡിറ്റ് ചെയ്യുകയോ നീക്കം ചെയ്യുകയോ ചെയ്യാം (പുസ്തകങ്ങൾ പ്രത്യേകമായി 'Books' ടാബിൽ ലഭ്യമാണ്)</p>
                     </div>
 
                     <button type="button" onclick="window.switchAdminTab('create')" class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-xl shadow transition self-start sm:self-auto font-english">

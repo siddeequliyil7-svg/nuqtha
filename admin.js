@@ -1,5 +1,17 @@
 import { safeInit } from "./js/ui-safe.js";
-import { getBookChapters, filterAndSortChapters, isArticleInBook } from "./js/book-data.js";
+import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
+
+export function isBookOrChapter(art) {
+    if (!art) return false;
+    if (art.type === "BOOK") return true;
+    if (art.bookId && String(art.bookId).trim()) return true;
+    if (art.bookName && String(art.bookName).trim()) return true;
+    if (art.playlistName && String(art.playlistName).trim()) return true;
+    if (art.category && (art.category.toLowerCase() === "premium book" || art.category.toLowerCase() === "book")) return true;
+    return false;
+}
+window.isBookOrChapter = isBookOrChapter;
+
 "use strict";
 /**
  * NUQTHA — Admin Dashboard Logic (admin.js)
@@ -1184,7 +1196,10 @@ async function handleSaveBookStep1(e) {
         activeBookName = name;
         activeBookAuthor = author;
 
+        const allBooks = currentArticlesList.filter(a => a.type === "BOOK" || (a.category && a.category.toLowerCase() === "premium book"));
+        updateBooksCounter(allBooks.length);
         updateActiveBookOverview(currentArticlesList);
+        renderAdminBooksTab(currentArticlesList);
         selectActiveBook(name);
 
         // Instantly reveal and scroll smoothly to Step 2
@@ -1295,6 +1310,7 @@ function resetBookManagerForm() {
     if (wrapper) wrapper.classList.add("hidden");
 
     nameInput?.focus();
+    renderAdminBooksTab(currentArticlesList);
 }
 
 function selectActiveBook(bookName) {
@@ -1358,6 +1374,7 @@ function selectActiveBook(bookName) {
     // Filter chapters for this book
     loadAndRenderBookChapters();
     renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+    renderAdminBooksTab(currentArticlesList);
 }
 
 async function loadAndRenderBookChapters() {
@@ -2352,24 +2369,28 @@ function initBookPresentationUpload() {
 }
 
 
-/* ═══════════ 7. ACTIVE BOOKS OVERVIEW & DROPDOWN POPULATION ═══════════ */
+/* ═══════════ 7. ACTIVE BOOKS OVERVIEW, DEDICATED BOOKS TAB & DROPDOWN ═══════════ */
 function updateActiveBookOverview(articles) {
     const activeSelect = document.getElementById("bm-active-book-select");
 
     // Discover all book names
     const bookMap = {};
-    articles.forEach(art => {
-        if (art.type === "BOOK" && art.title) {
-            const name = art.title.trim();
+    const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
+    
+    pool.forEach(art => {
+        if (art.type === "BOOK" && (art.bookName || art.title)) {
+            const name = (art.bookName || art.title).trim();
             if (!bookMap[name]) bookMap[name] = { cover: art, chapters: 0 };
         }
     });
 
-    articles.forEach(art => {
-        if (art.type !== "BOOK" && art.bookName && art.bookName.trim()) {
-            const name = art.bookName.trim();
-            if (!bookMap[name]) bookMap[name] = { cover: null, chapters: 0 };
-            bookMap[name].chapters++;
+    pool.forEach(art => {
+        if (art.type !== "BOOK" && (art.bookName || art.bookId)) {
+            const name = (art.bookName || "").trim();
+            if (name) {
+                if (!bookMap[name]) bookMap[name] = { cover: null, chapters: 0 };
+                bookMap[name].chapters++;
+            }
         }
     });
 
@@ -2386,6 +2407,167 @@ function updateActiveBookOverview(articles) {
         }
     }
 }
+
+function updateBooksCounter(count) {
+    const tabBadge = document.getElementById("tab-book-badge");
+    const bmBadge = document.getElementById("bm-books-count-badge");
+    const totalEl = document.getElementById("bm-total-books-counter");
+    if (tabBadge) tabBadge.textContent = String(count);
+    if (bmBadge) bmBadge.textContent = `${count} Books`;
+    if (totalEl) totalEl.textContent = `${count} Books`;
+}
+
+function renderAdminBooksTab(articles) {
+    const gridEl = document.getElementById("bm-published-books-grid");
+    const totalCounterEl = document.getElementById("bm-total-books-counter");
+    const badgeEl = document.getElementById("bm-books-count-badge");
+    const tabBadgeEl = document.getElementById("tab-book-badge");
+
+    const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
+    const books = pool.filter(a => a.type === "BOOK" || (a.category && a.category.toLowerCase() === "premium book"));
+
+    if (totalCounterEl) totalCounterEl.textContent = `${books.length} Books`;
+    if (badgeEl) badgeEl.textContent = `${books.length} Books`;
+    if (tabBadgeEl) tabBadgeEl.textContent = String(books.length);
+
+    if (!gridEl) return;
+
+    if (books.length === 0) {
+        gridEl.innerHTML = `
+            <div class="col-span-full text-center py-12 px-4 bg-amber-50/40 rounded-2xl border-2 border-dashed border-amber-200 space-y-2">
+                <span class="text-3xl">📚</span>
+                <p class="text-xs font-bold text-amber-900">പുസ്തകങ്ങൾ ഒന്നും നിലവിൽ ചേർത്തിട്ടില്ല</p>
+                <p class="text-[11px] text-amber-700">പുതിയ പുസ്തകം ചേർക്കാൻ മുകളിലെ '+ പുതിയ പുസ്തകം നിർമ്മിക്കുക' ക്ലിക്ക് ചെയ്യുക.</p>
+            </div>
+        `;
+        return;
+    }
+
+    gridEl.innerHTML = books.map(book => {
+        const bookTitle = book.bookName || book.title || "Untitled Book";
+        const chapterCount = countBookChapters(book, pool);
+        const isActive = activeBookCoverDoc && (activeBookCoverDoc.id === book.id || activeBookName === bookTitle);
+
+        return `
+            <div class="p-4 bg-white rounded-2xl border-2 ${isActive ? 'border-amber-500 bg-amber-50/20 ring-2 ring-amber-200' : 'border-[#ebdccb] hover:border-amber-300'} transition shadow-xs flex flex-col justify-between gap-3">
+                <div class="flex items-start gap-3">
+                    <div class="w-16 h-22 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-amber-600 to-amber-900 border border-amber-200 shadow-xs flex items-center justify-center text-white">
+                        ${book.imageUrl ? `<img src="${book.imageUrl}" alt="${bookTitle}" class="w-full h-full object-cover">` : `<span class="text-2xl">📚</span>`}
+                    </div>
+                    <div class="flex-1 min-w-0 space-y-1">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md font-english">
+                                ${book.category || 'Premium Book'}
+                            </span>
+                            <span class="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-english">
+                                📖 ${chapterCount} Chapters
+                            </span>
+                            ${isActive ? `<span class="text-[9px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md font-english">● ACTIVE</span>` : ''}
+                        </div>
+                        <h4 class="text-sm font-extrabold text-[#1e1b18] truncate leading-tight">${bookTitle}</h4>
+                        <p class="text-[11px] font-bold text-[#8c7a6b] truncate">✍️ ${book.author || 'Single Author'}</p>
+                        ${book.date ? `<p class="text-[10px] text-slate-400 font-english">📅 ${book.date}</p>` : ''}
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-2.5 border-t border-[#f0e6d6] gap-2 flex-wrap">
+                    <a href="article.html?id=${book.id}&edition=${encodeURIComponent(bookTitle)}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline font-english">
+                        <span>👁️ Live</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
+
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="window.manageBookById('${book.id}')" title="അധ്യായങ്ങൾ മാനേജ് ചെയ്യുക & പുനഃക്രമീകരിക്കുക" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs font-english cursor-pointer">
+                            <span>📖 Chapters</span>
+                        </button>
+                        <button type="button" onclick="window.editBookMetadataById('${book.id}')" title="പുസ്തക വിവരങ്ങൾ എഡിറ്റ് ചെയ്യുക" class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
+                            <span>✏️ Edit</span>
+                        </button>
+                        <button type="button" onclick="window.deleteBookById('${book.id}', '${bookTitle.replace(/'/g, "\\'")}')" title="ഈ പുസ്തകം ഒഴിവാക്കുക" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition font-english cursor-pointer">
+                            <span>✕</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+window.renderAdminBooksTab = renderAdminBooksTab;
+
+window.manageBookById = function(bookId) {
+    const book = currentArticlesList.find(a => a.id === bookId);
+    if (!book) return;
+    const name = book.bookName || book.title;
+    selectActiveBook(name);
+    renderAdminBooksTab(currentArticlesList);
+    const step3 = document.getElementById("bm-step3-section") || document.getElementById("bm-step2-3-wrapper");
+    if (step3) {
+        step3.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    showGlobalStatus(`📖 '${name}' തുറന്നു. അധ്യായങ്ങൾ താഴെ ക്രമീകരിക്കാം.`, "info");
+};
+
+window.editBookMetadataById = function(bookId) {
+    const book = currentArticlesList.find(a => a.id === bookId);
+    if (!book) return;
+    const name = book.bookName || book.title;
+    selectActiveBook(name);
+    renderAdminBooksTab(currentArticlesList);
+    const step1 = document.getElementById("bm-step1-section");
+    if (step1) {
+        step1.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    const nameInput = document.getElementById("book-meta-name");
+    if (nameInput) {
+        nameInput.focus();
+        nameInput.classList.add("ring-2", "ring-blue-300");
+        setTimeout(() => nameInput.classList.remove("ring-2", "ring-blue-300"), 1500);
+    }
+    showGlobalStatus(`✏️ '${name}' വിവരങ്ങൾ എഡിറ്റ് ചെയ്യുക.`, "info");
+};
+
+window.deleteBookById = async function(bookId, bookTitle) {
+    if (!bookId) return;
+    const cleanTitle = bookTitle || "ഈ പുസ്തകം";
+    if (!confirm(`'${cleanTitle}' എന്ന പുസ്തകം പൂർണ്ണമായി നീക്കം ചെയ്യണോ (Delete Book)?`)) return;
+
+    try {
+        await deleteDoc(doc(db, "articles", bookId));
+
+        // Unlink chapters belonging to this book
+        const linkedChapters = currentArticlesList.filter(a => a.bookId === bookId || (cleanTitle && a.bookName === cleanTitle));
+        for (const ch of linkedChapters) {
+            try {
+                await updateDoc(doc(db, "articles", ch.id), {
+                    bookId: "",
+                    bookName: "",
+                    updatedAt: serverTimestamp()
+                });
+                ch.bookId = "";
+                ch.bookName = "";
+            } catch (chErr) {
+                console.warn("[BookManager] Unlink error:", ch.id, chErr);
+            }
+        }
+
+        currentArticlesList = currentArticlesList.filter(a => a.id !== bookId);
+
+        if (activeBookCoverDoc?.id === bookId || activeBookName === cleanTitle) {
+            resetBookManagerForm();
+        }
+
+        const allBooks = currentArticlesList.filter(a => a.type === "BOOK" || (a.category && a.category.toLowerCase() === "premium book"));
+        updateBooksCounter(allBooks.length);
+        updateActiveBookOverview(currentArticlesList);
+        renderAdminBooksTab(currentArticlesList);
+        renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+
+        showGlobalStatus(`📚 '${cleanTitle}' വിജയകരമായി നീക്കം ചെയ്തു.`, "success");
+    } catch (err) {
+        console.error("[BookManager] Delete book error:", err);
+        showGlobalStatus("പുസ്തകം നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
+    }
+};
 
 window.setPlaylistInput = function(name) {
     selectActiveBook(name);
@@ -2421,9 +2603,16 @@ function listenToFirestoreArticles() {
         if (items.length === 0 && currentArticlesList.length > 0) return;
 
         currentArticlesList = items;
-        updateArticleCounters(items.length);
-        renderAdminPublishedList(items);
+
+        const standardArticles = items.filter(a => !isBookOrChapter(a));
+        const allBooks = items.filter(a => a.type === "BOOK" || (a.category && a.category.toLowerCase() === "premium book"));
+
+        updateArticleCounters(standardArticles.length);
+        updateBooksCounter(allBooks.length);
+
+        renderAdminPublishedList(standardArticles);
         updateActiveBookOverview(items);
+        renderAdminBooksTab(items);
         renderBookManagerCompactArticles(items, activeBookName);
         renderLayoutManagerList(items);
     }
@@ -2547,21 +2736,24 @@ function listenToFirestoreArticles() {
 function updateArticleCounters(count) {
     const countBadge = document.getElementById("article-count");
     const tabBadge = document.getElementById("tab-published-badge");
-    if (countBadge) countBadge.textContent = count;
-    if (tabBadge) tabBadge.textContent = count;
+    if (countBadge) countBadge.textContent = String(count);
+    if (tabBadge) tabBadge.textContent = String(count);
 }
 
 function renderAdminPublishedList(items) {
     const listContainer = document.getElementById("admin-articles-list");
     if (!listContainer) return;
 
-    if (items.length === 0) {
+    // Strictly filter out any books and book chapters
+    const articles = (items || []).filter(a => !isBookOrChapter(a));
+
+    if (articles.length === 0) {
         listContainer.innerHTML = `
             <div class="text-center py-12 px-4 bg-white/60 dark:bg-white/5 rounded-3xl border border-[#ebdccb] dark:border-white/10 space-y-3">
                 <div class="w-12 h-12 mx-auto rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center text-xl">📄</div>
                 <h4 class="text-sm font-bold text-[#1e1b18] dark:text-[#f8fafc]">ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല</h4>
-                <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8]">ആദ്യത്തെ ലേഖനം പ്രസിദ്ധീകരിക്കാൻ 'പുതിയ ലേഖനം' ടാബ് തുറക്കുക.</p>
-                <button type="button" onclick="window.switchAdminTab('create')" class="px-4 py-2 bg-[#b4532c] text-white text-xs font-bold rounded-xl shadow-sm hover:bg-[#923e1b] transition">
+                <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8]">ആദ്യത്തെ ലേഖനം പ്രസിദ്ധീകരിക്കാൻ 'പുതിയ ലേഖനം' ടാബ് തുറക്കുക. (പുസ്തകങ്ങൾ കാണാൻ 'Books' ടാബ് സന്ദർശിക്കുക).</p>
+                <button type="button" onclick="window.switchAdminTab('create')" class="px-4 py-2 bg-[#b4532c] text-white text-xs font-bold rounded-xl shadow-sm hover:bg-[#923e1b] transition cursor-pointer">
                     + പുതിയ ലേഖനം എഴുതുക
                 </button>
             </div>
@@ -2569,12 +2761,10 @@ function renderAdminPublishedList(items) {
         return;
     }
 
-    listContainer.innerHTML = items.map(data => {
+    listContainer.innerHTML = articles.map(data => {
         const titleCol = data.titleColor || "#1e1b18";
         const placementLabel = data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
         const priorityBadge = (data.priority !== undefined && data.priority !== null) ? `P${data.priority}` : '';
-        const playlistBadge = data.playlistName ? `📚 ${data.playlistName}` : '';
-        const isBook = data.type === 'BOOK';
 
         return `
             <div class="p-4 bg-white/90 dark:bg-[#12141d]/90 rounded-2xl border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/60 dark:hover:border-white/20 transition shadow-sm space-y-3">
@@ -2587,8 +2777,6 @@ function renderAdminPublishedList(items) {
                             ${placementLabel}
                         </span>
                         ${priorityBadge ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-400/30 text-amber-800 dark:text-amber-300 font-mono">${priorityBadge}</span>` : ''}
-                        ${isBook ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-english">📘 BOOK COVER</span>` : ''}
-                        ${data.bookName ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-english">📖 ${data.bookName}</span>` : ''}
                     </div>
                     <span class="text-[10px] text-slate-400 font-english">${data.date || ''}</span>
                 </div>
@@ -2605,33 +2793,21 @@ function renderAdminPublishedList(items) {
                     </div>
                 </div>
 
-                ${playlistBadge ? `
-                    <div class="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-900 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/40 px-2.5 py-1 rounded-lg">
-                        <span>${playlistBadge}</span>
-                    </div>
-                ` : ''}
-
                 <div class="flex items-center justify-between pt-2.5 border-t border-[#ebdccb]/60 dark:border-white/10">
-                    <a href="${isBook ? `article.html?id=${data.id}&edition=${encodeURIComponent(data.bookName || data.title)}` : `article.html?id=${data.id}`}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#b4532c] hover:underline font-english">
+                    <a href="article.html?id=${data.id}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#b4532c] hover:underline font-english">
                         <span>Live Preview</span>
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     </a>
 
                     <div class="flex items-center gap-2">
-                        <button type="button" onclick="window.viewArticleComments('${data.id}', '${(data.title || '').replace(/'/g, "\\'")}')" title="ലേഖന അഭിപ്രായങ്ങളും ഇമെയിലുകളും കാണുക" class="inline-flex items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/20 border border-blue-200 px-3 py-1 rounded-xl transition font-english">
+                        <button type="button" onclick="window.viewArticleComments('${data.id}', '${(data.title || '').replace(/'/g, "\\'")}')" title="ലേഖന അഭിപ്രായങ്ങളും ഇമെയിലുകളും കാണുക" class="inline-flex items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/20 border border-blue-200 px-3 py-1 rounded-xl transition font-english cursor-pointer">
                             <span>💬 Comments</span>
                         </button>
-                        ${isBook ? `
-                            <button type="button" onclick="window.manageBookFromPublished('${(data.bookName || data.title).replace(/'/g, "\\'")}')" title="പുസ്തകം മാനേജ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english">
-                                <span>📚 Manage</span>
-                            </button>
-                        ` : `
-                            <button type="button" data-action="edit-article" data-id="${data.id}" onclick="window.startEditArticle('${data.id}')" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                <span>Edit</span>
-                            </button>
-                        `}
-                        <button type="button" data-action="delete-article" data-id="${data.id}" onclick="window.deleteArticle('${data.id}')" title="ലേഖനം ഒഴിവാക്കുക" class="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 border border-rose-200 px-3 py-1 rounded-xl transition font-english">
+                        <button type="button" data-action="edit-article" data-id="${data.id}" onclick="window.startEditArticle('${data.id}')" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            <span>Edit</span>
+                        </button>
+                        <button type="button" data-action="delete-article" data-id="${data.id}" onclick="window.deleteArticle('${data.id}')" title="ലേഖനം ഒഴിവാക്കുക" class="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 border border-rose-200 px-3 py-1 rounded-xl transition font-english cursor-pointer">
                             <span>✕ Delete</span>
                         </button>
                     </div>
@@ -2642,7 +2818,7 @@ function renderAdminPublishedList(items) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   8. TAB 3 SEARCH & FILTER IN ARTICLES LIST
+   8. TAB 4 SEARCH & FILTER IN ARTICLES LIST
    ═══════════════════════════════════════════════════════════ */
 function initPublishedSearchFilter() {
     const searchInput = document.getElementById("search-published-input");
@@ -2652,14 +2828,15 @@ function initPublishedSearchFilter() {
         const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
         const cat = categoryFilter ? categoryFilter.value : "ALL";
 
-        const filtered = currentArticlesList.filter(art => {
-            if (art.bookName || art.type === "BOOK") return false;
+        const standardArticles = currentArticlesList.filter(art => !isBookOrChapter(art));
+
+        const filtered = standardArticles.filter(art => {
             const matchesQuery = !query || 
                 (art.title && art.title.toLowerCase().includes(query)) ||
                 (art.author && art.author.toLowerCase().includes(query)) ||
-                (art.playlistName && art.playlistName.toLowerCase().includes(query));
+                (art.transcription && art.transcription.toLowerCase().includes(query));
 
-            const matchesCategory = cat === "ALL" || (art.category || "").toUpperCase() === cat;
+            const matchesCategory = cat === "ALL" || (art.category && art.category.toUpperCase() === cat);
 
             return matchesQuery && matchesCategory;
         });
@@ -2670,6 +2847,7 @@ function initPublishedSearchFilter() {
     if (searchInput) searchInput.addEventListener("input", applyFilter);
     if (categoryFilter) categoryFilter.addEventListener("change", applyFilter);
 }
+
 
 /* ═══════════════════════════════════════════════════════════
    9. GLOBAL NOTIFICATION SYSTEM
@@ -3301,6 +3479,31 @@ document.addEventListener("click", (e) => {
             const id = actionEl.dataset.id;
             if (id && typeof window.startEditArticle === "function") {
                 window.startEditArticle(id);
+            }
+            break;
+        }
+        case "manage-book": {
+            e.preventDefault();
+            const id = actionEl.dataset.id;
+            if (id && typeof window.manageBookById === "function") {
+                window.manageBookById(id);
+            }
+            break;
+        }
+        case "edit-book-meta": {
+            e.preventDefault();
+            const id = actionEl.dataset.id;
+            if (id && typeof window.editBookMetadataById === "function") {
+                window.editBookMetadataById(id);
+            }
+            break;
+        }
+        case "delete-book": {
+            e.preventDefault();
+            const id = actionEl.dataset.id;
+            const title = actionEl.dataset.title;
+            if (id && typeof window.deleteBookById === "function") {
+                window.deleteBookById(id, title);
             }
             break;
         }
