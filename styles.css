@@ -2619,6 +2619,12 @@ body.dark-mode {
     --article-font-size: 16px;
 }
 
+.article-body,
+#art-content,
+#reader-content {
+    font-size: var(--article-font-size, 16px);
+}
+
 .article-body p,
 .article-preview p,
 .article-content p,
