@@ -811,7 +811,7 @@ function switchToCategory(cat) {
 }
 
 /* ═══════════ Format Markdown/Rich Text (Bold, Highlight, Subheadings, Inline Images, Highlight Cards) ═══════════ */
-function formatRichContent(rawText, contentStyle) {
+function formatRichContent(rawText, contentStyle = "") {
     if (!rawText) return "";
     return rawText
         .split("\n\n")
@@ -856,7 +856,7 @@ function formatRichContent(rawText, contentStyle) {
                 .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18] dark:text-white">$1</strong>')
                 .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
 
-            return `<p class="text-base sm:text-lg leading-relaxed mb-4" ${contentStyle}>${formatted}</p>`;
+            return `<p class="text-base sm:text-lg leading-relaxed mb-4" ${contentStyle || ""}>${formatted}</p>`;
         })
         .join("");
 }
@@ -1673,7 +1673,8 @@ window.openFullScreenReader = function(id) {
     const dateEl = document.getElementById("reader-date");
     if (dateEl) dateEl.textContent = art.date || formatDate(art.createdAt);
 
-    const contentColorStyle = art.contentColor ? `style="color: ${art.contentColor};"` : 'style="color: #2b2118;"';
+    const contentStyle = art.contentColor ? `style="color: ${art.contentColor};"` : '';
+    const contentColorStyle = contentStyle;
 
     const contentEl = document.getElementById("reader-content");
     if (contentEl) contentEl.innerHTML = formatRichContent(art.content || art.excerpt || "", contentColorStyle);

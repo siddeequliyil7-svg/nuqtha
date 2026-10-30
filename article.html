@@ -1244,7 +1244,13 @@
             document.documentElement.style.setProperty("--article-font-size", effectiveSize);
             const indicatorEl = document.getElementById("font-size-indicator");
             if (indicatorEl) indicatorEl.textContent = effectiveSize;
-            const contentStyleAttr = contentStyleParts.length > 0 ? `style="${contentStyleParts.join('; ')};"` : '';
+            // Safe declaration and definition of contentStyle with fallback
+            const contentStyleParts = [];
+            if (article.contentColor && article.contentColor !== "#2b2118" && article.contentColor !== "#333333") {
+                contentStyleParts.push(`color: ${article.contentColor}`);
+            }
+            const contentStyle = contentStyleParts.length > 0 ? `style="${contentStyleParts.join('; ')}"` : '';
+            const contentStyleAttr = contentStyle;
 
             contentEl.innerHTML = (article.content || article.excerpt || "")
                 .split('\n\n')
@@ -1290,7 +1296,7 @@
                         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18] dark:text-white">$1</strong>')
                         .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
 
-                    return `<p ${contentStyleAttr}>${formatted}</p>`;
+                    return `<p ${contentStyle || contentStyleAttr || ""}>${formatted}</p>`;
                 })
                 .join('');
         }
