@@ -29,10 +29,10 @@
     <link rel="stylesheet" href="styles.css">
     <style>
         .article-body p {
-            margin-bottom: 2rem;
-            line-height: 2.15;
-            font-size: 1.22rem;
-            color: #2b2118;
+            margin: 6.4px 0px;
+            line-height: 1.85;
+            font-size: var(--article-font-size, 16px);
+            color: #333333;
             font-family: 'Anek Malayalam', sans-serif;
             letter-spacing: -0.01em;
         }
@@ -40,8 +40,9 @@
             font-family: 'Anek Malayalam', sans-serif;
             line-height: 1.32;
         }
-        .dark-mode .article-body p {
-            color: #ebdccb;
+        .dark-mode .article-body p,
+        html.dark .article-body p {
+            color: #cbd5e1;
         }
         .dark-mode .article-title-text {
             color: #fbf7ee;
@@ -1234,11 +1235,15 @@
             const contentEl = document.getElementById('art-content');
             if (!contentEl) return;
 
-            const fontSizeMap = { small: "1.05rem", medium: "1.22rem", large: "1.38rem", xlarge: "1.55rem" };
-            const chosenSize = fontSizeMap[article.fontSize] || "1.22rem";
-            const contentStyleParts = [];
-            if (article.contentColor) contentStyleParts.push(`color: ${article.contentColor}`);
-            if (chosenSize) contentStyleParts.push(`font-size: ${chosenSize}`);
+            const fontSizeMap = { small: "14px", medium: "16px", large: "18px", xlarge: "21px" };
+            const savedUserFontSize = localStorage.getItem("nuqtha_font_size");
+            const articleBaseSize = fontSizeMap[article.fontSize] || "16px";
+            const effectiveSize = savedUserFontSize ? `${savedUserFontSize}px` : articleBaseSize;
+
+            contentEl.style.setProperty("--article-font-size", effectiveSize);
+            document.documentElement.style.setProperty("--article-font-size", effectiveSize);
+            const indicatorEl = document.getElementById("font-size-indicator");
+            if (indicatorEl) indicatorEl.textContent = effectiveSize;
             const contentStyleAttr = contentStyleParts.length > 0 ? `style="${contentStyleParts.join('; ')};"` : '';
 
             contentEl.innerHTML = (article.content || article.excerpt || "")
@@ -1665,6 +1670,31 @@
         }
 
         // ═══════════ THEME SWITCHER ═══════════
+        // ═══════════ FONT SIZE ADJUSTMENT CONTROLS ═══════════
+        function setupFontSizeControls() {
+            const decBtn = document.getElementById("font-decrease-btn");
+            const incBtn = document.getElementById("font-increase-btn");
+            const resetBtn = document.getElementById("font-reset-btn");
+            const indicator = document.getElementById("font-size-indicator");
+            const contentEl = document.getElementById("art-content");
+
+            let currentSize = parseInt(localStorage.getItem("nuqtha_font_size"), 10) || 16;
+
+            function updateSize(sz) {
+                currentSize = Math.max(13, Math.min(26, sz));
+                localStorage.setItem("nuqtha_font_size", currentSize);
+                document.documentElement.style.setProperty("--article-font-size", `${currentSize}px`);
+                if (contentEl) contentEl.style.setProperty("--article-font-size", `${currentSize}px`);
+                if (indicator) indicator.textContent = `${currentSize}px`;
+            }
+
+            if (decBtn) decBtn.addEventListener("click", () => updateSize(currentSize - 1));
+            if (incBtn) incBtn.addEventListener("click", () => updateSize(currentSize + 1));
+            if (resetBtn) resetBtn.addEventListener("click", () => updateSize(16));
+
+            updateSize(currentSize);
+        }
+
         function setupTheme() {
             const themeBtn = document.getElementById("theme-toggle-btn");
             const sunIcon = document.getElementById("sun-icon");
@@ -1731,6 +1761,7 @@
         };
 
         setupTheme();
+        setupFontSizeControls();
         loadArticle();
     </script>
 </body>

@@ -2612,3 +2612,38 @@ body.dark-mode {
 #mobile-sticky-continue-bar.bar-visible {
     transform: translateY(0);
 }
+
+
+/* ═══════════ ARTICLE READING BODY TYPOGRAPHY ═══════════ */
+:root {
+    --article-font-size: 16px;
+}
+
+.article-body p,
+.article-preview p,
+.article-content p,
+#art-content p,
+#reader-content p,
+#preview-body {
+    font-family: 'Anek Malayalam', sans-serif !important;
+    font-size: var(--article-font-size, 16px);
+    color: #333333;
+    margin: 6.4px 0px;
+    line-height: 1.85;
+    letter-spacing: -0.01em;
+}
+
+html.dark .article-body p,
+html.dark .article-preview p,
+html.dark .article-content p,
+html.dark #art-content p,
+html.dark #reader-content p,
+html.dark #preview-body,
+body.dark-mode .article-body p,
+body.dark-mode .article-preview p,
+body.dark-mode .article-content p,
+body.dark-mode #art-content p,
+body.dark-mode #reader-content p,
+body.dark-mode #preview-body {
+    color: #cbd5e1;
+}

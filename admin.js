@@ -797,15 +797,15 @@ function initColorCustomizer() {
         radio.addEventListener("change", (e) => {
             const val = e.target.value;
             const labels = {
-                small: "Small (ചെറുത് - 15px)",
-                medium: "Medium (സാധാരണ - 18px)",
-                large: "Large (വലുത് - 21px)",
-                xlarge: "Extra Large (കൂടുതൽ - 24px)"
+                small: "Small (ചെറുത് - 14px)",
+                medium: "Medium (സാധാരണ - 16px)",
+                large: "Large (വലുത് - 18px)",
+                xlarge: "Extra Large (കൂടുതൽ - 21px)"
             };
             if (fontSizeLabel) fontSizeLabel.textContent = labels[val] || val;
             if (previewContent) {
-                const sizes = { small: "0.85rem", medium: "0.95rem", large: "1.1rem", xlarge: "1.25rem" };
-                previewContent.style.fontSize = sizes[val] || "0.95rem";
+                const sizes = { small: "14px", medium: "16px", large: "18px", xlarge: "21px" };
+                previewContent.style.fontSize = sizes[val] || "16px";
             }
         });
     });
