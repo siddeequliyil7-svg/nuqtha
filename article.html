@@ -509,6 +509,20 @@
             }
         }
 
+        // Helper to determine if an entity is a Book (or a book chapter)
+        function isBookEntity(item) {
+            if (!item) return false;
+            if (item.type === "BOOK") return true;
+            if (item.isBook === true) return true;
+            if (Array.isArray(item.chapters) && item.chapters.length > 0) return true;
+            if (item.bookId && String(item.bookId).trim()) return true;
+            if (item.bookName && String(item.bookName).trim()) return true;
+            if (item.playlistName && String(item.playlistName).trim()) return true;
+            const cat = (item.category || "").toLowerCase().trim();
+            if (cat === "books" || cat === "book" || cat === "premium book") return true;
+            return false;
+        }
+
         // Clean text matching helper for single-author book binding
         function matchesBook(art, targetBook) {
             if (!art || !targetBook) return false;
@@ -1381,10 +1395,25 @@
         function loadRelatedArticlesFromList(currentArticle, articlesList) {
             const relatedSection = document.getElementById("related-articles-section");
             const relatedGrid = document.getElementById("related-articles-grid");
-            if (!relatedSection || !relatedGrid || !articlesList || articlesList.length === 0) return;
+            if (!relatedSection || !relatedGrid) return;
 
-            const candidates = articlesList.filter(a => a.id !== currentArticle.id && a.type !== "BOOK");
-            if (candidates.length === 0) return;
+            // Strictly hide "Related Articles" section if viewing a book or book chapter
+            if (isBookEntity(currentArticle)) {
+                relatedSection.classList.add("hidden");
+                relatedGrid.innerHTML = "";
+                return;
+            }
+
+            if (!articlesList || articlesList.length === 0) {
+                relatedSection.classList.add("hidden");
+                return;
+            }
+
+            const candidates = articlesList.filter(a => a.id !== currentArticle.id && !isBookEntity(a));
+            if (candidates.length === 0) {
+                relatedSection.classList.add("hidden");
+                return;
+            }
 
             candidates.sort((a, b) => {
                 if (a.category === currentArticle.category && b.category !== currentArticle.category) return -1;
