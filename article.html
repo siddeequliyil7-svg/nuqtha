@@ -1241,18 +1241,7 @@
             const storedExcerpt = (article.storedExcerpt || article.excerpt || article.intro || article.introduction || article.summary || "").trim();
 
             if (excerptContainer && excerptEl) {
-                const contentStr = (article.content || "").trim();
-                const isAutoSnippet = contentStr && storedExcerpt && 
-                    (contentStr.startsWith(storedExcerpt) || contentStr.startsWith(storedExcerpt.replace(/…$/, '').trim()));
-                
-                const shouldDisplayExcerpt = Boolean(storedExcerpt && (
-                    article.hasCustomExcerpt || 
-                    article.storedExcerpt || 
-                    !isAutoSnippet || 
-                    !contentStr
-                ));
-
-                if (shouldDisplayExcerpt) {
+                if (storedExcerpt) {
                     excerptEl.textContent = storedExcerpt;
                     excerptContainer.classList.remove('hidden');
                 } else {
@@ -1342,7 +1331,11 @@
             const contentStyleAttr = contentStyle;
 
             const bodyContent = (article.content || "").trim();
-            contentEl.innerHTML = (bodyContent || (storedExcerpt ? "" : (article.excerpt || "")))
+            let sanitizedBody = bodyContent;
+            if (storedExcerpt && sanitizedBody.startsWith(storedExcerpt) && sanitizedBody.length > storedExcerpt.length) {
+                sanitizedBody = sanitizedBody.substring(storedExcerpt.length).trim();
+            }
+            contentEl.innerHTML = (sanitizedBody || (storedExcerpt ? "" : (article.excerpt || "")))
                 .split('\n\n')
                 .filter(p => p.trim())
                 .map(paragraph => {
