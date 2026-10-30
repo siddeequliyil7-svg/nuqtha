@@ -231,6 +231,11 @@
                 <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px]" loading="eager" decoding="async">
             </div>
 
+            <!-- Prominent Article Excerpt / Lead Intro Container -->
+            <div id="art-excerpt-container" class="hidden article-lead-excerpt">
+                <p id="art-excerpt" class="article-lead-text"></p>
+            </div>
+
             <!-- Social Share & Reading Controls Bar -->
             <div id="art-share-bar" class="flex items-center justify-between gap-2 sm:gap-2.5 py-2 sm:py-2.5 my-1 sm:my-1.5 border-y border-[#ebdccb]/60 dark:border-white/10 flex-wrap sm:flex-nowrap">
                 <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-0.5">
@@ -1216,6 +1221,31 @@
                 }
             }
 
+            // Render Article Lead Excerpt / Intro
+            const excerptContainer = document.getElementById('art-excerpt-container');
+            const excerptEl = document.getElementById('art-excerpt');
+            const storedExcerpt = (article.storedExcerpt || article.excerpt || article.intro || article.introduction || article.summary || "").trim();
+
+            if (excerptContainer && excerptEl) {
+                const contentStr = (article.content || "").trim();
+                const isAutoSnippet = contentStr && storedExcerpt && 
+                    (contentStr.startsWith(storedExcerpt) || contentStr.startsWith(storedExcerpt.replace(/…$/, '').trim()));
+                
+                const shouldDisplayExcerpt = Boolean(storedExcerpt && (
+                    article.hasCustomExcerpt || 
+                    article.storedExcerpt || 
+                    !isAutoSnippet || 
+                    !contentStr
+                ));
+
+                if (shouldDisplayExcerpt) {
+                    excerptEl.textContent = storedExcerpt;
+                    excerptContainer.classList.remove('hidden');
+                } else {
+                    excerptContainer.classList.add('hidden');
+                }
+            }
+
             // Render Prev / Next Chapter Navigation if part of a book
             const chapterNavEl = document.getElementById('art-chapter-nav');
             const chapterNavGrid = document.getElementById('art-chapter-nav-grid');
@@ -1297,7 +1327,8 @@
             const contentStyle = contentStyleParts.length > 0 ? `style="${contentStyleParts.join('; ')}"` : '';
             const contentStyleAttr = contentStyle;
 
-            contentEl.innerHTML = (article.content || article.excerpt || "")
+            const bodyContent = (article.content || "").trim();
+            contentEl.innerHTML = (bodyContent || (storedExcerpt ? "" : (article.excerpt || "")))
                 .split('\n\n')
                 .filter(p => p.trim())
                 .map(paragraph => {

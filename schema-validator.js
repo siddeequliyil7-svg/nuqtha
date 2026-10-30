@@ -253,7 +253,10 @@ export function validateAndSanitizeArticleForSave(raw) {
     const transcription = sanitizeString(raw.transcription, 100, "");
 
     // 5. Excerpt (default first 160 chars of content)
-    let excerpt = sanitizeString(raw.excerpt, 350, "");
+    const rawExcerptVal = raw.excerpt || raw.intro || raw.introduction || raw.summary || "";
+    const hasCustomExcerpt = Boolean(rawExcerptVal && String(rawExcerptVal).trim());
+    const storedExcerpt = hasCustomExcerpt ? sanitizeString(rawExcerptVal, 1500, "") : "";
+    let excerpt = storedExcerpt;
     if (!excerpt) {
         excerpt = content.substring(0, 160) + (content.length > 160 ? "…" : "");
     }
@@ -301,6 +304,8 @@ export function validateAndSanitizeArticleForSave(raw) {
         authorId,
         transcription,
         imageUrl,
+        hasCustomExcerpt,
+        storedExcerpt,
         excerpt,
         content,
         titleColor,
@@ -360,7 +365,10 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const imageUrl = sanitizeImageUrl(rawDoc.imageUrl);
     const content = sanitizeString(rawDoc.content, 500000, "");
     
-    let excerpt = sanitizeString(rawDoc.excerpt, 350, "");
+    const rawExcerptVal = rawDoc.excerpt || rawDoc.intro || rawDoc.introduction || rawDoc.summary || "";
+    const hasCustomExcerpt = Boolean(rawExcerptVal && String(rawExcerptVal).trim());
+    const storedExcerpt = hasCustomExcerpt ? sanitizeString(rawExcerptVal, 1500, "") : "";
+    let excerpt = storedExcerpt;
     if (!excerpt && content) {
         excerpt = content.substring(0, 160) + (content.length > 160 ? "…" : "");
     }
@@ -393,6 +401,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         authorId,
         transcription,
         imageUrl,
+        hasCustomExcerpt,
+        storedExcerpt,
         excerpt,
         content,
         titleColor,

@@ -2653,3 +2653,43 @@ body.dark-mode #reader-content p,
 body.dark-mode #preview-body {
     color: #cbd5e1;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ARTICLE LEAD EXCERPT / INTRO BLOCK
+   ═══════════════════════════════════════════════════════════ */
+.article-lead-excerpt {
+    margin: 16px 0;
+    padding: 16px 20px;
+    background: rgba(180, 83, 44, 0.035);
+    border: 1px solid rgba(235, 220, 203, 0.85);
+    border-left: 4px solid var(--accent, #b4532c);
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.article-lead-text,
+#art-excerpt {
+    font-family: 'Anek Malayalam', sans-serif !important;
+    font-size: calc(var(--article-font-size, 16px) + 2px);
+    font-size: clamp(16px, calc(var(--article-font-size, 16px) + 2px), 22px);
+    font-weight: 500;
+    line-height: 1.8;
+    color: #212529 !important;
+    margin: 0;
+    padding: 0;
+    letter-spacing: -0.01em;
+}
+
+html.dark .article-lead-excerpt,
+body.dark-mode .article-lead-excerpt {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+    border-left-color: #f87171;
+}
+
+html.dark .article-lead-text,
+html.dark #art-excerpt,
+body.dark-mode .article-lead-text,
+body.dark-mode #art-excerpt {
+    color: #f1f5f9 !important;
+}
