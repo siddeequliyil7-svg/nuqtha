@@ -705,10 +705,16 @@
                                 <div id="bm-chapter-msg" class="hidden p-3 rounded-xl text-xs font-bold text-center mb-3"></div>
 
                                 <!-- Publish Button -->
-                                <button type="button" id="bm-publish-article-btn" data-action="add-chapter-to-book" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer">
-                                    <span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span>
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
-                                </button>
+                                <!-- Publish Button & Cancel Edit Button -->
+                                <div class="flex items-center gap-2">
+                                    <button type="button" id="bm-publish-article-btn" data-action="add-chapter-to-book" class="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold uppercase tracking-wider text-xs shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer">
+                                        <span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span>
+                                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                    </button>
+                                    <button type="button" id="bm-cancel-edit-chapter-btn" class="hidden px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-xs transition cursor-pointer flex-shrink-0">
+                                        റദ്ദാക്കുക (Cancel)
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

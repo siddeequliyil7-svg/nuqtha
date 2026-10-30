@@ -1,6 +1,32 @@
 import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
 
+export function isMainBook(art) {
+    if (!art) return false;
+    // Strictly exclude any document that has a bookId referencing a book (these are chapters)
+    if (art.bookId && String(art.bookId).trim() && String(art.bookId).trim() !== String(art.id)) {
+        return false;
+    }
+    // Strictly exclude chapters or sub-items
+    if (art.type === "CHAPTER" || art.isChapter === true) {
+        return false;
+    }
+    // An article with bookId, bookName, or chapter order is a chapter/sub-item
+    if (art.type === "ARTICLE" && (art.bookId || art.bookName || art.order !== undefined || art.chapterIndex !== undefined)) {
+        return false;
+    }
+    // Main books created via Step 1 have type === "BOOK"
+    if (art.type === "BOOK") {
+        return true;
+    }
+    // Legacy support: category is premium book/book, has chapters array, and no parent book
+    if (Array.isArray(art.chapters) && !art.bookId && art.category && (art.category.toLowerCase() === "premium book" || art.category.toLowerCase() === "book")) {
+        return true;
+    }
+    return false;
+}
+window.isMainBook = isMainBook;
+
 export function isBookOrChapter(art) {
     if (!art) return false;
     if (art.type === "BOOK") return true;
@@ -1196,7 +1222,7 @@ async function handleSaveBookStep1(e) {
         activeBookName = name;
         activeBookAuthor = author;
 
-        const allBooks = currentArticlesList.filter(a => a.type === "BOOK" || (a.category && a.category.toLowerCase() === "premium book"));
+        const allBooks = currentArticlesList.filter(a => isMainBook(a));
         updateBooksCounter(allBooks.length);
         updateActiveBookOverview(currentArticlesList);
         renderAdminBooksTab(currentArticlesList);
@@ -1568,18 +1594,25 @@ function initChapterWriter() {
             previewContainer.classList.remove("hidden");
             placeholder.classList.add("hidden");
             bmSelectedArticleImageBase64 = art.imageUrl;
+        } else if (previewContainer && placeholder) {
+            previewContainer.classList.add("hidden");
+            placeholder.classList.remove("hidden");
+            bmSelectedArticleImageBase64 = "";
         }
 
         if (cancelBtn) cancelBtn.classList.remove("hidden");
         if (publishBtn) {
-            publishBtn.innerHTML = '<span>അധ്യായം അപ്‌ഡേറ്റ് ചെയ്യുക (Update Chapter)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+            publishBtn.innerHTML = '<span>അധ്യായം അപ്‌ഡേറ്റ് ചെയ്യുക (Update Chapter)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
         }
 
-        showChapterInlineMsg(`✏️ അധ്യായം '${art.title}' എഡിറ്റ് ചെയ്യുന്നു...`, "success");
+        showChapterInlineMsg(`✏️ അധ്യായം '${art.title || ''}' എഡിറ്റ് മോഡിലാണ്. മാറ്റങ്ങൾ വരുത്തിയ ശേഷം 'Update Chapter' അമർത്തുക.`, "info");
 
+        const step2El = document.getElementById("bm-step2-wrapper") || document.getElementById("bm-art-title");
+        if (step2El) {
+            step2El.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
         if (titleInput) {
-            titleInput.scrollIntoView({ behavior: "smooth", block: "center" });
-            titleInput.focus();
+            setTimeout(() => titleInput.focus(), 200);
         }
     }
     window.startEditChapter = startEditChapter;
@@ -1895,10 +1928,13 @@ function renderBookChaptersReorderList(chapters) {
                     </p>
                 </div>
             </div>
-            <div class="flex items-center gap-1 flex-shrink-0">
+            <div class="flex items-center gap-1.5 flex-shrink-0">
                 <button type="button" class="btn-move-up w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold transition" data-index="${idx}" title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.25; cursor:not-allowed;"' : ''}>▲</button>
                 <button type="button" class="btn-move-down w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold transition" data-index="${idx}" title="Move Down" ${idx === chapters.length - 1 ? 'disabled style="opacity:0.25; cursor:not-allowed;"' : ''}>▼</button>
-                <button type="button" class="btn-detach-chapter w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center text-xs font-bold transition ml-1" data-id="${art.id}" data-title="${art.title.replace(/"/g, '&quot;')}" title="Remove from this book">✕</button>
+                <button type="button" class="btn-edit-chapter px-2.5 h-7 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center text-xs font-bold transition gap-1 cursor-pointer" data-id="${art.id}" title="ഈ അധ്യായം എഡിറ്റ് ചെയ്യുക (Edit Chapter)">
+                    <span>✏️</span><span class="text-[11px] font-english hidden sm:inline">Edit</span>
+                </button>
+                <button type="button" class="btn-detach-chapter w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center text-xs font-bold transition ml-0.5 cursor-pointer" data-id="${art.id}" data-title="${(art.title || '').replace(/"/g, '&quot;')}" title="Remove from this book">✕</button>
             </div>
         </div>
         `;
@@ -2378,17 +2414,16 @@ function updateActiveBookOverview(articles) {
     const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
     
     pool.forEach(art => {
-        if (art.type === "BOOK" && (art.bookName || art.title)) {
+        if (isMainBook(art) && (art.bookName || art.title)) {
             const name = (art.bookName || art.title).trim();
             if (!bookMap[name]) bookMap[name] = { cover: art, chapters: 0 };
         }
     });
 
     pool.forEach(art => {
-        if (art.type !== "BOOK" && (art.bookName || art.bookId)) {
+        if (!isMainBook(art) && (art.bookName || art.bookId)) {
             const name = (art.bookName || "").trim();
-            if (name) {
-                if (!bookMap[name]) bookMap[name] = { cover: null, chapters: 0 };
+            if (name && bookMap[name]) {
                 bookMap[name].chapters++;
             }
         }
@@ -2424,7 +2459,17 @@ function renderAdminBooksTab(articles) {
     const tabBadgeEl = document.getElementById("tab-book-badge");
 
     const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
-    const books = pool.filter(a => a.type === "BOOK" || (a.category && a.category.toLowerCase() === "premium book"));
+    const rawBooks = pool.filter(a => isMainBook(a));
+
+    const books = [];
+    const seenIds = new Set();
+    for (const b of rawBooks) {
+        const key = b.id || b.bookName || b.title;
+        if (!seenIds.has(key)) {
+            seenIds.add(key);
+            books.push(b);
+        }
+    }
 
     if (totalCounterEl) totalCounterEl.textContent = `${books.length} Books`;
     if (badgeEl) badgeEl.textContent = `${books.length} Books`;
@@ -2556,7 +2601,7 @@ window.deleteBookById = async function(bookId, bookTitle) {
             resetBookManagerForm();
         }
 
-        const allBooks = currentArticlesList.filter(a => a.type === "BOOK" || (a.category && a.category.toLowerCase() === "premium book"));
+        const allBooks = currentArticlesList.filter(a => isMainBook(a));
         updateBooksCounter(allBooks.length);
         updateActiveBookOverview(currentArticlesList);
         renderAdminBooksTab(currentArticlesList);
@@ -2605,7 +2650,7 @@ function listenToFirestoreArticles() {
         currentArticlesList = items;
 
         const standardArticles = items.filter(a => !isBookOrChapter(a));
-        const allBooks = items.filter(a => a.type === "BOOK" || (a.category && a.category.toLowerCase() === "premium book"));
+        const allBooks = items.filter(a => isMainBook(a));
 
         updateArticleCounters(standardArticles.length);
         updateBooksCounter(allBooks.length);
