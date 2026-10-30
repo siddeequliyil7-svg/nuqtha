@@ -326,6 +326,10 @@ async function handleFormSubmit() {
                 title: sanitized.title,
                 category: sanitized.category,
                 author: sanitized.author,
+                authorId: sanitized.authorId || authorId,
+                transcription: sanitized.transcription || "",
+                hasCustomExcerpt: sanitized.hasCustomExcerpt,
+                storedExcerpt: sanitized.storedExcerpt,
                 excerpt: sanitized.excerpt,
                 content: sanitized.content,
                 titleColor: sanitized.titleColor,
@@ -559,23 +563,25 @@ window.deleteArticle = async function (id) {
 /* ═══════════════════════════════════════════════════════════
    3. RICH FORMATTING TOOLBAR & MARKER HIGHLIGHT
    ═══════════════════════════════════════════════════════════ */
-function initFormattingToolbar() {
-    const contentTextarea = document.getElementById("art-content");
-    const toolBoldBtn = document.getElementById("tool-bold-btn");
-    const toolHighlightBtn = document.getElementById("tool-highlight-btn");
-    const toolRemoveHighlightBtn = document.getElementById("tool-remove-highlight-btn");
-    const toolHighlightCardBtn = document.getElementById("tool-highlight-card-btn");
-    const toolH2Btn = document.getElementById("tool-h2-btn");
-    const toolH3Btn = document.getElementById("tool-h3-btn");
-    const toolInlineImgBtn = document.getElementById("tool-inline-img-btn");
-    const inlineImgFileInput = document.getElementById("inline-img-file-input");
-
-    const imgOptionsModal = document.getElementById("img-options-modal");
-    const cancelImgModalBtn = document.getElementById("cancel-img-modal-btn");
-    const confirmInsertImgBtn = document.getElementById("confirm-insert-img-btn");
-    const imgModalCaption = document.getElementById("img-modal-caption");
-
+function bindRichTextEditorToolbar({
+    contentTextarea,
+    toolBoldBtn,
+    toolHighlightBtn,
+    toolRemoveHighlightBtn,
+    toolHighlightCardBtn,
+    toolH2Btn,
+    toolH3Btn,
+    toolInlineImgBtn,
+    inlineImgFileInput,
+    imgOptionsModal,
+    cancelImgModalBtn,
+    confirmInsertImgBtn,
+    imgModalCaption,
+    sizeRadioName
+}) {
     if (!contentTextarea) return;
+
+    let pendingLocalBase64 = "";
 
     function wrapSelectedText(prefix, suffix, defaultPlaceholder = "ഇവിടെ ടെക്സ്റ്റ് നൽകുക") {
         const start = contentTextarea.selectionStart;
@@ -606,7 +612,6 @@ function initFormattingToolbar() {
             const selected = text.substring(start, end);
 
             if (selected) {
-                // If already highlighted within selection
                 if (selected.startsWith("==") && selected.endsWith("==") && selected.length >= 4) {
                     const unwrapped = selected.substring(2, selected.length - 2);
                     contentTextarea.value = text.substring(0, start) + unwrapped + text.substring(end);
@@ -614,8 +619,6 @@ function initFormattingToolbar() {
                     contentTextarea.setSelectionRange(start, start + unwrapped.length);
                     return;
                 }
-
-                // If cursor is right inside ==...==
                 const before2 = text.substring(Math.max(0, start - 2), start);
                 const after2 = text.substring(end, end + 2);
                 if (before2 === "==" && after2 === "==") {
@@ -624,7 +627,6 @@ function initFormattingToolbar() {
                     contentTextarea.setSelectionRange(start - 2, start - 2 + selected.length);
                     return;
                 }
-
                 wrapSelectedText("==", "==");
             } else {
                 wrapSelectedText("==", "==", "ഹൈലൈറ്റ് വാക്ക്");
@@ -666,7 +668,6 @@ function initFormattingToolbar() {
             const file = e.target.files[0];
             if (!file) return;
 
-            // Strict file validation
             if (!file.type.startsWith("image/")) {
                 showGlobalStatus("ദയവായി ഒരു സാധുവായ ചിത്രം (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.", "error");
                 inlineImgFileInput.value = "";
@@ -705,8 +706,7 @@ function initFormattingToolbar() {
                     const ctx = canvas.getContext("2d");
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // High-efficiency JPEG compression to protect Firestore 1MB limits
-                    pendingInlineBase64 = canvas.toDataURL("image/jpeg", 0.78);
+                    pendingLocalBase64 = canvas.toDataURL("image/jpeg", 0.78);
                     if (imgModalCaption) imgModalCaption.value = "";
                     if (imgOptionsModal) {
                         imgOptionsModal.classList.remove("hidden");
@@ -722,29 +722,67 @@ function initFormattingToolbar() {
 
     if (cancelImgModalBtn && imgOptionsModal) {
         cancelImgModalBtn.addEventListener("click", () => {
-            pendingInlineBase64 = "";
+            pendingLocalBase64 = "";
             imgOptionsModal.classList.add("hidden");
         });
     }
 
     if (confirmInsertImgBtn && imgOptionsModal) {
         confirmInsertImgBtn.addEventListener("click", () => {
-            if (!pendingInlineBase64) return;
-            const selectedSizeEl = document.querySelector('input[name="img-size-option"]:checked');
+            if (!pendingLocalBase64) return;
+            const selectedSizeEl = document.querySelector(`input[name="${sizeRadioName}"]:checked`);
             const size = selectedSizeEl ? selectedSizeEl.value : "medium";
             const caption = imgModalCaption ? (imgModalCaption.value.trim() || "ചിത്രം") : "ചിത്രം";
 
-            const insertTag = `\n\n![${caption}|${size}](${pendingInlineBase64})\n\n`;
+            const insertTag = `\n\n![${caption}|${size}](${pendingLocalBase64})\n\n`;
 
             const start = contentTextarea.selectionStart;
             const text = contentTextarea.value;
             contentTextarea.value = text.substring(0, start) + insertTag + text.substring(start);
 
-            pendingInlineBase64 = "";
+            pendingLocalBase64 = "";
             imgOptionsModal.classList.add("hidden");
             contentTextarea.focus();
         });
     }
+}
+
+function initFormattingToolbar() {
+    // 1. Article Editor Toolbar
+    bindRichTextEditorToolbar({
+        contentTextarea: document.getElementById("art-content"),
+        toolBoldBtn: document.getElementById("tool-bold-btn"),
+        toolHighlightBtn: document.getElementById("tool-highlight-btn"),
+        toolRemoveHighlightBtn: document.getElementById("tool-remove-highlight-btn"),
+        toolHighlightCardBtn: document.getElementById("tool-highlight-card-btn"),
+        toolH2Btn: document.getElementById("tool-h2-btn"),
+        toolH3Btn: document.getElementById("tool-h3-btn"),
+        toolInlineImgBtn: document.getElementById("tool-inline-img-btn"),
+        inlineImgFileInput: document.getElementById("inline-img-file-input"),
+        imgOptionsModal: document.getElementById("img-options-modal"),
+        cancelImgModalBtn: document.getElementById("cancel-img-modal-btn"),
+        confirmInsertImgBtn: document.getElementById("confirm-insert-img-btn"),
+        imgModalCaption: document.getElementById("img-modal-caption"),
+        sizeRadioName: "img-size-option"
+    });
+
+    // 2. Book Chapter Editor Toolbar
+    bindRichTextEditorToolbar({
+        contentTextarea: document.getElementById("bm-art-content"),
+        toolBoldBtn: document.getElementById("bm-tool-bold-btn"),
+        toolHighlightBtn: document.getElementById("bm-tool-highlight-btn"),
+        toolRemoveHighlightBtn: document.getElementById("bm-tool-remove-highlight-btn"),
+        toolHighlightCardBtn: document.getElementById("bm-tool-highlight-card-btn"),
+        toolH2Btn: document.getElementById("bm-tool-h2-btn"),
+        toolH3Btn: document.getElementById("bm-tool-h3-btn"),
+        toolInlineImgBtn: document.getElementById("bm-tool-inline-img-btn"),
+        inlineImgFileInput: document.getElementById("bm-inline-img-file-input"),
+        imgOptionsModal: document.getElementById("bm-img-options-modal"),
+        cancelImgModalBtn: document.getElementById("bm-cancel-img-modal-btn"),
+        confirmInsertImgBtn: document.getElementById("bm-confirm-insert-img-btn"),
+        imgModalCaption: document.getElementById("bm-img-modal-caption"),
+        sizeRadioName: "bm-img-size-option"
+    });
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -809,6 +847,53 @@ function initColorCustomizer() {
             }
         });
     });
+
+    // Chapter Color Customizer
+    const bmTitleColorInput = document.getElementById("bm-art-title-color");
+    const bmContentColorInput = document.getElementById("bm-art-content-color");
+    const bmTitleColorHex = document.getElementById("bm-title-color-hex");
+    const bmContentColorHex = document.getElementById("bm-content-color-hex");
+    const bmResetColorsBtn = document.getElementById("bm-reset-colors-btn");
+    const bmFontSizeRadios = document.querySelectorAll('input[name="bm-art-font-size"]');
+    const bmFontSizeLabel = document.getElementById("bm-font-size-label");
+
+    if (bmTitleColorInput) {
+        bmTitleColorInput.addEventListener("input", (e) => {
+            const val = e.target.value;
+            if (bmTitleColorHex) bmTitleColorHex.textContent = val;
+        });
+    }
+    if (bmContentColorInput) {
+        bmContentColorInput.addEventListener("input", (e) => {
+            const val = e.target.value;
+            if (bmContentColorHex) bmContentColorHex.textContent = val;
+        });
+    }
+    if (bmResetColorsBtn) {
+        bmResetColorsBtn.addEventListener("click", () => {
+            if (bmTitleColorInput) bmTitleColorInput.value = "#1e1b18";
+            if (bmTitleColorHex) bmTitleColorHex.textContent = "#1e1b18";
+            if (bmContentColorInput) bmContentColorInput.value = "#2b2118";
+            if (bmContentColorHex) bmContentColorHex.textContent = "#2b2118";
+            const defaultBmFSRadio = document.querySelector('input[name="bm-art-font-size"][value="medium"]');
+            if (defaultBmFSRadio) defaultBmFSRadio.checked = true;
+            if (bmFontSizeLabel) bmFontSizeLabel.textContent = "Medium (Standard)";
+        });
+    }
+    if (bmFontSizeRadios) {
+        bmFontSizeRadios.forEach(radio => {
+            radio.addEventListener("change", (e) => {
+                const val = e.target.value;
+                const labels = {
+                    small: "Small (ചെറുത് - 15px)",
+                    medium: "Medium (സാധാരണ - 18px)",
+                    large: "Large (വലുത് - 21px)",
+                    xlarge: "Extra Large (കൂടുതൽ - 24px)"
+                };
+                if (bmFontSizeLabel) bmFontSizeLabel.textContent = labels[val] || val;
+            });
+        });
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1565,6 +1650,10 @@ function initChapterWriter() {
         if (publishBtn) {
             publishBtn.innerHTML = '<span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>';
         }
+        const excerptInput = document.getElementById("bm-art-excerpt");
+        if (excerptInput) excerptInput.value = "";
+        const resetColorsBtn = document.getElementById("bm-reset-colors-btn");
+        if (resetColorsBtn) resetColorsBtn.click();
     }
 
     function startEditChapter(id) {
@@ -1579,6 +1668,7 @@ function initChapterWriter() {
         const titleInput = document.getElementById("bm-art-title");
         const contentInput = document.getElementById("bm-art-content");
         const transcriptionInput = document.getElementById("bm-art-transcription");
+        const excerptInput = document.getElementById("bm-art-excerpt");
         const previewImg = document.getElementById("bm-art-image-preview");
         const previewContainer = document.getElementById("bm-art-image-preview-container");
         const placeholder = document.getElementById("bm-art-image-placeholder");
@@ -1588,6 +1678,28 @@ function initChapterWriter() {
         if (titleInput) titleInput.value = art.title || "";
         if (contentInput) contentInput.value = art.content || "";
         if (transcriptionInput) transcriptionInput.value = art.transcription || "";
+        if (excerptInput) excerptInput.value = art.excerpt || "";
+
+        // Populate chapter colors & font size
+        const titleColorInput = document.getElementById("bm-art-title-color");
+        const contentColorInput = document.getElementById("bm-art-content-color");
+        const titleColorHex = document.getElementById("bm-title-color-hex");
+        const contentColorHex = document.getElementById("bm-content-color-hex");
+        const tColor = art.titleColor || "#1e1b18";
+        const cColor = art.contentColor || "#2b2118";
+        if (titleColorInput) titleColorInput.value = tColor;
+        if (titleColorHex) titleColorHex.textContent = tColor;
+        if (contentColorInput) contentColorInput.value = cColor;
+        if (contentColorHex) contentColorHex.textContent = cColor;
+
+        const fSize = art.fontSize || "medium";
+        const fSizeRadio = document.querySelector(`input[name="bm-art-font-size"][value="${fSize}"]`);
+        if (fSizeRadio) fSizeRadio.checked = true;
+        const fSizeLabel = document.getElementById("bm-font-size-label");
+        if (fSizeLabel) {
+            const labels = { small: "Small (ചെറുത്)", medium: "Medium (സാധാരണ)", large: "Large (വലുത്)", xlarge: "Extra Large (കൂടുതൽ)" };
+            fSizeLabel.textContent = labels[fSize] || fSize;
+        }
 
         if (art.imageUrl && previewImg && previewContainer && placeholder) {
             previewImg.src = art.imageUrl;
@@ -1657,11 +1769,16 @@ function initChapterWriter() {
         const titleInput = document.getElementById("bm-art-title");
         const contentInput = document.getElementById("bm-art-content");
         const transcriptionInput = document.getElementById("bm-art-transcription");
+        const excerptInput = document.getElementById("bm-art-excerpt");
 
         const title = (titleInput?.value || "").trim();
         const content = (contentInput?.value || "").trim();
         const transcription = (transcriptionInput?.value || "").trim();
+        const excerpt = (excerptInput?.value || "").trim();
         const imageUrl = (bmSelectedArticleImageBase64 || "").trim();
+        const titleColor = document.getElementById("bm-art-title-color")?.value || "#1e1b18";
+        const contentColor = document.getElementById("bm-art-content-color")?.value || "#2b2118";
+        const fontSize = document.querySelector('input[name="bm-art-font-size"]:checked')?.value || "medium";
 
         // Validate title
         if (!title || title.length < 2) {
@@ -1718,6 +1835,10 @@ function initChapterWriter() {
                     authorId,
                     category: bookTag,
                     transcription,
+                    excerpt,
+                    titleColor,
+                    contentColor,
+                    fontSize,
                     order: chapterOrder,
                     priority: chapterOrder,
                     content,
@@ -1755,6 +1876,10 @@ function initChapterWriter() {
                     authorId,
                     category: bookTag,
                     transcription,
+                    excerpt,
+                    titleColor,
+                    contentColor,
+                    fontSize,
                     order: nextOrder,
                     priority: nextOrder,
                     content,
@@ -1813,6 +1938,9 @@ function initChapterWriter() {
                 contentInput.classList.remove("border-rose-500", "ring-2", "ring-rose-200");
             }
             if (transcriptionInput) transcriptionInput.value = "";
+            if (excerptInput) excerptInput.value = "";
+            const bmResetColorsBtn = document.getElementById("bm-reset-colors-btn");
+            if (bmResetColorsBtn) bmResetColorsBtn.click();
 
             if (removeBtn) removeBtn.click();
             resetChapterEditMode();
@@ -1855,6 +1983,10 @@ function initChapterWriter() {
             if (titleInput) titleInput.value = "";
             if (contentInput) contentInput.value = "";
             if (transcriptionInput) transcriptionInput.value = "";
+            const bmExcerptInput = document.getElementById("bm-art-excerpt");
+            if (bmExcerptInput) bmExcerptInput.value = "";
+            const bmResetColorsBtn = document.getElementById("bm-reset-colors-btn");
+            if (bmResetColorsBtn) bmResetColorsBtn.click();
             if (removeBtn) removeBtn.click();
             clearChapterInlineMsg();
             showChapterInlineMsg("എഡിറ്റിംഗ് റദ്ദാക്കി.", "success");

@@ -124,12 +124,6 @@
             </a>
 
             <div class="flex items-center gap-2 sm:gap-3">
-                <!-- Font Size Controls (Header) -->
-                <div class="inline-flex items-center gap-1 bg-[#ebdccb]/50 dark:bg-white/10 px-2 py-1 rounded-full border border-[#ebdccb] dark:border-white/15 text-xs select-none" title="Text Size / അക്ഷര വലിപ്പം">
-                    <button type="button" class="font-decrease-btn w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-[#1e1b18] dark:text-white hover:bg-[#b4532c] hover:text-white transition-all cursor-pointer touch-target-44" aria-label="Decrease font size" title="Smaller (A-)">A-</button>
-                    <button type="button" class="font-reset-btn px-1.5 py-0.5 rounded text-[11px] font-bold font-english text-[#b4532c] dark:text-[#f87171] hover:bg-black/5 dark:hover:bg-white/10 transition-all font-size-indicator cursor-pointer" title="Reset font size (16px)">16px</button>
-                    <button type="button" class="font-increase-btn w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-[#1e1b18] dark:text-white hover:bg-[#b4532c] hover:text-white transition-all cursor-pointer touch-target-44" aria-label="Increase font size" title="Larger (A+)">A+</button>
-                </div>
 
                 <!-- Theme Toggle Button -->
                 <button id="theme-toggle-btn" class="more-dots-btn w-9 h-9 rounded-full flex items-center justify-center touch-target-44 cursor-pointer" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
@@ -1028,10 +1022,6 @@
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
 
-                // Word count reading time estimate
-                const words = ((art.content || art.excerpt || "") + " " + art.title).split(/\s+/).length;
-                const readingMinutes = Math.max(2, Math.round(words / 150)) || 3;
-
                 return `
                 <a href="article.html?id=${art.id}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isRead ? 'opacity-85' : ''}">
                     <!-- Thumbnail with Fixed Aspect Ratio -->
@@ -1048,12 +1038,6 @@
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
                                 അധ്യായം ${idx + 1}
-                            </span>
-                            <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-['Anek_Malayalam']">
-                                ${art.author || "NUQTHA"}
-                            </span>
-                            <span class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">
-                                • ⏱ ${readingMinutes} min read
                             </span>
                             ${isRead ? `
                                 <span class="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-md font-english flex items-center gap-0.5">

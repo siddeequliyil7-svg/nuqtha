@@ -712,13 +712,165 @@
                                     </div>
                                 </div>
 
-                                <!-- Content Editor -->
+                                <!-- Chapter Excerpt -->
                                 <div class="space-y-1">
-                                    <label for="bm-art-content" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english flex items-center justify-between">
-                                        <span>Chapter Content (അധ്യായത്തിന്റെ ഉള്ളടക്കം) <span class="text-rose-500">*</span></span>
-                                        <span class="text-[10px] text-slate-500 font-normal">Markdown പിന്തുണയ്ക്കുന്നു</span>
+                                    <label for="bm-art-excerpt" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
+                                        Chapter Excerpt (അധ്യായത്തിന്റെ ചുരുക്കം)
                                     </label>
-                                    <textarea id="bm-art-content" rows="6" placeholder="അധ്യായത്തിന്റെ പൂർണ്ണ ഉള്ളടക്കം ഇവിടെ ടൈപ്പ് ചെയ്യുക അല്ലെങ്കിൽ പേസ്റ്റ് ചെയ്യുക..." class="w-full text-sm leading-relaxed p-4 rounded-2xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white font-['Noto_Sans_Malayalam'] transition"></textarea>
+                                    <textarea id="bm-art-excerpt" rows="2" placeholder="അധ്യായത്തിന്റെ 2-3 വരി ചുരുക്കം..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white font-['Noto_Sans_Malayalam'] transition"></textarea>
+                                </div>
+
+                                <!-- Chapter Content with Rich Formatting Toolbar -->
+                                <div class="space-y-1">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label for="bm-art-content" class="block text-xs font-bold text-[#1e1b18] uppercase tracking-wide font-english">
+                                            Chapter Content (അധ്യായത്തിന്റെ ഉള്ളടക്കം) <span class="text-rose-500">*</span>
+                                        </label>
+                                        <span class="text-[10px] text-slate-500 font-normal">വാക്കുകൾ സെലക്ട് ചെയ്തു ടൂളുകൾ ഉപയോഗിക്കാം:</span>
+                                    </div>
+
+                                    <!-- Rich Formatting Toolbar -->
+                                    <div class="flex flex-wrap items-center gap-1.5 p-2 bg-emerald-50/80 border border-[#ebdccb] rounded-t-2xl border-b-0 shadow-inner">
+                                        <!-- Bold -->
+                                        <button type="button" id="bm-tool-bold-btn" class="px-2.5 py-1 text-xs font-black bg-white hover:bg-emerald-600 hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-xs cursor-pointer" title="Bold Text (**വാക്ക്**)">
+                                            <span class="font-bold">B</span>
+                                            <span class="text-[10px] font-normal">ബോൾഡ്</span>
+                                        </button>
+
+                                        <!-- Highlight -->
+                                        <button type="button" id="bm-tool-highlight-btn" class="px-2.5 py-1 text-xs font-bold bg-amber-100 hover:bg-amber-300 hover:text-black rounded-lg border border-amber-300 transition flex items-center gap-1 shadow-xs text-amber-900 cursor-pointer" title="Highlight (==വാക്ക്==)">
+                                            <span>🖍️</span>
+                                            <span class="text-[10px]">ഹൈലൈറ്റ്</span>
+                                        </button>
+
+                                        <!-- Remove Highlight -->
+                                        <button type="button" id="bm-tool-remove-highlight-btn" class="px-2.5 py-1 text-xs font-bold bg-rose-50 hover:bg-rose-500 hover:text-white rounded-lg border border-rose-200 transition flex items-center gap-1 shadow-xs text-rose-700 cursor-pointer" title="ഹൈലൈറ്റ് മാറ്റുക">
+                                            <span>🧹</span>
+                                            <span class="text-[10px]">മാറ്റുക</span>
+                                        </button>
+
+                                        <!-- Highlight Card -->
+                                        <button type="button" id="bm-tool-highlight-card-btn" class="px-2.5 py-1 text-xs font-bold bg-emerald-100 text-emerald-900 hover:bg-emerald-600 hover:text-white rounded-lg border border-emerald-300 transition flex items-center gap-1 shadow-xs cursor-pointer" title="Highlight Card">
+                                            <span>✨</span>
+                                            <span class="text-[10px]">Highlight Card</span>
+                                        </button>
+
+                                        <!-- H2 -->
+                                        <button type="button" id="bm-tool-h2-btn" class="px-2.5 py-1 text-xs font-black bg-white hover:bg-emerald-600 hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-0.5 shadow-xs cursor-pointer" title="H2 Heading (## ഹെഡിംഗ്)">
+                                            <span class="font-extrabold">H2</span>
+                                            <span class="text-[10px] font-normal">ഹെഡിംഗ്</span>
+                                        </button>
+
+                                        <!-- H3 -->
+                                        <button type="button" id="bm-tool-h3-btn" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-emerald-600 hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-0.5 shadow-xs cursor-pointer" title="H3 Subheading (### ഉപതലക്കെട്ട്)">
+                                            <span class="font-bold">H3</span>
+                                            <span class="text-[10px] font-normal">ഉപതലക്കെട്ട്</span>
+                                        </button>
+
+                                        <!-- Inline Image -->
+                                        <button type="button" id="bm-tool-inline-img-btn" class="px-2.5 py-1 text-xs font-bold bg-white hover:bg-emerald-600 hover:text-white rounded-lg border border-[#ebdccb] transition flex items-center gap-1 shadow-xs text-emerald-800 cursor-pointer" title="Insert Image">
+                                            <span>🖼️</span>
+                                            <span class="text-[10px] font-normal">ചിത്രം ചേർക്കുക</span>
+                                        </button>
+                                        <input type="file" id="bm-inline-img-file-input" accept="image/*" class="hidden">
+                                    </div>
+
+                                    <!-- Chapter Inline Image Modal -->
+                                    <div id="bm-img-options-modal" class="hidden p-4 bg-emerald-50/95 border border-emerald-300 rounded-xl mb-2 space-y-3 shadow-md">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                                                <span>📐</span> ചിത്രത്തിന്റെ വലിപ്പം തിരഞ്ഞെടുക്കുക (Image Layout)
+                                            </span>
+                                            <button type="button" id="bm-cancel-img-modal-btn" class="text-xs text-rose-600 font-bold hover:underline cursor-pointer">✕ ഒഴിവാക്കുക</button>
+                                        </div>
+                                        <div class="grid grid-cols-3 gap-2 text-xs">
+                                            <label class="border border-emerald-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-emerald-600 transition flex flex-col items-center text-center gap-1 shadow-xs">
+                                                <input type="radio" name="bm-img-size-option" value="small" class="text-emerald-600">
+                                                <span class="font-bold">Small</span>
+                                                <span class="text-[10px] text-slate-500">340px</span>
+                                            </label>
+                                            <label class="border border-emerald-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-emerald-600 transition flex flex-col items-center text-center gap-1 shadow-xs">
+                                                <input type="radio" name="bm-img-size-option" value="medium" checked class="text-emerald-600">
+                                                <span class="font-bold">Medium</span>
+                                                <span class="text-[10px] text-slate-500">620px</span>
+                                            </label>
+                                            <label class="border border-emerald-300 bg-white p-2.5 rounded-xl cursor-pointer hover:border-emerald-600 transition flex flex-col items-center text-center gap-1 shadow-xs">
+                                                <input type="radio" name="bm-img-size-option" value="full" class="text-emerald-600">
+                                                <span class="font-bold">Full</span>
+                                                <span class="text-[10px] text-slate-500">Full Width</span>
+                                            </label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input id="bm-img-modal-caption" type="text" placeholder="ചിത്രത്തിന്റെ അടിക്കുറിപ്പ് (Caption) - ഓപ്ഷണൽ" class="flex-1 text-xs p-2.5 rounded-lg border border-emerald-200 focus:outline-none focus:border-emerald-600 bg-white">
+                                            <button type="button" id="bm-confirm-insert-img-btn" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow-xs font-english cursor-pointer">
+                                                Insert Image
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <textarea id="bm-art-content" rows="7" placeholder="അധ്യായത്തിന്റെ പൂർണ്ണ ഉള്ളടക്കം ഇവിടെ ടൈപ്പ് ചെയ്യുക അല്ലെങ്കിൽ പേസ്റ്റ് ചെയ്യുക... മുകളിലെ ടൂളുകൾ ഉപയോഗിച്ച് ഫോർമാറ്റ് ചെയ്യാം." class="w-full text-sm leading-relaxed p-4 rounded-b-2xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white font-['Noto_Sans_Malayalam'] transition"></textarea>
+                                </div>
+
+                                <!-- Chapter Color & Font Styling Customizer -->
+                                <div class="p-4 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-950 font-english flex items-center gap-1.5">
+                                            🎨 അധ്യായത്തിന്റെ ശൈലി (Color & Text Styling)
+                                        </span>
+                                        <button type="button" id="bm-reset-colors-btn" class="text-[11px] font-bold text-emerald-700 hover:underline font-english cursor-pointer">
+                                            Reset Default
+                                        </button>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                        <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-emerald-200">
+                                            <div>
+                                                <label for="bm-art-title-color" class="block text-xs font-bold text-[#1e1b18]">തലക്കെട്ട് നിറം (Title Color)</label>
+                                                <span id="bm-title-color-hex" class="text-[10px] text-slate-500 font-mono">#1e1b18</span>
+                                            </div>
+                                            <input type="color" id="bm-art-title-color" value="#1e1b18" class="w-9 h-9 rounded-lg cursor-pointer border border-[#ebdccb] p-0 bg-transparent">
+                                        </div>
+
+                                        <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-emerald-200">
+                                            <div>
+                                                <label for="bm-art-content-color" class="block text-xs font-bold text-[#1e1b18]">ഉള്ളടക്ക നിറം (Content Color)</label>
+                                                <span id="bm-content-color-hex" class="text-[10px] text-slate-500 font-mono">#2b2118</span>
+                                            </div>
+                                            <input type="color" id="bm-art-content-color" value="#2b2118" class="w-9 h-9 rounded-lg cursor-pointer border border-[#ebdccb] p-0 bg-transparent">
+                                        </div>
+                                    </div>
+
+                                    <!-- Font Size Selector -->
+                                    <div class="p-3 bg-white rounded-xl border border-emerald-200 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <label class="block text-xs font-bold text-[#1e1b18] flex items-center gap-1.5">
+                                                <span>🔤</span> ഫോണ്ട് വലിപ്പം (Text Size)
+                                            </label>
+                                            <span id="bm-font-size-label" class="text-[10px] text-emerald-800 font-bold uppercase font-english">Medium (Standard)</span>
+                                        </div>
+                                        <div class="grid grid-cols-4 gap-2 text-xs">
+                                            <label class="border border-emerald-200 bg-emerald-50/20 p-2 rounded-xl cursor-pointer hover:border-emerald-600 transition flex flex-col items-center text-center gap-0.5">
+                                                <input type="radio" name="bm-art-font-size" value="small" class="text-emerald-600">
+                                                <span class="font-bold text-[11px]">Small</span>
+                                                <span class="text-[9px] text-slate-500">ചെറുത്</span>
+                                            </label>
+                                            <label class="border border-emerald-600 bg-white p-2 rounded-xl cursor-pointer transition flex flex-col items-center text-center gap-0.5 shadow-xs">
+                                                <input type="radio" name="bm-art-font-size" value="medium" checked class="text-emerald-600">
+                                                <span class="font-bold text-[11px] text-emerald-800">Medium</span>
+                                                <span class="text-[9px] text-slate-500">സാധാരണ</span>
+                                            </label>
+                                            <label class="border border-emerald-200 bg-emerald-50/20 p-2 rounded-xl cursor-pointer hover:border-emerald-600 transition flex flex-col items-center text-center gap-0.5">
+                                                <input type="radio" name="bm-art-font-size" value="large" class="text-emerald-600">
+                                                <span class="font-bold text-[11px]">Large</span>
+                                                <span class="text-[9px] text-slate-500">വലുത്</span>
+                                            </label>
+                                            <label class="border border-emerald-200 bg-emerald-50/20 p-2 rounded-xl cursor-pointer hover:border-emerald-600 transition flex flex-col items-center text-center gap-0.5">
+                                                <input type="radio" name="bm-art-font-size" value="xlarge" class="text-emerald-600">
+                                                <span class="font-bold text-[11px]">Extra</span>
+                                                <span class="text-[9px] text-slate-500">കൂടുതൽ</span>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Inline Feedback Message -->
