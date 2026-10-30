@@ -563,9 +563,15 @@
                     if (json && json.fields) {
                         const data = {};
                         for (const [k, v] of Object.entries(json.fields)) {
-                            data[k] = v.stringValue !== undefined ? v.stringValue :
-                                      v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
-                                      v.timestampValue !== undefined ? v.timestampValue : null;
+                            if (v.stringValue !== undefined) data[k] = v.stringValue;
+                            else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                            else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                            else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                            else if (v.arrayValue && v.arrayValue.values) {
+                                data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                            } else {
+                                data[k] = null;
+                            }
                         }
                         const normalized = normalizeArticleDoc(data, id);
                         memoryCache.set(`doc_${id}`, normalized);
@@ -588,7 +594,8 @@
             const projectedFields = [
                 "title", "bookName", "bookId", "playlistName",
                 "priority", "imageUrl", "excerpt", "author",
-                "date", "createdAt", "type", "category", "content"
+                "date", "createdAt", "type", "category", "content",
+                "order", "chapters", "transcription", "status"
             ];
             const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
 
@@ -602,9 +609,15 @@
                             const data = {};
                             if (docItem.fields) {
                                 for (const [k, v] of Object.entries(docItem.fields)) {
-                                    data[k] = v.stringValue !== undefined ? v.stringValue :
-                                              v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
-                                              v.timestampValue !== undefined ? v.timestampValue : null;
+                                    if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                    else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                    else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                    else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                    else if (v.arrayValue && v.arrayValue.values) {
+                                        data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                    } else {
+                                        data[k] = null;
+                                    }
                                 }
                             }
                             return normalizeArticleDoc(data, docId);
@@ -723,14 +736,17 @@
                     if (articleViewEl) articleViewEl.classList.add("hidden");
                     if (bookContainerEl) bookContainerEl.classList.remove("hidden");
 
-                    let bookChapters = filterAndSortChapters(currentDoc, allArticles);
+                    let bookChapters = [];
+                    try {
+                        const fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                        bookChapters = Array.isArray(fetched) ? fetched : (fetched?.chapters || []);
+                    } catch (chErr) {
+                        console.warn("[Reader] Dynamic chapter resolution fallback:", chErr);
+                        bookChapters = filterAndSortChapters(currentDoc, allArticles);
+                    }
+
                     if (!bookChapters || bookChapters.length === 0) {
-                        try {
-                            const fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
-                            bookChapters = Array.isArray(fetched) ? fetched : (fetched?.chapters || []);
-                        } catch (chErr) {
-                            console.warn("[Reader] Dynamic chapter resolution fallback:", chErr);
-                        }
+                        bookChapters = filterAndSortChapters(currentDoc, allArticles);
                     }
 
                     sessionStorage.setItem(`nuqtha_book_articles_${articleId}`, JSON.stringify(bookChapters));
@@ -1201,14 +1217,20 @@
             if (chapterNavEl && chapterNavGrid) {
                 let siblingChapters = [];
                 if (article.bookName || article.bookId) {
-                    const bookCover = allArticles.find(a => a.type === "BOOK" && isArticleInBook(article, a));
-                    if (bookCover) {
-                        siblingChapters = filterAndSortChapters(bookCover, allArticles);
-                    } else {
-                        siblingChapters = allArticles.filter(a => a.type !== "BOOK" && (
-                            (article.bookId && a.bookId === article.bookId) ||
-                            (article.bookName && a.bookName === article.bookName)
-                        ));
+                    const cachedChStr = article.bookId ? sessionStorage.getItem(`nuqtha_book_articles_${article.bookId}`) : null;
+                    if (cachedChStr) {
+                        try { siblingChapters = JSON.parse(cachedChStr); } catch (e) {}
+                    }
+                    if (!siblingChapters || siblingChapters.length === 0) {
+                        const bookCover = allArticles.find(a => a.type === "BOOK" && isArticleInBook(article, a));
+                        if (bookCover) {
+                            siblingChapters = filterAndSortChapters(bookCover, allArticles);
+                        } else {
+                            siblingChapters = allArticles.filter(a => a.type !== "BOOK" && (
+                                (article.bookId && a.bookId === article.bookId) ||
+                                (article.bookName && a.bookName === article.bookName)
+                            ));
+                        }
                     }
                 }
 

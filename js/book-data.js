@@ -167,41 +167,140 @@ export async function getBookChapters(bookId, options = {}) {
             }
         }
 
-        // Otherwise fetch target book doc via REST direct
-        if (!bookDoc) {
-            const bookRes = await fetch(
-                `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(bookId)}`,
-                { signal: controller.signal }
-            );
-            if (!bookRes.ok) {
-                throw new Error(`പുസ്തകം കണ്ടെത്താനായില്ല (HTTP ${bookRes.status})`);
+        // Fetch or complete book doc via REST direct if missing or chapters array missing
+        if (!bookDoc || !Array.isArray(bookDoc.chapters) || bookDoc.chapters.length === 0) {
+            try {
+                const bookRes = await fetch(
+                    `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(bookId)}`,
+                    { signal: controller.signal }
+                );
+                if (bookRes.ok) {
+                    const bookJson = await bookRes.json();
+                    const directDoc = parseFirestoreRestDoc(bookJson, bookId);
+                    bookDoc = { ...(bookDoc || {}), ...directDoc };
+                }
+            } catch (bErr) {
+                console.warn("[BookData] Direct book fetch error:", bErr);
             }
-            const bookJson = await bookRes.json();
-            bookDoc = parseFirestoreRestDoc(bookJson, bookId);
         }
 
-        // Fetch or use pool for lightweight articles
-        let allArticles = options.articlesPool;
-        if (!Array.isArray(allArticles) || allArticles.length === 0) {
-            const listRes = await fetch(
-                `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?pageSize=100`,
-                { signal: controller.signal }
-            );
-            if (listRes.ok) {
-                const listJson = await listRes.json();
-                if (listJson && Array.isArray(listJson.documents)) {
-                    allArticles = listJson.documents.map(d => parseFirestoreRestDoc(d));
-                } else {
-                    allArticles = [];
+        if (!bookDoc) {
+            throw new Error("പുസ്തകം കണ്ടെത്താനായില്ല.");
+        }
+
+        // Build pool map from options pool
+        const pool = Array.isArray(options.articlesPool) ? [...options.articlesPool] : [];
+        const poolMap = new Map();
+        pool.forEach(a => { if (a && a.id) poolMap.set(a.id, a); });
+
+        // Query Firestore specifically for articles with this bookId
+        try {
+            const runQueryRes = await fetch(
+                `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        structuredQuery: {
+                            from: [{ collectionId: "articles" }],
+                            where: {
+                                fieldFilter: {
+                                    field: { fieldPath: "bookId" },
+                                    op: "EQUAL",
+                                    value: { stringValue: bookDoc.id || bookId }
+                                }
+                            }
+                        }
+                    }),
+                    signal: controller.signal
                 }
-            } else {
-                allArticles = [];
+            );
+            if (runQueryRes.ok) {
+                const queryJson = await runQueryRes.json();
+                if (Array.isArray(queryJson)) {
+                    queryJson.forEach(item => {
+                        if (item.document) {
+                            const parsed = parseFirestoreRestDoc(item.document);
+                            if (parsed && parsed.id) {
+                                poolMap.set(parsed.id, parsed);
+                                if (!pool.some(p => p.id === parsed.id)) pool.push(parsed);
+                            }
+                        }
+                    });
+                }
+            }
+        } catch (qErr) {
+            console.warn("[BookData] runQuery by bookId fallback:", qErr);
+        }
+
+        // Fetch any missing chapter documents specifically listed in bookDoc.chapters array
+        if (Array.isArray(bookDoc.chapters) && bookDoc.chapters.length > 0) {
+            const missingIds = bookDoc.chapters
+                .map(ch => (typeof ch === "string" ? ch : ch?.id))
+                .filter(id => id && (!poolMap.has(id) || !poolMap.get(id).title));
+
+            if (missingIds.length > 0) {
+                try {
+                    const fetchedDocs = await Promise.allSettled(
+                        missingIds.map(id =>
+                            fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(id)}`, { signal: controller.signal })
+                                .then(r => r.ok ? r.json() : null)
+                                .then(j => j ? parseFirestoreRestDoc(j, id) : null)
+                        )
+                    );
+                    fetchedDocs.forEach(res => {
+                        if (res.status === "fulfilled" && res.value && res.value.id) {
+                            poolMap.set(res.value.id, res.value);
+                            if (!pool.some(p => p.id === res.value.id)) pool.push(res.value);
+                        }
+                    });
+                } catch (mErr) {
+                    console.warn("[BookData] Missing chapter fetch fallback:", mErr);
+                }
             }
         }
 
         clearTimeout(timer);
 
-        const chapters = filterAndSortChapters(bookDoc, allArticles);
+        // Assemble full chapter list preserving bookDoc.chapters order and all bookId matches
+        let chapters = [];
+        const seenIds = new Set();
+
+        if (Array.isArray(bookDoc.chapters) && bookDoc.chapters.length > 0) {
+            bookDoc.chapters.forEach((ch, idx) => {
+                const chId = typeof ch === "string" ? ch : ch?.id;
+                const found = chId ? poolMap.get(chId) : null;
+                if (found) {
+                    seenIds.add(found.id);
+                    chapters.push({
+                        ...found,
+                        order: found.order !== undefined && found.order !== null ? Number(found.order) : (idx + 1)
+                    });
+                } else if (typeof ch === "object" && ch) {
+                    if (ch.id) seenIds.add(ch.id);
+                    chapters.push({
+                        ...ch,
+                        order: ch.order !== undefined && ch.order !== null ? Number(ch.order) : (idx + 1)
+                    });
+                } else if (chId) {
+                    seenIds.add(chId);
+                    chapters.push({ id: chId, title: `അധ്യായം ${idx + 1}`, order: idx + 1 });
+                }
+            });
+        }
+
+        // Include any additional articles matched by bookId or bookName not already included
+        pool.forEach(art => {
+            if (art && art.id && !seenIds.has(art.id) && art.type !== "BOOK") {
+                if (isArticleInBook(art, bookDoc)) {
+                    seenIds.add(art.id);
+                    chapters.push(art);
+                }
+            }
+        });
+
+        chapters.sort(compareChaptersOrder);
+
         return {
             book: bookDoc,
             chapters
@@ -218,7 +317,7 @@ export async function getBookChapters(bookId, options = {}) {
 /**
  * Utility to parse Firestore REST doc format into a clean flat JS object.
  */
-function parseFirestoreRestDoc(docItem, fallbackId = "") {
+export function parseFirestoreRestDoc(docItem, fallbackId = "") {
     if (!docItem) return null;
     const id = docItem.name ? docItem.name.split("/").pop() : fallbackId;
     const data = { id };

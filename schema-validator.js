@@ -292,6 +292,8 @@ export function validateAndSanitizeArticleForSave(raw) {
         throw new Error("ലേഖനത്തിന്റെ ആകെ വലിപ്പം കൂടുതലാണ് (ചിത്രത്തിന്റെയോ ഉള്ളടക്കത്തിന്റെയോ വലിപ്പം കുറയ്ക്കുക).");
     }
 
+    const chapters = Array.isArray(raw.chapters) ? raw.chapters : [];
+
     return {
         title,
         category,
@@ -310,6 +312,7 @@ export function validateAndSanitizeArticleForSave(raw) {
         bookId,
         order,
         status,
+        chapters,
         volume,
         issue,
         leadTitle,
@@ -370,6 +373,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const bookName = sanitizeString(rawDoc.bookName || rawDoc.playlistName, 120, "");
     const bookId = sanitizeString(rawDoc.bookId, 120, "");
     const order = (rawDoc.order !== undefined && rawDoc.order !== null && !isNaN(rawDoc.order)) ? parseInt(rawDoc.order, 10) : ((rawDoc.priority !== undefined && !isNaN(rawDoc.priority)) ? parseInt(rawDoc.priority, 10) : 10);
+    const status = sanitizeString(rawDoc.status, 50, "published");
+    const chapters = Array.isArray(rawDoc.chapters) ? rawDoc.chapters : [];
     const volume = sanitizeString(rawDoc.volume, 50, "");
     const issue = sanitizeString(rawDoc.issue, 50, "");
     const leadTitle = sanitizeString(rawDoc.leadTitle, 250, "");
@@ -399,6 +404,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         bookId,
         order,
         status,
+        chapters,
         volume,
         issue,
         leadTitle,
