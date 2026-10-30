@@ -17,7 +17,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@100..800&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <meta name="color-scheme" content="light">
+    <script>tailwind = { config: { darkMode: 'class' } };</script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        (function() {
+            try {
+                var s = localStorage.getItem("nuqtha_theme") || localStorage.getItem("theme");
+                if (s === "dark") {
+                    document.documentElement.classList.add("dark");
+                    document.documentElement.style.colorScheme = "dark";
+                } else {
+                    document.documentElement.classList.remove("dark");
+                    document.documentElement.style.colorScheme = "light";
+                }
+            } catch (e) {}
+        })();
+    </script>
     <link rel="stylesheet" href="./styles.css">
     <script type="module" src="./js/ui-safe.js"></script>
 </head>
@@ -344,5 +360,25 @@
 
     <!-- App Module -->
     <script type="module" src="./app.js"></script>
+<script id="theme-sync-script">
+        (function() {
+            function syncTheme() {
+                var isDark = document.body.classList.contains("dark-mode") || 
+                             localStorage.getItem("nuqtha_theme") === "dark" || 
+                             localStorage.getItem("theme") === "dark";
+                document.documentElement.classList.toggle("dark", isDark);
+                document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+            }
+            var observer = new MutationObserver(syncTheme);
+            observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+            var btn = document.getElementById("theme-toggle-btn");
+            if (btn) {
+                btn.addEventListener("click", function() {
+                    setTimeout(syncTheme, 0);
+                });
+            }
+            syncTheme();
+        })();
+    </script>
 </body>
 </html>
