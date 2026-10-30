@@ -233,8 +233,19 @@
                             </datalist>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">എഴുത്തുകാരൻ (Author)</label>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english">എഴുത്തുകാരൻ (Author) <span class="text-rose-500">*</span></label>
+                            </div>
                             <input id="art-author" type="text" required placeholder="എഴുത്തുകാരന്റെ പേര്..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40">
+                            <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+                                <span class="text-[10px] font-bold text-[#8c7a6b] font-english">QUICK:</span>
+                                <button type="button" onclick="document.getElementById('art-author').value='സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ'" class="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-lg bg-[#b4532c]/10 hover:bg-[#b4532c]/20 text-[#b4532c] transition border border-[#b4532c]/20">
+                                    സയ്യിദ് സൽമാൻ അദനി
+                                </button>
+                                <button type="button" onclick="document.getElementById('art-author').value='സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി'" class="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-lg bg-[#b4532c]/10 hover:bg-[#b4532c]/20 text-[#b4532c] transition border border-[#b4532c]/20">
+                                    സുലൈമാൻ ഫൈസി
+                                </button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">കേട്ടെഴുത്ത് (Transcription)</label>
@@ -589,7 +600,16 @@
                                         <label for="book-meta-author" class="block text-[10px] font-bold uppercase tracking-wider text-blue-900 mb-1">
                                             Author (രചയിതാവ്) <span class="text-rose-500">*</span>
                                         </label>
-                                        <input type="text" id="book-meta-author" placeholder="e.g. സിദ്ദീഖ് ഉളിയിൽ അല്ലെങ്കിൽ രചയിതാവിന്റെ പേര്" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                        <input type="text" id="book-meta-author" placeholder="e.g. സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                        <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                            <span class="text-[9px] font-bold text-blue-800 font-english">QUICK:</span>
+                                            <button type="button" onclick="document.getElementById('book-meta-author').value='സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ'" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 hover:bg-blue-200 text-blue-900 transition">
+                                                സയ്യിദ് സൽമാൻ അദനി
+                                            </button>
+                                            <button type="button" onclick="document.getElementById('book-meta-author').value='സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി'" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 hover:bg-blue-200 text-blue-900 transition">
+                                                സുലൈമാൻ ഫൈസി
+                                            </button>
+                                        </div>
                                     </div>
                                     <div>
                                         <label for="book-meta-date" class="block text-[10px] font-bold uppercase tracking-wider text-blue-900 mb-1">
@@ -872,6 +892,166 @@
                     </div>
 
                 </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TAB 4: എഴുത്തുകാർ (AUTHOR PROFILES MANAGEMENT)
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="admin-tab-pane" data-pane="authors">
+            <div class="max-w-5xl mx-auto space-y-6">
+
+                <!-- Header Banner & Stats -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <h2 class="text-xl font-extrabold text-[#1e1b18]">എഴുത്തുകാരുടെ മാനേജ്‌മെന്റ് (Author Profiles)</h2>
+                            <span id="admin-authors-count" class="text-xs font-black font-english text-[#b4532c] bg-[#b4532c]/10 px-3 py-0.5 rounded-full">2</span>
+                        </div>
+                        <p class="text-xs text-[#8c7a6b] mt-1">NUQTHA രചയിതാക്കളുടെ പ്രൊഫൈലുകൾ, ജീവചരിത്രം, ചിത്രങ്ങൾ എന്നിവ ഇവിടെ നിർമ്മിക്കുകയോ മാറ്റം വരുത്തുകയോ ചെയ്യാം.</p>
+                    </div>
+
+                    <button type="button" id="admin-author-new-btn" class="hidden inline-flex items-center gap-1.5 px-4 py-2 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-xl shadow transition font-english">
+                        <span>+ പുതിയ എഴുത്തുകാരൻ (New Author)</span>
+                    </button>
+                </div>
+
+                <!-- Primary Authors Quick Panel -->
+                <div class="bg-[#fbf7ee] p-5 sm:p-6 rounded-3xl border border-[#ebdccb] space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black uppercase tracking-wider text-[#b4532c] font-english flex items-center gap-1.5">
+                            <span>⭐</span> പ്രധാന രചയിതാക്കൾ (PRIMARY AUTHORS)
+                        </span>
+                        <span class="text-[11px] text-[#8c7a6b]">ക്ലിക്ക് ചെയ്ത് എഡിറ്റ് ചെയ്യാം</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <!-- Primary Author 1 -->
+                        <div class="p-4 rounded-2xl bg-white border border-[#ebdccb] hover:border-[#b4532c] transition shadow-xs flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-base flex-shrink-0 shadow-xs">
+                                    സ
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-sm font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ</h4>
+                                    <p class="text-[10px] font-black uppercase text-[#b4532c] font-english">CHIEF EDITOR · മുഖ്യ പത്രാധിപർ</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                <button type="button" onclick="editAuthorProfile('സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ')" class="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition">
+                                    ✏️ Edit
+                                </button>
+                                <a href="author.html?id=സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ" target="_blank" class="px-2.5 py-1.5 rounded-lg bg-[#b4532c]/10 hover:bg-[#b4532c]/20 text-[#b4532c] text-xs font-bold transition">
+                                    👁️ View
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Primary Author 2 -->
+                        <div class="p-4 rounded-2xl bg-white border border-[#ebdccb] hover:border-[#b4532c] transition shadow-xs flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] text-white flex items-center justify-center font-bold text-base flex-shrink-0 shadow-xs">
+                                    സു
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-sm font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി</h4>
+                                    <p class="text-[10px] font-black uppercase text-blue-700 font-english">AUTHOR · എഴുത്തുകാരൻ</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                <button type="button" onclick="editAuthorProfile('സുലൈമാൻ-ഫൈസി-കിഴിശ്ശേരി')" class="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition">
+                                    ✏️ Edit
+                                </button>
+                                <a href="author.html?id=സുലൈമാൻ-ഫൈസി-കിഴിശ്ശേരി" target="_blank" class="px-2.5 py-1.5 rounded-lg bg-[#b4532c]/10 hover:bg-[#b4532c]/20 text-[#b4532c] text-xs font-bold transition">
+                                    👁️ View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Author Profile Editor Form -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-5">
+                    <div class="border-b border-[#ebdccb] pb-3 flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                            <h3 id="author-form-heading" class="text-base font-black text-[#1e1b18]">എഴുത്തുകാരന്റെ പ്രൊഫൈൽ മാനേജർ (Author Profile Manager)</h3>
+                            <p class="text-xs text-[#8c7a6b]">പ്രൊഫൈൽ വിവരങ്ങൾ നൽകി താഴെ 'Save Profile' ക്ലിക്ക് ചെയ്യുക.</p>
+                        </div>
+                    </div>
+
+                    <form id="admin-author-form" class="space-y-4">
+                        <input type="hidden" id="author-edit-slug" value="">
+
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
+                            <!-- Left: Photo Upload & Preview -->
+                            <div class="sm:col-span-4 flex flex-col items-center p-4 rounded-2xl bg-[#fbf7ee]/60 border border-[#ebdccb] text-center space-y-3">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english">ഫോട്ടോ (Photo)</label>
+                                <div id="admin-author-photo-preview" class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-2xl overflow-hidden shadow-xs border border-white">
+                                    👤
+                                </div>
+                                <label class="w-full cursor-pointer px-3 py-1.5 rounded-xl border border-[#ebdccb] bg-white hover:bg-[#fbf7ee] text-xs font-bold text-[#b4532c] transition shadow-2xs">
+                                    <span>ചിത്രം തിരഞ്ഞെടുക്കുക</span>
+                                    <input type="file" id="admin-author-photo-file" accept="image/*" class="hidden">
+                                </label>
+                                <input type="url" id="admin-author-photo" placeholder="അല്ലെങ്കിൽ ഇമേജ് URL നൽകുക..." class="w-full text-xs p-2.5 rounded-xl border border-[#ebdccb] bg-white focus:outline-none focus:border-[#b4532c]">
+                            </div>
+
+                            <!-- Right: Name, Role, Bio -->
+                            <div class="sm:col-span-8 space-y-3.5">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-1">
+                                        എഴുത്തുകാരന്റെ പേര് (Author Name) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" id="admin-author-name" required placeholder="ഉദാഹരണം: സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ" class="w-full text-sm font-bold p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-1">
+                                        പദവി / റോൾ (Designation / Role)
+                                    </label>
+                                    <input type="text" id="admin-author-role" placeholder="e.g. CHIEF EDITOR, CONTRIBUTOR, SCHOLAR..." class="w-full text-xs font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-1">
+                                        ജീവചരിത്ര കുറിപ്പ് (Short Biography)
+                                    </label>
+                                    <textarea id="admin-author-bio" rows="3" placeholder="ലേഖകനെക്കുറിച്ചുള്ള ഹ്രസ്വ വിവരണം..." class="w-full text-xs p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-[#ebdccb] flex items-center justify-between flex-wrap gap-2">
+                            <span id="admin-author-save-toast" class="hidden text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                                ✓ പ്രൊഫൈൽ വിജയകരമായി സേവ് ചെയ്തു!
+                            </span>
+                            <div class="flex items-center gap-2 ml-auto">
+                                <button type="button" onclick="resetAuthorForm()" class="px-4 py-2 rounded-xl border border-[#ebdccb] text-xs font-bold text-[#7a6758] hover:bg-slate-50 transition">
+                                    ക്ലിയർ (Clear)
+                                </button>
+                                <button type="submit" id="admin-author-submit-btn" class="px-6 py-2.5 rounded-xl bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold shadow transition font-english cursor-pointer">
+                                    💾 Save Profile (സേവ് ചെയ്യുക)
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- All Authors Directory Grid -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
+                    <div class="border-b border-[#ebdccb] pb-3 flex items-center justify-between">
+                        <h3 class="text-sm font-black uppercase tracking-wider text-[#1e1b18] font-english flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#b4532c]"></span>
+                            <span>എല്ലാ രചയിതാക്കളും (AUTHORS DIRECTORY)</span>
+                        </h3>
+                        <span class="text-[11px] text-[#8c7a6b] font-english">Click Edit to modify profile</span>
+                    </div>
+
+                    <div id="admin-authors-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Populated dynamically by renderAdminAuthorsTab() -->
+                    </div>
+                </div>
+
             </div>
         </div>
 

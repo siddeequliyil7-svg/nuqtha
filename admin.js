@@ -3081,6 +3081,23 @@ function slugifyAuthor(name) {
     return (name || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
 }
 
+export const PRIMARY_AUTHORS = [
+    {
+        name: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
+        role: "CHIEF EDITOR · മുഖ്യ പത്രാധിപർ",
+        slug: slugifyAuthor("സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ"),
+        bio: "NUQTHA മുഖ്യ പത്രാധിപർ, ചരിത്ര-സാഹിത്യ ഗവേഷകൻ",
+        photoUrl: ""
+    },
+    {
+        name: "സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി",
+        role: "AUTHOR · എഴുത്തുകാരൻ",
+        slug: slugifyAuthor("സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി"),
+        bio: "ഇസ്ലാമിക ചരിത്ര പണ്ഡിതൻ, പ്രഭാഷകൻ, NUQTHA കോളമിസ്റ്റ്",
+        photoUrl: ""
+    }
+];
+
 function initAuthorManager() {
     const authorForm = document.getElementById("admin-author-form");
     const photoFileInput = document.getElementById("admin-author-photo-file");
@@ -3226,7 +3243,7 @@ function renderAdminAuthorsTab() {
 
     if (!grid) return;
 
-    // Combine managed authors with any unique authors found in published articles
+    // Combine primary authors + managed authors + unique authors found in published articles
     const articleAuthorsMap = {};
     currentArticlesList.forEach(art => {
         const aName = (art.author || "").trim();
@@ -3237,7 +3254,12 @@ function renderAdminAuthorsTab() {
         }
     });
 
-    const allKeys = new Set([...managedAuthorsList.map(a => a.id || a.slug), ...Object.keys(articleAuthorsMap)]);
+    // Ensure PRIMARY_AUTHORS are always included
+    const allKeys = new Set([
+        ...PRIMARY_AUTHORS.map(a => a.slug),
+        ...managedAuthorsList.map(a => a.id || a.slug),
+        ...Object.keys(articleAuthorsMap)
+    ]);
     const count = allKeys.size;
     if (badge) badge.textContent = count;
     if (tabBadge) tabBadge.textContent = count;
@@ -3252,7 +3274,8 @@ function renderAdminAuthorsTab() {
     }
 
     grid.innerHTML = Array.from(allKeys).map(key => {
-        const managed = managedAuthorsList.find(a => (a.id || a.slug) === key);
+        const managed = managedAuthorsList.find(a => (a.id || a.slug) === key) ||
+                        PRIMARY_AUTHORS.find(a => a.slug === key);
         const artInfo = articleAuthorsMap[key];
         const name = (managed && managed.name) || (artInfo && artInfo.name) || key;
         const role = (managed && managed.role) || "Contributor";
@@ -3260,17 +3283,21 @@ function renderAdminAuthorsTab() {
         const bio = (managed && managed.bio) || "NUQTHA രചയിതാവ്";
         const articleCount = (artInfo && artInfo.count) || 0;
         const initial = name.trim().charAt(0).toUpperCase() || "A";
+        const isPrimary = PRIMARY_AUTHORS.some(p => p.slug === key);
 
         return `
-        <div class="p-4 rounded-2xl border border-[#ebdccb] bg-[#fbf7ee]/40 space-y-3 flex flex-col justify-between">
+        <div class="p-4 rounded-2xl border ${isPrimary ? 'border-[#b4532c]/50 bg-[#fffbf7]' : 'border-[#ebdccb] bg-[#fbf7ee]/40'} space-y-3 flex flex-col justify-between shadow-xs hover:border-[#b4532c] transition">
             <div class="flex items-start gap-3">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-base flex-shrink-0 overflow-hidden border border-white">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-base flex-shrink-0 overflow-hidden border border-white shadow-xs">
                     ${photo ? `<img src="${photo}" alt="${name}" class="w-full h-full object-cover" />` : initial}
                 </div>
                 <div class="min-w-0 flex-1">
-                    <h4 class="text-xs sm:text-sm font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">
-                        ${name}
-                    </h4>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <h4 class="text-xs sm:text-sm font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">
+                            ${name}
+                        </h4>
+                        ${isPrimary ? `<span class="text-[9px] font-black uppercase text-[#b4532c] bg-[#b4532c]/10 px-1.5 py-0.2 rounded font-english">PRIMARY</span>` : ''}
+                    </div>
                     <p class="text-[10px] text-[#b4532c] font-black uppercase font-english">
                         ${role}
                     </p>
@@ -3285,10 +3312,10 @@ function renderAdminAuthorsTab() {
                     📚 ${articleCount} Articles
                 </span>
                 <div class="flex items-center gap-1.5">
-                    <button type="button" onclick="editAuthorProfile('${key}')" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold transition text-[10px]">
+                    <button type="button" onclick="editAuthorProfile('${key}')" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold transition text-[10px] cursor-pointer">
                         ✏️ Edit
                     </button>
-                    <a href="/profile/author/${key}" target="_blank" class="px-2.5 py-1 rounded-lg bg-[#b4532c]/10 hover:bg-[#b4532c]/20 text-[#b4532c] font-bold transition text-[10px]">
+                    <a href="author.html?id=${encodeURIComponent(key)}&name=${encodeURIComponent(name)}" target="_blank" class="px-2.5 py-1 rounded-lg bg-[#b4532c]/10 hover:bg-[#b4532c]/20 text-[#b4532c] font-bold transition text-[10px]">
                         👁️ View
                     </a>
                 </div>
@@ -3299,10 +3326,10 @@ function renderAdminAuthorsTab() {
 }
 
 window.editAuthorProfile = function(key) {
-    const managed = managedAuthorsList.find(a => (a.id || a.slug) === key);
-    let name = key;
-    if (managed && managed.name) name = managed.name;
-    else {
+    const managed = managedAuthorsList.find(a => (a.id || a.slug) === key) ||
+                    PRIMARY_AUTHORS.find(a => a.slug === key);
+    let name = (managed && managed.name) || key;
+    if (!managed || !managed.name) {
         currentArticlesList.forEach(art => {
             if (slugifyAuthor(art.author) === key) name = art.author;
         });
@@ -3329,12 +3356,17 @@ window.editAuthorProfile = function(key) {
         if (managed && managed.photoUrl) {
             photoPreview.innerHTML = `<img src="${managed.photoUrl}" class="w-full h-full object-cover rounded-2xl" />`;
         } else {
-            photoPreview.textContent = name.charAt(0).toUpperCase() || "?";
+            photoPreview.textContent = name.trim().charAt(0).toUpperCase() || "?";
         }
     }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const authorForm = document.getElementById("admin-author-form");
+    if (authorForm) {
+        authorForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 };
+
+window.resetAuthorForm = resetAuthorForm;
 
 window.renderAdminAuthorsTab = renderAdminAuthorsTab;
 

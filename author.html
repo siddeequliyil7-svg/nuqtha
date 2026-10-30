@@ -235,6 +235,23 @@
             const targetSlug = slugify(authorParam);
             let authorProfile = null;
 
+            const PRIMARY_AUTHORS = [
+                {
+                    name: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
+                    role: "CHIEF EDITOR · മുഖ്യ പത്രാധിപർ",
+                    slug: slugify("സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ"),
+                    bio: "NUQTHA മുഖ്യ പത്രാധിപർ, ചരിത്ര-സാഹിത്യ ഗവേഷകൻ",
+                    photoUrl: ""
+                },
+                {
+                    name: "സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി",
+                    role: "AUTHOR · എഴുത്തുകാരൻ",
+                    slug: slugify("സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി"),
+                    bio: "ഇസ്ലാമിക ചരിത്ര പണ്ഡിതൻ, പ്രഭാഷകൻ, NUQTHA കോളമിസ്റ്റ്",
+                    photoUrl: ""
+                }
+            ];
+
             // 1. Check Firestore authors collection
             try {
                 const authorRef = doc(db, "authors", targetSlug);
@@ -244,6 +261,11 @@
                 }
             } catch (e) {
                 console.warn("[author.html] Direct author doc read error:", e);
+            }
+
+            if (!authorProfile) {
+                const primaryMatch = PRIMARY_AUTHORS.find(p => p.slug === targetSlug || p.name.toLowerCase() === authorParam.toLowerCase());
+                if (primaryMatch) authorProfile = primaryMatch;
             }
 
             // 2. Fetch all articles from Firestore
@@ -269,9 +291,15 @@
                                 const data = {};
                                 if (docItem.fields) {
                                     for (const [k, v] of Object.entries(docItem.fields)) {
-                                        data[k] = v.stringValue !== undefined ? v.stringValue :
-                                                  v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
-                                                  v.timestampValue !== undefined ? v.timestampValue : null;
+                                        if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                        else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                        else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                        else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                        else if (v.arrayValue && v.arrayValue.values) {
+                                            data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                        } else {
+                                            data[k] = null;
+                                        }
                                     }
                                 }
                                 allArticles.push(normalizeArticleDoc(data, docId));

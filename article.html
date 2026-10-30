@@ -206,14 +206,13 @@
 
                 <!-- Author & Date Profile Bar -->
                 <div class="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-xs sm:shadow-sm my-2 sm:my-3.5">
-                    <a id="art-author-link" href="#" class="group/author inline-flex items-center gap-3 hover:opacity-90 transition cursor-pointer flex-1 touch-target-44">
-                        <div id="art-author-avatar" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#b4532c] text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-sm flex-shrink-0 group-hover/author:scale-105 transition-transform overflow-hidden">
+                    <a id="art-author-link" href="#" class="group/author inline-flex items-center gap-3 hover:opacity-95 transition cursor-pointer flex-1 touch-target-44" title="രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക">
+                        <div id="art-author-avatar" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-sm flex-shrink-0 group-hover/author:scale-105 transition-transform overflow-hidden">
                             N
                         </div>
                         <div class="space-y-0.5 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span id="art-author" class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam'] tracking-wide group-hover/author:text-[#b4532c] transition-colors"></span>
-                                <span class="text-[9px] sm:text-[10px] uppercase font-english px-2 py-0.5 rounded-full bg-[#b4532c]/10 dark:bg-white/10 text-[#b4532c] dark:text-[#f87171] font-bold group-hover/author:bg-[#b4532c] group-hover/author:text-white transition">PROFILE &rarr;</span>
+                            <div>
+                                <span id="art-author" class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam'] tracking-wide group-hover/author:text-[#b4532c] dark:group-hover/author:text-[#f87171] group-hover/author:underline transition-colors"></span>
                             </div>
                             <div id="art-transcription-container" class="hidden flex items-center gap-2 flex-wrap text-xs font-semibold">
                                 <span class="text-[#8c7a6b] dark:text-[#a0aec0]">📝 കേട്ടെഴുത്ത്:</span>
@@ -876,10 +875,10 @@
 
                                     <!-- Meta Chips: Author, Date, Chapters -->
                                     <div class="book-hero-chips font-english">
-                                        <span class="book-hero-chip">
+                                        <a href="author.html?id=${encodeURIComponent((cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-'))}&name=${encodeURIComponent(cleanAuthor)}" class="book-hero-chip hover:border-[#b4532c] hover:bg-black/5 dark:hover:bg-white/10 transition" title="രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക">
                                             <span aria-hidden="true">✍️</span>
-                                            <span class="font-['Anek_Malayalam']">${cleanAuthor}</span>
-                                        </span>
+                                            <span class="font-['Anek_Malayalam'] underline decoration-dotted decoration-[#b4532c]/50 underline-offset-4">${cleanAuthor}</span>
+                                        </a>
                                         <span class="book-hero-chip">
                                             <span aria-hidden="true">📅</span>
                                             <span>${dateStr}</span>
@@ -1156,8 +1155,14 @@
             }
 
             const authorName = (article.author && article.author.trim()) ? article.author.trim() : "NUQTHA";
+            const authorSlug = (authorName || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
             const authorEl = document.getElementById('art-author');
             if (authorEl) authorEl.textContent = authorName;
+            const authorLink = document.getElementById('art-author-link');
+            if (authorLink) {
+                authorLink.href = `author.html?id=${encodeURIComponent(authorSlug)}&name=${encodeURIComponent(authorName)}`;
+                authorLink.title = `${authorName} - രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക`;
+            }
             const avatarEl = document.getElementById('art-author-avatar');
             if (avatarEl) avatarEl.textContent = authorName.charAt(0).toUpperCase() || "N";
 
