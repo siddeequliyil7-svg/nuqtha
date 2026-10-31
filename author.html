@@ -159,6 +159,15 @@
     <script type="module">
         import { db, doc, getDoc, collection, getDocs } from "./firebase-config.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
+        import { 
+            PRIMARY_AUTHORS, 
+            cleanMalayalamText, 
+            slugifyAuthor, 
+            safeDecodeParam, 
+            isAuthorMatch, 
+            getAuthorsMap, 
+            findAuthorInMap 
+        } from "./js/author-service.js";
 
         // Theme Setup
         function setupTheme() {
@@ -192,196 +201,152 @@
             }
         }
 
-        // Slug helper
-        function slugify(text) {
-            return (text || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
-        }
-
-        // Extract and safely decode query params or path params
-        const urlParams = new URLSearchParams(window.location.search);
-        const rawId = urlParams.get('id') || '';
-        const rawName = urlParams.get('name') || '';
-        const rawAuthor = urlParams.get('author') || '';
-        
-        let idParam = rawId ? decodeURIComponent(rawId).trim() : '';
-        let nameParam = rawName ? decodeURIComponent(rawName).trim() : '';
-        let authorParam = nameParam || idParam || (rawAuthor ? decodeURIComponent(rawAuthor).trim() : '');
-        
-        // Also check if path has /profile/author/[id]
-        if (!authorParam && window.location.pathname.includes('/profile/author/')) {
-            authorParam = decodeURIComponent(window.location.pathname.split('/profile/author/')[1].split('/')[0].split('?')[0]);
-        }
-
-        function normalizeMalayalam(str) {
-            if (!str) return '';
-            return str.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase();
-        }
-
         let allAuthorArticles = [];
         let activeCategoryFilter = "ALL";
         let searchQuery = "";
 
         async function loadAuthorProfile() {
-            if (!authorParam && !idParam && !nameParam) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rawName = urlParams.get('name');
+            const rawId = urlParams.get('id');
+            const rawAuthor = urlParams.get('author');
+
+            const nameParam = safeDecodeParam(rawName);
+            const idParam = safeDecodeParam(rawId);
+            const authorParam = safeDecodeParam(rawAuthor);
+
+            let target = nameParam || idParam || authorParam;
+            if (!target && window.location.pathname.includes('/profile/author/')) {
+                target = safeDecodeParam(window.location.pathname.split('/profile/author/')[1].split('/')[0].split('?')[0]);
+            }
+
+            if (!target) {
                 document.getElementById('author-name').textContent = "എഴുത്തുകാരൻ (Author)";
-                document.getElementById('author-bio').textContent = "എഴുത്തുകാരന്റെ വിവരങ്ങൾ ലഭ്യമല്ല.";
+                document.getElementById('author-bio').textContent = "എഴുത്തുകാരന്റെ വിവരങ്ങൾ ലഭ്യമല്ല. ദയവായി സാധുവായ ഒരു രചയിതാവിനെ തിരഞ്ഞെടുക്കുക.";
+                const grid = document.getElementById('author-articles-grid');
+                if (grid) {
+                    grid.innerHTML = `
+                    <div class="col-span-full py-12 text-center space-y-3 bg-white/40 dark:bg-white/5 rounded-3xl p-6 border border-dashed border-[#ebdccb] dark:border-white/10">
+                        <p class="text-sm font-bold text-[#5a4b41] dark:text-[#cbd5e1]">എഴുത്തുകാരന്റെ വിവരങ്ങൾ നൽകിയിട്ടില്ല.</p>
+                        <a href="index.html" class="inline-block px-4 py-2 rounded-full bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition">
+                            ഹോം പേജിലേക്ക് പോകുക
+                        </a>
+                    </div>`;
+                }
                 return;
             }
 
-            const targetSlug = slugify(idParam || authorParam);
-            const targetName = nameParam || authorParam;
-            const normTargetName = normalizeMalayalam(targetName);
-            let authorProfile = null;
-
-            // 1. Fetch from Firestore authors collection (SDK + REST fallback)
-            let allAuthors = [];
             try {
-                const authorsSnap = await getDocs(collection(db, "authors"));
-                authorsSnap.forEach(d => {
-                    allAuthors.push({ id: d.id, ...d.data() });
-                });
-            } catch (e) {
-                console.warn("[author.html] Authors SDK fetch error, trying REST:", e);
-            }
+                // 1. FAST IMMEDIATE HEADER RESOLUTION
+                const authorsMap = await getAuthorsMap(db);
+                const authorProfile = findAuthorInMap(target, authorsMap);
 
-            if (allAuthors.length === 0) {
+                const cleanTarget = target.replace(/-/g, ' ');
+                const displayName = (authorProfile && authorProfile.name) || cleanTarget;
+                const displayRole = (authorProfile && authorProfile.role) || "CONTRIBUTOR · എഴുത്തുകാരൻ";
+                const displayBio = (authorProfile && authorProfile.bio) || `${displayName} - NUQTHA-യിൽ ലേഖനങ്ങളും പഠനങ്ങളും പ്രസിദ്ധീകരിക്കുന്ന എഴുത്തുകാരൻ.`;
+                const displayPhoto = (authorProfile && authorProfile.photoUrl) || "";
+
+                document.title = `${displayName} - Author Profile | NUQTHA`;
+                document.getElementById('author-name').textContent = displayName;
+                document.getElementById('author-role-badge').textContent = displayRole;
+                document.getElementById('author-bio').textContent = displayBio;
+
+                const avatarEl = document.getElementById('author-avatar');
+                if (avatarEl) {
+                    if (displayPhoto) {
+                        avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${displayName}" class="w-full h-full object-cover rounded-3xl" />`;
+                    } else {
+                        avatarEl.textContent = displayName.trim().charAt(0).toUpperCase() || "N";
+                    }
+                }
+
+                // 2. FETCH ARTICLES (SDK with 3.5s timeout, then REST, then sessionStorage cache)
+                let allArticles = [];
+
                 try {
-                    const res = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/authors?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e");
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json && json.documents) {
-                            json.documents.forEach(docItem => {
-                                const docId = decodeURIComponent(docItem.name.split("/").pop());
-                                const data = { id: docId };
-                                if (docItem.fields) {
-                                    for (const [k, v] of Object.entries(docItem.fields)) {
-                                        if (v.stringValue !== undefined) data[k] = v.stringValue;
-                                    }
-                                }
-                                allAuthors.push(data);
-                            });
+                    const cachedArticles = sessionStorage.getItem('nuqtha_all_articles');
+                    if (cachedArticles) {
+                        const parsed = JSON.parse(cachedArticles);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            allArticles = parsed;
                         }
                     }
-                } catch (e) {
-                    console.warn("[author.html] Authors REST fetch error:", e);
-                }
-            }
+                } catch (e) {}
 
-            // Find matching author from collection
-            if (allAuthors.length > 0) {
-                authorProfile = allAuthors.find(a => {
-                    const aId = (a.id || '').trim();
-                    const aSlug = (a.slug || slugify(a.name || a.id)).trim();
-                    const aNormName = normalizeMalayalam(a.name);
-
-                    if (targetSlug && (aId === targetSlug || aSlug === targetSlug || slugify(a.name) === targetSlug)) return true;
-                    if (idParam && (aId === idParam || aSlug === idParam)) return true;
-                    if (normTargetName && aNormName === normTargetName) return true;
-                    if (targetName && a.name && (a.name.includes(targetName) || targetName.includes(a.name))) return true;
-                    return false;
-                });
-            }
-
-            // Also try direct document read if still not found
-            if (!authorProfile && targetSlug) {
-                try {
-                    const authorRef = doc(db, "authors", targetSlug);
-                    const snap = await getDoc(authorRef);
-                    if (snap.exists()) {
-                        authorProfile = snap.data();
+                if (allArticles.length === 0) {
+                    try {
+                        const sdkPromise = getDocs(collection(db, "articles"));
+                        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3500));
+                        const snap = await Promise.race([sdkPromise, timeoutPromise]);
+                        allArticles = snap.docs.map(d => normalizeArticleDoc(d.data(), d.id));
+                    } catch (e) {
+                        console.warn("[author.html] SDK fetch timeout or error, trying REST:", e);
                     }
-                } catch (e) {
-                    console.warn("[author.html] Direct author doc read error:", e);
                 }
-            }
 
-            // 2. Fetch all articles from Firestore
-            let allArticles = [];
-            try {
-                const snap = await getDocs(collection(db, "articles"));
-                snap.forEach(d => {
-                    allArticles.push(normalizeArticleDoc(d.data(), d.id));
-                });
-            } catch (e) {
-                console.warn("[author.html] Collection fetch error, fallback to REST:", e);
-            }
-
-            // Fallback REST if empty
-            if (allArticles.length === 0) {
-                try {
-                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?pageSize=100&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`);
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json && json.documents) {
-                            json.documents.forEach(docItem => {
-                                const docId = docItem.name.split("/").pop();
-                                const data = {};
-                                if (docItem.fields) {
-                                    for (const [k, v] of Object.entries(docItem.fields)) {
-                                        if (v.stringValue !== undefined) data[k] = v.stringValue;
-                                        else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
-                                        else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
-                                        else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
-                                        else if (v.arrayValue && v.arrayValue.values) {
-                                            data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
-                                        } else {
-                                            data[k] = null;
+                if (allArticles.length === 0) {
+                    try {
+                        const res = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?pageSize=100&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e");
+                        if (res.ok) {
+                            const json = await res.json();
+                            if (json && json.documents) {
+                                json.documents.forEach(docItem => {
+                                    const docId = docItem.name.split("/").pop();
+                                    const data = {};
+                                    if (docItem.fields) {
+                                        for (const [k, v] of Object.entries(docItem.fields)) {
+                                            if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                            else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                            else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                            else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                            else if (v.arrayValue && v.arrayValue.values) {
+                                                data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                            } else {
+                                                data[k] = null;
+                                            }
                                         }
                                     }
-                                }
-                                allArticles.push(normalizeArticleDoc(data, docId));
-                            });
+                                    allArticles.push(normalizeArticleDoc(data, docId));
+                                });
+                            }
                         }
+                    } catch (err) {
+                        console.error("[author.html] REST fetch error:", err);
                     }
-                } catch (err) {
-                    console.error("[author.html] REST fetch error:", err);
                 }
+
+                if (allArticles.length > 0) {
+                    try {
+                        sessionStorage.setItem('nuqtha_all_articles', JSON.stringify(allArticles));
+                    } catch (e) {}
+                }
+
+                // 3. FILTER ARTICLES FOR THIS AUTHOR
+                allAuthorArticles = allArticles.filter(art => {
+                    return isAuthorMatch(art.author, target) || 
+                           (authorProfile && authorProfile.name && isAuthorMatch(art.author, authorProfile.name)) ||
+                           (art.authorId && (art.authorId === target || (authorProfile && art.authorId === authorProfile.id)));
+                });
+
+                allAuthorArticles.sort((a, b) => {
+                    const tA = parseTimestampMillis(a.createdAt);
+                    const tB = parseTimestampMillis(b.createdAt);
+                    return tB - tA;
+                });
+
+                // Update stats badges
+                const countEl = document.getElementById('author-articles-count');
+                if (countEl) countEl.textContent = `${allAuthorArticles.length} Articles`;
+                const uniqueCats = new Set(allAuthorArticles.map(a => (a.category || "GENERAL").toUpperCase()));
+                const catCountEl = document.getElementById('author-categories-count');
+                if (catCountEl) catCountEl.textContent = `${uniqueCats.size} Categories`;
+
+            } catch (err) {
+                console.error("[author.html] Error in loadAuthorProfile:", err);
+            } finally {
+                renderFilteredArticles();
             }
-
-            // Filter articles belonging to this author
-            allAuthorArticles = allArticles.filter(art => {
-                const artAuthor = (art.author || "").trim();
-                const artAuthorId = (art.authorId || "").trim();
-                return slugify(artAuthor) === targetSlug || 
-                       slugify(artAuthorId) === targetSlug ||
-                       artAuthor.toLowerCase() === authorParam.toLowerCase() ||
-                       (authorProfile && authorProfile.name && artAuthor.toLowerCase() === authorProfile.name.toLowerCase());
-            });
-
-            // Sort newest first
-            allAuthorArticles.sort((a, b) => {
-                const tA = parseTimestampMillis(a.createdAt);
-                const tB = parseTimestampMillis(b.createdAt);
-                return tB - tA;
-            });
-
-            // Populate Author Profile Card
-            const displayName = (authorProfile && authorProfile.name) || 
-                                (allAuthorArticles[0] && allAuthorArticles[0].author) || 
-                                decodeURIComponent(authorParam).replace(/-/g, ' ');
-
-            const displayRole = (authorProfile && authorProfile.role) || "CONTRIBUTOR · എഴുത്തുകാരൻ";
-            const displayBio = (authorProfile && authorProfile.bio) || 
-                               `${displayName} - NUQTHA-യിൽ ലേഖനങ്ങളും പഠനങ്ങളും പ്രസിദ്ധീകരിക്കുന്ന എഴുത്തുകാരൻ.`;
-
-            document.title = `${displayName} - Author Profile | NUQTHA`;
-            document.getElementById('author-name').textContent = displayName;
-            document.getElementById('author-role-badge').textContent = displayRole;
-            document.getElementById('author-bio').textContent = displayBio;
-
-            const avatarEl = document.getElementById('author-avatar');
-            if (authorProfile && authorProfile.photoUrl) {
-                avatarEl.innerHTML = `<img src="${authorProfile.photoUrl}" alt="${displayName}" class="w-full h-full object-cover rounded-3xl" />`;
-            } else {
-                avatarEl.textContent = displayName.trim().charAt(0).toUpperCase() || "N";
-            }
-
-            // Update stats
-            document.getElementById('author-articles-count').textContent = `${allAuthorArticles.length} Articles`;
-            const uniqueCats = new Set(allAuthorArticles.map(a => (a.category || "GENERAL").toUpperCase()));
-            document.getElementById('author-categories-count').textContent = `${uniqueCats.size} Categories`;
-
-            renderFilteredArticles();
         }
 
         function renderFilteredArticles() {
@@ -406,13 +371,13 @@
                 );
             }
 
-            badge.textContent = filtered.length;
+            if (badge) badge.textContent = filtered.length;
 
             if (filtered.length === 0) {
                 grid.innerHTML = `
                 <div class="col-span-full py-12 text-center space-y-3 bg-white/40 dark:bg-white/5 rounded-3xl p-6 border border-dashed border-[#ebdccb] dark:border-white/10">
                     <p class="text-sm font-bold text-[#5a4b41] dark:text-[#cbd5e1]">ഈ വിഭാഗത്തിൽ ലേഖനങ്ങൾ കണ്ടെത്തിയില്ല.</p>
-                    <button type="button" id="reset-author-filter-btn" class="px-4 py-2 rounded-full bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition">
+                    <button type="button" id="reset-author-filter-btn" class="px-4 py-2 rounded-full bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition cursor-pointer">
                         RESET FILTERS
                     </button>
                 </div>

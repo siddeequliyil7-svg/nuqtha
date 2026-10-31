@@ -8,8 +8,11 @@ import { db, collection, onSnapshot } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
+import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
 
 let allArticles = [];
+let siteAuthorsMap = null;
+getAuthorsMap(db).then(map => { siteAuthorsMap = map; }).catch(() => {});
 let currentCategory = "ALL";
 
 // Ordered list of categories shown on HOME

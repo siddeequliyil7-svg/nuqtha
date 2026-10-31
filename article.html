@@ -422,6 +422,7 @@
         import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
+        import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
 
         const urlParams = new URLSearchParams(window.location.search);
         let articleId = urlParams.get('id');
@@ -1162,12 +1163,21 @@
             const authorEl = document.getElementById('art-author');
             if (authorEl) authorEl.textContent = authorName;
             const authorLink = document.getElementById('art-author-link');
+            const cleanAuthorSlug = slugifyAuthor(authorName);
             if (authorLink) {
-                authorLink.href = `author.html?id=${encodeURIComponent(authorSlug)}&name=${encodeURIComponent(authorName)}`;
+                authorLink.href = `author.html?id=${encodeURIComponent(cleanAuthorSlug)}&name=${encodeURIComponent(authorName)}`;
                 authorLink.title = `${authorName} - രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക`;
             }
             const avatarEl = document.getElementById('art-author-avatar');
-            if (avatarEl) avatarEl.textContent = authorName.charAt(0).toUpperCase() || "N";
+            if (avatarEl) {
+                avatarEl.textContent = authorName.charAt(0).toUpperCase() || "N";
+                getAuthorsMap(db).then(map => {
+                    const photoUrl = getAuthorPhoto(authorName, map);
+                    if (photoUrl) {
+                        avatarEl.innerHTML = `<img src="${photoUrl}" alt="${authorName}" class="w-full h-full object-cover rounded-full" />`;
+                    }
+                }).catch(() => {});
+            }
 
             const catEl = document.getElementById('art-category');
             if (catEl) catEl.textContent = article.category || "GENERAL";
