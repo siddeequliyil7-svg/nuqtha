@@ -237,8 +237,8 @@
             </div>
 
             <!-- Prominent Article Excerpt / Lead Intro Container -->
-            <div id="art-excerpt-container" class="hidden article-lead-excerpt py-3 my-3 malayalam fs-5 d-flex justify-content-center align-items-center">
-                <p id="art-excerpt" class="article-lead-text text-base sm:text-[18px]"></p>
+            <div id="art-excerpt-container" class="hidden article-lead-excerpt">
+                <p id="art-excerpt" class="article-lead-text"></p>
             </div>
 
             <!-- Social Share & Reading Controls Bar -->
@@ -1244,24 +1244,18 @@
                 }
             }
 
-            // Render Article Lead Excerpt / Intro (Aligned with Risala style & custom author excerpt)
+            // Render Article Lead Excerpt / Intro
             const excerptContainer = document.getElementById('art-excerpt-container');
             const excerptEl = document.getElementById('art-excerpt');
 
-            let leadExcerpt = (article.storedExcerpt || "").trim();
-            if (!leadExcerpt && article.hasCustomExcerpt && article.excerpt) {
-                leadExcerpt = article.excerpt.trim();
-            }
-            if (!leadExcerpt && (article.intro || article.introduction || article.summary)) {
-                leadExcerpt = (article.intro || article.introduction || article.summary || "").trim();
-            }
-            if (!leadExcerpt && article.excerpt) {
-                const trimmedEx = article.excerpt.trim();
-                const cleanBody = (article.content || "").trim();
-                if (trimmedEx && trimmedEx !== cleanBody) {
-                    leadExcerpt = trimmedEx;
-                }
-            }
+            let leadExcerpt = (
+                article.storedExcerpt || 
+                article.excerpt || 
+                article.intro || 
+                article.introduction || 
+                article.summary || 
+                ""
+            ).trim();
 
             if (excerptContainer && excerptEl) {
                 if (leadExcerpt) {
@@ -1354,16 +1348,22 @@
             const contentStyleAttr = contentStyle;
 
             const bodyContent = (article.content || "").trim();
-            let sanitizedBody = bodyContent;
-            if (leadExcerpt) {
-                const cleanExcerpt = leadExcerpt.replace(/[.…]+$/, '').trim();
-                if (cleanExcerpt && sanitizedBody.startsWith(cleanExcerpt) && sanitizedBody.length > cleanExcerpt.length) {
-                    sanitizedBody = sanitizedBody.substring(cleanExcerpt.length).replace(/^[\s\.\:\-]+/, '').trim();
+            let rawParagraphs = bodyContent.split(/\r?\n\r?\n/).map(p => p.trim()).filter(Boolean);
+
+            // Clean deduplication: if the first paragraph duplicates the excerpt, don't repeat it in the body
+            if (leadExcerpt && rawParagraphs.length > 1) {
+                const normExcerpt = leadExcerpt.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').replace(/[.…]+$/, '').trim();
+                const normFirstP = rawParagraphs[0].normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').replace(/[.…]+$/, '').trim();
+                if (normFirstP === normExcerpt || normFirstP.startsWith(normExcerpt) || normExcerpt.startsWith(normFirstP)) {
+                    rawParagraphs.shift();
                 }
             }
-            contentEl.innerHTML = (sanitizedBody || (leadExcerpt ? "" : (article.excerpt || "")))
-                .split('\n\n')
-                .filter(p => p.trim())
+
+            if (rawParagraphs.length === 0 && !leadExcerpt && article.excerpt) {
+                rawParagraphs = [article.excerpt.trim()];
+            }
+
+            contentEl.innerHTML = rawParagraphs
                 .map(paragraph => {
                     const p = paragraph.trim();
 
