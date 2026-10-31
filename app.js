@@ -1054,6 +1054,7 @@ function getCategoryTheme(cat) {
 
 /* ═══════════ Category Featured Card (Larger & More Prominent) ═══════════ */
 function buildCategoryFeaturedCard(art, theme = null) {
+    if (!art) return "";
     const t = theme || getCategoryTheme(art.category);
     const dateStr = art.date || formatDate(art.createdAt);
     const cleanTitle = stripMarkdown(art.title);
@@ -1065,7 +1066,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
 
     const authorName = art.author || "NUQTHA";
     const authorInitial = authorName.trim().charAt(0) || "N";
-    const authorPhoto = getAuthorPhoto(authorName, siteAuthorsMap);
+    const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
     const categoryMalayalam = categoryLabel(art.category);
 
     return `
@@ -1138,6 +1139,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
 
 /* ═══════════ 1. Featured Article Card (Reference Design) ═══════════ */
 function buildFeaturedCard(art) {
+    if (!art) return "";
     const dateStr = art.date || formatDate(art.createdAt);
     const words = (art.content || "").length;
     const readMin = Math.max(1, Math.round(words / 400));
@@ -1150,7 +1152,7 @@ function buildFeaturedCard(art) {
 
     const authorName = art.author || "NUQTHA";
     const authorInitial = authorName.trim().charAt(0) || "N";
-    const authorPhoto = getAuthorPhoto(authorName, siteAuthorsMap);
+    const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
     const categoryMalayalam = categoryLabel(art.category);
 
     return `
@@ -1219,15 +1221,18 @@ function buildFeaturedCard(art) {
 
 /* ═══════════ 2. Compact Horizontal Recent Article Card ═══════════ */
 function buildCompactRecentCard(art, theme = null) {
+    if (!art) return "";
     const dateStr = art.date || formatDate(art.createdAt);
     const words = (art.content || "").length;
     const readMin = Math.max(1, Math.round(words / 400));
     const cleanTitle = stripMarkdown(art.title);
     const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
 
-    const categoryMalayalam = categoryLabel(art.category);
-    const authorName = art.author || "NUQTHA";
-    const t = theme || getCategoryTheme(art.category);
+    const categoryMalayalam = categoryLabel(art?.category);
+    const authorName = (art && art.author) || "NUQTHA";
+    const authorInitial = authorName.trim().charAt(0) || "N";
+    const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
+    const t = theme || getCategoryTheme(art?.category);
 
     return `
     <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300 ${t.cardBorder}" data-id="${art.id}">
@@ -1345,6 +1350,7 @@ function buildCarouselSection(articles) {
 }
 
 function buildCarouselCard(art) {
+    if (!art) return "";
     const dateStr = art.date || formatDate(art.createdAt);
     const titleStyle = art.titleColor ? 'style="color: ' + art.titleColor + ';"' : '';
     const catLabel = categoryLabel(art.category);
@@ -1691,6 +1697,7 @@ function buildBookWidget(seriesName, articles) {
 
 /* ═══════════ Book / Edition Collection Card (Risala Update Style) ═══════════ */
 function buildBookCard(book, articles) {
+    if (!book) return "";
     const cleanTitle = stripMarkdown(book.title);
     const count = articles.length;
     const dateStr = book.date || formatDate(book.createdAt);
