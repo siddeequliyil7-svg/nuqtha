@@ -28,6 +28,7 @@
             } catch (e) {}
         })();
     </script>
+    <script type="module" src="./js/ui-safe.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="bg-[#fbf7ee] dark:bg-[#0b0c10] text-[#1e1b18] dark:text-[#f8fafc] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col justify-between">
@@ -185,8 +186,15 @@
                     document.documentElement.classList.toggle("dark", willBeDark);
                     document.documentElement.style.colorScheme = willBeDark ? "dark" : "light";
                     document.body.classList.toggle("dark-mode", willBeDark);
-                    localStorage.setItem("nuqtha_theme", willBeDark ? "dark" : "light");
-                    localStorage.setItem("theme", willBeDark ? "dark" : "light");
+                    try {
+                        localStorage.setItem("nuqtha_theme", willBeDark ? "dark" : "light");
+                        localStorage.setItem("theme", willBeDark ? "dark" : "light");
+                    } catch (err) {
+                        try {
+                            sessionStorage.setItem("nuqtha_theme", willBeDark ? "dark" : "light");
+                            sessionStorage.setItem("theme", willBeDark ? "dark" : "light");
+                        } catch (_) {}
+                    }
                     updateThemeIcons(willBeDark);
                 });
             }

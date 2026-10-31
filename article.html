@@ -452,7 +452,18 @@
             const ids = getReadArticleIds();
             if (!ids.includes(id)) {
                 ids.push(id);
-                localStorage.setItem("nuqtha_read_articles", JSON.stringify(ids));
+                try {
+                    localStorage.setItem("nuqtha_read_articles", JSON.stringify(ids));
+                } catch (err) {
+                    try {
+                        if (typeof window.clearVolatileStorage === "function") window.clearVolatileStorage(localStorage);
+                        // Keep only latest 100 read items to avoid exceeding quota
+                        const trimmed = ids.slice(-100);
+                        localStorage.setItem("nuqtha_read_articles", JSON.stringify(trimmed));
+                    } catch (retryErr) {
+                        try { sessionStorage.setItem("nuqtha_read_articles", JSON.stringify(ids)); } catch (_) {}
+                    }
+                }
             }
         }
 
@@ -480,7 +491,16 @@
                 if (btnIcon) btnIcon.setAttribute("fill", "#f59e0b");
                 if (toastText) toastText.textContent = "✓ ലൈബ്രറിയിൽ സേവ് ചെയ്തു";
             }
-            localStorage.setItem("nuqtha_saved_books", JSON.stringify(saved));
+            try {
+                localStorage.setItem("nuqtha_saved_books", JSON.stringify(saved));
+            } catch (err) {
+                try {
+                    if (typeof window.clearVolatileStorage === "function") window.clearVolatileStorage(localStorage);
+                    localStorage.setItem("nuqtha_saved_books", JSON.stringify(saved));
+                } catch (retryErr) {
+                    try { sessionStorage.setItem("nuqtha_saved_books", JSON.stringify(saved)); } catch (_) {}
+                }
+            }
 
             if (toast) {
                 toast.classList.remove("hidden");
@@ -750,7 +770,9 @@
                     return;
                 }
 
-                sessionStorage.setItem(`nuqtha_book_${articleId}`, JSON.stringify(currentDoc));
+                try {
+                    sessionStorage.setItem(`nuqtha_book_${articleId}`, JSON.stringify(currentDoc));
+                } catch (_) {}
                 if (currentDoc.imageUrl) preloadCoverImage(currentDoc.imageUrl);
 
                 if (skeletonEl) skeletonEl.classList.add("hidden");
@@ -773,7 +795,9 @@
                         bookChapters = filterAndSortChapters(currentDoc, allArticles);
                     }
 
-                    sessionStorage.setItem(`nuqtha_book_articles_${articleId}`, JSON.stringify(bookChapters));
+                    try {
+                        sessionStorage.setItem(`nuqtha_book_articles_${articleId}`, JSON.stringify(bookChapters));
+                    } catch (_) {}
                     renderBookIndex(currentDoc, bookContainerEl, bookChapters);
                     renderRelatedBooks(currentDoc, allArticles);
                     initComments(currentDoc.id);
@@ -1113,7 +1137,9 @@
                                 }
                                 const norm = normalizeArticleDoc(data, id);
                                 memoryCache.set(`doc_${id}`, norm);
-                                sessionStorage.setItem(`nuqtha_book_${id}`, JSON.stringify(norm));
+                                try {
+                                    sessionStorage.setItem(`nuqtha_book_${id}`, JSON.stringify(norm));
+                                } catch (_) {}
                             }
                         })
                         .catch(() => {});
@@ -1597,7 +1623,15 @@
                                     avatar: firebaseUser.photoURL || "",
                                     uid: firebaseUser.uid
                                 };
-                                localStorage.setItem("nuqtha_google_user", JSON.stringify(profile));
+                                try {
+                                    try {
+                            localStorage.setItem("nuqtha_google_user", JSON.stringify(profile));
+                        } catch (err) {
+                            try { sessionStorage.setItem("nuqtha_google_user", JSON.stringify(profile)); } catch (_) {}
+                        }
+                                } catch (err) {
+                                    try { sessionStorage.setItem("nuqtha_google_user", JSON.stringify(profile)); } catch (_) {}
+                                }
                                 updateUserUI(profile);
                             } else {
                                 localStorage.removeItem("nuqtha_google_user");
@@ -1629,7 +1663,11 @@
                             avatar: result.user.photoURL || "",
                             uid: result.user.uid
                         };
-                        localStorage.setItem("nuqtha_google_user", JSON.stringify(profile));
+                        try {
+                            localStorage.setItem("nuqtha_google_user", JSON.stringify(profile));
+                        } catch (err) {
+                            try { sessionStorage.setItem("nuqtha_google_user", JSON.stringify(profile)); } catch (_) {}
+                        }
                         updateUserUI(profile);
                         return profile;
                     }
@@ -1676,7 +1714,17 @@
             const saveLocalComment = (cmt) => {
                 const list = getLocalComments();
                 list.unshift(cmt);
-                localStorage.setItem(localKey, JSON.stringify(list));
+                try {
+                    localStorage.setItem(localKey, JSON.stringify(list));
+                } catch (err) {
+                    try {
+                        if (typeof window.clearVolatileStorage === "function") window.clearVolatileStorage(localStorage);
+                        const trimmed = list.slice(0, 30);
+                        localStorage.setItem(localKey, JSON.stringify(trimmed));
+                    } catch (retryErr) {
+                        try { sessionStorage.setItem(localKey, JSON.stringify(list)); } catch (_) {}
+                    }
+                }
                 return list;
             };
 
@@ -1826,7 +1874,11 @@
 
             function updateSize(sz) {
                 currentSize = Math.max(13, Math.min(26, sz));
-                localStorage.setItem("nuqtha_font_size", currentSize);
+                try {
+                    localStorage.setItem("nuqtha_font_size", currentSize);
+                } catch (err) {
+                    try { sessionStorage.setItem("nuqtha_font_size", currentSize); } catch (_) {}
+                }
                 document.documentElement.style.setProperty("--article-font-size", `${currentSize}px`);
                 if (contentEl) contentEl.style.setProperty("--article-font-size", `${currentSize}px`);
                 indicators.forEach(ind => {
@@ -1865,8 +1917,15 @@
                     const isDark = document.body.classList.toggle("dark-mode");
                     document.documentElement.classList.toggle("dark", isDark);
                     document.documentElement.style.colorScheme = isDark ? "dark" : "light";
-                    localStorage.setItem("nuqtha_theme", isDark ? "dark" : "light");
-                    localStorage.setItem("theme", isDark ? "dark" : "light");
+                    try {
+                        localStorage.setItem("nuqtha_theme", isDark ? "dark" : "light");
+                        localStorage.setItem("theme", isDark ? "dark" : "light");
+                    } catch (err) {
+                        try {
+                            sessionStorage.setItem("nuqtha_theme", isDark ? "dark" : "light");
+                            sessionStorage.setItem("theme", isDark ? "dark" : "light");
+                        } catch (_) {}
+                    }
 
                     if (isDark) {
                         if (sunIcon) sunIcon.classList.remove("hidden");

@@ -149,7 +149,9 @@ function initAdminSecurity() {
             e.preventDefault();
             const val = (passwordInput?.value || "").trim();
             if (val === ADMIN_PASSWORD) {
-                sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
+                try {
+                    sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
+                } catch (_) {}
                 if (errorBox) errorBox.classList.add("hidden");
                 unlock();
             } else {

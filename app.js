@@ -226,7 +226,9 @@ function initDynamicMoreMenu() {
             if (snap.exists()) {
                 const data = snap.data();
                 if (Array.isArray(data.items) && data.items.length > 0) {
-                    sessionStorage.setItem("nuqtha_more_menu", JSON.stringify(data.items));
+                    try {
+                        sessionStorage.setItem("nuqtha_more_menu", JSON.stringify(data.items));
+                    } catch (_) {}
                     renderDynamicMoreMenu(data.items);
                     return;
                 }
@@ -255,7 +257,9 @@ function initDynamicMoreMenu() {
                             };
                         });
                         if (items.length > 0) {
-                            sessionStorage.setItem("nuqtha_more_menu", JSON.stringify(items));
+                            try {
+                                sessionStorage.setItem("nuqtha_more_menu", JSON.stringify(items));
+                            } catch (_) {}
                             renderDynamicMoreMenu(items);
                             return;
                         }
@@ -421,7 +425,13 @@ function setupThemeToggle() {
     if (themeBtn) {
         themeBtn.addEventListener("click", () => {
             const isDark = document.body.classList.toggle("dark-mode");
-            localStorage.setItem("nuqtha_theme", isDark ? "dark" : "light");
+            try {
+                localStorage.setItem("nuqtha_theme", isDark ? "dark" : "light");
+            } catch (err) {
+                try {
+                    sessionStorage.setItem("nuqtha_theme", isDark ? "dark" : "light");
+                } catch (_) {}
+            }
 
             if (isDark) {
                 if (sunIcon) sunIcon.classList.remove("hidden");
