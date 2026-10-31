@@ -215,7 +215,11 @@ function initTabNavigation() {
     // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=book)
     const hash = window.location.hash.replace("#tab=", "").trim();
     if (["create", "book", "layout", "published", "authors"].includes(hash)) {
-        switchAdminTab(hash);
+        try {
+            switchAdminTab(hash);
+        } catch (err) {
+            console.warn("[AdminTab] Deferred initial tab switch:", err);
+        }
     }
 }
 
@@ -464,7 +468,7 @@ window.startEditArticle = function (id) {
     if (catInput) catInput.value = (art.category || "HISTORY").toUpperCase();
     if (authorInput) authorInput.value = art.author || "";
     if (transcriptionInput) transcriptionInput.value = art.transcription || "";
-    if (excerptInput) excerptInput.value = art.excerpt || "";
+    if (excerptInput) excerptInput.value = art.storedExcerpt || (art.hasCustomExcerpt ? art.excerpt : "") || art.excerpt || "";
     if (contentInput) contentInput.value = art.content || "";
 
     // Tab 2: Layout & Playlist
@@ -1678,7 +1682,7 @@ function initChapterWriter() {
         if (titleInput) titleInput.value = art.title || "";
         if (contentInput) contentInput.value = art.content || "";
         if (transcriptionInput) transcriptionInput.value = art.transcription || "";
-        if (excerptInput) excerptInput.value = art.excerpt || "";
+        if (excerptInput) excerptInput.value = art.storedExcerpt || (art.hasCustomExcerpt ? art.excerpt : "") || art.excerpt || "";
 
         // Populate chapter colors & font size
         const titleColorInput = document.getElementById("bm-art-title-color");
@@ -2040,7 +2044,8 @@ function renderBookChaptersReorderList(chapters) {
         return;
     }
 
-    listEl.innerHTML = chapters.map((art, idx) => {
+    const safeChapters = Array.isArray(chapters) ? chapters : [];
+    listEl.innerHTML = safeChapters.map((art, idx) => {
         return `
         <div class="chapter-reorder-item flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-2xl gap-3 transition cursor-grab shadow-2xs select-none" draggable="true" data-index="${idx}" data-id="${art.id}">
             <div class="flex items-center gap-3 min-w-0">
@@ -2329,7 +2334,7 @@ function renderBookManagerCompactArticles(articles, activeBookParam) {
     const loadMoreBtn = document.getElementById("bm-load-more-articles-btn");
     if (!listEl) return;
 
-    const listToRender = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
+    const listToRender = Array.isArray(articles) ? articles : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
     const activeBook = activeBookParam || activeBookName || "";
     const searchTerm = (document.getElementById("bm-articles-search")?.value || "").toLowerCase().trim();
 
@@ -2938,7 +2943,7 @@ function renderAdminPublishedList(items) {
         return;
     }
 
-    listContainer.innerHTML = articles.map(data => {
+    listContainer.innerHTML = safeArticles.map(data => {
         const titleCol = data.titleColor || "#1e1b18";
         const placementLabel = data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
         const priorityBadge = (data.priority !== undefined && data.priority !== null) ? `P${data.priority}` : '';
@@ -3094,6 +3099,7 @@ function initLayoutManagerControls() {
 }
 
 export function renderLayoutManagerList(items) {
+    const safeItems = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
     const container = document.getElementById("layout-manager-list");
     if (!container) return;
 
@@ -3107,7 +3113,7 @@ export function renderLayoutManagerList(items) {
         return;
     }
 
-    container.innerHTML = items.map(art => {
+    container.innerHTML = safeItems.map(art => {
         const currentPlacement = art.placement || "AUTO";
         const currentPriority = (art.priority !== undefined && art.priority !== null) ? art.priority : 10;
         const currentPlaylist = art.playlistName || "";
@@ -3386,10 +3392,13 @@ function renderAdminAuthorsTab() {
         }
     });
 
+    const safeManaged = Array.isArray(managedAuthorsList) ? managedAuthorsList : [];
+    const safePrimary = Array.isArray(PRIMARY_AUTHORS) ? PRIMARY_AUTHORS : [];
+
     // Ensure PRIMARY_AUTHORS are always included
     const allKeys = new Set([
-        ...PRIMARY_AUTHORS.map(a => a.slug),
-        ...managedAuthorsList.map(a => a.id || a.slug),
+        ...safePrimary.map(a => a.slug),
+        ...safeManaged.map(a => a.id || a.slug),
         ...Object.keys(articleAuthorsMap)
     ]);
     const count = allKeys.size;

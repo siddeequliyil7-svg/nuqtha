@@ -2656,42 +2656,45 @@ body.dark-mode #preview-body {
 
 /* ═══════════════════════════════════════════════════════════
    ARTICLE LEAD EXCERPT / INTRO BLOCK
+   Aligned with Risala typography: 18px "base_Malayalam", sans-serif
    ═══════════════════════════════════════════════════════════ */
+@font-face {
+    font-family: "base_Malayalam";
+    src: local("Anek Malayalam"), local("Noto Sans Malayalam"), local("Manjari");
+}
+
 .article-lead-excerpt {
     margin: 16px 0 !important;
     padding: 16px 0 !important;
     background: transparent !important;
     border: none !important;
-    border-top: 4px double #e5e7eb !important;
-    border-bottom: 4px double #e5e7eb !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     display: flex;
     justify-content: center;
     align-items: center;
-    text-align: center;
     width: 100%;
 }
 
 .article-lead-text,
 #art-excerpt {
-    font-family: "Book Malayalam", "Anek Malayalam", "Noto Serif Malayalam", "Manjari", sans-serif !important;
+    font-family: "base_Malayalam", "Anek Malayalam", "Noto Sans Malayalam", "Manjari", sans-serif !important;
     font-size: 18px !important;
     font-weight: 500;
     line-height: 1.85;
     color: #212529 !important;
     margin: 0 !important;
     padding: 0 !important;
-    text-align: center;
-    font-style: italic;
+    text-align: justify;
+    font-style: normal !important;
     letter-spacing: normal;
+    width: 100%;
 }
 
 html.dark .article-lead-excerpt,
 body.dark-mode .article-lead-excerpt {
     background: transparent !important;
-    border-top: 4px double rgba(255, 255, 255, 0.15) !important;
-    border-bottom: 4px double rgba(255, 255, 255, 0.15) !important;
+    border: none !important;
 }
 
 html.dark .article-lead-text,

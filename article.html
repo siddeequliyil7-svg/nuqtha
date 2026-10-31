@@ -226,8 +226,8 @@
             </div>
 
             <!-- Prominent Article Excerpt / Lead Intro Container -->
-            <div id="art-excerpt-container" class="hidden article-lead-excerpt">
-                <p id="art-excerpt" class="article-lead-text"></p>
+            <div id="art-excerpt-container" class="hidden article-lead-excerpt py-3 my-3 malayalam fs-5">
+                <p id="art-excerpt" class="article-lead-text text-base sm:text-[18px]"></p>
             </div>
 
             <!-- Social Share & Reading Controls Bar -->
@@ -1219,14 +1219,32 @@
                 }
             }
 
-            // Render Article Lead Excerpt / Intro
+            // Render Article Lead Excerpt / Intro (Aligned with Risala style & custom author excerpt)
             const excerptContainer = document.getElementById('art-excerpt-container');
             const excerptEl = document.getElementById('art-excerpt');
-            const storedExcerpt = (article.storedExcerpt || article.excerpt || article.intro || article.introduction || article.summary || "").trim();
+
+            let leadExcerpt = (article.storedExcerpt || "").trim();
+            if (!leadExcerpt && article.hasCustomExcerpt && article.excerpt) {
+                leadExcerpt = article.excerpt.trim();
+            }
+            if (!leadExcerpt && (article.intro || article.introduction || article.summary)) {
+                leadExcerpt = (article.intro || article.introduction || article.summary || "").trim();
+            }
+            if (!leadExcerpt && article.excerpt) {
+                const trimmedEx = article.excerpt.trim();
+                const cleanBody = (article.content || "").trim();
+                const snippet = cleanBody.substring(0, 160);
+                const isAutoSnippet = trimmedEx === snippet || 
+                                     trimmedEx === (snippet + "…") || 
+                                     trimmedEx === (snippet + ".");
+                if (!isAutoSnippet && trimmedEx !== cleanBody) {
+                    leadExcerpt = trimmedEx;
+                }
+            }
 
             if (excerptContainer && excerptEl) {
-                if (storedExcerpt) {
-                    excerptEl.textContent = storedExcerpt;
+                if (leadExcerpt) {
+                    excerptEl.textContent = leadExcerpt;
                     excerptContainer.classList.remove('hidden');
                 } else {
                     excerptContainer.classList.add('hidden');
@@ -1316,10 +1334,13 @@
 
             const bodyContent = (article.content || "").trim();
             let sanitizedBody = bodyContent;
-            if (storedExcerpt && sanitizedBody.startsWith(storedExcerpt) && sanitizedBody.length > storedExcerpt.length) {
-                sanitizedBody = sanitizedBody.substring(storedExcerpt.length).trim();
+            if (leadExcerpt) {
+                const cleanExcerpt = leadExcerpt.replace(/[.…]+$/, '').trim();
+                if (cleanExcerpt && sanitizedBody.startsWith(cleanExcerpt) && sanitizedBody.length > cleanExcerpt.length) {
+                    sanitizedBody = sanitizedBody.substring(cleanExcerpt.length).replace(/^[\s\.\:\-]+/, '').trim();
+                }
             }
-            contentEl.innerHTML = (sanitizedBody || (storedExcerpt ? "" : (article.excerpt || "")))
+            contentEl.innerHTML = (sanitizedBody || (leadExcerpt ? "" : (article.excerpt || "")))
                 .split('\n\n')
                 .filter(p => p.trim())
                 .map(paragraph => {
