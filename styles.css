@@ -2831,18 +2831,19 @@ body.dark-mode #preview-body {
    ═══════════════════════════════════════════════════════════ */
 /* ═══════════════════════════════════════════════════════════
    ARTICLE LEAD EXCERPT / INTRO BLOCK
-   Featured card with warm cream tint, subtle border & terracotta accent left border
-   Typography: 18px "Anek Malayalam", sans-serif (matching Screenshot 2 & 3)
+   Clean editorial lead block (Risala Update model - Screenshot 2)
+   18px "Anek Malayalam", sans-serif, no box/borders, transparent background
    ═══════════════════════════════════════════════════════════ */
 .article-lead-excerpt {
-    margin: 1.25rem 0 !important;
-    padding: 1.125rem 1.25rem !important;
-    background: rgba(180, 83, 44, 0.035) !important;
-    border: 1px solid rgba(235, 220, 203, 0.85) !important;
-    border-left: 4px solid var(--accent, #b4532c) !important;
-    border-radius: 1rem !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
-    display: block !important;
+    margin: 16px 0 !important;
+    padding: 16px 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
     width: 100% !important;
     box-sizing: border-box !important;
 }
@@ -2863,9 +2864,8 @@ body.dark-mode #preview-body {
 
 @media (max-width: 640px) {
     .article-lead-excerpt {
-        margin: 1rem 0 !important;
-        padding: 1rem 1.125rem !important;
-        border-radius: 0.875rem !important;
+        margin: 12px 0 !important;
+        padding: 12px 0 !important;
     }
     .article-lead-text,
     #art-excerpt {
@@ -2876,9 +2876,8 @@ body.dark-mode #preview-body {
 
 html.dark .article-lead-excerpt,
 body.dark-mode .article-lead-excerpt {
-    background: rgba(255, 255, 255, 0.035) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-    border-left-color: #f87171 !important;
+    background: transparent !important;
+    border: none !important;
 }
 
 html.dark .article-lead-text,
