@@ -797,29 +797,8 @@
             }
         }
 
-        // ═══════════ BOOK INTRODUCTION TOGGLE ═══════════
-        window.toggleBookIntro = function() {
-            const textEl = document.getElementById("book-intro-text");
-            const btnEl = document.getElementById("book-intro-toggle-btn");
-            const labelEl = document.getElementById("book-intro-toggle-label");
-            const chevronEl = document.getElementById("book-intro-chevron");
-            if (!textEl || !btnEl) return;
-
-            const isClamped = textEl.classList.contains("is-clamped");
-            if (isClamped) {
-                textEl.classList.remove("is-clamped");
-                textEl.classList.remove("line-clamp-3");
-                btnEl.setAttribute("aria-expanded", "true");
-                if (labelEl) labelEl.textContent = "കുറയ്ക്കുക";
-                if (chevronEl) chevronEl.style.transform = "rotate(180deg)";
-            } else {
-                textEl.classList.add("is-clamped");
-                textEl.classList.add("line-clamp-3");
-                btnEl.setAttribute("aria-expanded", "false");
-                if (labelEl) labelEl.textContent = "കൂടുതൽ വായിക്കുക";
-                if (chevronEl) chevronEl.style.transform = "rotate(0deg)";
-            }
-        };
+        // ═══════════ BOOK INTRODUCTION (DISPLAYED IN FULL) ═══════════
+        window.toggleBookIntro = function() {};
 
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
         function renderBookIndex(book, container, attachedArticles = []) {
@@ -958,19 +937,13 @@
                                     </div>
                                 </header>
 
-                                <!-- Introduction as Pull-Quote (No box, large accent quote mark, 16px, 1.9 line-height, 3-line clamp) -->
+                                <!-- Introduction as Pull-Quote (Full text displayed directly, no collapse / toggle button) -->
                                 ${hasIntro ? `
                                     <div class="book-hero-pullquote">
                                         <div class="book-hero-quote-mark" aria-hidden="true">&ldquo;</div>
-                                        <div id="book-intro-text" class="book-hero-intro-text line-clamp-3 is-clamped">
+                                        <div id="book-intro-text" class="book-hero-intro-text">
                                             ${rawIntro}
                                         </div>
-                                        <button type="button" id="book-intro-toggle-btn" class="book-hero-intro-toggle touch-target-44" onclick="toggleBookIntro()" aria-expanded="false" aria-controls="book-intro-text">
-                                            <span id="book-intro-toggle-label">കൂടുതൽ വായിക്കുക</span>
-                                            <svg id="book-intro-chevron" class="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                        </button>
                                     </div>
                                 ` : ''}
                             </div>
@@ -1001,17 +974,6 @@
                     </div>
                 </div>
             `;
-
-            // If intro text doesn't exceed 3 lines, hide toggle button
-            setTimeout(() => {
-                const textEl = document.getElementById("book-intro-text");
-                const toggleBtn = document.getElementById("book-intro-toggle-btn");
-                if (textEl && toggleBtn) {
-                    if (textEl.scrollHeight <= textEl.clientHeight + 4) {
-                        toggleBtn.classList.add("hidden");
-                    }
-                }
-            }, 60);
 
             // Render chapters
             renderPaginatedChapters(attachedArticles);
@@ -1078,7 +1040,7 @@
                 const isRead = readArticleIds.includes(art.id);
 
                 return `
-                <a href="article.html?id=${art.id}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isRead ? 'opacity-85' : ''}">
+                <a href="article.html?id=${art.id}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44">
                     <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${art.imageUrl ? `
                         <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 aspect-[16/10]">
@@ -1094,11 +1056,6 @@
                             <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
                                 അധ്യായം ${idx + 1}
                             </span>
-                            ${isRead ? `
-                                <span class="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-md font-english flex items-center gap-0.5">
-                                    ✓ വായിച്ചു
-                                </span>
-                            ` : ''}
                         </div>
                         <h4 class="text-sm sm:text-base font-bold text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
                             ${cleanArtTitle}
