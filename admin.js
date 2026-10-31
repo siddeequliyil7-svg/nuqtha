@@ -44,7 +44,7 @@ window.isBookOrChapter = isBookOrChapter;
  * 4-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
  * With Strict Data Validation & Schema Sanitization
  */
-import { db, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
+import { db, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, fetchWithRetry, getFirebaseApiKey } from "./firebase-config.js";
 import {
     validateAndSanitizeArticleForSave,
     normalizeArticleDoc,
@@ -92,6 +92,7 @@ function initAdminDashboard() {
     safeInit("initBookManagerSuite", initBookManagerSuite);
     safeInit("listenToFirestoreArticles", listenToFirestoreArticles);
     safeInit("initAuthorManager", initAuthorManager);
+    safeInit("initMoreMenuManager", initMoreMenuManager);
 }
 
 function initPlaylistPresets() {
@@ -214,7 +215,7 @@ function initTabNavigation() {
 
     // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=book)
     const hash = window.location.hash.replace("#tab=", "").trim();
-    if (["create", "book", "layout", "published", "authors"].includes(hash)) {
+    if (["create", "book", "layout", "published", "authors", "menu"].includes(hash)) {
         try {
             switchAdminTab(hash);
         } catch (err) {
@@ -253,6 +254,12 @@ export function switchAdminTab(tabName) {
 
     if (tabName === "layout") {
         renderLayoutManagerList(currentArticlesList);
+    }
+
+    if (tabName === "menu") {
+        if (typeof renderAdminMenuListGlobal === "function") {
+            renderAdminMenuListGlobal();
+        }
     }
 }
 
@@ -2867,7 +2874,8 @@ function listenToFirestoreArticles() {
 
         restReadPromise = (async () => {
             try {
-                const { apiKey, projectId } = db.app.options;
+                const apiKey = db.app.options?.apiKey || getFirebaseApiKey();
+                const projectId = db.app.options?.projectId || "nuqtha-c0900";
                 if (!apiKey || !projectId) {
                     throw new Error("Firebase project ID or API key is missing.");
                 }
@@ -2878,7 +2886,7 @@ function listenToFirestoreArticles() {
                     const params = new URLSearchParams({ pageSize: "300", key: apiKey });
                     if (nextPageToken) params.set("pageToken", nextPageToken);
                     const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/articles?${params}`;
-                    const response = await fetch(url);
+                    const response = await fetchWithRetry(url, {}, 3, 300);
                     if (!response.ok) {
                         throw new Error(`Firestore REST request failed (${response.status}): ${await response.text()}`);
                     }
@@ -3735,3 +3743,316 @@ document.addEventListener("click", (e) => {
         }
     }
 });
+
+/* ═══════════════════════════════════════════════════════════
+   7. MORE DROPDOWN MENU MANAGER SUITE
+   ═══════════════════════════════════════════════════════════ */
+
+export const DEFAULT_MORE_MENU_ITEMS = [
+    { id: "menu-authors", label: "AUTHORS (എഴുത്തുകാർ)", url: "author.html?id=സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ", icon: "✍️", order: 1, targetBlank: false, isActive: true },
+    { id: "menu-contact", label: "ABOUT & CONTACT", url: "contact.html", icon: "📬", order: 2, targetBlank: false, isActive: true },
+    { id: "menu-admin", label: "ADMIN PORTAL", url: "admin.html", icon: "⚙️", order: 3, targetBlank: false, isActive: true }
+];
+
+let adminMenuItemsList = [];
+let renderAdminMenuListGlobal = null;
+
+function escapeMenuHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function initMoreMenuManager() {
+    const listContainer = document.getElementById("admin-menu-items-list");
+    const editIdInput = document.getElementById("menu-item-edit-id");
+    const labelInput = document.getElementById("menu-item-label");
+    const urlInput = document.getElementById("menu-item-url");
+    const iconInput = document.getElementById("menu-item-icon");
+    const targetBlankInput = document.getElementById("menu-item-target-blank");
+    const saveBtn = document.getElementById("btn-save-menu-item");
+    const saveLabel = document.getElementById("btn-save-menu-label");
+    const cancelBtn = document.getElementById("btn-cancel-menu-edit");
+    const restoreBtn = document.getElementById("btn-restore-default-menu");
+    const formHeading = document.getElementById("menu-form-heading");
+    const editIndicator = document.getElementById("menu-edit-indicator");
+    const badge = document.getElementById("tab-menu-badge");
+
+    if (!listContainer || !saveBtn) return;
+
+    // Quick emoji pills click handlers
+    document.querySelectorAll(".quick-emoji-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const emoji = btn.dataset.emoji;
+            if (emoji && iconInput) {
+                iconInput.value = emoji;
+                iconInput.focus();
+            }
+        });
+    });
+
+    function resetForm() {
+        if (editIdInput) editIdInput.value = "";
+        if (labelInput) labelInput.value = "";
+        if (urlInput) urlInput.value = "";
+        if (iconInput) iconInput.value = "🔗";
+        if (targetBlankInput) targetBlankInput.checked = false;
+        if (saveLabel) saveLabel.textContent = "Save Menu Link";
+        if (cancelBtn) cancelBtn.classList.add("hidden");
+        if (editIndicator) editIndicator.classList.add("hidden");
+        if (formHeading) formHeading.innerHTML = `<span>➕</span><span>പുതിയ ലിങ്ക് ചേർക്കുക (Add Menu Link)</span>`;
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            resetForm();
+        });
+    }
+
+    function renderMenuList() {
+        if (!listContainer) return;
+        if (badge) badge.textContent = String(adminMenuItemsList.length);
+
+        if (!adminMenuItemsList || adminMenuItemsList.length === 0) {
+            listContainer.innerHTML = `
+                <div class="text-center py-8 text-xs text-[#8c7a6b] bg-[#fbf7ee] rounded-2xl border border-dashed border-[#ebdccb]">
+                    ലിങ്കുകൾ ഒന്നും ചേർത്തിട്ടില്ല. "Restore Defaults" അമർത്തുകയോ പുതിയ ലിങ്ക് ചേർക്കുകയോ ചെയ്യാം.
+                </div>
+            `;
+            return;
+        }
+
+        const sorted = [...adminMenuItemsList].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+
+        listContainer.innerHTML = sorted.map((item, index) => {
+            const isFirst = index === 0;
+            const isLast = index === sorted.length - 1;
+            const icon = item.icon || "🔗";
+            const targetBadge = item.targetBlank ? `<span class="text-[10px] bg-sky-100 text-sky-800 font-english font-bold px-1.5 py-0.5 rounded">New Tab</span>` : "";
+
+            return `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-[#ebdccb] bg-[#fbf7ee]/40 hover:bg-white transition" data-menu-id="${item.id}">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-7 h-7 rounded-lg bg-white border border-[#ebdccb] text-xs font-bold text-[#8c7a6b] flex items-center justify-center font-english shrink-0">${index + 1}</span>
+                        <span class="text-xl shrink-0">${icon}</span>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-extrabold text-[#1e1b18] truncate">${escapeMenuHtml(item.label || "")}</span>
+                                ${targetBadge}
+                            </div>
+                            <span class="text-[11px] text-[#8c7a6b] truncate block font-english">${escapeMenuHtml(item.url || "")}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                        <button type="button" class="btn-menu-move-up w-8 h-8 rounded-xl bg-white hover:bg-slate-100 border border-[#ebdccb] text-xs text-slate-700 font-bold transition flex items-center justify-center cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" data-id="${item.id}" ${isFirst ? "disabled" : ""} title="Move Up">↑</button>
+                        <button type="button" class="btn-menu-move-down w-8 h-8 rounded-xl bg-white hover:bg-slate-100 border border-[#ebdccb] text-xs text-slate-700 font-bold transition flex items-center justify-center cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" data-id="${item.id}" ${isLast ? "disabled" : ""} title="Move Down">↓</button>
+                        <button type="button" class="btn-menu-edit px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer font-english" data-id="${item.id}" title="Edit">
+                            <span>✏️</span>
+                            <span>Edit</span>
+                        </button>
+                        <button type="button" class="btn-menu-delete px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer font-english" data-id="${item.id}" title="Delete">
+                            <span>🗑️</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        listContainer.querySelectorAll(".btn-menu-move-up").forEach(btn => {
+            btn.addEventListener("click", () => moveMenuItem(btn.dataset.id, -1));
+        });
+        listContainer.querySelectorAll(".btn-menu-move-down").forEach(btn => {
+            btn.addEventListener("click", () => moveMenuItem(btn.dataset.id, 1));
+        });
+        listContainer.querySelectorAll(".btn-menu-edit").forEach(btn => {
+            btn.addEventListener("click", () => editMenuItem(btn.dataset.id));
+        });
+        listContainer.querySelectorAll(".btn-menu-delete").forEach(btn => {
+            btn.addEventListener("click", () => deleteMenuItem(btn.dataset.id));
+        });
+    }
+
+    renderAdminMenuListGlobal = renderMenuList;
+
+    async function persistMenuItems(itemsToSave) {
+        try {
+            const menuDocRef = doc(db, "settings", "more_menu");
+            await setDoc(menuDocRef, {
+                items: itemsToSave,
+                updatedAt: serverTimestamp()
+            });
+            return true;
+        } catch (err) {
+            console.error("[MoreMenu] Failed to save menu to Firestore:", err);
+            showGlobalStatus("More മെനു സേവ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു: " + (err?.message || err), "error");
+            return false;
+        }
+    }
+
+    function moveMenuItem(id, direction) {
+        const sorted = [...adminMenuItemsList].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+        const idx = sorted.findIndex(i => i.id === id);
+        if (idx === -1) return;
+        const targetIdx = idx + direction;
+        if (targetIdx < 0 || targetIdx >= sorted.length) return;
+
+        const temp = sorted[idx];
+        sorted[idx] = sorted[targetIdx];
+        sorted[targetIdx] = temp;
+
+        sorted.forEach((item, i) => {
+            item.order = i + 1;
+        });
+
+        adminMenuItemsList = sorted;
+        renderMenuList();
+        persistMenuItems(adminMenuItemsList);
+    }
+
+    function editMenuItem(id) {
+        const item = adminMenuItemsList.find(i => i.id === id);
+        if (!item) return;
+
+        if (editIdInput) editIdInput.value = item.id;
+        if (labelInput) labelInput.value = item.label || "";
+        if (urlInput) urlInput.value = item.url || "";
+        if (iconInput) iconInput.value = item.icon || "🔗";
+        if (targetBlankInput) targetBlankInput.checked = Boolean(item.targetBlank);
+        if (saveLabel) saveLabel.textContent = "Update Menu Link";
+        if (cancelBtn) cancelBtn.classList.remove("hidden");
+        if (editIndicator) editIndicator.classList.remove("hidden");
+        if (formHeading) formHeading.innerHTML = `<span>✏️</span><span>ലിങ്ക് എഡിറ്റ് ചെയ്യുക (Edit Menu Link)</span>`;
+
+        labelInput?.focus();
+    }
+
+    async function deleteMenuItem(id) {
+        const item = adminMenuItemsList.find(i => i.id === id);
+        if (!item) return;
+
+        if (!confirm(`"${item.label}" എന്ന ലിങ്ക് More മെനുവിൽ നിന്നും നീക്കം ചെയ്യണോ?`)) return;
+
+        adminMenuItemsList = adminMenuItemsList.filter(i => i.id !== id);
+        adminMenuItemsList.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)).forEach((item, i) => {
+            item.order = i + 1;
+        });
+
+        renderMenuList();
+        const success = await persistMenuItems(adminMenuItemsList);
+        if (success) {
+            showGlobalStatus("ലിങ്ക് വിജയകരമായി നീക്കം ചെയ്തു.", "success");
+        }
+    }
+
+    saveBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const label = (labelInput?.value || "").trim();
+        const url = (urlInput?.value || "").trim();
+        const icon = (iconInput?.value || "").trim() || "🔗";
+        const targetBlank = Boolean(targetBlankInput?.checked);
+        const editId = (editIdInput?.value || "").trim();
+
+        if (!label) {
+            alert("ദയവായി ലിങ്കിന്റെ പേര് നൽകുക.");
+            labelInput?.focus();
+            return;
+        }
+
+        if (!url) {
+            alert("ദയവായി ലിങ്കിന്റെ URL നൽകുക.");
+            urlInput?.focus();
+            return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.classList.add("opacity-60");
+
+        try {
+            if (editId) {
+                const existing = adminMenuItemsList.find(i => i.id === editId);
+                if (existing) {
+                    existing.label = label;
+                    existing.url = url;
+                    existing.icon = icon;
+                    existing.targetBlank = targetBlank;
+                }
+            } else {
+                const newId = "menu-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6);
+                const maxOrder = adminMenuItemsList.reduce((max, i) => Math.max(max, Number(i.order) || 0), 0);
+                adminMenuItemsList.push({
+                    id: newId,
+                    label,
+                    url,
+                    icon,
+                    order: maxOrder + 1,
+                    targetBlank,
+                    isActive: true
+                });
+            }
+
+            renderMenuList();
+            const success = await persistMenuItems(adminMenuItemsList);
+            if (success) {
+                showGlobalStatus(editId ? "ലിങ്ക് വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു." : "പുതിയ ലിങ്ക് ചേർത്തു. ✨", "success");
+                resetForm();
+            }
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.classList.remove("opacity-60");
+        }
+    });
+
+    if (restoreBtn) {
+        restoreBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            if (!confirm("More മെനുവിലെ എല്ലാ ലിങ്കുകളും ഡിഫോൾട്ട് രൂപത്തിലേക്ക് പുനഃസ്ഥാപിക്കണോ?")) return;
+
+            restoreBtn.disabled = true;
+            try {
+                adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
+                renderMenuList();
+                const success = await persistMenuItems(adminMenuItemsList);
+                if (success) {
+                    showGlobalStatus("More മെനു വിജയകരമായി പുനഃസ്ഥാപിച്ചു. 🔄", "success");
+                    resetForm();
+                }
+            } finally {
+                restoreBtn.disabled = false;
+            }
+        });
+    }
+
+    // Load initial menu configuration from Firestore
+    try {
+        const menuDocRef = doc(db, "settings", "more_menu");
+        onSnapshot(menuDocRef, (snap) => {
+            if (snap.exists()) {
+                const data = snap.data();
+                if (Array.isArray(data.items) && data.items.length > 0) {
+                    adminMenuItemsList = data.items;
+                } else {
+                    adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
+                }
+            } else {
+                adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
+            }
+            renderMenuList();
+        }, (err) => {
+            console.warn("[MoreMenu] Firestore snapshot fallback:", err);
+            if (adminMenuItemsList.length === 0) {
+                adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
+                renderMenuList();
+            }
+        });
+    } catch (err) {
+        console.warn("[MoreMenu] Initialization error:", err);
+        adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
+        renderMenuList();
+    }
+}

@@ -4,6 +4,8 @@
  * and counting articles across Admin, Home feed, and Reader mode.
  */
 
+import { fetchWithRetry, getFirebaseApiKey } from "../firebase-config.js";
+
 // Helper to normalize strings for robust comparison
 export function normalizeBookKey(s) {
     if (!s) return "";
@@ -170,11 +172,14 @@ export async function getBookChapters(bookId, options = {}) {
         // Fetch or complete book doc via REST direct if missing or chapters array missing
         if (!bookDoc || !Array.isArray(bookDoc.chapters) || bookDoc.chapters.length === 0) {
             try {
-                const bookRes = await fetch(
-                    `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(bookId)}`,
-                    { signal: controller.signal }
+                const apiKey = getFirebaseApiKey();
+                const bookRes = await fetchWithRetry(
+                    `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
+                    { signal: controller.signal },
+                    2,
+                    250
                 );
-                if (bookRes.ok) {
+                if (bookRes && bookRes.ok) {
                     const bookJson = await bookRes.json();
                     const directDoc = parseFirestoreRestDoc(bookJson, bookId);
                     bookDoc = { ...(bookDoc || {}), ...directDoc };
@@ -195,8 +200,9 @@ export async function getBookChapters(bookId, options = {}) {
 
         // Query Firestore specifically for articles with this bookId
         try {
-            const runQueryRes = await fetch(
-                `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery`,
+            const apiKey = getFirebaseApiKey();
+            const runQueryRes = await fetchWithRetry(
+                `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery?key=${encodeURIComponent(apiKey)}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -213,9 +219,11 @@ export async function getBookChapters(bookId, options = {}) {
                         }
                     }),
                     signal: controller.signal
-                }
+                },
+                2,
+                250
             );
-            if (runQueryRes.ok) {
+            if (runQueryRes && runQueryRes.ok) {
                 const queryJson = await runQueryRes.json();
                 if (Array.isArray(queryJson)) {
                     queryJson.forEach(item => {
@@ -241,10 +249,11 @@ export async function getBookChapters(bookId, options = {}) {
 
             if (missingIds.length > 0) {
                 try {
+                    const apiKey = getFirebaseApiKey();
                     const fetchedDocs = await Promise.allSettled(
                         missingIds.map(id =>
-                            fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(id)}`, { signal: controller.signal })
-                                .then(r => r.ok ? r.json() : null)
+                            fetchWithRetry(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(id)}?key=${encodeURIComponent(apiKey)}`, { signal: controller.signal }, 2, 250)
+                                .then(r => r && r.ok ? r.json() : null)
                                 .then(j => j ? parseFirestoreRestDoc(j, id) : null)
                         )
                     );

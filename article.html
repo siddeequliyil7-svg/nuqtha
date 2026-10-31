@@ -1572,10 +1572,15 @@
                 if (!authModulePromise) {
                     authModulePromise = import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js")
                         .then(mod => {
-                            const auth = mod.getAuth(app);
-                            const provider = new mod.GoogleAuthProvider();
-                            provider.setCustomParameters({ prompt: "select_account" });
-                            return { auth, provider, ...mod };
+                            try {
+                                const auth = mod.getAuth(app);
+                                const provider = new mod.GoogleAuthProvider();
+                                provider.setCustomParameters({ prompt: "select_account" });
+                                return { auth, provider, ...mod };
+                            } catch (authErr) {
+                                console.warn("[Auth] Firebase getAuth initialization error:", authErr);
+                                throw authErr;
+                            }
                         })
                         .catch(err => {
                             console.warn("[Auth] Lazy load failed:", err);
@@ -1674,6 +1679,15 @@
                     return null;
                 } catch (err) {
                     console.warn("[Auth] Sign in popup error:", err);
+                    const isKeyOrConfigErr = err?.code === "auth/api-key-not-valid" || 
+                                            err?.code === "auth/configuration-not-found" ||
+                                            err?.message?.includes("API key not valid") ||
+                                            err?.message?.includes("identitytoolkit");
+                    if (isKeyOrConfigErr) {
+                        alert("Google ലോഗിൻ സേവനം കോൺഫിഗർ ചെയ്തിട്ടില്ല അല്ലെങ്കിൽ API കീ സാധുവല്ല. പേര് നൽകി നിങ്ങൾക്ക് താഴെ നേരിട്ട് കമന്റ് രേഖപ്പെടുത്താം.");
+                    } else if (err?.code !== "auth/popup-closed-by-user" && err?.code !== "auth/cancelled-popup-request") {
+                        alert("ലോഗിൻ ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു. പേര് നൽകി നിങ്ങൾക്ക് നേരിട്ട് കമന്റ് രേഖപ്പെടുത്താം.");
+                    }
                     return null;
                 } finally {
                     if (googleSigninBtn) {

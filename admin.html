@@ -170,6 +170,11 @@
                 <span class="truncate">പ്രസിദ്ധീകരിച്ചവ (Published)</span>
                 <span id="tab-published-badge" class="tab-badge">0</span>
             </button>
+            <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="menu">
+                <span class="tab-icon">🧭</span>
+                <span class="truncate">More മെനു (Menu)</span>
+                <span id="tab-menu-badge" class="tab-badge">0</span>
+            </button>
         </nav>
 
         <!-- ═══════════ SINGLE UNIFIED FORM FOR TAB 1 & TAB 2 ═══════════ -->
@@ -1247,6 +1252,130 @@
                 <!-- Articles Cards List -->
                 <div id="admin-articles-list" class="space-y-3.5">
                     <p class="text-xs text-slate-400 p-4 text-center">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TAB 6: MORE മെനു മാനേജർ (MORE DROPDOWN MENU MANAGER)
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="admin-tab-pane" data-pane="menu">
+            <div class="max-w-5xl mx-auto space-y-6">
+
+                <!-- Header Card -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-xl bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center text-base">🧭</span>
+                            <h2 class="text-xl font-extrabold text-[#1e1b18]">More മെനു മാനേജർ (More Dropdown Menu)</h2>
+                        </div>
+                        <p class="text-xs text-[#8c7a6b] mt-1">ഹോം പേജിലെ 'MORE' മെനുവിൽ കാണിക്കേണ്ട ലിങ്കുകൾ ചേർക്കുക, എഡിറ്റ് ചെയ്യുക അല്ലെങ്കിൽ ക്രമം മാറ്റുക</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="btn-restore-default-menu" class="px-4 py-2 text-xs font-bold font-english text-[#b4532c] hover:bg-[#b4532c]/10 border border-[#ebdccb] rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                            <span>🔄</span>
+                            <span>Restore Defaults</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add / Edit Menu Link Form Card -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-5">
+                    <div class="flex items-center justify-between border-b border-[#f0e6d6] pb-3">
+                        <h3 id="menu-form-heading" class="text-sm font-extrabold text-[#1e1b18] flex items-center gap-2">
+                            <span>➕</span>
+                            <span>പുതിയ ലിങ്ക് ചേർക്കുക (Add Menu Link)</span>
+                        </h3>
+                        <span id="menu-edit-indicator" class="hidden text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full">എഡിറ്റിംഗ് മോഡ്</span>
+                    </div>
+
+                    <input type="hidden" id="menu-item-edit-id" value="" />
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Label Input -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-[#5a4b41]">ലിങ്ക് പേര് (Label / Text) *</label>
+                            <input 
+                                type="text" 
+                                id="menu-item-label" 
+                                placeholder="ഉദാ: PODCAST / പോഡ്‌കാസ്റ്റ്" 
+                                class="w-full text-xs font-bold p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#1e1b18]"
+                            />
+                        </div>
+
+                        <!-- URL Input -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-[#5a4b41]">ലിങ്ക് URL (Path or Full URL) *</label>
+                            <input 
+                                type="text" 
+                                id="menu-item-url" 
+                                placeholder="ഉദാ: podcast.html അല്ലെങ്കിൽ https://..." 
+                                class="w-full text-xs font-bold p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#1e1b18] font-english"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Icon / Emoji Selection -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-[#5a4b41]">ഐക്കൺ / ഇമോജി (Icon Emoji)</label>
+                        <div class="flex items-center gap-3">
+                            <input 
+                                type="text" 
+                                id="menu-item-icon" 
+                                placeholder="✍️" 
+                                maxlength="4"
+                                class="w-16 text-center text-lg font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40"
+                            />
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-[11px] text-[#8c7a6b] font-english mr-1">Quick pick:</span>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="✍️">✍️</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="📬">📬</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="⚙️">⚙️</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="📚">📚</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="🎙️">🎙️</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="🌐">🌐</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="📢">📢</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="💬">💬</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="🔍">🔍</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="🔗">🔗</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target / Active Options -->
+                    <div class="flex items-center gap-6 pt-1">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="menu-item-target-blank" class="w-4 h-4 rounded text-[#b4532c] focus:ring-[#b4532c]" />
+                            <span class="text-xs font-bold text-[#5a4b41]">പുതിയ ടാബിൽ തുറക്കുക (Open in new window / tab)</span>
+                        </label>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-3 pt-2">
+                        <button type="button" id="btn-save-menu-item" class="px-6 py-2.5 rounded-xl bg-[#b4532c] text-white text-xs font-extrabold hover:bg-[#923e1b] transition shadow-xs cursor-pointer flex items-center gap-1.5 font-english">
+                            <span>💾</span>
+                            <span id="btn-save-menu-label">Save Menu Link</span>
+                        </button>
+                        <button type="button" id="btn-cancel-menu-edit" class="hidden px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer font-english">
+                            റദ്ദാക്കുക (Cancel)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Existing Menu Items List -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-[#f0e6d6] pb-3">
+                        <h3 class="text-sm font-extrabold text-[#1e1b18] flex items-center gap-2">
+                            <span>📋</span>
+                            <span>നിലവിലുള്ള ലിങ്കുകൾ (Active Menu Items)</span>
+                        </h3>
+                        <span class="text-xs text-[#8c7a6b]">മുകളിലേക്കും താഴേക്കും മാറ്റി ക്രമം നിശ്ചയിക്കാം</span>
+                    </div>
+
+                    <div id="admin-menu-items-list" class="space-y-2.5">
+                        <div class="text-center py-8 text-xs text-[#8c7a6b]">ലിങ്കുകൾ പരിശോധിക്കുന്നു...</div>
+                    </div>
                 </div>
 
             </div>

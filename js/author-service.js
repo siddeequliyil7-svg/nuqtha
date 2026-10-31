@@ -2,7 +2,7 @@
  * NUQTHA Author Service
  * Handles author profile fetching, Unicode normalization, avatar resolution, and robust caching
  */
-import { collection, getDocs } from "../firebase-config.js";
+import { collection, getDocs, fetchWithRetry, getFirebaseApiKey } from "../firebase-config.js";
 
 export const PRIMARY_AUTHORS = [
     {
@@ -149,8 +149,9 @@ async function fetchAuthorsNetwork(db) {
     // 2. REST fallback
     if (docs.length === 0) {
         try {
-            const res = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/authors?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e");
-            if (res.ok) {
+            const apiKey = getFirebaseApiKey();
+            const res = await fetchWithRetry(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/authors?key=${encodeURIComponent(apiKey)}`, {}, 3, 300);
+            if (res && res.ok) {
                 const json = await res.json();
                 if (json && json.documents) {
                     json.documents.forEach(docItem => {

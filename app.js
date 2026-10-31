@@ -4,7 +4,7 @@ import { safeInit } from "./js/ui-safe.js";
  * Realtime Firestore → Category-Sectioned Feed, Latest-First
  * Protected by Strict Schema Validator & Safe Fallbacks
  */
-import { db, collection, onSnapshot } from "./firebase-config.js";
+import { db, collection, onSnapshot, doc, getDoc, fetchWithRetry, getFirebaseApiKey } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
@@ -176,12 +176,111 @@ function setupBooksNavLink() {
     });
 }
 
+export const DEFAULT_FRONT_MORE_MENU = [
+    { id: "menu-authors", label: "AUTHORS (എഴുത്തുകാർ)", url: "author.html?id=സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ", icon: "✍️", order: 1, targetBlank: false, isActive: true },
+    { id: "menu-contact", label: "ABOUT & CONTACT", url: "contact.html", icon: "📬", order: 2, targetBlank: false, isActive: true },
+    { id: "menu-admin", label: "ADMIN PORTAL", url: "admin.html", icon: "⚙️", order: 3, targetBlank: false, isActive: true }
+];
+
+function renderDynamicMoreMenu(items) {
+    const dropdown = document.getElementById("more-categories-dropdown");
+    if (!dropdown) return;
+
+    const list = Array.isArray(items) && items.length > 0 ? items : DEFAULT_FRONT_MORE_MENU;
+    const activeItems = list.filter(item => item && item.isActive !== false);
+    const sorted = activeItems.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+
+    dropdown.innerHTML = sorted.map((item, index) => {
+        const isAdmin = (item.url && item.url.includes("admin.html")) || (item.label && item.label.toUpperCase().includes("ADMIN"));
+        const colorClass = isAdmin ? "text-[#b4532c] dark:text-[#f87171]" : "text-[#1e1b18] dark:text-white";
+        const icon = item.icon || "🔗";
+        const targetAttr = item.targetBlank ? `target="_blank" rel="noopener noreferrer"` : "";
+        const divider = (index > 0 && isAdmin) ? `<div class="border-t border-[#ebdccb]/60 dark:border-white/10 my-1"></div>` : "";
+
+        return `
+            ${divider}
+            <a href="${item.url || '#'}" ${targetAttr} class="more-dropdown-item flex items-center gap-2.5 px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold ${colorClass} transition font-english">
+                <span>${icon}</span>
+                <span>${item.label || ''}</span>
+            </a>
+        `;
+    }).join("");
+}
+
+function initDynamicMoreMenu() {
+    // 1. Instant cache paint
+    try {
+        const cached = sessionStorage.getItem("nuqtha_more_menu");
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                renderDynamicMoreMenu(parsed);
+            }
+        }
+    } catch (e) {}
+
+    // 2. Realtime listener from Firestore
+    try {
+        const menuDocRef = doc(db, "settings", "more_menu");
+        onSnapshot(menuDocRef, (snap) => {
+            if (snap.exists()) {
+                const data = snap.data();
+                if (Array.isArray(data.items) && data.items.length > 0) {
+                    sessionStorage.setItem("nuqtha_more_menu", JSON.stringify(data.items));
+                    renderDynamicMoreMenu(data.items);
+                    return;
+                }
+            }
+            renderDynamicMoreMenu(DEFAULT_FRONT_MORE_MENU);
+        }, async (err) => {
+            console.warn("[MoreMenu] Snapshot listener error, trying REST fallback:", err);
+            try {
+                const apiKey = db.app.options?.apiKey || getFirebaseApiKey();
+                const projectId = db.app.options?.projectId || "nuqtha-c0900";
+                const restUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/settings/more_menu?key=${encodeURIComponent(apiKey)}`;
+                const res = await fetchWithRetry(restUrl, {}, 2, 250);
+                if (res && res.ok) {
+                    const json = await res.json();
+                    if (json && json.fields && json.fields.items && json.fields.items.arrayValue) {
+                        const items = (json.fields.items.arrayValue.values || []).map(val => {
+                            const m = val.mapValue?.fields || {};
+                            return {
+                                id: m.id?.stringValue || "",
+                                label: m.label?.stringValue || "",
+                                url: m.url?.stringValue || "",
+                                icon: m.icon?.stringValue || "🔗",
+                                order: Number(m.order?.integerValue || m.order?.stringValue || 0),
+                                targetBlank: Boolean(m.targetBlank?.booleanValue),
+                                isActive: m.isActive?.booleanValue !== false
+                            };
+                        });
+                        if (items.length > 0) {
+                            sessionStorage.setItem("nuqtha_more_menu", JSON.stringify(items));
+                            renderDynamicMoreMenu(items);
+                            return;
+                        }
+                    }
+                }
+            } catch (rErr) {
+                console.warn("[MoreMenu] REST fallback error:", rErr);
+            }
+            renderDynamicMoreMenu(DEFAULT_FRONT_MORE_MENU);
+        });
+    } catch (err) {
+        console.warn("[MoreMenu] Firestore doc init error:", err);
+        renderDynamicMoreMenu(DEFAULT_FRONT_MORE_MENU);
+    }
+}
+
 function setupMoreDropdown() {
     const moreBtn = document.getElementById("more-categories-btn");
     const dropdown = document.getElementById("more-categories-dropdown");
     const arrow = document.getElementById("more-arrow");
 
     if (!moreBtn || !dropdown) return;
+
+    // Load and listen to dynamic links from Firestore
+    initDynamicMoreMenu();
 
     moreBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -511,7 +610,8 @@ function listenForArticles() {
 
         restFetchPromise = (async () => {
             try {
-                const { apiKey, projectId } = db.app.options;
+                const apiKey = db.app.options?.apiKey || getFirebaseApiKey();
+                const projectId = db.app.options?.projectId || "nuqtha-c0900";
                 if (!apiKey || !projectId) {
                     throw new Error("Firebase project ID or API key is missing.");
                 }
@@ -522,7 +622,7 @@ function listenForArticles() {
                     const params = new URLSearchParams({ pageSize: "300", key: apiKey });
                     if (nextPageToken) params.set("pageToken", nextPageToken);
                     const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/articles?${params}`;
-                    const response = await fetch(url);
+                    const response = await fetchWithRetry(url, {}, 3, 300);
                     if (!response.ok) {
                         throw new Error(`Firestore REST request failed (${response.status}): ${await response.text()}`);
                     }
