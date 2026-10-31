@@ -414,9 +414,9 @@
                             `}
                         </div>
                         <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-                            <span class="text-[10px] font-black text-[#b4532c] dark:text-[#f87171] uppercase font-english tracking-wider">
+                            <a href="index.html#${encodeURIComponent((art.category || 'GENERAL').toLowerCase())}" class="text-[10px] font-black text-[#b4532c] dark:text-[#f87171] uppercase font-english tracking-wider hover:underline" title="View ${art.category || 'GENERAL'} articles">
                                 [${art.category || "GENERAL"}]
-                            </span>
+                            </a>
                             <h3 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[#b4532c] transition-colors">
                                 ${cleanTitle}
                             </h3>

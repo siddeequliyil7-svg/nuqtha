@@ -93,7 +93,66 @@ document.addEventListener("DOMContentLoaded", () => {
     listenForArticles();
 });
 
-/* ═══════════ More Categories Dropdown Setup ═══════════ */
+/* ═══════════ Navbar Dropdown & Link Setup ═══════════ */
+function setupArticlesDropdown() {
+    const articlesBtn = document.getElementById("articles-dropdown-btn");
+    const dropdown = document.getElementById("articles-dropdown-menu");
+    const arrow = document.getElementById("articles-arrow");
+
+    if (!articlesBtn || !dropdown) return;
+
+    articlesBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Close more dropdown if open
+        const moreDropdown = document.getElementById("more-categories-dropdown");
+        if (moreDropdown && !moreDropdown.classList.contains("hidden")) {
+            moreDropdown.classList.add("hidden");
+            const moreArrow = document.getElementById("more-arrow");
+            if (moreArrow) moreArrow.style.transform = "rotate(0deg)";
+        }
+
+        const isHidden = dropdown.classList.contains("hidden");
+        dropdown.classList.toggle("hidden", !isHidden);
+        if (arrow) arrow.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
+        articlesBtn.setAttribute("aria-expanded", isHidden ? "true" : "false");
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!articlesBtn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add("hidden");
+            if (arrow) arrow.style.transform = "rotate(0deg)";
+            articlesBtn.setAttribute("aria-expanded", "false");
+        }
+    });
+
+    dropdown.addEventListener("click", (e) => {
+        const item = e.target.closest("[data-category]");
+        if (item) {
+            e.preventDefault();
+            const cat = item.dataset.category;
+            if (cat) {
+                switchToCategory(cat);
+                dropdown.classList.add("hidden");
+                if (arrow) arrow.style.transform = "rotate(0deg)";
+                articlesBtn.setAttribute("aria-expanded", "false");
+            }
+        }
+    });
+}
+
+function setupBooksNavLink() {
+    const booksLink = document.getElementById("nav-books-link");
+    if (!booksLink) return;
+
+    booksLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        switchToCategory("BOOKS");
+        document.getElementById("articles-dropdown-menu")?.classList.add("hidden");
+        document.getElementById("more-categories-dropdown")?.classList.add("hidden");
+    });
+}
+
 function setupMoreDropdown() {
     const moreBtn = document.getElementById("more-categories-btn");
     const dropdown = document.getElementById("more-categories-dropdown");
@@ -104,34 +163,43 @@ function setupMoreDropdown() {
     moreBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
+        // Close articles dropdown if open
+        const artDropdown = document.getElementById("articles-dropdown-menu");
+        if (artDropdown && !artDropdown.classList.contains("hidden")) {
+            artDropdown.classList.add("hidden");
+            const artArrow = document.getElementById("articles-arrow");
+            if (artArrow) artArrow.style.transform = "rotate(0deg)";
+        }
+
         const isHidden = dropdown.classList.contains("hidden");
         dropdown.classList.toggle("hidden", !isHidden);
         if (arrow) arrow.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
+        moreBtn.setAttribute("aria-expanded", isHidden ? "true" : "false");
     });
 
     document.addEventListener("click", (e) => {
         if (!moreBtn.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.classList.add("hidden");
             if (arrow) arrow.style.transform = "rotate(0deg)";
+            moreBtn.setAttribute("aria-expanded", "false");
         }
     });
 
-    document.querySelectorAll(".more-dropdown-item").forEach(item => {
-        if (!item) return;
-        item.addEventListener("click", (e) => {
+    dropdown.addEventListener("click", (e) => {
+        const item = e.target.closest("[data-category]");
+        if (item) {
             e.preventDefault();
             const cat = item.dataset.category;
             if (cat) {
                 switchToCategory(cat);
                 dropdown.classList.add("hidden");
                 if (arrow) arrow.style.transform = "rotate(0deg)";
+                moreBtn.setAttribute("aria-expanded", "false");
             }
-        });
+        }
     });
 }
 
-
-/* ─── Helper: Identify Book Entities (Covers and Chapters) ─── */
 function isBookEntity(article) {
     if (!article) return false;
     if (article.type === "BOOK") return true;
@@ -143,72 +211,76 @@ function isBookEntity(article) {
 }
 
 function updateMoreCategoriesMenu() {
-    const dropdown = document.getElementById("more-categories-dropdown");
-    if (!dropdown) return;
+    // Populate dynamic categories into Articles dropdown
+    const container = document.getElementById("dynamic-articles-categories");
+    if (!container) return;
 
-    const baseCats = new Set(["HISTORY", "STUDY", "STORY"]);
+    const baseCats = new Set(["ALL", "HISTORY", "STUDY", "STORY", "BOOKS", "BOOK", "PREMIUM BOOK"]);
     const extraCats = new Set();
 
     allArticles.forEach(a => {
-        if (isBookEntity(a)) return; // Exclude books & chapters from categories dropdown
+        if (isBookEntity(a)) return;
         const cat = (a.category || "").toUpperCase().trim();
-        if (cat && !baseCats.has(cat) && cat !== "BOOKS" && cat !== "BOOK" && cat !== "PREMIUM BOOK") {
+        if (cat && !baseCats.has(cat)) {
             extraCats.add(cat);
         }
     });
 
-    let html = ``;
-    if (extraCats.size > 0) {
-        extraCats.forEach(cat => {
-            html += `
-                <a href="#" data-category="${cat}" class="more-dropdown-item flex items-center gap-2 px-3.5 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
-                    <span>📌</span>
-                    <span>${cat}</span>
-                </a>
-            `;
-        });
-    } else {
-        html += `
-            <a href="#" data-category="GENERAL" class="more-dropdown-item flex items-center gap-2 px-3.5 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
-                <span>📌</span>
-                <span>GENERAL</span>
-            </a>
-        `;
+    if (extraCats.size === 0) {
+        container.innerHTML = "";
+        return;
     }
 
-    const hasBooks = allArticles.some(a => a.type === "BOOK");
-    if (hasBooks) {
+    let html = `<div class="border-t border-[#ebdccb]/60 dark:border-white/10 my-1"></div>`;
+    extraCats.forEach(cat => {
+        const malLabel = categoryLabel(cat);
         html += `
-            <a href="#" data-category="BOOKS" class="more-dropdown-item flex items-center gap-2 px-3.5 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
-                <span>📚</span>
-                <span>BOOKS &amp; EDITIONS</span>
+            <a href="#" data-category="${cat}" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
+                <span>${cat}</span>
+                <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">${malLabel}</span>
             </a>
         `;
-    }
+    });
+    container.innerHTML = html;
+}
 
-    html += `
-        <a href="#" data-category="ALL" class="more-dropdown-item flex items-center gap-2 px-3.5 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] transition border-t border-[#ebdccb]/60 dark:border-white/10 uppercase font-english">
-            <span>🏠</span>
-            <span>ALL ARTICLES</span>
-        </a>
-    `;
-
-    dropdown.innerHTML = html;
-
-    dropdown.querySelectorAll(".more-dropdown-item").forEach(item => {
-        if (!item) return;
-        item.addEventListener("click", (e) => {
-            e.preventDefault();
-            const cat = item.dataset.category;
+function setupGlobalCategoryBadges() {
+    document.addEventListener("click", (e) => {
+        const badge = e.target.closest(".category-glass-badge, .category-badge-pill, .carousel-card-cat, [data-badge-category]");
+        if (badge) {
+            const cat = badge.dataset.badgeCategory || badge.dataset.category;
             if (cat) {
-                switchToCategory(cat);
-                dropdown.classList.add("hidden");
-                const arrow = document.getElementById("more-arrow");
-                if (arrow) arrow.style.transform = "rotate(0deg)";
+                e.preventDefault();
+                e.stopPropagation();
+                switchToCategory(cat.toUpperCase());
             }
-        });
+        }
     });
 }
+
+function checkUrlCategory() {
+    const params = new URLSearchParams(window.location.search);
+    const catParam = params.get('category') || params.get('cat');
+    const hash = window.location.hash.replace(/^#/, '').trim();
+
+    let targetCat = catParam || '';
+    if (!targetCat && hash && hash !== 'home') {
+        const hashClean = hash.replace(/^category=/, '').trim();
+        targetCat = hashClean;
+    }
+
+    if (targetCat) {
+        const upper = targetCat.toUpperCase();
+        if (upper === 'BOOK' || upper === 'BOOKS') {
+            switchToCategory('BOOKS');
+        } else {
+            switchToCategory(upper);
+        }
+    }
+}
+
+window.addEventListener('hashchange', checkUrlCategory);
+window.addEventListener('popstate', checkUrlCategory);
 
 /* ═══════════ Light / Dark Mode Toggle ═══════════ */
 function setupThemeToggle() {
@@ -797,16 +869,27 @@ function attachShowMoreListeners() {
 function switchToCategory(cat) {
     currentCategory = cat;
     clearSearch(false);
-    let matchedTop = false;
-    document.querySelectorAll("#category-nav > .nav-category-link").forEach(link => {
-        const isMatch = link.dataset.category === cat;
-        link.classList.toggle("active", isMatch);
-        if (isMatch) matchedTop = true;
-    });
-    const moreBtn = document.getElementById("more-categories-btn");
-    if (moreBtn) {
-        moreBtn.classList.toggle("active", !matchedTop && cat !== "ALL");
+
+    // Update active state on nav links
+    const articlesBtn = document.getElementById("articles-dropdown-btn");
+    const booksLink = document.getElementById("nav-books-link");
+    const isBook = cat === "BOOKS" || cat === "BOOK";
+
+    if (booksLink) booksLink.classList.toggle("active", isBook);
+    if (articlesBtn) articlesBtn.classList.toggle("active", !isBook);
+
+    // Update URL hash
+    if (cat === "ALL") {
+        if (window.location.hash) {
+            history.pushState(null, "", window.location.pathname + window.location.search);
+        }
+    } else {
+        const newHash = "#" + cat.toLowerCase();
+        if (window.location.hash !== newHash) {
+            history.pushState(null, "", newHash);
+        }
     }
+
     renderFeed();
     // Scroll to top of feed
     const feedEl = document.getElementById("feed-container");
@@ -1235,7 +1318,7 @@ function buildCarouselCard(art) {
     return '<a href="article.html?id=' + art.id + '" class="carousel-card" data-id="' + art.id + '">' +
         imgHtml +
         '<div class="carousel-card-body">' +
-            '<span class="carousel-card-cat">' + catLabel + '</span>' +
+            '<span class="carousel-card-cat category-badge-pill cursor-pointer hover:underline transition" data-category="' + (art.category || 'GENERAL') + '" title="View ' + catLabel + ' articles">' + catLabel + '</span>' +
             '<h4 class="carousel-card-title" ' + titleStyle + '>' + cleanTitle + '</h4>' +
             '<p class="carousel-card-meta font-bold text-[#1e1b18] dark:text-white">' + authorName + '</p>' +
             '<p class="carousel-card-meta">' + dateStr + '</p>' +
@@ -1753,7 +1836,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
     <section class="category-section-block book-showcase-section mt-6 sm:mt-8 p-3.5 sm:p-5 rounded-2xl border border-[#ebdccb] dark:border-white/10 bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md shadow-xs">
         <div class="category-section-header flex items-center justify-between mb-3.5">
             <div class="flex items-center gap-2">
-                <div class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5">
+                <div class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5 cursor-pointer hover:bg-[#b4532c]/10 transition" data-category="${cat}" title="View all ${label} articles">
                     <span class="w-2 h-2 rounded-full inline-block flex-shrink-0 bg-[#b4532c]"></span>
                     <span class="font-english text-[11px] sm:text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]">BOOKS & EDITIONS</span>
                     <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-white">പുസ്തകങ്ങൾ</span>

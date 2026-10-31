@@ -195,7 +195,7 @@
                         <span id="art-book-badge-text"></span>
                     </a>
                 </div>
-                <span id="art-category" class="category-badge font-english uppercase"></span>
+                <a id="art-category" href="#" class="category-badge font-english uppercase hover:opacity-80 transition cursor-pointer" title="ഈ വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക"></a>
                 <h1 id="art-title" class="article-title-text text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e1b18] dark:text-white tracking-tight leading-snug"></h1>
 
                 <!-- Author & Date Profile Bar -->
@@ -1180,7 +1180,11 @@
             }
 
             const catEl = document.getElementById('art-category');
-            if (catEl) catEl.textContent = article.category || "GENERAL";
+            if (catEl) {
+                const cat = (article.category || "GENERAL").toUpperCase().trim();
+                catEl.textContent = cat;
+                catEl.href = `index.html#${encodeURIComponent(cat.toLowerCase())}`;
+            }
 
             const bookBadgeContainer = document.getElementById('art-book-badge-container');
             const bookBadgeLink = document.getElementById('art-book-link');
