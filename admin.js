@@ -57,6 +57,10 @@ import {
 
 let editingArticleId = null; // null = create mode, string = edit mode
 let currentArticlesList = [];
+export let safeArticles = [];
+if (typeof window !== "undefined") {
+    window.safeArticles = safeArticles;
+}
 let activeTab = "create";
 let selectedBase64Image = "";
 let selectedBookCoverBase64 = "";
@@ -2796,6 +2800,11 @@ function listenToFirestoreArticles() {
         const standardArticles = items.filter(a => !isBookOrChapter(a));
         const allBooks = items.filter(a => isMainBook(a));
 
+        safeArticles = Array.isArray(standardArticles) ? standardArticles : [];
+        if (typeof window !== "undefined") {
+            window.safeArticles = safeArticles;
+        }
+
         updateArticleCounters(standardArticles.length);
         updateBooksCounter(allBooks.length);
 
@@ -2930,14 +2939,17 @@ function updateArticleCounters(count) {
     if (tabBadge) tabBadge.textContent = String(count);
 }
 
-function renderAdminPublishedList(items) {
+export function renderAdminPublishedList(items) {
     const listContainer = document.getElementById("admin-articles-list");
     if (!listContainer) return;
 
     // Strictly filter out any books and book chapters
     const sourceList = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
     const articles = sourceList.filter(a => !isBookOrChapter(a));
-    const safeArticles = Array.isArray(articles) ? articles : [];
+    safeArticles = Array.isArray(articles) ? articles : [];
+    if (typeof window !== "undefined") {
+        window.safeArticles = safeArticles;
+    }
 
     if (safeArticles.length === 0) {
         listContainer.innerHTML = `
@@ -3008,6 +3020,7 @@ function renderAdminPublishedList(items) {
         `;
     }).join("");
 }
+window.renderAdminPublishedList = renderAdminPublishedList;
 
 /* ═══════════════════════════════════════════════════════════
    8. TAB 4 SEARCH & FILTER IN ARTICLES LIST
@@ -3032,6 +3045,11 @@ function initPublishedSearchFilter() {
 
             return matchesQuery && matchesCategory;
         });
+
+        safeArticles = Array.isArray(filtered) ? filtered : [];
+        if (typeof window !== "undefined") {
+            window.safeArticles = safeArticles;
+        }
 
         renderAdminPublishedList(filtered);
     }
