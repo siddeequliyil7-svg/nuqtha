@@ -1274,20 +1274,18 @@
             const excerptContainer = document.getElementById('art-excerpt-container');
             const excerptEl = document.getElementById('art-excerpt');
 
-            let leadExcerpt = (
-                article.storedExcerpt || 
-                article.excerpt || 
-                article.intro || 
-                article.introduction || 
-                article.summary || 
-                ""
-            ).trim();
+            // SOURCE OF TRUTH: ONLY the text saved in that article's EXCERPT field, exactly as typed, complete, nothing else.
+            const rawExcerpt = typeof article.excerpt === 'string' ? article.excerpt : (typeof article.storedExcerpt === 'string' ? article.storedExcerpt : '');
+            const leadExcerpt = rawExcerpt.trim();
+            // Hide whole block if empty or only punctuation/whitespace (no fallback text)
+            const hasMeaningfulText = leadExcerpt.replace(/[\s\p{P}\p{S}]/gu, '').length > 0;
 
             if (excerptContainer && excerptEl) {
-                if (leadExcerpt) {
+                if (hasMeaningfulText) {
                     excerptEl.textContent = leadExcerpt;
                     excerptContainer.classList.remove('hidden');
                 } else {
+                    excerptEl.textContent = '';
                     excerptContainer.classList.add('hidden');
                 }
             }
@@ -1375,19 +1373,6 @@
 
             const bodyContent = (article.content || "").trim();
             let rawParagraphs = bodyContent.split(/\r?\n\r?\n/).map(p => p.trim()).filter(Boolean);
-
-            // Clean deduplication: if the first paragraph duplicates the excerpt, don't repeat it in the body
-            if (leadExcerpt && rawParagraphs.length > 1) {
-                const normExcerpt = leadExcerpt.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').replace(/[.…]+$/, '').trim();
-                const normFirstP = rawParagraphs[0].normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').replace(/[.…]+$/, '').trim();
-                if (normFirstP === normExcerpt || normFirstP.startsWith(normExcerpt) || normExcerpt.startsWith(normFirstP)) {
-                    rawParagraphs.shift();
-                }
-            }
-
-            if (rawParagraphs.length === 0 && !leadExcerpt && article.excerpt) {
-                rawParagraphs = [article.excerpt.trim()];
-            }
 
             contentEl.innerHTML = rawParagraphs
                 .map(paragraph => {

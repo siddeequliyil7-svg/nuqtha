@@ -292,6 +292,54 @@ function initArticleForm() {
             await handleFormSubmit();
         });
     }
+
+    initAdminExcerptControls();
+}
+
+function initAdminExcerptControls() {
+    const excerptInput = document.getElementById("art-excerpt");
+    if (!excerptInput) return;
+
+    excerptInput.addEventListener("input", () => {
+        updateAdminExcerptUI();
+    });
+
+    // Initial pass
+    updateAdminExcerptUI();
+}
+
+export function updateAdminExcerptUI() {
+    const excerptInput = document.getElementById("art-excerpt");
+    const countEl = document.getElementById("art-excerpt-char-count");
+    const previewContainer = document.getElementById("art-excerpt-preview-container");
+    const previewText = document.getElementById("art-excerpt-preview-text");
+    if (!excerptInput) return;
+
+    // Auto-grow with min-height 140px and vertical resize
+    excerptInput.style.height = "auto";
+    const newHeight = Math.max(140, excerptInput.scrollHeight);
+    excerptInput.style.height = `${newHeight}px`;
+
+    const val = excerptInput.value || "";
+    if (countEl) {
+        countEl.textContent = `${val.length} characters`;
+    }
+
+    const trimmed = val.trim();
+    const hasMeaningful = trimmed.replace(/[\s\p{P}\p{S}]/gu, '').length > 0;
+    if (previewContainer && previewText) {
+        if (hasMeaningful) {
+            previewText.textContent = trimmed;
+            previewContainer.classList.remove("hidden");
+        } else {
+            previewText.textContent = "";
+            previewContainer.classList.add("hidden");
+        }
+    }
+}
+
+if (typeof window !== "undefined") {
+    window.updateAdminExcerptUI = updateAdminExcerptUI;
 }
 
 async function handleFormSubmit() {
@@ -306,6 +354,7 @@ async function handleFormSubmit() {
         const authorId = window.currentUser?.uid || localStorage.getItem("nuqtha_admin_uid") || "admin";
         const rawTranscription = document.getElementById("art-transcription")?.value || "";
         const rawExcerpt = document.getElementById("art-excerpt")?.value || "";
+        const typedExcerpt = rawExcerpt.trim();
         const rawContent = document.getElementById("art-content")?.value || "";
         const rawTitleColor = document.getElementById("art-title-color")?.value || "#1e1b18";
         const rawContentColor = document.getElementById("art-content-color")?.value || "#2b2118";
@@ -345,9 +394,9 @@ async function handleFormSubmit() {
                 author: sanitized.author,
                 authorId: sanitized.authorId || authorId,
                 transcription: sanitized.transcription || "",
-                hasCustomExcerpt: sanitized.hasCustomExcerpt,
-                storedExcerpt: sanitized.storedExcerpt,
-                excerpt: sanitized.excerpt,
+                hasCustomExcerpt: Boolean(typedExcerpt),
+                storedExcerpt: typedExcerpt,
+                excerpt: typedExcerpt,
                 content: sanitized.content,
                 titleColor: sanitized.titleColor,
                 contentColor: sanitized.contentColor,
@@ -372,6 +421,9 @@ async function handleFormSubmit() {
             // CREATE NEW ARTICLE IN FIRESTORE
             await addDoc(collection(db, "articles"), {
                 ...sanitized,
+                hasCustomExcerpt: Boolean(typedExcerpt),
+                storedExcerpt: typedExcerpt,
+                excerpt: typedExcerpt,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
@@ -442,6 +494,16 @@ function resetFormFields() {
     if (priorityEl) priorityEl.value = "10";
     if (playlistEl) playlistEl.value = "";
     if (isBookEl) isBookEl.checked = false;
+
+    // Reset Excerpt UI
+    const excerptInput = document.getElementById("art-excerpt");
+    if (excerptInput) {
+        excerptInput.value = "";
+        excerptInput.style.height = "140px";
+    }
+    if (typeof updateAdminExcerptUI === "function") {
+        updateAdminExcerptUI();
+    }
 }
 
 function exitEditMode() {
@@ -481,7 +543,12 @@ window.startEditArticle = function (id) {
     if (catInput) catInput.value = (art.category || "HISTORY").toUpperCase();
     if (authorInput) authorInput.value = art.author || "";
     if (transcriptionInput) transcriptionInput.value = art.transcription || "";
-    if (excerptInput) excerptInput.value = art.storedExcerpt || (art.hasCustomExcerpt ? art.excerpt : "") || art.excerpt || "";
+    if (excerptInput) {
+        excerptInput.value = art.storedExcerpt || (art.hasCustomExcerpt ? art.excerpt : "") || art.excerpt || "";
+        if (typeof updateAdminExcerptUI === "function") {
+            updateAdminExcerptUI();
+        }
+    }
     if (contentInput) contentInput.value = art.content || "";
 
     // Tab 2: Layout & Playlist

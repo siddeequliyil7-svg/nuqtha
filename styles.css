@@ -57,6 +57,8 @@ html.dark body {
 /* ═══════════ DARK MODE / BLACK & WHITE PALETTE ═══════════ */
 html.dark,
 body.dark-mode {
+    --text: #f8fafc;
+    --border: rgba(255, 255, 255, 0.14);
     --terracotta: #e2e8f0;
     --terracotta-dark: #cbd5e1;
     --bg-cream: #090a0f;
@@ -2835,10 +2837,13 @@ body.dark-mode #preview-body {
    18px "Anek Malayalam", sans-serif, no box/borders, transparent background
    ═══════════════════════════════════════════════════════════ */
 .article-lead-excerpt {
-    margin: 16px 0 !important;
-    padding: 16px 0 !important;
+    position: relative !important;
+    margin: 28px 0 !important;
+    padding: 28px 12px !important;
     background: transparent !important;
     border: none !important;
+    border-top: 1px solid var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     display: flex !important;
@@ -2848,43 +2853,117 @@ body.dark-mode #preview-body {
     box-sizing: border-box !important;
 }
 
+/* Fainter second hairline 4px outside top and bottom borders */
+.article-lead-excerpt::before,
+.article-lead-excerpt::after {
+    content: "" !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 1px !important;
+    background-color: var(--border) !important;
+    opacity: 0.45 !important;
+    pointer-events: none !important;
+}
+
+.article-lead-excerpt::before {
+    top: -5px !important; /* 4px gap outside the 1px top border */
+}
+
+.article-lead-excerpt::after {
+    bottom: -5px !important; /* 4px gap outside the 1px bottom border */
+}
+
 .article-lead-text,
 #art-excerpt {
     font-family: 'Anek Malayalam', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    font-size: 18px !important;
+    font-size: clamp(17px, 2.2vw, 21px) !important;
+    font-style: italic !important;
     font-weight: 500 !important;
-    line-height: 1.85 !important;
-    color: #212529 !important;
-    margin: 0 !important;
+    line-height: 1.95 !important;
+    text-align: center !important;
+    color: var(--text) !important;
+    white-space: pre-line !important;
+    margin: 0 auto !important;
     padding: 0 !important;
-    text-align: justify !important;
-    font-style: normal !important;
+    max-width: 100% !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
     letter-spacing: -0.01em !important;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 360px) {
     .article-lead-excerpt {
-        margin: 12px 0 !important;
-        padding: 12px 0 !important;
+        margin: 24px 0 !important;
+        padding: 24px 8px !important;
     }
     .article-lead-text,
     #art-excerpt {
-        font-size: 16.5px !important;
-        line-height: 1.8 !important;
+        font-size: 17px !important;
+        line-height: 1.85 !important;
     }
 }
 
-html.dark .article-lead-excerpt,
-body.dark-mode .article-lead-excerpt {
+html.dark .article-lead-excerpt {
     background: transparent !important;
-    border: none !important;
+    border-top-color: var(--border) !important;
+    border-bottom-color: var(--border) !important;
+}
+
+html.dark .article-lead-excerpt::before,
+html.dark .article-lead-excerpt::after {
+    background-color: var(--border) !important;
+    opacity: 0.35 !important;
 }
 
 html.dark .article-lead-text,
-html.dark #art-excerpt,
-body.dark-mode .article-lead-text,
-body.dark-mode #art-excerpt {
-    color: #f1f5f9 !important;
+html.dark #art-excerpt {
+    color: var(--text) !important;
+}
+
+/* Admin Excerpt Live Preview Box */
+.admin-excerpt-preview-container {
+    position: relative !important;
+    margin: 16px 0 8px 0 !important;
+    padding: 20px 12px !important;
+    background: transparent !important;
+    border: none !important;
+    border-top: 1px solid var(--border, #ebdccb) !important;
+    border-bottom: 1px solid var(--border, #ebdccb) !important;
+    box-sizing: border-box !important;
+}
+
+.admin-excerpt-preview-container::before,
+.admin-excerpt-preview-container::after {
+    content: "" !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 1px !important;
+    background-color: var(--border, #ebdccb) !important;
+    opacity: 0.45 !important;
+    pointer-events: none !important;
+}
+
+.admin-excerpt-preview-container::before {
+    top: -5px !important;
+}
+
+.admin-excerpt-preview-container::after {
+    bottom: -5px !important;
+}
+
+.admin-excerpt-preview-text {
+    font-family: 'Anek Malayalam', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-size: 15.5px !important;
+    font-style: italic !important;
+    font-weight: 500 !important;
+    line-height: 1.85 !important;
+    text-align: center !important;
+    color: var(--text, #1e1b18) !important;
+    white-space: pre-line !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
 }
 
 /* ═══════════════════════════════════════════════════════════

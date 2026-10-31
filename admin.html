@@ -279,8 +279,21 @@
 
                     <!-- Excerpt -->
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">ലേഖനത്തിന്റെ ചുരുക്കം (Excerpt)</label>
-                        <textarea id="art-excerpt" rows="2" placeholder="ഹോം പേജിൽ കാർഡുകളിലും ലേഖനത്തിന്റെ ആരംഭത്തിലും കാണിക്കേണ്ട 2-3 വരി ചുരുക്കം..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40"></textarea>
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="art-excerpt" class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english">ലേഖനത്തിന്റെ ചുരുക്കം (Excerpt)</label>
+                            <span id="art-excerpt-char-count" class="text-[11px] font-english text-[#8c7a6b]">0 characters</span>
+                        </div>
+                        <textarea id="art-excerpt" rows="5" placeholder="ലേഖനത്തിന്റെ ആരംഭത്തിലും കാർഡുകളിലും കാണിക്കേണ്ട ചുരുക്കം നൽകുക..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 min-h-[140px] resize-y font-['Noto_Sans_Malayalam']" style="min-height: 140px; resize: vertical;"></textarea>
+                        
+                        <p id="art-excerpt-helper" class="text-[11px] text-[#8c7a6b] mt-1.5 flex items-center gap-1">
+                            <span>ℹ️</span> <span>ലേഖനത്തിന്റെ തുടക്കത്തിൽ ചരിഞ്ഞ അക്ഷരത്തിൽ മുഴുവനായി കാണിക്കും</span>
+                        </p>
+
+                        <!-- Small Live Standfirst Preview (hidden when empty) -->
+                        <div id="art-excerpt-preview-container" class="hidden admin-excerpt-preview-container">
+                            <div class="text-[10px] uppercase font-bold tracking-wider text-[#8c7a6b] mb-1 font-english">Live Editorial Preview</div>
+                            <p id="art-excerpt-preview-text" class="admin-excerpt-preview-text"></p>
+                        </div>
                     </div>
 
                     <!-- Full Content with Rich Formatting Toolbar -->
