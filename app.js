@@ -11,6 +11,10 @@ import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
 
 let allArticles = [];
+try {
+    const cachedArts = sessionStorage.getItem('nuqtha_cached_articles');
+    if (cachedArts) allArticles = JSON.parse(cachedArts);
+} catch (e) {}
 let siteAuthorsMap = null;
 try {
     const stored = sessionStorage.getItem('nuqtha_cached_authors');
@@ -93,15 +97,24 @@ export function sanitizeMalayalamText(str) {
 
 let currentSearchQuery = "";
 
-document.addEventListener("DOMContentLoaded", () => {
+function initApp() {
     setupThemeToggle();
     setupCategoryNav();
+    setupArticlesDropdown();
+    setupBooksNavLink();
     setupMoreDropdown();
     setupHomeLink();
     setupSidebarDrawer();
     setupSearch();
+    checkUrlCategory();
     listenForArticles();
-});
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initApp);
+} else {
+    initApp();
+}
 
 /* ═══════════ Navbar Dropdown & Link Setup ═══════════ */
 function setupArticlesDropdown() {
@@ -339,13 +352,18 @@ function setupCategoryNav() {
 }
 
 function setupHomeLink() {
-    const homeLink = document.getElementById("home-link");
-    if (!homeLink) return;
-
-    homeLink.addEventListener("click", event => {
-        event.preventDefault();
-        switchToCategory("ALL");
-        document.getElementById("home")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const homeLinks = document.querySelectorAll("#home-link, .brand-badge, .drawer-home-link");
+    homeLinks.forEach(link => {
+        link.addEventListener("click", event => {
+            event.preventDefault();
+            clearSearch(false);
+            document.getElementById("articles-dropdown-menu")?.classList.add("hidden");
+            document.getElementById("more-categories-dropdown")?.classList.add("hidden");
+            document.getElementById("sidebar-drawer")?.classList.remove("drawer-open");
+            document.getElementById("sidebar-backdrop")?.classList.remove("backdrop-active");
+            switchToCategory("ALL");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
     });
 }
 
@@ -473,10 +491,14 @@ function listenForArticles() {
         });
 
         hasServerSnapshot = !snapshot.metadata.fromCache;
-        allArticles = snapshot.metadata.fromCache
-            ? mergeArticles(snapshotArticles, restArticles)
-            : sortArticles(snapshotArticles);
-        renderFeed();
+        if (snapshotArticles.length > 0) {
+            allArticles = sortArticles(snapshotArticles);
+            try { sessionStorage.setItem('nuqtha_cached_articles', JSON.stringify(allArticles)); } catch (e) {}
+            renderFeed();
+        } else if (!snapshot.metadata.fromCache) {
+            allArticles = [];
+            renderFeed();
+        }
     }, error => {
         console.error("Firestore articles listener failed:", error);
         loadArticlesFromRest();
@@ -520,8 +542,11 @@ function listenForArticles() {
                     }, id);
                 });
 
-                if (!hasServerSnapshot) {
+                if (restArticles.length > 0) {
                     allArticles = sortArticles(restArticles);
+                    try { sessionStorage.setItem('nuqtha_cached_articles', JSON.stringify(allArticles)); } catch (e) {}
+                    renderFeed();
+                } else if (!hasServerSnapshot && allArticles.length === 0) {
                     renderFeed();
                 }
             } catch (error) {
@@ -670,6 +695,7 @@ function renderHomeFeed(container) {
     const bookCovers = allArticles.filter(a => a.type === "BOOK");
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
+        if (allArticles.length === 0) return;
         renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
         return;
     }
@@ -1850,7 +1876,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
     <section class="category-section-block book-showcase-section mt-6 sm:mt-8 p-3.5 sm:p-5 rounded-2xl border border-[#ebdccb] dark:border-white/10 bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md shadow-xs">
         <div class="category-section-header flex items-center justify-between mb-3.5">
             <div class="flex items-center gap-2">
-                <div class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5 cursor-pointer hover:bg-[#b4532c]/10 transition" data-category="${cat}" title="View all ${label} articles">
+                <div class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5 cursor-pointer hover:bg-[#b4532c]/10 transition" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)">
                     <span class="w-2 h-2 rounded-full inline-block flex-shrink-0 bg-[#b4532c]"></span>
                     <span class="font-english text-[11px] sm:text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]">BOOKS & EDITIONS</span>
                     <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-white">പുസ്തകങ്ങൾ</span>
