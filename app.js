@@ -12,7 +12,17 @@ import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-servic
 
 let allArticles = [];
 let siteAuthorsMap = null;
-getAuthorsMap(db).then(map => { siteAuthorsMap = map; }).catch(() => {});
+try {
+    const stored = sessionStorage.getItem('nuqtha_cached_authors');
+    if (stored) siteAuthorsMap = JSON.parse(stored);
+} catch (e) {}
+
+getAuthorsMap(db).then(map => {
+    siteAuthorsMap = map;
+    if (typeof renderFeed === 'function' && allArticles.length > 0) {
+        renderFeed();
+    }
+}).catch(() => {});
 let currentCategory = "ALL";
 
 // Ordered list of categories shown on HOME
@@ -1029,6 +1039,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
 
     const authorName = art.author || "NUQTHA";
     const authorInitial = authorName.trim().charAt(0) || "N";
+    const authorPhoto = getAuthorPhoto(authorName, siteAuthorsMap);
     const categoryMalayalam = categoryLabel(art.category);
 
     return `
@@ -1077,8 +1088,8 @@ function buildCategoryFeaturedCard(art, theme = null) {
                 <!-- Author & CTA Row -->
                 <div class="flex items-center justify-between pt-3 border-t border-[#ebdccb]/60 dark:border-white/10 gap-2 flex-wrap">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center flex-shrink-0">
-                            ${authorInitial}
+                        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy">` : authorInitial}
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
@@ -1113,7 +1124,7 @@ function buildFeaturedCard(art) {
 
     const authorName = art.author || "NUQTHA";
     const authorInitial = authorName.trim().charAt(0) || "N";
-
+    const authorPhoto = getAuthorPhoto(authorName, siteAuthorsMap);
     const categoryMalayalam = categoryLabel(art.category);
 
     return `
@@ -1158,8 +1169,8 @@ function buildFeaturedCard(art) {
                 <!-- Bottom Row: Author profile & Sleek 'വായിക്കുക →' Button -->
                 <div class="featured-bottom-row flex items-center justify-between pt-4 border-t border-[#ebdccb]/60 dark:border-white/10 gap-3">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center">
-                            ${authorInitial}
+                        <div class="w-8 h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center overflow-hidden flex-shrink-0">
+                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy">` : authorInitial}
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
@@ -1217,6 +1228,9 @@ function buildCompactRecentCard(art, theme = null) {
                 </h4>
 
                 <div class="flex items-center gap-1.5 text-[11px] sm:text-xs flex-wrap font-['Noto_Sans_Malayalam']">
+                    <div class="w-5 h-5 rounded-full overflow-hidden bg-[#ebdccb]/80 dark:bg-white/10 flex items-center justify-center text-[9px] font-bold text-[#7a4124] dark:text-[#f8fafc] flex-shrink-0">
+                        ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy">` : authorInitial}
+                    </div>
                     <span class="font-bold text-[#1e1b18] dark:text-white">${authorName}</span>
                     ${art.transcription ? `<span class="text-[#8c7a6b] dark:text-[#a0aec0]">(📝 ${art.transcription})</span>` : ''}
                     <span class="text-[#8c7a6b] dark:text-[#a0aec0]">• ${dateStr}</span>

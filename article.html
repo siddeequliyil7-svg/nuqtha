@@ -226,7 +226,7 @@
             </div>
 
             <!-- Prominent Article Excerpt / Lead Intro Container -->
-            <div id="art-excerpt-container" class="hidden article-lead-excerpt py-3 my-3 malayalam fs-5">
+            <div id="art-excerpt-container" class="hidden article-lead-excerpt py-3 my-3 malayalam fs-5 d-flex justify-content-center align-items-center">
                 <p id="art-excerpt" class="article-lead-text text-base sm:text-[18px]"></p>
             </div>
 
@@ -606,7 +606,7 @@
 
             const projectedFields = [
                 "title", "bookName", "bookId", "playlistName",
-                "priority", "imageUrl", "excerpt", "author",
+                "priority", "imageUrl", "excerpt", "storedExcerpt", "hasCustomExcerpt", "author",
                 "date", "createdAt", "type", "category", "content",
                 "order", "chapters", "transcription", "status"
             ];
@@ -1247,11 +1247,7 @@
             if (!leadExcerpt && article.excerpt) {
                 const trimmedEx = article.excerpt.trim();
                 const cleanBody = (article.content || "").trim();
-                const snippet = cleanBody.substring(0, 160);
-                const isAutoSnippet = trimmedEx === snippet || 
-                                     trimmedEx === (snippet + "…") || 
-                                     trimmedEx === (snippet + ".");
-                if (!isAutoSnippet && trimmedEx !== cleanBody) {
+                if (trimmedEx && trimmedEx !== cleanBody) {
                     leadExcerpt = trimmedEx;
                 }
             }

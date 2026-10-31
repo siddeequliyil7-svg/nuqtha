@@ -2656,11 +2656,11 @@ body.dark-mode #preview-body {
 
 /* ═══════════════════════════════════════════════════════════
    ARTICLE LEAD EXCERPT / INTRO BLOCK
-   Aligned with Risala typography: 18px "base_Malayalam", sans-serif
+   Aligned with Risala typography: 18px "basik Malayalam", sans-serif
    ═══════════════════════════════════════════════════════════ */
 @font-face {
-    font-family: "base_Malayalam";
-    src: local("Anek Malayalam"), local("Noto Sans Malayalam"), local("Manjari");
+    font-family: "basik Malayalam";
+    src: local("basik Malayalam"), local("basikMalayalam"), local("Basik Malayalam"), local("Anek Malayalam"), local("Noto Sans Malayalam"), local("Manjari");
 }
 
 .article-lead-excerpt {
@@ -2678,7 +2678,7 @@ body.dark-mode #preview-body {
 
 .article-lead-text,
 #art-excerpt {
-    font-family: "base_Malayalam", "Anek Malayalam", "Noto Sans Malayalam", "Manjari", sans-serif !important;
+    font-family: "basik Malayalam", "Anek Malayalam", "Noto Sans Malayalam", "Manjari", sans-serif !important;
     font-size: 18px !important;
     font-weight: 500;
     line-height: 1.85;
