@@ -150,23 +150,34 @@
             </div>
 
             <!-- Hero Skeleton Card -->
-            <div class="rounded-3xl p-6 sm:p-8 lg:p-10 bg-[var(--book-hero-surface,#fdfaf5)] dark:bg-[#141724] border border-[#ebdccb] dark:border-white/10 shadow-sm">
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-start">
-                    <div class="md:col-span-5 lg:col-span-4 w-full max-w-[240px] sm:max-w-[280px] mx-auto md:mx-0">
+            <div class="book-edition-hero book-hero-card" aria-hidden="true">
+                <!-- Top Row Skeleton -->
+                <div class="flex items-center justify-between mb-5 sm:mb-7">
+                    <div class="h-5 w-32 rounded-full skeleton-shimmer"></div>
+                    <div class="h-6 w-20 rounded-full skeleton-shimmer"></div>
+                </div>
+                <div class="flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
+                    <div class="w-[60%] sm:w-[220px] md:w-[260px] flex-shrink-0 mx-auto md:mx-0">
                         <div class="aspect-[3/4] rounded-2xl skeleton-shimmer border border-white/10"></div>
-                        <div class="h-12 mt-4 rounded-xl skeleton-shimmer"></div>
                     </div>
-                    <div class="md:col-span-7 lg:col-span-8 space-y-4">
-                        <div class="flex gap-2">
-                            <div class="h-6 w-32 rounded-full skeleton-shimmer"></div>
-                            <div class="h-6 w-24 rounded-full skeleton-shimmer"></div>
+                    <div class="flex-1 w-full space-y-4">
+                        <div class="h-9 w-3/4 rounded-xl skeleton-shimmer"></div>
+                        <!-- Author row skeleton -->
+                        <div class="flex items-center gap-3 mt-3">
+                            <div class="w-[42px] h-[42px] rounded-full skeleton-shimmer flex-shrink-0"></div>
+                            <div class="space-y-1.5 flex-1">
+                                <div class="h-4 w-36 rounded skeleton-shimmer"></div>
+                                <div class="h-3 w-20 rounded skeleton-shimmer"></div>
+                            </div>
                         </div>
-                        <div class="h-10 w-3/4 rounded-xl skeleton-shimmer"></div>
-                        <div class="h-5 w-1/2 rounded-lg skeleton-shimmer"></div>
-                        <div class="h-20 w-full rounded-xl skeleton-shimmer mt-2"></div>
-                        <div class="border-t border-white/10 my-3"></div>
-                        <div class="h-4 w-5/6 rounded skeleton-shimmer"></div>
-                        <div class="h-4 w-4/6 rounded skeleton-shimmer"></div>
+                        <!-- Meta line skeleton -->
+                        <div class="h-4 w-44 rounded skeleton-shimmer mt-2"></div>
+                        <!-- Pull quote skeleton -->
+                        <div class="space-y-2 pt-2">
+                            <div class="h-4 w-full rounded skeleton-shimmer"></div>
+                            <div class="h-4 w-5/6 rounded skeleton-shimmer"></div>
+                            <div class="h-4 w-3/4 rounded skeleton-shimmer"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -791,19 +802,22 @@
             const textEl = document.getElementById("book-intro-text");
             const btnEl = document.getElementById("book-intro-toggle-btn");
             const labelEl = document.getElementById("book-intro-toggle-label");
+            const chevronEl = document.getElementById("book-intro-chevron");
             if (!textEl || !btnEl) return;
 
             const isClamped = textEl.classList.contains("is-clamped");
             if (isClamped) {
                 textEl.classList.remove("is-clamped");
-                textEl.classList.remove("line-clamp-4");
+                textEl.classList.remove("line-clamp-3");
                 btnEl.setAttribute("aria-expanded", "true");
-                if (labelEl) labelEl.textContent = "കുറയ്ക്കുക (Show Less) ↑";
+                if (labelEl) labelEl.textContent = "കുറയ്ക്കുക";
+                if (chevronEl) chevronEl.style.transform = "rotate(180deg)";
             } else {
                 textEl.classList.add("is-clamped");
-                textEl.classList.add("line-clamp-4");
+                textEl.classList.add("line-clamp-3");
                 btnEl.setAttribute("aria-expanded", "false");
-                if (labelEl) labelEl.textContent = "കൂടുതൽ വായിക്കുക (Read More) ↓";
+                if (labelEl) labelEl.textContent = "കൂടുതൽ വായിക്കുക";
+                if (chevronEl) chevronEl.style.transform = "rotate(0deg)";
             }
         };
 
@@ -818,11 +832,24 @@
                 });
             }
 
-            const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "");
+            const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "").trim();
             const cleanAuthor = (book.author || "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ").replace(/[*_#~`]/g, "").trim();
-            const introText = (book.introduction || book.intro || book.excerpt || "").trim();
-            const editionTag = (book.category && book.category.trim()) ? book.category.trim() : "PREMIUM BOOK";
+            const rawIntro = (book.introduction || book.intro || book.excerpt || "").trim();
+            const hasIntro = rawIntro.replace(/[\s\.\,\-\_\#\*\~\`\:\;\"\'\(\)\!\?]/g, '').length > 0;
             const dateStr = book.date || '28 Oct 2026';
+            const authorPhoto = (book.authorPhoto || book.authorAvatar || "").trim();
+            const firstLetter = (cleanAuthor || 'N').trim().charAt(0);
+            const authorId = (cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
+            const authorUrl = `author.html?id=${encodeURIComponent(authorId)}&name=${encodeURIComponent(cleanAuthor)}`;
+
+            const isPremium = Boolean(
+                book && (
+                    book.isPremium === true ||
+                    book.category === 'Premium Book' ||
+                    (typeof book.category === 'string' && book.category.toLowerCase().includes('premium')) ||
+                    (Array.isArray(book.tags) && book.tags.some(t => String(t).toLowerCase().includes('premium')))
+                )
+            );
 
             // Bookmark status
             const savedBookIds = getSavedBookIds();
@@ -850,12 +877,36 @@
                         </div>
                     </div>
 
-                    <!-- ═══════════ BOOK HERO CARD (3D COVER & DETAILS) ═══════════ -->
+                    <!-- ═══════════ BOOK HERO (FULL-WIDTH BAND) ═══════════ -->
                     <article class="book-hero-card book-edition-hero" aria-labelledby="book-hero-title">
+                        <!-- Top Row: Eyebrow Left + Premium Pill Right -->
+                        <div class="book-hero-top-row flex items-center justify-between gap-3 mb-5 sm:mb-7">
+                            <div class="book-hero-eyebrow font-english" translate="no">
+                                <span class="font-['Noto_Sans_Malayalam'] font-bold">പുസ്തകം</span>
+                                <span class="opacity-50" aria-hidden="true">&middot;</span>
+                                <span class="tracking-widest font-black uppercase text-xs">BOOK</span>
+                            </div>
+                            ${isPremium ? `
+                            <div class="book-hero-premium-pill notranslate" translate="no">
+                                <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+                                </svg>
+                                <span>PREMIUM</span>
+                            </div>
+                            ` : ''}
+                        </div>
+
                         <div class="flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
-                            <!-- Left: 3D Book Cover Presentation -->
-                            <div class="book3d-wrapper md:w-[280px] lg:w-[310px] flex-shrink-0">
+                            <!-- Left: Big Standing Pure-CSS 3D Cover Presentation -->
+                            <div class="book3d-wrapper">
+                                <!-- Two thin concentric circles behind -->
+                                <div class="book3d-concentric-circles" aria-hidden="true">
+                                    <div class="book3d-circle-outer"></div>
+                                    <div class="book3d-circle-inner"></div>
+                                </div>
                                 <div class="book3d" tabindex="0" role="img" aria-label="${cleanTitle} Cover">
+                                    <!-- Accent Bookmark Ribbon (Notched Bottom) -->
+                                    <div class="book3d-ribbon" aria-hidden="true"></div>
                                     <div class="book3d-spine" aria-hidden="true"></div>
                                     <div class="book3d-cover">
                                         ${book.imageUrl ? `
@@ -872,50 +923,53 @@
                                 <div class="book3d-floor-shadow" aria-hidden="true"></div>
                             </div>
 
-                            <!-- Right: Book Info & Details -->
+                            <!-- Right: Title, Author Row, Meta Line, Pull-Quote Introduction -->
                             <div class="flex-1 w-full space-y-4 text-left">
                                 <header class="space-y-3">
-                                    <!-- Category Pill -->
-                                    <div>
-                                        <span class="book-hero-tag notranslate" translate="no">
-                                            ${editionTag}
-                                        </span>
-                                    </div>
-
-                                    <!-- Book Title -->
+                                    <!-- Book Title (36px desktop, 27px mobile, line-height 1.3) -->
                                     <h1 id="book-hero-title" class="book-hero-title">
                                         ${cleanTitle}
                                     </h1>
 
-                                    <!-- Meta Chips: Author, Date, Chapters -->
-                                    <div class="book-hero-chips font-english">
-                                        <a href="author.html?id=${encodeURIComponent((cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-'))}&name=${encodeURIComponent(cleanAuthor)}" class="book-hero-chip hover:border-[#b4532c] hover:bg-black/5 dark:hover:bg-white/10 transition" title="രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക">
-                                            <span aria-hidden="true">✍️</span>
-                                            <span class="font-['Anek_Malayalam'] underline decoration-dotted decoration-[#b4532c]/50 underline-offset-4">${cleanAuthor}</span>
+                                    <!-- Author Row with 42px Circular Avatar -->
+                                    <div class="book-hero-author-row">
+                                        <a href="${authorUrl}" class="book-hero-author-avatar-link flex-shrink-0" title="രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക">
+                                            <div class="book-hero-author-avatar">
+                                                ${authorPhoto ? `
+                                                    <img src="${authorPhoto}" alt="${cleanAuthor}" class="w-full h-full object-cover rounded-full" width="42" height="42">
+                                                ` : `
+                                                    <span class="book-hero-author-initial" aria-hidden="true">${firstLetter}</span>
+                                                `}
+                                            </div>
                                         </a>
-                                        <span class="book-hero-chip">
-                                            <span aria-hidden="true">📅</span>
-                                            <span>${dateStr}</span>
-                                        </span>
-                                        <span class="book-hero-chip">
-                                            <span aria-hidden="true">📚</span>
-                                            <span>${attachedArticles.length} അധ്യായങ്ങൾ</span>
-                                        </span>
+                                        <div class="flex flex-col min-w-0">
+                                            <a href="${authorUrl}" class="book-hero-author-name hover:text-[var(--accent)] transition-colors truncate">
+                                                ${cleanAuthor}
+                                            </a>
+                                            <span class="book-hero-author-role font-['Noto_Sans_Malayalam']">എഴുത്തുകാരൻ</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- One Meta Line: Date • Chapter Count with Small Accent Dot (No Chips) -->
+                                    <div class="book-hero-meta-line font-english">
+                                        <span>${dateStr}</span>
+                                        <span class="book-hero-meta-dot" aria-hidden="true"></span>
+                                        <span class="font-['Noto_Sans_Malayalam'] font-semibold">${attachedArticles.length} അധ്യായങ്ങൾ</span>
                                     </div>
                                 </header>
 
-                                <!-- Introduction Box with Line-Clamp & Read More Toggle -->
-                                ${introText ? `
-                                    <div class="book-intro-box">
-                                        <div class="book-intro-header font-english notranslate" translate="no">
-                                            <span aria-hidden="true">📖</span>
-                                            <span>ആമുഖം (BOOK INTRODUCTION)</span>
+                                <!-- Introduction as Pull-Quote (No box, large accent quote mark, 16px, 1.9 line-height, 3-line clamp) -->
+                                ${hasIntro ? `
+                                    <div class="book-hero-pullquote">
+                                        <div class="book-hero-quote-mark" aria-hidden="true">&ldquo;</div>
+                                        <div id="book-intro-text" class="book-hero-intro-text line-clamp-3 is-clamped">
+                                            ${rawIntro}
                                         </div>
-                                        <div id="book-intro-text" class="book-intro-body line-clamp-4 is-clamped">
-                                            ${introText}
-                                        </div>
-                                        <button type="button" id="book-intro-toggle-btn" class="book-intro-toggle-btn touch-target-44" onclick="toggleBookIntro()" aria-expanded="false" aria-controls="book-intro-text">
-                                            <span id="book-intro-toggle-label">കൂടുതൽ വായിക്കുക (Read More) ↓</span>
+                                        <button type="button" id="book-intro-toggle-btn" class="book-hero-intro-toggle touch-target-44" onclick="toggleBookIntro()" aria-expanded="false" aria-controls="book-intro-text">
+                                            <span id="book-intro-toggle-label">കൂടുതൽ വായിക്കുക</span>
+                                            <svg id="book-intro-chevron" class="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                            </svg>
                                         </button>
                                     </div>
                                 ` : ''}
@@ -948,12 +1002,12 @@
                 </div>
             `;
 
-            // If intro text doesn't exceed 4 lines, hide toggle button
+            // If intro text doesn't exceed 3 lines, hide toggle button
             setTimeout(() => {
                 const textEl = document.getElementById("book-intro-text");
                 const toggleBtn = document.getElementById("book-intro-toggle-btn");
                 if (textEl && toggleBtn) {
-                    if (textEl.scrollHeight <= textEl.clientHeight + 8) {
+                    if (textEl.scrollHeight <= textEl.clientHeight + 4) {
                         toggleBtn.classList.add("hidden");
                     }
                 }
