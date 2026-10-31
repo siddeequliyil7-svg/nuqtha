@@ -64,12 +64,16 @@ export function updatePageMeta({ path, title, description, imageUrl } = {}) {
     // 3. OpenGraph Title
     if (title) {
         let ogTitle = document.querySelector('meta[property="og:title"]');
+        let twTitle = document.querySelector('meta[name="twitter:title"]');
+        if (twTitle) twTitle.setAttribute("content", title);
         if (ogTitle) ogTitle.setAttribute("content", title);
     }
 
     // 4. OpenGraph Description
     if (description) {
         let ogDesc = document.querySelector('meta[property="og:description"]');
+        let twDesc = document.querySelector('meta[name="twitter:description"]');
+        if (twDesc) twDesc.setAttribute("content", description);
         if (ogDesc) ogDesc.setAttribute("content", description);
     }
 
@@ -82,6 +86,14 @@ export function updatePageMeta({ path, title, description, imageUrl } = {}) {
             document.head.appendChild(ogImage);
         }
         ogImage.setAttribute("content", imageUrl);
+
+        let twImage = document.querySelector('meta[name="twitter:image"]');
+        if (!twImage) {
+            twImage = document.createElement("meta");
+            twImage.setAttribute("name", "twitter:image");
+            document.head.appendChild(twImage);
+        }
+        twImage.setAttribute("content", imageUrl);
     }
 }
 

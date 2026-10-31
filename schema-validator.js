@@ -263,6 +263,7 @@ export function validateAndSanitizeArticleForSave(raw) {
 
     // 6. Cover image
     const imageUrl = sanitizeImageUrl(raw.imageUrl);
+    const thumbnailUrl = sanitizeImageUrl(raw.thumbnailUrl || raw.ogImage || "");
 
     // 7. Colors & Font Size
     const titleColor = sanitizeColor(raw.titleColor, "#1e1b18");
@@ -304,6 +305,8 @@ export function validateAndSanitizeArticleForSave(raw) {
         authorId,
         transcription,
         imageUrl,
+        thumbnailUrl,
+        ogImage: thumbnailUrl,
         hasCustomExcerpt,
         storedExcerpt,
         excerpt,
@@ -363,6 +366,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const authorId = sanitizeString(rawDoc.authorId || "", 100, "");
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
     const imageUrl = sanitizeImageUrl(rawDoc.imageUrl);
+    const thumbnailUrl = sanitizeImageUrl(rawDoc.thumbnailUrl || rawDoc.ogImage || "");
     const content = sanitizeString(rawDoc.content, 500000, "");
     
     const rawExcerptVal = rawDoc.excerpt || rawDoc.intro || rawDoc.introduction || rawDoc.summary || "";
@@ -401,6 +405,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         authorId,
         transcription,
         imageUrl,
+        thumbnailUrl,
+        ogImage: thumbnailUrl,
         hasCustomExcerpt,
         storedExcerpt,
         excerpt,

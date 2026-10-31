@@ -258,21 +258,46 @@
                         </div>
                     </div>
 
-                    <!-- Cover Photo Upload with Preview -->
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">കവർ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക (Cover Photo)</label>
-                        <div class="border-2 border-dashed border-[#ebdccb] hover:border-[#b4532c] rounded-2xl p-5 text-center bg-[#fbf7ee]/40 transition cursor-pointer relative group">
-                            <input id="art-file-input" type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                            <div id="upload-placeholder" class="space-y-2">
-                                <div class="w-12 h-12 mx-auto rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <!-- Image Uploads: Cover Photo & Thumbnail / OG Image -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- 1. Cover Photo Upload -->
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">കവർ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക (Cover Photo)</label>
+                            <div class="border-2 border-dashed border-[#ebdccb] hover:border-[#b4532c] rounded-2xl p-4 text-center bg-[#fbf7ee]/40 transition cursor-pointer relative group min-h-[160px] flex items-center justify-center">
+                                <input id="art-file-input" type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title="Choose Cover Photo">
+                                <div id="upload-placeholder" class="space-y-1.5">
+                                    <div class="w-10 h-10 mx-auto rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                    <p class="text-xs font-bold text-[#1e1b18]">ഇവിടെ ക്ലിക്ക് ചെയ്ത് കവർ ഫോട്ടോ തിരഞ്ഞെടുക്കുക</p>
+                                    <p class="text-[10px] text-[#8c7a6b]">ലേഖനത്തിന് മുകളിൽ പ്രധാനമായി കാണിക്കും</p>
                                 </div>
-                                <p class="text-xs font-bold text-[#1e1b18]">ഇവിടെ ക്ലിക്ക് ചെയ്ത് കവർ ഫോട്ടോ തിരഞ്ഞെടുക്കുക</p>
-                                <p class="text-[10px] text-[#8c7a6b]">PNG, JPG, WebP (Max 2MB — സ്വയമേവ ഒപ്റ്റിമൈസ് ചെയ്യപ്പെടും)</p>
+                                <div id="image-preview-container" class="hidden relative rounded-xl overflow-hidden max-h-56 w-full">
+                                    <img id="image-preview" src="" alt="Cover Preview" class="w-full h-40 object-cover rounded-xl">
+                                    <button type="button" id="remove-img-btn" class="absolute top-2 right-2 bg-black/70 hover:bg-black text-white px-3 py-1 rounded-full text-xs font-bold z-20 transition">✕ മാറ്റുക</button>
+                                </div>
                             </div>
-                            <div id="image-preview-container" class="hidden relative rounded-xl overflow-hidden max-h-56">
-                                <img id="image-preview" src="" alt="Preview" class="w-full h-full object-cover">
-                                <button type="button" id="remove-img-btn" class="absolute top-2 right-2 bg-black/70 hover:bg-black text-white px-3 py-1 rounded-full text-xs font-bold z-20 transition">✕ മാറ്റുക</button>
+                        </div>
+
+                        <!-- 2. Dedicated Thumbnail / Social Sharing Image (og:image) -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label for="art-thumb-input" class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english">തമ്പ്നെയിൽ / സോഷ്യൽ ഷെയറിങ് ചിത്രം (Thumbnail / OG Image)</label>
+                                <span class="text-[10px] text-[#b4532c] font-english font-semibold">1200×630 / Cards</span>
+                            </div>
+                            <div class="border-2 border-dashed border-[#ebdccb] hover:border-[#b4532c] rounded-2xl p-4 text-center bg-[#fbf7ee]/40 transition cursor-pointer relative group min-h-[160px] flex items-center justify-center">
+                                <input id="art-thumb-input" type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title="Choose Thumbnail / OG Image">
+                                <div id="thumb-placeholder" class="space-y-1.5">
+                                    <div class="w-10 h-10 mx-auto rounded-full bg-emerald-700/10 text-emerald-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                                    </div>
+                                    <p class="text-xs font-bold text-[#1e1b18]">തമ്പ്നെയിൽ ചിത്രം തിരഞ്ഞെടുക്കുക</p>
+                                    <p class="text-[10px] text-[#8c7a6b]">WhatsApp / FB ലിങ്ക് പ്രിവ്യൂവിലും കാർഡുകളിലും കാണിക്കും</p>
+                                </div>
+                                <div id="thumb-preview-container" class="hidden relative rounded-xl overflow-hidden max-h-56 w-full">
+                                    <img id="thumb-preview" src="" alt="Thumbnail Preview" class="w-full h-40 object-cover rounded-xl">
+                                    <button type="button" id="remove-thumb-btn" class="absolute top-2 right-2 bg-black/70 hover:bg-black text-white px-3 py-1 rounded-full text-xs font-bold z-20 transition">✕ മാറ്റുക</button>
+                                </div>
                             </div>
                         </div>
                     </div>

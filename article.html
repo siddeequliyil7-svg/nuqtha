@@ -831,7 +831,7 @@
                 window.NUQTHA_SITE_CONFIG.updatePageMeta({
                     title: `${book.title || "NUQTHA Edition"} | NUQTHA`,
                     description: book.introduction || book.excerpt || "NUQTHA Malayalam Publishing",
-                    imageUrl: book.imageUrl || ""
+                    imageUrl: book.thumbnailUrl || book.ogImage || book.imageUrl || ""
                 });
             }
 
@@ -1063,12 +1063,13 @@
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
 
+                const chapterImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
                 return `
                 <a href="article.html?id=${art.id}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44">
                     <!-- Thumbnail with Fixed Aspect Ratio -->
-                    ${art.imageUrl ? `
+                    ${chapterImg ? `
                         <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 aspect-[16/10]">
-                            <img src="${art.imageUrl}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
+                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
                         </div>
                     ` : `
                         <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
@@ -1186,7 +1187,7 @@
                 window.NUQTHA_SITE_CONFIG.updatePageMeta({
                     title: `${article.title || "NUQTHA"} | NUQTHA`,
                     description: article.excerpt || "NUQTHA Malayalam Publishing",
-                    imageUrl: article.imageUrl || ""
+                    imageUrl: article.thumbnailUrl || article.ogImage || article.imageUrl || ""
                 });
             }
             const titleEl = document.getElementById('art-title');
@@ -1456,11 +1457,12 @@
             relatedGrid.innerHTML = topRelated.map(item => {
                 const cleanTitle = (item.title || "").replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (item.excerpt || (item.content ? item.content.substring(0, 100) : "")).replace(/[*_#~`]/g, "").trim();
+                const itemImg = item.thumbnailUrl || item.ogImage || item.imageUrl;
                 return `
                     <a href="article.html?id=${item.id}" class="related-card group touch-target-44">
-                        ${item.imageUrl ? `
+                        ${itemImg ? `
                             <div class="related-img-container">
-                                <img src="${item.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+                                <img src="${itemImg}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
                             </div>
                         ` : ''}
                         <div class="p-4 flex flex-col justify-between flex-1 gap-2">

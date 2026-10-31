@@ -63,6 +63,7 @@ if (typeof window !== "undefined") {
 }
 let activeTab = "create";
 let selectedBase64Image = "";
+let selectedBase64Thumbnail = "";
 let selectedBookCoverBase64 = "";
 let bmSelectedArticleImageBase64 = "";
 let bmPresentationFileBase64 = "";
@@ -373,6 +374,7 @@ async function handleFormSubmit() {
             authorId,
             transcription: rawTranscription,
             imageUrl: selectedBase64Image || "",
+            thumbnailUrl: selectedBase64Thumbnail || "",
             excerpt: rawExcerpt,
             content: rawContent,
             titleColor: rawTitleColor,
@@ -410,7 +412,11 @@ async function handleFormSubmit() {
 
             // Only update imageUrl if selected/changed or explicitly set
             if (selectedBase64Image !== undefined) {
-                updatePayload.imageUrl = sanitized.imageUrl;
+                updatePayload.imageUrl = selectedBase64Image;
+            }
+            if (selectedBase64Thumbnail !== undefined) {
+                updatePayload.thumbnailUrl = selectedBase64Thumbnail;
+                updatePayload.ogImage = selectedBase64Thumbnail;
             }
 
             await updateDoc(articleRef, updatePayload);
@@ -424,6 +430,8 @@ async function handleFormSubmit() {
                 hasCustomExcerpt: Boolean(typedExcerpt),
                 storedExcerpt: typedExcerpt,
                 excerpt: typedExcerpt,
+                thumbnailUrl: selectedBase64Thumbnail || "",
+                ogImage: selectedBase64Thumbnail || "",
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
@@ -476,6 +484,17 @@ function resetFormFields() {
     if (preview) preview.src = "";
     if (previewContainer) previewContainer.classList.add("hidden");
     if (placeholder) placeholder.classList.remove("hidden");
+
+    // Reset Thumbnail / OG Image
+    selectedBase64Thumbnail = "";
+    const thumbInput = document.getElementById("art-thumb-input");
+    const thumbPreview = document.getElementById("thumb-preview");
+    const thumbPreviewContainer = document.getElementById("thumb-preview-container");
+    const thumbPlaceholder = document.getElementById("thumb-placeholder");
+    if (thumbInput) thumbInput.value = "";
+    if (thumbPreview) thumbPreview.src = "";
+    if (thumbPreviewContainer) thumbPreviewContainer.classList.add("hidden");
+    if (thumbPlaceholder) thumbPlaceholder.classList.remove("hidden");
 
     // Reset Colors & Font Size
     const resetColorsBtn = document.getElementById("reset-colors-btn");
@@ -606,6 +625,24 @@ window.startEditArticle = function (id) {
         if (preview) preview.src = "";
         if (previewContainer) previewContainer.classList.add("hidden");
         if (placeholder) placeholder.classList.remove("hidden");
+    }
+
+    // Thumbnail / OG Image preview
+    const thumbPreview = document.getElementById("thumb-preview");
+    const thumbPreviewContainer = document.getElementById("thumb-preview-container");
+    const thumbPlaceholder = document.getElementById("thumb-placeholder");
+    const existingThumb = art.thumbnailUrl || art.ogImage || "";
+
+    if (existingThumb) {
+        selectedBase64Thumbnail = existingThumb;
+        if (thumbPreview) thumbPreview.src = existingThumb;
+        if (thumbPreviewContainer) thumbPreviewContainer.classList.remove("hidden");
+        if (thumbPlaceholder) thumbPlaceholder.classList.add("hidden");
+    } else {
+        selectedBase64Thumbnail = "";
+        if (thumbPreview) thumbPreview.src = "";
+        if (thumbPreviewContainer) thumbPreviewContainer.classList.add("hidden");
+        if (thumbPlaceholder) thumbPlaceholder.classList.remove("hidden");
     }
 
     // UI Notice
@@ -1055,6 +1092,80 @@ function initImageUpload() {
             if (imagePreview) imagePreview.src = "";
             if (imagePreviewContainer) imagePreviewContainer.classList.add("hidden");
             if (uploadPlaceholder) uploadPlaceholder.classList.remove("hidden");
+        });
+    }
+
+    // Thumbnail / Social Sharing Image (og:image) Upload
+    const thumbInput = document.getElementById("art-thumb-input");
+    const thumbPlaceholder = document.getElementById("thumb-placeholder");
+    const thumbPreviewContainer = document.getElementById("thumb-preview-container");
+    const thumbPreview = document.getElementById("thumb-preview");
+    const removeThumbBtn = document.getElementById("remove-thumb-btn");
+
+    if (thumbInput) {
+        thumbInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith("image/")) {
+                showGlobalStatus("ദയവായി ഒരു സാധുവായ ഇമേജ് ഫയൽ (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.", "error");
+                thumbInput.value = "";
+                return;
+            }
+            if (file.size > 12 * 1024 * 1024) {
+                showGlobalStatus("ചിത്രത്തിന്റെ വലിപ്പം 12MB-യിൽ കുറവായിരിക്കണം.", "error");
+                thumbInput.value = "";
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onerror = function() {
+                showGlobalStatus("തമ്പ്നെയിൽ ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
+            };
+            reader.onload = function (event) {
+                const img = new Image();
+                img.onerror = function() {
+                    showGlobalStatus("തമ്പ്നെയിൽ ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
+                };
+                img.onload = function () {
+                    const canvas = document.createElement("canvas");
+                    // Optimized for social sharing cards & thumbnail rendering
+                    const maxDim = 800;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height && width > maxDim) {
+                        height = Math.round((height * maxDim) / width);
+                        width = maxDim;
+                    } else if (height > maxDim) {
+                        width = Math.round((width * maxDim) / height);
+                        height = maxDim;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    selectedBase64Thumbnail = canvas.toDataURL("image/jpeg", 0.78);
+                    if (thumbPreview) thumbPreview.src = selectedBase64Thumbnail;
+                    if (thumbPlaceholder) thumbPlaceholder.classList.add("hidden");
+                    if (thumbPreviewContainer) thumbPreviewContainer.classList.remove("hidden");
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (removeThumbBtn) {
+        removeThumbBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            selectedBase64Thumbnail = "";
+            if (thumbInput) thumbInput.value = "";
+            if (thumbPreview) thumbPreview.src = "";
+            if (thumbPreviewContainer) thumbPreviewContainer.classList.add("hidden");
+            if (thumbPlaceholder) thumbPlaceholder.classList.remove("hidden");
         });
     }
 }
@@ -3112,9 +3223,9 @@ export function renderAdminPublishedList(items) {
                 </div>
 
                 <div class="flex items-center gap-3">
-                    ${data.imageUrl ? `
+                    ${(data.thumbnailUrl || data.ogImage || data.imageUrl) ? `
                         <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border border-[#ebdccb]">
-                            <img src="${data.imageUrl}" alt="Cover" class="w-full h-full object-cover">
+                            <img src="${data.thumbnailUrl || data.ogImage || data.imageUrl}" alt="Thumb" class="w-full h-full object-cover">
                         </div>
                     ` : ''}
                     <div class="flex-1 min-w-0">

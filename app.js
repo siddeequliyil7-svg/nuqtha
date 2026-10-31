@@ -1208,8 +1208,8 @@ function buildCategoryFeaturedCard(art, theme = null) {
         <a href="article.html?id=${art.id}" class="block">
             <!-- Large Prominent Cover Image -->
             <div class="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden bg-gradient-to-br ${t.accentGrad}">
-                ${art.imageUrl ? `
-                    <img src="${art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
+                    <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
                 ` : `
                     <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90">
                         <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
@@ -1294,8 +1294,8 @@ function buildFeaturedCard(art) {
         <a href="article.html?id=${art.id}" class="block">
             <!-- Large Top Cover Image Container -->
             <div class="featured-cover-container relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#b8542c] via-[#aa4923] to-[#803113]">
-                ${art.imageUrl ? `
-                    <img src="${art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
+                    <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
                 ` : `
                     <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90">
                         <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
@@ -1373,8 +1373,8 @@ function buildCompactRecentCard(art, theme = null) {
         <a href="article.html?id=${art.id}" class="flex items-center p-3 sm:p-4 gap-3.5 sm:gap-4 w-full">
             <!-- Left Thumbnail -->
             <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${t.accentGrad}">
-                ${art.imageUrl ? `
-                    <img src="${art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
+                ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
+                    <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
                 ` : `
                     <div class="w-full h-full flex items-center justify-center text-white/70 text-[10px]">
                         ചിത്രം
@@ -1491,8 +1491,9 @@ function buildCarouselCard(art) {
     const cleanTitle = stripMarkdown(art.title);
     const authorName = art.author || "NUQTHA";
 
-    const imgHtml = art.imageUrl
-        ? '<img src="' + art.imageUrl + '" alt="' + cleanTitle + '" class="carousel-card-img" loading="lazy">'
+    const cardImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
+    const imgHtml = cardImg
+        ? '<img src="' + cardImg + '" alt="' + cleanTitle + '" class="carousel-card-img" loading="lazy">'
         : '<div class="carousel-card-img-placeholder"><svg width="28" height="28" fill="none" stroke="rgba(255,255,255,0.45)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
 
     return '<a href="article.html?id=' + art.id + '" class="carousel-card" data-id="' + art.id + '">' +
