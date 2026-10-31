@@ -2797,6 +2797,11 @@ function listenToFirestoreArticles() {
 
         currentArticlesList = items;
 
+        // Persist to session cache for seamless offline fallback
+        try {
+            sessionStorage.setItem("nuqtha_cached_articles", JSON.stringify(items));
+        } catch (e) {}
+
         const standardArticles = items.filter(a => !isBookOrChapter(a));
         const allBooks = items.filter(a => isMainBook(a));
 
@@ -2815,6 +2820,19 @@ function listenToFirestoreArticles() {
         renderLayoutManagerList(items);
     }
 
+    // 1. Instant offline cache fallback
+    try {
+        const cached = sessionStorage.getItem("nuqtha_cached_articles");
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                processArticlesData(parsed);
+            }
+        }
+    } catch (e) {
+        console.warn("[NUQTHA ADMIN] Error reading cached articles:", e);
+    }
+
     function decodeFirestoreValue(value) {
         if (!value || typeof value !== "object") return value;
         if ("nullValue" in value) return null;
@@ -2827,11 +2845,11 @@ function listenToFirestoreArticles() {
         if ("bytesValue" in value) return value.bytesValue;
         if ("geoPointValue" in value) return value.geoPointValue;
         if ("arrayValue" in value) {
-            return (value.arrayValue.values || []).map(decodeFirestoreValue);
+            return (value.arrayValue?.values || []).map(decodeFirestoreValue);
         }
         if ("mapValue" in value) {
             return Object.fromEntries(
-                Object.entries(value.mapValue.fields || {})
+                Object.entries(value.mapValue?.fields || {})
                     .map(([key, fieldValue]) => [key, decodeFirestoreValue(fieldValue)])
             );
         }
@@ -2839,6 +2857,7 @@ function listenToFirestoreArticles() {
     }
 
     function decodeFirestoreFields(fields) {
+        if (!fields || typeof fields !== "object") return {};
         return Object.fromEntries(
             Object.entries(fields).map(([key, value]) => [key, decodeFirestoreValue(value)])
         );
@@ -2846,8 +2865,36 @@ function listenToFirestoreArticles() {
 
     function reportLoadError(error) {
         console.error("[NUQTHA ADMIN] Unable to load articles from Firestore:", error);
+
+        // If we already have articles in memory or cache, don't overwrite UI with error banner
+        try {
+            if (currentArticlesList.length === 0) {
+                const cached = sessionStorage.getItem("nuqtha_cached_articles");
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        processArticlesData(parsed);
+                        showGlobalStatus("ഓഫ്‌ലൈൻ കാഷെയിൽ നിന്നുള്ള ലേഖനങ്ങൾ ലോഡ് ചെയ്തു. നെറ്റ്‌വർക്ക് പരിശോധിക്കുക.", "info");
+                        return;
+                    }
+                }
+            }
+        } catch (e) {}
+
         if (currentArticlesList.length === 0 && listContainer) {
-            listContainer.innerHTML = '<p class="text-xs text-rose-500 font-semibold p-4 text-center">ലേഖനങ്ങൾ Firestore-ൽ നിന്ന് ലോഡ് ചെയ്യാനായില്ല. നെറ്റ്‌വർക്ക്, Firebase project ID, Firestore Rules എന്നിവ പരിശോധിക്കുക.</p>';
+            listContainer.innerHTML = `
+                <div class="text-center py-12 px-6 bg-amber-50/70 dark:bg-white/5 rounded-3xl border border-amber-200 dark:border-white/10 space-y-3">
+                    <div class="w-12 h-12 mx-auto rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center text-xl">⚠️</div>
+                    <h4 class="text-sm font-bold text-[#1e1b18] dark:text-[#f8fafc]">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു</h4>
+                    <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8] max-w-md mx-auto">നെറ്റ്‌വർക്ക് കണക്ഷൻ അല്ലെങ്കിൽ ഫയർസ്റ്റോർ താൽക്കാലികമായി ലഭ്യമല്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.</p>
+                    <div class="pt-2">
+                        <button type="button" onclick="window.retryFirestoreAdminFetch()" class="px-5 py-2.5 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer font-english inline-flex items-center gap-1.5">
+                            <span>🔄</span>
+                            <span>വീണ്ടും ശ്രമിക്കുക (Retry Now)</span>
+                        </button>
+                    </div>
+                </div>
+            `;
         }
     }
 
@@ -2896,25 +2943,28 @@ function listenToFirestoreArticles() {
                     if (nextPageToken) params.set("pageToken", nextPageToken);
                     const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/articles?${params}`;
                     const response = await fetchWithRetry(url, {}, 3, 300);
-                    if (!response.ok) {
-                        throw new Error(`Firestore REST request failed (${response.status}): ${await response.text()}`);
+                    if (!response || !response.ok) {
+                        const status = response ? response.status : "network error";
+                        throw new Error(`Firestore REST request failed (${status})`);
                     }
 
                     const page = await response.json();
-                    documents.push(...(page.documents || []));
-                    nextPageToken = page.nextPageToken || "";
+                    if (page && Array.isArray(page.documents)) {
+                        documents.push(...page.documents);
+                    }
+                    nextPageToken = page?.nextPageToken || "";
                 } while (nextPageToken);
 
                 const restArticles = documents.map(document => {
-                    const id = document.name?.split("/").pop();
-                    if (!id) throw new Error("Firestore returned an article without a document ID.");
+                    const id = document.name ? document.name.split("/").pop() : "";
+                    if (!id) return null;
                     const fields = decodeFirestoreFields(document.fields || {});
                     return normalizeArticleDoc({
                         ...fields,
                         createdAt: fields.createdAt || document.createTime,
                         updatedAt: fields.updatedAt || document.updateTime
                     }, id);
-                });
+                }).filter(Boolean);
 
                 if (restArticles.length > 0 || currentArticlesList.length === 0) {
                     processArticlesData(restArticles);
@@ -2928,6 +2978,13 @@ function listenToFirestoreArticles() {
 
         return restReadPromise;
     }
+
+    window.retryFirestoreAdminFetch = function() {
+        if (listContainer) {
+            listContainer.innerHTML = '<p class="text-xs text-slate-400 p-4 text-center">ലേഖനങ്ങൾ വീണ്ടും ലോഡ് ചെയ്യുന്നു...</p>';
+        }
+        fetchAdminViaRest();
+    };
 
     fetchAdminViaRest();
 }
