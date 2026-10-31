@@ -900,6 +900,30 @@ function attachShowMoreListeners() {
             switchToCategory(cat);
         });
     });
+    attachBookShelfListeners();
+}
+
+function attachBookShelfListeners() {
+    const loadMoreBtn = document.getElementById("shelf-load-more-btn");
+    if (!loadMoreBtn) return;
+
+    loadMoreBtn.onclick = function() {
+        const grid = document.getElementById("shelf-books-grid");
+        if (!grid) return;
+
+        const hiddenCards = grid.querySelectorAll(".premium-book-card-wrap.hidden");
+        const toShow = Math.min(4, hiddenCards.length);
+        for (let i = 0; i < toShow; i++) {
+            hiddenCards[i].classList.remove("hidden");
+        }
+
+        const remaining = grid.querySelectorAll(".premium-book-card-wrap.hidden");
+        if (remaining.length === 0) {
+            const container = loadMoreBtn.parentElement;
+            if (container) container.classList.add("hidden");
+            loadMoreBtn.style.display = "none";
+        }
+    };
 }
 
 function switchToCategory(cat) {
@@ -1875,61 +1899,115 @@ function getBookArticleCount(book, articles) {
     return articles.filter(a => a && a.id !== book.id && a.type !== "BOOK" && ((bId && a.bookId === bId) || a.bookName === book.bookName || a.bookName === book.title)).length;
 }
 
-/* ═══════════ 1. HOME PAGE BOOK SHOWCASE / CAROUSEL SECTION (COMPACT IN MIDDLE) ═══════════ */
+/* ═══════════ 1. HOME PAGE BOOK SHOWCASE / PREMIUM BOOK SHELF ═══════════ */
 function buildBookShowcaseSection(bookCovers, allArticles) {
-    if (!bookCovers || bookCovers.length === 0) return '';
+    if (!bookCovers || bookCovers.length === 0) {
+        return `
+        <section class="premium-books-section mt-6 sm:mt-8 p-4 sm:p-6" aria-label="Books and Editions">
+            <div class="category-section-header flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="category-glass-badge cursor-pointer" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)">
+                        <span class="w-2 h-2 rounded-full inline-block flex-shrink-0" style="background-color: var(--terracotta);"></span>
+                        <span class="font-english text-[11px] sm:text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]" translate="no">BOOKS & EDITIONS</span>
+                        <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-white">പുസ്തകങ്ങൾ</span>
+                    </div>
+                </div>
+            </div>
+            <div class="py-10 px-4 text-center text-sm font-['Noto_Sans_Malayalam'] text-[#8c7a6b] dark:text-[#94a3b8] space-y-3">
+                <p>പുസ്തകങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല.</p>
+                <button type="button" onclick="window.location.reload()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-warm)] text-xs font-bold text-[var(--terracotta)] hover:bg-black/5 dark:hover:bg-white/5 transition">
+                    <span>വീണ്ടും ശ്രമിക്കുക (Retry)</span>
+                </button>
+            </div>
+        </section>
+        `;
+    }
+
+    const booksHtml = bookCovers.map((book, idx) => {
+        if (!book) return '';
+        const cleanTitle = (typeof stripMarkdown === 'function' ? stripMarkdown(book.title || '') : (book.title || '')).trim() || 'Untitled Book';
+        const count = typeof getBookArticleCount === 'function' ? getBookArticleCount(book, allArticles) : 0;
+        const authorName = (book.author || book.authorName || 'നൂഖ്ത എഡിറ്റോറിയൽ').trim();
+        const displayDate = book.date || book.publishDate || '';
+        const isHidden = idx >= 4;
+
+        // Premium marker check: category or tag or isPremium property
+        const isPremium = Boolean(
+            book.isPremium === true ||
+            book.category === 'Premium Book' ||
+            (typeof book.category === 'string' && book.category.toLowerCase().includes('premium')) ||
+            (Array.isArray(book.tags) && book.tags.some(t => String(t).toLowerCase().includes('premium')))
+        );
+
+        const bookId = book.id || '';
+        const bookHref = bookId ? `article.html?id=${encodeURIComponent(bookId)}` : '#';
+
+        return `
+        <div class="premium-book-card-wrap ${isHidden ? 'hidden' : ''}">
+            <a href="${bookHref}" class="premium-book-card group" data-id="${bookId}" aria-label="${cleanTitle}">
+                <div class="premium-book-3d-wrap">
+                    <div class="premium-book-floor-shadow" aria-hidden="true"></div>
+                    <div class="premium-book-cover">
+                        <div class="premium-book-spine" aria-hidden="true"></div>
+                        ${isPremium ? `<span class="premium-book-ribbon" translate="no">PREMIUM</span>` : ''}
+                        ${book.imageUrl ? `
+                            <img src="${book.imageUrl}" alt="${cleanTitle}" class="premium-book-img" width="300" height="400" loading="lazy">
+                        ` : `
+                            <div class="premium-book-placeholder">
+                                <span class="text-3xl" aria-hidden="true">📚</span>
+                                <span class="font-english font-bold text-[10px] uppercase opacity-75 mt-1" translate="no">NUQTHA EDITION</span>
+                            </div>
+                        `}
+                    </div>
+                </div>
+                <div class="premium-book-info">
+                    <h3 class="premium-book-title">${cleanTitle}</h3>
+                    <p class="premium-book-author">${authorName}</p>
+                    <div class="premium-book-meta-row">
+                        <span class="premium-book-chip">
+                            <span aria-hidden="true">📖</span>
+                            <span>${count} അധ്യായങ്ങൾ</span>
+                        </span>
+                        ${displayDate ? `<span>${displayDate}</span>` : ''}
+                    </div>
+                </div>
+            </a>
+        </div>
+        `;
+    }).join('');
+
+    const showMoreBtnHtml = bookCovers.length > 4 ? `
+    <div class="flex justify-center mt-4 sm:mt-6">
+        <button id="shelf-load-more-btn" class="premium-books-load-more-btn" type="button" aria-controls="shelf-books-grid">
+            <span>കൂടുതൽ കാണുക</span>
+            <span class="opacity-70 font-english text-xs" translate="no">(Show more)</span>
+            <span aria-hidden="true">&darr;</span>
+        </button>
+    </div>
+    ` : '';
 
     return `
-    <section class="category-section-block book-showcase-section mt-6 sm:mt-8 p-3.5 sm:p-5 rounded-2xl border border-[#ebdccb] dark:border-white/10 bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md shadow-xs">
-        <div class="category-section-header flex items-center justify-between mb-3.5">
+    <section class="premium-books-section mt-6 sm:mt-8 p-4 sm:p-6" aria-label="Books and Editions">
+        <div class="category-section-header flex items-center justify-between mb-3.5 sm:mb-5">
             <div class="flex items-center gap-2">
                 <div class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5 cursor-pointer hover:bg-[#b4532c]/10 transition" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)">
                     <span class="w-2 h-2 rounded-full inline-block flex-shrink-0 bg-[#b4532c]"></span>
-                    <span class="font-english text-[11px] sm:text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]">BOOKS & EDITIONS</span>
+                    <span class="font-english text-[11px] sm:text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]" translate="no">BOOKS & EDITIONS</span>
                     <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-white">പുസ്തകങ്ങൾ</span>
                 </div>
             </div>
             <button class="show-more-pill" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക" style="border-color: #b4532c40; color: #b4532c;">
-                <span class="font-english text-[11px] sm:text-xs">SHOW MORE</span>
+                <span class="font-english text-[11px] sm:text-xs" translate="no">SHOW MORE</span>
                 <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
                 <span class="text-xs">&rsaquo;</span>
             </button>
         </div>
 
-        <!-- Horizontal Swipe Showcase (Compact sizing for future additions) -->
-        <div class="flex gap-3 sm:gap-4 overflow-x-auto pb-2 pt-1 scrollbar-none snap-x snap-mandatory">
-            ${bookCovers.map(book => {
-                const cleanTitle = stripMarkdown(book.title);
-                const count = getBookArticleCount(book, allArticles);
-                return `
-                <div class="book-glass-card w-32 sm:w-36 md:w-40 flex-shrink-0 snap-start group cursor-pointer bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col" data-id="${book.id}">
-                    <div class="aspect-[3/4] w-full bg-[#f7eedf] dark:bg-[#0c0d12] overflow-hidden relative">
-                        ${book.imageUrl ? `
-                            <img src="${book.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
-                        ` : `
-                            <div class="w-full h-full flex flex-col items-center justify-center text-[#b4532c] dark:text-white/40 space-y-1">
-                                <span class="text-2xl">📚</span>
-                                <span class="text-[9px] font-bold font-english uppercase">Edition</span>
-                            </div>
-                        `}
-                    </div>
-                    <!-- Maroon Title Banner -->
-                    <div class="bg-[#b4532c] text-white py-1 px-2 text-center text-[11px] font-bold font-['Anek_Malayalam'] truncate">
-                        ${cleanTitle}
-                    </div>
-                    <!-- Details / Count -->
-                    <div class="py-1 px-1.5 text-center bg-[#fbf7ee]/40 dark:bg-white/[0.02] border-t border-[#ebdccb]/60 dark:border-white/10 space-y-0.5">
-                        <p class="text-[10px] font-bold text-[#1e1b18] dark:text-white font-english truncate">
-                            ${book.date || book.category || 'Special Issue'}
-                        </p>
-                        <p class="text-[9px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam'] truncate">
-                            ${count} ലേഖനങ്ങൾ
-                        </p>
-                    </div>
-                </div>
-                `;
-            }).join('')}
+        <div id="shelf-books-grid" class="premium-books-grid">
+            ${booksHtml}
         </div>
+
+        ${showMoreBtnHtml}
     </section>
     `;
 }
