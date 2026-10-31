@@ -2935,9 +2935,11 @@ function renderAdminPublishedList(items) {
     if (!listContainer) return;
 
     // Strictly filter out any books and book chapters
-    const articles = (items || []).filter(a => !isBookOrChapter(a));
+    const sourceList = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
+    const articles = sourceList.filter(a => !isBookOrChapter(a));
+    const safeArticles = Array.isArray(articles) ? articles : [];
 
-    if (articles.length === 0) {
+    if (safeArticles.length === 0) {
         listContainer.innerHTML = `
             <div class="text-center py-12 px-4 bg-white/60 dark:bg-white/5 rounded-3xl border border-[#ebdccb] dark:border-white/10 space-y-3">
                 <div class="w-12 h-12 mx-auto rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center text-xl">📄</div>
