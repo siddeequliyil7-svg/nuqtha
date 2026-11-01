@@ -3,6 +3,40 @@
   "version": 2,
   "cleanUrls": true,
   "rewrites": [
+    {
+      "source": "/article.html",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
+        }
+      ],
+      "destination": "/api/og"
+    },
+    {
+      "source": "/article",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
+        }
+      ],
+      "destination": "/api/og"
+    },
+    {
+      "source": "/story/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
+        }
+      ],
+      "destination": "/api/og?id=:id"
+    },
+    { "source": "/story/:id", "destination": "/article.html?id=:id" },
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/admin/", "destination": "/admin.html" },
     { "source": "/profile/author/:id", "destination": "/author.html?id=:id" },

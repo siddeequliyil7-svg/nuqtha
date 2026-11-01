@@ -649,3 +649,4 @@ export function updateHeaderUserUI(user) {
         if (userDropdown) userDropdown.classList.add("hidden");
     }
 }
+

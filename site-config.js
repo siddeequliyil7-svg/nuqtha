@@ -78,14 +78,25 @@ export function updatePageMeta({ path, title, description, imageUrl } = {}) {
     }
 
     // 5. OpenGraph Image
-    if (imageUrl) {
+    const resolvedImage = imageUrl 
+        ? (imageUrl.startsWith("http://") || imageUrl.startsWith("https://") ? imageUrl : getAbsoluteUrl(imageUrl))
+        : getAbsoluteUrl("og-cover.png");
+    if (resolvedImage) {
         let ogImage = document.querySelector('meta[property="og:image"]');
         if (!ogImage) {
             ogImage = document.createElement("meta");
             ogImage.setAttribute("property", "og:image");
             document.head.appendChild(ogImage);
         }
-        ogImage.setAttribute("content", imageUrl);
+        ogImage.setAttribute("content", resolvedImage);
+
+        let ogImageSecure = document.querySelector('meta[property="og:image:secure_url"]');
+        if (!ogImageSecure) {
+            ogImageSecure = document.createElement("meta");
+            ogImageSecure.setAttribute("property", "og:image:secure_url");
+            document.head.appendChild(ogImageSecure);
+        }
+        ogImageSecure.setAttribute("content", resolvedImage);
 
         let twImage = document.querySelector('meta[name="twitter:image"]');
         if (!twImage) {
@@ -93,7 +104,15 @@ export function updatePageMeta({ path, title, description, imageUrl } = {}) {
             twImage.setAttribute("name", "twitter:image");
             document.head.appendChild(twImage);
         }
-        twImage.setAttribute("content", imageUrl);
+        twImage.setAttribute("content", resolvedImage);
+
+        let twUrl = document.querySelector('meta[name="twitter:url"]');
+        if (!twUrl) {
+            twUrl = document.createElement("meta");
+            twUrl.setAttribute("name", "twitter:url");
+            document.head.appendChild(twUrl);
+        }
+        twUrl.setAttribute("content", absoluteUrl);
     }
 }
 
