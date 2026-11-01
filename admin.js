@@ -1,5 +1,13 @@
 import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
+import { 
+    checkIsAdminUser, 
+    initAuthStateListener, 
+    signInWithGoogle, 
+    signOutUser, 
+    getCachedAuthUser, 
+    ADMIN_SESSION_KEY 
+} from "./js/auth-system.js";
 
 export function isMainBook(art) {
     if (!art) return false;
@@ -122,6 +130,10 @@ function initAdminSecurity() {
     const errorBox = document.getElementById("admin-login-error");
     const togglePwBtn = document.getElementById("toggle-pw-visibility");
     const logoutBtn = document.getElementById("admin-logout-btn");
+    const googleAdminBtn = document.getElementById("admin-google-signin-btn");
+    const unauthorizedNotice = document.getElementById("admin-unauthorized-notice");
+    const unauthorizedMsg = document.getElementById("admin-unauthorized-msg");
+    const switchBtn = document.getElementById("admin-switch-btn");
 
     function unlock() {
         if (authBarrier) authBarrier.classList.add("hidden");
@@ -129,22 +141,95 @@ function initAdminSecurity() {
         initAdminDashboard();
     }
 
-    function lock() {
+    function lock(unauthorizedUser = null) {
         if (authBarrier) authBarrier.classList.remove("hidden");
         if (mainWrapper) mainWrapper.classList.add("hidden");
+        
+        if (unauthorizedUser) {
+            if (unauthorizedNotice) unauthorizedNotice.classList.remove("hidden");
+            if (unauthorizedMsg) {
+                unauthorizedMsg.textContent = `നിങ്ങൾ വായനക്കാരനായി (${unauthorizedUser.email || unauthorizedUser.phoneNumber || unauthorizedUser.name}) ലോഗിൻ ചെയ്തിരിക്കുന്നു. ഈ പ്രസിദ്ധീകരണ പാനലിലേക്ക് പ്രവേശനാനുമതിയില്ല.`;
+            }
+        } else {
+            if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
+        }
+        
         if (passwordInput) {
             passwordInput.value = "";
-            passwordInput.focus();
         }
     }
 
-    // Check existing session
-    if (sessionStorage.getItem(AUTH_STORAGE_KEY) === "true") {
-        unlock();
-    } else {
-        lock();
+    if (switchBtn) {
+        switchBtn.addEventListener("click", () => {
+            if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
+            if (passwordInput) passwordInput.focus();
+        });
     }
 
+    function evaluateSession(user) {
+        const hasSession = sessionStorage.getItem(AUTH_STORAGE_KEY) === "true" || sessionStorage.getItem(ADMIN_SESSION_KEY) === "true";
+        if (hasSession) {
+            unlock();
+            return;
+        }
+
+        if (user) {
+            if (checkIsAdminUser(user)) {
+                try {
+                    sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
+                    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+                } catch (_) {}
+                unlock();
+            } else {
+                // User is signed in, but NOT an admin
+                lock(user);
+            }
+        } else {
+            lock(null);
+        }
+    }
+
+    // Initial check using cached user
+    const cachedUser = getCachedAuthUser();
+    evaluateSession(cachedUser);
+
+    // Live auth listener
+    initAuthStateListener((firebaseUser) => {
+        evaluateSession(firebaseUser);
+    });
+
+    // Google Admin Sign-In
+    if (googleAdminBtn) {
+        googleAdminBtn.addEventListener("click", async () => {
+            try {
+                googleAdminBtn.disabled = true;
+                googleAdminBtn.classList.add("opacity-60");
+                if (errorBox) errorBox.classList.add("hidden");
+
+                const profile = await signInWithGoogle();
+                if (checkIsAdminUser(profile)) {
+                    sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
+                    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+                    unlock();
+                } else {
+                    lock(profile);
+                }
+            } catch (err) {
+                console.warn("[Admin Auth] Google sign-in error:", err);
+                if (err?.code !== "auth/popup-closed-by-user") {
+                    if (errorBox) {
+                        errorBox.textContent = "Google ലോഗിൻ പരാജയപ്പെട്ടു: " + (err.message || "");
+                        errorBox.classList.remove("hidden");
+                    }
+                }
+            } finally {
+                googleAdminBtn.disabled = false;
+                googleAdminBtn.classList.remove("opacity-60");
+            }
+        });
+    }
+
+    // Password Form
     if (loginForm) {
         loginForm.addEventListener("submit", (e) => {
             e.preventDefault();
@@ -152,8 +237,10 @@ function initAdminSecurity() {
             if (val === ADMIN_PASSWORD) {
                 try {
                     sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
+                    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
                 } catch (_) {}
                 if (errorBox) errorBox.classList.add("hidden");
+                if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
                 unlock();
             } else {
                 if (errorBox) {
@@ -179,8 +266,10 @@ function initAdminSecurity() {
     }
 
     if (logoutBtn) {
-        logoutBtn.addEventListener("click", () => {
+        logoutBtn.addEventListener("click", async () => {
             sessionStorage.removeItem(AUTH_STORAGE_KEY);
+            sessionStorage.removeItem(ADMIN_SESSION_KEY);
+            await signOutUser();
             window.location.reload();
         });
     }

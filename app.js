@@ -9,6 +9,7 @@ import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./sch
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
+import { initHeaderAuthUI } from "./js/auth-ui.js";
 
 let allArticles = [];
 try {
@@ -99,6 +100,7 @@ let currentSearchQuery = "";
 
 function initApp() {
     setupThemeToggle();
+    initHeaderAuthUI();
     setupCategoryNav();
     setupArticlesDropdown();
     setupBooksNavLink();
@@ -386,8 +388,14 @@ function setupGlobalCategoryBadges() {
 
 function checkUrlCategory() {
     const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get('view');
     const catParam = params.get('category') || params.get('cat');
     const hash = window.location.hash.replace(/^#/, '').trim();
+
+    if (viewParam === 'saved' || hash.toLowerCase() === 'saved') {
+        switchToCategory('SAVED');
+        return;
+    }
 
     let targetCat = catParam || '';
     if (!targetCat && hash && hash !== 'home') {
@@ -732,6 +740,8 @@ function renderFeed() {
         renderHomeFeed(container);
     } else if (currentCategory === "BOOKS" || currentCategory === "BOOK") {
         renderBooksCategoryFeed(container);
+    } else if (currentCategory === "SAVED") {
+        renderSavedFeed(container);
     } else {
         renderCategoryFeed(container, currentCategory);
     }
@@ -739,6 +749,62 @@ function renderFeed() {
     attachCardListeners();
     attachShowMoreListeners();
     setupCarousel();
+}
+
+/* ═══════════ Saved Articles Library Feed ═══════════ */
+function renderSavedFeed(container) {
+    let savedIds = [];
+    try {
+        savedIds = JSON.parse(localStorage.getItem("nuqtha_saved_books") || "[]");
+    } catch (_) {}
+
+    const matched = allArticles.filter(art => savedIds.includes(art.id));
+
+    let html = `
+        <div class="mb-6 flex items-center justify-between pb-3 border-b border-[#ebdccb] dark:border-white/10">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-black font-['Anek_Malayalam'] text-[#1e1b18] dark:text-white">സേവ് ചെയ്ത ലേഖനങ്ങൾ (Saved Articles)</h2>
+                <p class="text-xs text-[#8c7a6b] dark:text-slate-400 font-english">${matched.length} saved in your library</p>
+            </div>
+            <button type="button" id="back-from-saved-btn" class="px-3.5 py-1.5 rounded-full bg-black/5 dark:bg-white/10 text-xs font-bold font-english uppercase tracking-wider text-[#5a4b41] dark:text-slate-300 hover:bg-[#b4532c] hover:text-white transition cursor-pointer">
+                &larr; All Articles
+            </button>
+        </div>
+    `;
+
+    if (matched.length === 0) {
+        html += `
+        <div class="text-center py-16 px-4 space-y-4 max-w-md mx-auto">
+            <div class="w-16 h-16 mx-auto rounded-3xl bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 flex items-center justify-center text-3xl shadow-xs">
+                🔖
+            </div>
+            <h3 class="text-lg sm:text-xl font-bold font-['Anek_Malayalam'] text-[#1e1b18] dark:text-white">സേവ് ചെയ്ത ലേഖനങ്ങളില്ല</h3>
+            <p class="text-xs text-[#8c7a6b] dark:text-slate-400 font-['Anek_Malayalam'] leading-relaxed">
+                നിങ്ങൾ ഇതുവരെ ലേഖനങ്ങളൊന്നും സേവ് ചെയ്തിട്ടില്ല. ലേഖന പേജിലെ സേവ് (Save) ബട്ടൺ ക്ലിക്ക് ചെയ്ത് ഇവിടെ സൂക്ഷിക്കാം.
+            </p>
+            <div class="pt-2">
+                <button type="button" id="browse-articles-empty-btn" class="px-5 py-2.5 rounded-2xl bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold font-english uppercase tracking-wider transition shadow cursor-pointer">
+                    Browse All Articles
+                </button>
+            </div>
+        </div>
+        `;
+    } else {
+        html += buildFeaturedCard(matched[0]);
+        if (matched.length > 1) {
+            html += `<div class="category-cards-list space-y-3 mt-4">`;
+            matched.slice(1).forEach(art => {
+                html += buildCompactRecentCard(art);
+            });
+            html += `</div>`;
+        }
+    }
+
+    container.innerHTML = html;
+    const backBtn = document.getElementById("back-from-saved-btn");
+    if (backBtn) backBtn.addEventListener("click", () => switchToCategory("ALL"));
+    const emptyBtn = document.getElementById("browse-articles-empty-btn");
+    if (emptyBtn) emptyBtn.addEventListener("click", () => switchToCategory("ALL"));
 }
 
 /* ═══════════ Search Feed: Displays matching articles ═══════════ */
@@ -1065,6 +1131,11 @@ function switchToCategory(cat) {
     const feedEl = document.getElementById("feed-container");
     if (feedEl) feedEl.scrollIntoView({ behavior: "smooth", block: "start" });
 }
+
+window.switchToCategory = switchToCategory;
+window.filterBySavedArticles = function() {
+    switchToCategory("SAVED");
+};
 
 /* ═══════════ Format Markdown/Rich Text (Bold, Highlight, Subheadings, Inline Images, Highlight Cards) ═══════════ */
 function formatRichContent(rawText, contentStyle = "") {
