@@ -38,7 +38,7 @@ export function getFirebaseApiKey() {
       return process.env.VITE_FIREBASE_API_KEY;
     }
   } catch (e) {}
-  return "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e";
+  return "AIzaSyBTKoMKudzOtgv-BY5j1gs7dN162S9e";
 }
 
 export const firebaseConfig = {
