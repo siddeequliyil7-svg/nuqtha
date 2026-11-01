@@ -3368,3 +3368,73 @@ html.dark .premium-books-load-more-btn:hover {
         transition: none !important;
     }
 }
+
+/* ═══════════ Clickable Category Links (Site-Wide) ═══════════ */
+.category-pill-link {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 44px Minimum Touch Target */
+.category-pill-link::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 44px;
+    min-height: 44px;
+    width: 100%;
+    height: 100%;
+    pointer-events: auto;
+}
+
+.category-pill-link:hover {
+    transform: translateY(-1.5px);
+    opacity: 0.95;
+}
+
+.category-pill-link:focus-visible {
+    outline: 2px solid var(--terracotta, #b4532c);
+    outline-offset: 2px;
+}
+
+/* Bracket variant [CATEGORY] */
+.category-tag-bracket {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cat-accent, var(--terracotta, #b4532c));
+    font-family: 'Noto Sans Malayalam', sans-serif;
+    transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.category-tag-bracket:hover {
+    text-decoration: underline;
+    opacity: 1;
+}
+
+body.dark-mode .category-tag-bracket,
+html.dark .category-tag-bracket {
+    color: var(--cat-accent, #f87171);
+}
+
+/* Stretched link pattern for cards to eliminate nested <a> tags */
+.stretched-card-wrap {
+    position: relative;
+}
+
+.stretched-card-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: auto;
+}
+

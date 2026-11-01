@@ -10,6 +10,7 @@ import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from ".
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
 import { initHeaderAuthUI } from "./js/auth-ui.js";
+import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
 
 let allArticles = [];
 try {
@@ -363,7 +364,7 @@ function updateMoreCategoriesMenu() {
     extraCats.forEach(cat => {
         const malLabel = categoryLabel(cat);
         html += `
-            <a href="#" data-category="${cat}" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
+            <a href="${categoryUrl(cat)}" data-category="${cat}" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
                 <span>${cat}</span>
                 <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">${malLabel}</span>
             </a>
@@ -374,7 +375,7 @@ function updateMoreCategoriesMenu() {
 
 function setupGlobalCategoryBadges() {
     document.addEventListener("click", (e) => {
-        const badge = e.target.closest(".category-glass-badge, .category-badge-pill, .carousel-card-cat, [data-badge-category]");
+        const badge = e.target.closest(".category-glass-badge, .category-badge-pill, .carousel-card-cat, [data-badge-category], .category-pill-link, .show-more-pill");
         if (badge) {
             const cat = badge.dataset.badgeCategory || badge.dataset.category;
             if (cat) {
@@ -404,11 +405,18 @@ function checkUrlCategory() {
     }
 
     if (targetCat) {
-        const upper = targetCat.toUpperCase();
+        let decoded = targetCat;
+        try { decoded = decodeURIComponent(targetCat); } catch (_) {}
+        const norm = normalizeCategoryName(decoded);
+        const upper = norm ? norm.toUpperCase() : '';
         if (upper === 'BOOK' || upper === 'BOOKS') {
             switchToCategory('BOOKS');
-        } else {
+        } else if (upper) {
             switchToCategory(upper);
+        }
+    } else if (!hash || hash === 'home') {
+        if (currentCategory !== 'ALL') {
+            switchToCategory('ALL');
         }
     }
 }
@@ -987,10 +995,10 @@ function renderHomeFeed(container) {
 
             ${hasMore ? `
             <div class="flex justify-end pt-3">
-                <button class="show-more-pill" data-category="${cat}" title="${catName} വിഭാഗത്തിലെ കൂടുതൽ ലേഖനങ്ങൾ കാണുക" style="border-color: ${theme.color}40; color: ${theme.color};">
+                <a href="${categoryUrl(cat)}" class="show-more-pill" data-category="${cat}" title="${catName} വിഭാഗത്തിലെ കൂടുതൽ ലേഖനങ്ങൾ കാണുക" style="border-color: ${theme.color}40; color: ${theme.color};">
                     <span class="font-english">VIEW ALL ${catName}</span>
                     <span class="text-xs">&rarr;</span>
-                </button>
+                </a>
             </div>
             ` : ''}
         </section>
@@ -1005,7 +1013,34 @@ function renderCategoryFeed(container, category) {
     const filtered = allArticles.filter(a => !isBookEntity(a) && (a.category || "").toUpperCase() === category);
 
     if (filtered.length === 0) {
-        renderEmpty(`${category} വിഭാഗത്തിൽ ലേഖനങ്ങൾ ഇപ്പോൾ ലഭ്യമല്ല.`);
+        if (allArticles.length === 0) return; // Keep skeleton while articles load
+        let emptyHtml = `
+        <div class="category-filter-banner flex items-center justify-between p-3.5 mb-5 rounded-2xl bg-white/60 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-[#8c7a6b] dark:text-[#94a3b8]">വിഭാഗം:</span>
+                <span class="category-glass-badge">
+                    <span class="font-english text-xs font-black tracking-widest uppercase">${categoryLabel(category)}</span>
+                </span>
+            </div>
+            <button class="show-all-home-btn text-xs font-bold text-[#b4532c] hover:text-[#923e1b] dark:text-[#f87171] dark:hover:text-white transition flex items-center gap-1 font-english">
+                <span>&larr; ALL ARTICLES</span>
+            </button>
+        </div>
+        <div class="article-glass-card p-10 sm:p-14 text-center cursor-default space-y-4">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+            </div>
+            <h3 class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">ഈ വിഭാഗത്തിൽ ലേഖനങ്ങളില്ല</h3>
+            <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8] max-w-sm mx-auto font-['Noto_Sans_Malayalam']">തിരഞ്ഞെടുത്ത വിഭാഗത്തിൽ പുതിയ ലേഖനങ്ങൾ ഉടൻ പ്രസിദ്ധീകരിക്കും.</p>
+            <button class="show-all-home-btn mt-2 px-5 py-2.5 rounded-full bg-[#b4532c] text-white text-xs font-bold hover:bg-[#923e1b] transition shadow-md font-english">
+                &larr; ALL ARTICLES
+            </button>
+        </div>
+        `;
+        container.innerHTML = emptyHtml;
+        container.querySelectorAll(".show-all-home-btn").forEach(btn => {
+            btn.addEventListener("click", () => switchToCategory("ALL"));
+        });
         return;
     }
 
@@ -1050,19 +1085,16 @@ function buildCategorySectionHeader(cat, hasMore, isFilteredView = false, theme 
     const label = cat === "ALL" ? "പുതിയ ലേഖനങ്ങൾ" : categoryLabel(cat);
     const t = theme || getCategoryTheme(cat);
     const showMoreBtn = (hasMore && !isFilteredView)
-        ? `<button class="show-more-pill" data-category="${cat}" title="${label} വിഭാഗത്തിലെ എല്ലാ ലേഖനങ്ങളും കാണുക" style="border-color: ${t.color}40; color: ${t.color};">
+        ? `<a href="${categoryUrl(cat)}" class="show-more-pill" data-category="${cat}" title="${label} വിഭാഗത്തിലെ എല്ലാ ലേഖനങ്ങളും കാണുക" style="border-color: ${t.color}40; color: ${t.color};">
             <span class="font-english">SHOW MORE</span>
             <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
             <span class="text-xs">&rsaquo;</span>
-           </button>`
+           </a>`
         : ``;
 
     return `
     <div class="category-section-header flex items-center justify-between mb-2">
-        <div class="category-glass-badge border ${t.badgeBorder}">
-            <span class="w-2 h-2 rounded-full inline-block flex-shrink-0" style="background-color: ${t.color};"></span>
-            <span class="font-english text-xs font-black tracking-wider uppercase ${t.badgeText}">${label}</span>
-        </div>
+        ${categoryTag(cat, { variant: 'section-header', theme: t, displayText: label })}
         ${showMoreBtn}
     </div>`;
 }
@@ -1114,13 +1146,17 @@ function switchToCategory(cat) {
     if (booksLink) booksLink.classList.toggle("active", isBook);
     if (articlesBtn) articlesBtn.classList.toggle("active", !isBook);
 
-    // Update URL hash
+    // Update page title & URL hash
     if (cat === "ALL") {
+        document.title = "NUQTHA | മലയാളം ഇ-മാഗസിൻ";
         if (window.location.hash) {
             history.pushState(null, "", window.location.pathname + window.location.search);
         }
     } else {
-        const newHash = "#" + cat.toLowerCase();
+        const catName = isBook ? "പുസ്തകങ്ങൾ (Books)" : categoryLabel(cat);
+        document.title = `${catName} | NUQTHA`;
+        const slug = isBook ? "books" : categorySlug(cat);
+        const newHash = "#" + slug;
         if (window.location.hash !== newHash) {
             history.pushState(null, "", newHash);
         }
@@ -1276,7 +1312,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
 
     return `
     <article class="category-featured-card group cursor-pointer hover:shadow-xl transition-all duration-300 ${t.cardBorder}" data-id="${art.id}">
-        <a href="article.html?id=${art.id}" class="block">
+        <div class="block stretched-card-wrap">
             <!-- Large Prominent Cover Image -->
             <div class="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden bg-gradient-to-br ${t.accentGrad}">
                 ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
@@ -1292,10 +1328,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
                 <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
                 <!-- Floating Category Badge -->
                 <div class="absolute top-3 left-3 sm:top-4 sm:left-4 z-10">
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-black/60 backdrop-blur-md text-white border border-white/20 shadow-sm font-english">
-                        <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${t.color};"></span>
-                        FEATURED · ${categoryMalayalam}
-                    </span>
+                    ${categoryTag(art.category, { variant: 'category-featured-badge', theme: t })}
                 </div>
                 <!-- Floating Date -->
                 <div class="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
@@ -1308,7 +1341,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
             <!-- Content Area with Bolder Typography -->
             <div class="p-4 sm:p-6 space-y-2.5 sm:space-y-3">
                 <h3 class="text-xl sm:text-2xl md:text-[1.65rem] font-black text-[#1e1b18] dark:text-white leading-snug tracking-tight group-hover:text-[${t.color}] transition-colors" ${titleStyle}>
-                    ${cleanTitle}
+                    <a href="article.html?id=${art.id}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                 </h3>
 
                 ${preview ? `
@@ -1337,7 +1370,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
                     </div>
                 </div>
             </div>
-        </a>
+        </div>
     </article>
     `;
 }
@@ -1362,7 +1395,7 @@ function buildFeaturedCard(art) {
 
     return `
     <article class="featured-article-card group cursor-pointer hover:shadow-2xl transition-all duration-300" data-id="${art.id}">
-        <a href="article.html?id=${art.id}" class="block">
+        <div class="block stretched-card-wrap">
             <!-- Large Top Cover Image Container -->
             <div class="featured-cover-container relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#b8542c] via-[#aa4923] to-[#803113]">
                 ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
@@ -1381,9 +1414,7 @@ function buildFeaturedCard(art) {
             <div class="featured-card-body p-6 sm:p-8 space-y-4">
                 <!-- Category Pill & Date / Read Time Row -->
                 <div class="flex items-center justify-between gap-3 flex-wrap">
-                    <span class="featured-category-pill">
-                        ${categoryMalayalam}
-                    </span>
+                    ${categoryTag(art.category, { variant: 'featured-pill' })}
                     <span class="text-xs text-[#8c7a6b] dark:text-[#a0aec0] font-medium font-['Noto_Sans_Malayalam']">
                         ${dateStr}
                     </span>
@@ -1391,7 +1422,7 @@ function buildFeaturedCard(art) {
 
                 <!-- Bold Title -->
                 <h2 class="featured-title text-2xl sm:text-3xl font-black leading-snug tracking-tight hover:text-[#b4532c] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
-                    ${cleanTitle}
+                    <a href="article.html?id=${art.id}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                 </h2>
 
                 <!-- Excerpt text -->
@@ -1419,7 +1450,7 @@ function buildFeaturedCard(art) {
                     </div>
                 </div>
             </div>
-        </a>
+        </div>
     </article>
     `;
 }
@@ -1441,7 +1472,7 @@ function buildCompactRecentCard(art, theme = null) {
 
     return `
     <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300 ${t.cardBorder}" data-id="${art.id}">
-        <a href="article.html?id=${art.id}" class="flex items-center p-3 sm:p-4 gap-3.5 sm:gap-4 w-full">
+        <div class="flex items-center p-3 sm:p-4 gap-3.5 sm:gap-4 w-full stretched-card-wrap">
             <!-- Left Thumbnail -->
             <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${t.accentGrad}">
                 ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
@@ -1455,12 +1486,10 @@ function buildCompactRecentCard(art, theme = null) {
 
             <!-- Right Details -->
             <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-                <span class="text-[11px] font-bold ${t.badgeText} uppercase font-['Noto_Sans_Malayalam'] tracking-wide">
-                    [${categoryMalayalam}]
-                </span>
+                ${categoryTag(art.category, { variant: 'bracket', theme: t })}
 
                 <h4 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[${t.color}] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
-                    ${cleanTitle}
+                    <a href="article.html?id=${art.id}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                 </h4>
 
                 <div class="flex items-center gap-1.5 text-[11px] sm:text-xs flex-wrap font-['Noto_Sans_Malayalam']">
@@ -1472,7 +1501,7 @@ function buildCompactRecentCard(art, theme = null) {
                     <span class="text-[#8c7a6b] dark:text-[#a0aec0]">• ${dateStr}</span>
                 </div>
             </div>
-        </a>
+        </div>
     </article>
     `;
 }
@@ -1567,15 +1596,15 @@ function buildCarouselCard(art) {
         ? '<img src="' + cardImg + '" alt="' + cleanTitle + '" class="carousel-card-img" loading="lazy">'
         : '<div class="carousel-card-img-placeholder"><svg width="28" height="28" fill="none" stroke="rgba(255,255,255,0.45)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
 
-    return '<a href="article.html?id=' + art.id + '" class="carousel-card" data-id="' + art.id + '">' +
+    return '<div class="carousel-card cursor-pointer stretched-card-wrap" data-id="' + art.id + '">' +
         imgHtml +
         '<div class="carousel-card-body">' +
-            '<span class="carousel-card-cat category-badge-pill cursor-pointer hover:underline transition" data-category="' + (art.category || 'GENERAL') + '" title="View ' + catLabel + ' articles">' + catLabel + '</span>' +
-            '<h4 class="carousel-card-title" ' + titleStyle + '>' + cleanTitle + '</h4>' +
+            categoryTag(art.category, { variant: 'carousel' }) +
+            '<h4 class="carousel-card-title" ' + titleStyle + '><a href="article.html?id=' + art.id + '" class="stretched-card-link text-inherit">' + cleanTitle + '</a></h4>' +
             '<p class="carousel-card-meta font-bold text-[#1e1b18] dark:text-white">' + authorName + '</p>' +
             '<p class="carousel-card-meta">' + dateStr + '</p>' +
         '</div>' +
-    '</a>';
+    '</div>';
 }
 
 /* ═══════════ Auto-Play Banner Setup (called after renderFeed) ═══════════ */
@@ -1855,16 +1884,16 @@ function buildBookWidget(seriesName, articles) {
         const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
         const dateStr = art.date || formatDate(art.createdAt);
         return `
-        <a href="article.html?id=${art.id}" class="playlist-item-row group/row" data-id="${art.id}">
+        <div class="playlist-item-row group/row cursor-pointer stretched-card-wrap" data-id="${art.id}">
             <div class="playlist-index-badge">
                 <span>0${idx + 1}</span>
             </div>
             <div class="playlist-item-info min-w-0 flex-1">
                 <h5 class="playlist-item-title line-clamp-1 group-hover/row:text-[#b4532c] dark:group-hover/row:text-[#f87171] transition-colors" ${titleStyle}>
-                    ${art.title}
+                    <a href="article.html?id=${art.id}" class="stretched-card-link text-inherit">${art.title}</a>
                 </h5>
                 <div class="flex items-center gap-2 text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
-                    <span>${categoryLabel(art.category)}</span>
+                    ${categoryTag(art.category, { className: 'hover:underline font-bold text-[#b4532c] dark:text-[#f87171]' })}
                     <span>•</span>
                     <span>${dateStr}</span>
                 </div>
@@ -1872,7 +1901,7 @@ function buildBookWidget(seriesName, articles) {
             <div class="playlist-play-icon text-[#b4532c] dark:text-[#f87171] opacity-70 group-hover/row:opacity-100 group-hover/row:translate-x-1 transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
             </div>
-        </a>
+        </div>
         `;
     }).join('');
 
@@ -1994,7 +2023,15 @@ window.openFullScreenReader = function(id) {
     }
 
     const catEl = document.getElementById("reader-category");
-    if (catEl) catEl.textContent = categoryLabel(art.category);
+    if (catEl) {
+        catEl.textContent = categoryLabel(art.category);
+        catEl.href = categoryUrl(art.category);
+        catEl.onclick = (e) => {
+            e.preventDefault();
+            closeReaderView();
+            switchToCategory((art.category || 'GENERAL').toUpperCase());
+        };
+    }
     const authorEl = document.getElementById("reader-author");
     if (authorEl) authorEl.textContent = art.author || "NUQTHA";
 
@@ -2088,11 +2125,11 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
         <section class="premium-books-section mt-6 sm:mt-8 p-4 sm:p-6" aria-label="Books and Editions">
             <div class="category-section-header flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
-                    <div class="category-glass-badge cursor-pointer" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)">
+                    <a href="${categoryUrl('BOOKS')}" class="category-glass-badge cursor-pointer" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)" aria-label="എല്ലാ പുസ്തകങ്ങളും കാണുക">
                         <span class="w-2 h-2 rounded-full inline-block flex-shrink-0" style="background-color: var(--terracotta);"></span>
                         <span class="font-english text-[11px] sm:text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]" translate="no">BOOKS & EDITIONS</span>
                         <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-white">പുസ്തകങ്ങൾ</span>
-                    </div>
+                    </a>
                 </div>
             </div>
             <div class="py-10 px-4 text-center text-sm font-['Noto_Sans_Malayalam'] text-[#8c7a6b] dark:text-[#94a3b8] space-y-3">
@@ -2172,17 +2209,17 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
     <section class="premium-books-section mt-6 sm:mt-8 p-4 sm:p-6" aria-label="Books and Editions">
         <div class="category-section-header flex items-center justify-between mb-3.5 sm:mb-5">
             <div class="flex items-center gap-2">
-                <div class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5 cursor-pointer hover:bg-[#b4532c]/10 transition" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)">
+                <a href="${categoryUrl('BOOKS')}" class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5 cursor-pointer hover:bg-[#b4532c]/10 transition" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)" aria-label="എല്ലാ പുസ്തകങ്ങളും കാണുക">
                     <span class="w-2 h-2 rounded-full inline-block flex-shrink-0 bg-[#b4532c]"></span>
                     <span class="font-english text-[11px] sm:text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]" translate="no">BOOKS & EDITIONS</span>
                     <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-white">പുസ്തകങ്ങൾ</span>
-                </div>
+                </a>
             </div>
-            <button class="show-more-pill" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക" style="border-color: #b4532c40; color: #b4532c;">
+            <a href="${categoryUrl('BOOKS')}" class="show-more-pill" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക" style="border-color: #b4532c40; color: #b4532c;">
                 <span class="font-english text-[11px] sm:text-xs" translate="no">SHOW MORE</span>
                 <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
                 <span class="text-xs">&rsaquo;</span>
-            </button>
+            </a>
         </div>
 
         <div id="shelf-books-grid" class="premium-books-grid">

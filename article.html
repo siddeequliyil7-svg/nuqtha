@@ -382,7 +382,7 @@
                     <span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span>
                     <span>MORE EDITIONS (കൂടുതൽ പുസ്തകങ്ങൾ)</span>
                 </h3>
-                <a href="index.html#category=BOOKS" class="text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:underline font-english">View all &rarr;</a>
+                <a href="index.html#books" class="text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:underline font-english">View all &rarr;</a>
             </div>
             <div id="related-books-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
         </section>
@@ -516,6 +516,7 @@
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
+        import { categoryUrl, categoryTag } from "./js/category-link.js";
 
         const urlParams = new URLSearchParams(window.location.search);
         let articleId = urlParams.get('id');
@@ -944,7 +945,7 @@
                 <div class="space-y-6 sm:space-y-8 animate-fade-in">
                     <!-- Top Navigation & Action Row -->
                     <div class="flex items-center justify-between pb-1 flex-wrap gap-2 text-xs font-english">
-                        <a href="index.html#category=BOOKS" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-[#1c2030] transition shadow-2xs group touch-target-44">
+                        <a href="${categoryUrl('BOOKS')}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-[#1c2030] transition shadow-2xs group touch-target-44">
                             <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">&larr;</span>
                             <span class="notranslate" translate="no">ALL EDITIONS (എല്ലാ പതിപ്പുകളും)</span>
                         </a>
@@ -972,12 +973,12 @@
                                 <span class="tracking-widest font-black uppercase text-xs">BOOK</span>
                             </div>
                             ${isPremium ? `
-                            <div class="book-hero-premium-pill notranslate" translate="no">
+                            <a href="${categoryUrl('BOOKS')}" class="book-hero-premium-pill notranslate cursor-pointer hover:opacity-90 transition inline-flex items-center gap-1.5" translate="no" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)" aria-label="എല്ലാ പുസ്തകങ്ങളും കാണുക">
                                 <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
                                 </svg>
                                 <span>PREMIUM</span>
-                            </div>
+                            </a>
                             ` : ''}
                         </div>
 
@@ -1303,7 +1304,9 @@
             if (catEl) {
                 const cat = (article.category || "GENERAL").toUpperCase().trim();
                 catEl.textContent = cat;
-                catEl.href = `index.html#${encodeURIComponent(cat.toLowerCase())}`;
+                catEl.href = categoryUrl(cat);
+                catEl.setAttribute('aria-label', `${cat} വിഭാഗത്തിലെ ലേഖനങ്ങൾ`);
+                catEl.title = `${cat} വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക`;
             }
 
             const bookBadgeContainer = document.getElementById('art-book-badge-container');
@@ -1541,7 +1544,7 @@
                 const cleanExcerpt = (item.excerpt || (item.content ? item.content.substring(0, 100) : "")).replace(/[*_#~`]/g, "").trim();
                 const itemImg = item.thumbnailUrl || item.ogImage || item.imageUrl;
                 return `
-                    <a href="article.html?id=${item.id}" class="related-card group touch-target-44">
+                    <div class="related-card group touch-target-44 cursor-pointer relative stretched-card-wrap" onclick="if(!event.target.closest('a')) window.location.href='article.html?id=${item.id}'">
                         ${itemImg ? `
                             <div class="related-img-container">
                                 <img src="${itemImg}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
@@ -1549,9 +1552,9 @@
                         ` : ''}
                         <div class="p-4 flex flex-col justify-between flex-1 gap-2">
                             <div class="space-y-1">
-                                <span class="text-[10px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english">${item.category || "GENERAL"}</span>
+                                ${categoryTag(item.category, { className: 'text-[10px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english' })}
                                 <h4 class="text-sm font-bold line-clamp-2 text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
-                                    ${cleanTitle}
+                                    <a href="article.html?id=${item.id}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                                 </h4>
                                 ${cleanExcerpt ? `<p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed">${cleanExcerpt}</p>` : ''}
                             </div>
@@ -1560,7 +1563,7 @@
                                 <span>${item.date || "Recent"}</span>
                             </div>
                         </div>
-                    </a>
+                    </div>
                 `;
             }).join('');
 

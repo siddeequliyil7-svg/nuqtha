@@ -172,20 +172,20 @@
                             <svg class="w-3.5 h-3.5 transition-transform duration-200" id="articles-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                         </button>
                         <div id="articles-dropdown-menu" class="hidden absolute left-0 sm:left-1/2 sm:-translate-x-1/2 mt-2 w-56 rounded-2xl bg-white/95 dark:bg-[#12141d]/95 backdrop-blur-xl border border-[#ebdccb] dark:border-white/10 shadow-xl py-2 z-50">
-                            <a href="#" data-category="ALL" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
+                            <a href="#home" data-category="ALL" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
                                 <span>ALL ARTICLES</span>
                                 <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">എല്ലാ ലേഖനങ്ങളും</span>
                             </a>
                             <div class="border-t border-[#ebdccb]/60 dark:border-white/10 my-1"></div>
-                            <a href="#" data-category="HISTORY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
+                            <a href="#history" data-category="HISTORY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
                                 <span>HISTORY</span>
                                 <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">ചരിത്രം</span>
                             </a>
-                            <a href="#" data-category="STUDY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
+                            <a href="#study" data-category="STUDY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
                                 <span>STUDY</span>
                                 <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">പഠനം</span>
                             </a>
-                            <a href="#" data-category="STORY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
+                            <a href="#story" data-category="STORY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
                                 <span>STORY</span>
                                 <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">കഥ</span>
                             </a>
@@ -196,7 +196,7 @@
                     </div>
 
                     <!-- 2. BOOKS Direct Link (NO dropdown) -->
-                    <a href="#" data-category="BOOKS" id="nav-books-link" class="nav-category-link inline-flex items-center gap-1.5 font-english px-3.5 py-1.5 rounded-xl transition cursor-pointer">
+                    <a href="#books" data-category="BOOKS" id="nav-books-link" class="nav-category-link inline-flex items-center gap-1.5 font-english px-3.5 py-1.5 rounded-xl transition cursor-pointer">
                         <span>BOOKS</span>
                     </a>
 
@@ -325,7 +325,7 @@
         <!-- Article Reader View -->
         <div class="max-w-4xl lg:max-w-5xl mx-auto px-6 py-12 space-y-8">
             <div class="space-y-4">
-                <span id="reader-category" class="category-badge font-english">General</span>
+                <a id="reader-category" href="#" class="category-badge category-pill-link font-english cursor-pointer" title="ഈ വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക">General</a>
                 <h1 id="reader-title" class="text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e1b18] dark:text-white leading-snug tracking-tight font-['Anek_Malayalam']">
                     Article Title
                 </h1>
@@ -435,25 +435,25 @@
                             <span>ALL ARTICLES (എല്ലാം)</span>
                         </span>
                     </a>
-                    <a href="#" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="HISTORY">
+                    <a href="#history" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="HISTORY">
                         <span class="flex items-center gap-2.5">
                             <span class="text-base">📜</span>
                             <span>HISTORY (ചരിത്രം)</span>
                         </span>
                     </a>
-                    <a href="#" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="STUDY">
+                    <a href="#study" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="STUDY">
                         <span class="flex items-center gap-2.5">
                             <span class="text-base">📖</span>
                             <span>STUDY (പഠനം)</span>
                         </span>
                     </a>
-                    <a href="#" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="STORY">
+                    <a href="#story" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="STORY">
                         <span class="flex items-center gap-2.5">
                             <span class="text-base">✍️</span>
                             <span>STORY (കഥ)</span>
                         </span>
                     </a>
-                    <a href="#" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="BOOKS">
+                    <a href="#books" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="BOOKS">
                         <span class="flex items-center gap-2.5">
                             <span class="text-base">📚</span>
                             <span>BOOKS & EDITIONS (പുസ്തകങ്ങൾ)</span>
@@ -500,6 +500,7 @@
     </aside>
 
     <!-- App Module -->
+    <script type="module" src="./js/category-link.js"></script>
     <script type="module" src="./app.js"></script>
 <script id="theme-sync-script">
         (function() {

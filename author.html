@@ -219,6 +219,7 @@
     <script type="module">
         import { db, doc, getDoc, collection, getDocs } from "./firebase-config.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
+        import { categoryUrl, categoryTag } from "./js/category-link.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
         import { 
             PRIMARY_AUTHORS, 
@@ -470,8 +471,8 @@
                 const preview = (art.excerpt || (art.content ? art.content.substring(0, 120) : '')).replace(/<[^>]*>?/gm, '');
 
                 return `
-                <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300">
-                    <a href="article.html?id=${art.id}" class="flex items-center p-3.5 sm:p-4 gap-3.5 w-full">
+                <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300" onclick="if(!event.target.closest('a')) window.location.href='article.html?id=${art.id}'">
+                    <div class="flex items-center p-3.5 sm:p-4 gap-3.5 w-full stretched-card-wrap">
                         <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#b8542c] to-[#803113]">
                             ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
                                 <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
@@ -482,17 +483,15 @@
                             `}
                         </div>
                         <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-                            <a href="index.html#${encodeURIComponent((art.category || 'GENERAL').toLowerCase())}" class="text-[10px] font-black text-[#b4532c] dark:text-[#f87171] uppercase font-english tracking-wider hover:underline" title="View ${art.category || 'GENERAL'} articles">
-                                [${art.category || "GENERAL"}]
-                            </a>
+                            ${categoryTag(art.category, { variant: 'bracket' })}
                             <h3 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[#b4532c] transition-colors">
-                                ${cleanTitle}
+                                <a href="article.html?id=${art.id}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                             </h3>
                             <p class="text-xs text-[#7a6758] dark:text-[#94a3b8] font-english">
                                 📅 ${dateStr}
                             </p>
                         </div>
-                    </a>
+                    </div>
                 </article>
                 `;
             }).join('');
