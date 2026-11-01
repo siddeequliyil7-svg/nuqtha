@@ -5,7 +5,7 @@
  */
 
 const FIRESTORE_PROJECT_ID = "nuqtha-c0900";
-const FIRESTORE_API_KEY = process.env.VITE_FIREBASE_API_KEY || "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e";
+const FIRESTORE_API_KEY = process.env.VITE_FIREBASE_API_KEY || "AIzaSyBTKoMKudzOtgv-BY5j1gs7dN162S9e3HE";
 const DEFAULT_BANNER = "https://nuqtha.vercel.app/og-cover.png";
 
 export default async function handler(req, res) {

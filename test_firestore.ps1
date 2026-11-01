@@ -1,7 +1,7 @@
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 try {
     $wc = New-Object Net.WebClient
-    $url = "https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e"
+    $url = "https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?key=AIzaSyBTKoMKudzOtgv-BY5j1gs7dN162S9e3HE"
     $res = $wc.DownloadString($url)
     Set-Content -Path "test_output.json" -Value $res
     Write-Host "DOWNLOAD_SUCCESS"
