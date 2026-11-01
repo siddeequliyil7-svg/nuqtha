@@ -2009,7 +2009,8 @@
 
         // ═══════════ SOCIAL SHARE ═══════════
         window.shareArticlePage = function(platform) {
-            const url = window.location.href;
+            const canonicalEl = document.querySelector('link[rel="canonical"]');
+            const url = (canonicalEl && canonicalEl.getAttribute("href")) || window.location.href;
             const title = document.title || "NUQTHA Article";
             if (platform === 'whatsapp') {
                 window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(title + " " + url)}`, '_blank');
