@@ -132,17 +132,17 @@
     </style>
     <script type="module" src="./js/ui-safe.js"></script>
 </head>
-<body class="bg-[#fbf7ee] text-[#1e1b18] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col justify-between">
+<body class="bg-[var(--bg)] text-[var(--text)] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col justify-between">
 
     <!-- Top Minimal Sticky Header -->
-    <header class="sticky top-0 z-40 bg-[#fbf7ee]/90 dark:bg-[#090a0f]/90 backdrop-blur-md border-b border-[#ebdccb] dark:border-white/10 transition-colors">
+    <header class="sticky top-0 z-40 bg-[var(--bg)]/90 dark:bg-[#090a0f]/90 backdrop-blur-md border-b border-[var(--border)] dark:border-white/10 transition-colors">
         <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
             <!-- Clickable NUQTHA Brand Logo returning to Home -->
             <a href="index.html" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20 touch-target-44" title="Return to Home Page / ഹോം പേജ്">
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-sm flex items-center justify-center p-1.5 text-white flex-shrink-0 group-hover:scale-110 transition-transform">
                     <svg class="w-full h-full" viewBox="0 0 24 24" fill="currentColor"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z"/></svg>
                 </div>
-                <span translate="no" class="notranslate text-base sm:text-xl font-black uppercase font-english tracking-tight text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] transition-colors">NUQTHA</span>
+                <span translate="no" class="notranslate text-base sm:text-xl font-black uppercase font-english tracking-tight text-[var(--text)] dark:text-white group-hover:text-[#b4532c] transition-colors">NUQTHA</span>
             </a>
 
             <div class="flex items-center gap-2 sm:gap-3">
@@ -165,15 +165,15 @@
                     </button>
 
                     <!-- User Profile Dropdown Menu -->
-                    <div id="header-user-dropdown" class="hidden absolute right-0 mt-2 w-64 rounded-2xl bg-white/95 dark:bg-[#12141d]/95 backdrop-blur-xl border border-[#ebdccb] dark:border-white/10 shadow-2xl py-2 z-50">
-                        <div class="px-4 py-3 border-b border-[#ebdccb]/60 dark:border-white/10">
+                    <div id="header-user-dropdown" class="hidden absolute right-0 mt-2 w-64 rounded-2xl bg-white/95 dark:bg-[#12141d]/95 backdrop-blur-xl border border-[var(--border)] dark:border-white/10 shadow-2xl py-2 z-50">
+                        <div class="px-4 py-3 border-b border-[var(--border)]/60 dark:border-white/10">
                             <div class="flex items-center gap-2.5">
                                 <div id="dropdown-user-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
                                     <img id="dropdown-user-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
                                     <span id="dropdown-user-avatar-initial">U</span>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p id="dropdown-user-name" class="text-sm font-bold text-[#1e1b18] dark:text-white truncate">വായനക്കാരൻ</p>
+                                    <p id="dropdown-user-name" class="text-sm font-bold text-[var(--text)] dark:text-white truncate">വായനക്കാരൻ</p>
                                     <p id="dropdown-user-ident" class="text-[11px] text-[#8c7a6b] dark:text-slate-400 truncate"></p>
                                     <span id="dropdown-user-role-badge" class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-english bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                                         Reader
@@ -182,7 +182,7 @@
                             </div>
                         </div>
                         <div class="py-1">
-                            <button id="dropdown-saved-btn" class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition">
+                            <button id="dropdown-saved-btn" class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition">
                                 <span class="flex items-center gap-2.5">
                                     <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
                                     <span>സേവ് ചെയ്തവ (Saved)</span>
@@ -197,7 +197,7 @@
                                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-[#b4532c]/10 text-[#b4532c] dark:text-[#f87171] font-mono">⚡</span>
                             </a>
                         </div>
-                        <div class="border-t border-[#ebdccb]/60 dark:border-white/10 pt-1">
+                        <div class="border-t border-[var(--border)]/60 dark:border-white/10 pt-1">
                             <button id="dropdown-signout-btn" class="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs font-bold text-red-600 dark:text-red-400 transition text-left cursor-pointer">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                                 <span>ലോഗൗട്ട് (Sign Out)</span>
@@ -288,21 +288,21 @@
                     </a>
                 </div>
                 <a id="art-category" href="#" class="category-badge font-english uppercase hover:opacity-80 transition cursor-pointer" title="ഈ വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക"></a>
-                <h1 id="art-title" class="article-title-text text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e1b18] dark:text-white tracking-tight leading-snug"></h1>
+                <h1 id="art-title" class="article-title-text text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--text)] dark:text-white tracking-tight leading-snug"></h1>
 
                 <!-- Author & Date Profile Bar -->
-                <div class="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-xs sm:shadow-sm my-2 sm:my-3.5">
+                <div class="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 shadow-xs sm:shadow-sm my-2 sm:my-3.5">
                     <a id="art-author-link" href="#" class="group/author inline-flex items-center gap-3 hover:opacity-95 transition cursor-pointer flex-1 touch-target-44" title="രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക">
                         <div id="art-author-avatar" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-sm flex-shrink-0 group-hover/author:scale-105 transition-transform overflow-hidden">
                             N
                         </div>
                         <div class="space-y-0.5 min-w-0">
                             <div>
-                                <span id="art-author" class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam'] tracking-wide group-hover/author:text-[#b4532c] dark:group-hover/author:text-[#f87171] group-hover/author:underline transition-colors"></span>
+                                <span id="art-author" class="text-base sm:text-lg font-bold text-[var(--text)] dark:text-white font-['Anek_Malayalam'] tracking-wide group-hover/author:text-[#b4532c] dark:group-hover/author:text-[#f87171] group-hover/author:underline transition-colors"></span>
                             </div>
                             <div id="art-transcription-container" class="hidden flex items-center gap-2 flex-wrap text-xs font-semibold">
                                 <span class="text-[#8c7a6b] dark:text-[#a0aec0]">📝 കേട്ടെഴുത്ത്:</span>
-                                <span id="art-transcription" class="font-bold text-[#1e1b18] dark:text-slate-200 font-['Anek_Malayalam']"></span>
+                                <span id="art-transcription" class="font-bold text-[var(--text)] dark:text-slate-200 font-['Anek_Malayalam']"></span>
                             </div>
                             <div class="text-xs font-medium text-[#7a6758] dark:text-[#94a3b8] font-english pt-0.5">
                                 📅 <span id="art-date"></span>
@@ -313,7 +313,7 @@
             </div>
 
             <!-- Optional Article Cover Image -->
-            <div id="art-image-wrapper" class="hidden rounded-2xl sm:rounded-3xl overflow-hidden border border-[#ebdccb] dark:border-white/10 shadow-sm">
+            <div id="art-image-wrapper" class="hidden rounded-2xl sm:rounded-3xl overflow-hidden border border-[var(--border)] dark:border-white/10 shadow-sm">
                 <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px]" loading="eager" decoding="async">
             </div>
 
@@ -323,7 +323,7 @@
             </div>
 
             <!-- Social Share & Reading Controls Bar -->
-            <div id="art-share-bar" class="flex items-center justify-between gap-2 sm:gap-2.5 py-2 sm:py-2.5 my-1 sm:my-1.5 border-y border-[#ebdccb]/60 dark:border-white/10 flex-wrap sm:flex-nowrap">
+            <div id="art-share-bar" class="flex items-center justify-between gap-2 sm:gap-2.5 py-2 sm:py-2.5 my-1 sm:my-1.5 border-y border-[var(--border)]/60 dark:border-white/10 flex-wrap sm:flex-nowrap">
                 <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-0.5">
                     <span class="text-[10px] sm:text-[11px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-1 sm:mr-1.5 flex-shrink-0">SHARE:</span>
                     <button onclick="shareArticlePage('whatsapp')" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white bg-[#25D366] hover:bg-[#20ba59] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#25D366]/25 flex-shrink-0 cursor-pointer" title="Share on WhatsApp" aria-label="Share on WhatsApp">
@@ -335,7 +335,7 @@
                     <button onclick="shareArticlePage('facebook')" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white bg-[#1877F2] hover:bg-[#166fe5] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#1877F2]/25 flex-shrink-0 cursor-pointer" title="Share on Facebook" aria-label="Share on Facebook">
                         <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                     </button>
-                    <button onclick="shareArticlePage('copy')" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-[#ebdccb] dark:border-white/15 hover:scale-110 active:scale-95 transition-all shadow-sm flex-shrink-0 cursor-pointer" title="Copy Article Link" aria-label="Copy Article Link">
+                    <button onclick="shareArticlePage('copy')" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-[var(--border)] dark:border-white/15 hover:scale-110 active:scale-95 transition-all shadow-sm flex-shrink-0 cursor-pointer" title="Copy Article Link" aria-label="Copy Article Link">
                         <svg id="page-copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                         <svg id="page-copy-check" class="w-4 h-4 hidden text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                         <span id="page-copy-label" class="sr-only">Copy Link</span>
@@ -344,11 +344,11 @@
                 </div>
 
                 <!-- Text Size Reading Toolbar -->
-                <div class="inline-flex items-center gap-1 sm:gap-1.5 bg-[#ebdccb]/40 dark:bg-white/10 px-2 sm:px-2.5 py-1 rounded-xl border border-[#ebdccb] dark:border-white/15 text-xs select-none flex-shrink-0 ml-auto" title="Text Size / അക്ഷര വലിപ്പം">
+                <div class="inline-flex items-center gap-1 sm:gap-1.5 bg-[#ebdccb]/40 dark:bg-white/10 px-2 sm:px-2.5 py-1 rounded-xl border border-[var(--border)] dark:border-white/15 text-xs select-none flex-shrink-0 ml-auto" title="Text Size / അക്ഷര വലിപ്പം">
                     <span class="text-[10px] sm:text-[11px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-0.5">SIZE:</span>
-                    <button type="button" class="font-decrease-btn w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[#1e1b18] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[#ebdccb]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Decrease text size" title="Smaller (A-)">A-</button>
+                    <button type="button" class="font-decrease-btn w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Decrease text size" title="Smaller (A-)">A-</button>
                     <button type="button" class="font-reset-btn px-1.5 h-6 sm:h-7 rounded-lg flex items-center justify-center font-bold text-[11px] sm:text-xs font-english text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-white/15 transition-all font-size-indicator cursor-pointer" title="Reset default size (16px)">16px</button>
-                    <button type="button" class="font-increase-btn w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[#1e1b18] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[#ebdccb]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Increase text size" title="Larger (A+)">A+</button>
+                    <button type="button" class="font-increase-btn w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Increase text size" title="Larger (A+)">A+</button>
                 </div>
             </div>
 
@@ -356,16 +356,16 @@
             <div id="art-content" class="article-body font-sans text-lg pt-1.5 sm:pt-4 leading-relaxed"></div>
 
             <!-- Chapter Prev / Next Navigation Row for Book Chapters -->
-            <nav id="art-chapter-nav" class="hidden mt-8 pt-6 border-t border-[#ebdccb] dark:border-white/10" aria-label="Chapter Navigation">
+            <nav id="art-chapter-nav" class="hidden mt-8 pt-6 border-t border-[var(--border)] dark:border-white/10" aria-label="Chapter Navigation">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5" id="art-chapter-nav-grid"></div>
             </nav>
 
             <!-- Related Articles Section -->
-            <section id="related-articles-section" class="pt-10 border-t border-[#ebdccb] dark:border-white/10 hidden">
+            <section id="related-articles-section" class="pt-10 border-t border-[var(--border)] dark:border-white/10 hidden">
                 <div class="flex items-center justify-between mb-6">
                     <div class="category-glass-badge">
                         <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">RELATED · </span>
-                        <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-[#f1f5f9]">കൂടുതൽ ലേഖനങ്ങൾ</span>
+                        <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[var(--text)] dark:text-[#f1f5f9]">കൂടുതൽ ലേഖനങ്ങൾ</span>
                     </div>
                 </div>
                 <div id="related-articles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5"></div>
@@ -376,9 +376,9 @@
         <div id="page-error-container" class="hidden"></div>
 
         <!-- ═══════════ 5. RELATED EDITIONS ("More from NUQTHA / കൂടുതൽ പതിപ്പുകൾ") ═══════════ -->
-        <section id="related-books-section" class="mt-12 pt-8 border-t border-[#ebdccb] dark:border-white/10 hidden space-y-4">
+        <section id="related-books-section" class="mt-12 pt-8 border-t border-[var(--border)] dark:border-white/10 hidden space-y-4">
             <div class="flex items-center justify-between">
-                <h3 class="text-sm sm:text-base font-black text-[#1e1b18] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
+                <h3 class="text-sm sm:text-base font-black text-[var(--text)] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span>
                     <span>MORE EDITIONS (കൂടുതൽ പുസ്തകങ്ങൾ)</span>
                 </h3>
@@ -388,11 +388,11 @@
         </section>
 
         <!-- ═══════════ 6. COMMENTS SECTION (UNIVERSAL) ═══════════ -->
-        <section id="article-comments-section" class="mt-12 pt-8 sm:pt-10 border-t border-[#ebdccb] dark:border-white/10 space-y-5">
+        <section id="article-comments-section" class="mt-12 pt-8 sm:pt-10 border-t border-[var(--border)] dark:border-white/10 space-y-5">
             <div class="flex items-center justify-between flex-wrap gap-2">
                 <div class="category-glass-badge">
                     <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">COMMENTS · </span>
-                    <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-[#f1f5f9]">അഭിപ്രായങ്ങൾ</span>
+                    <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[var(--text)] dark:text-[#f1f5f9]">അഭിപ്രായങ്ങൾ</span>
                     <span id="comments-count-badge" class="ml-1 text-[11px] px-2 py-0.5 rounded-full bg-[#b4532c]/10 text-[#b4532c] dark:text-white font-bold">0</span>
                 </div>
                 <span class="text-xs text-[#8c7a6b] dark:text-[#a0aec0]">
@@ -401,20 +401,20 @@
             </div>
 
             <!-- Comment Input Box -->
-            <div class="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-xs space-y-3.5">
+            <div class="p-4 sm:p-5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 shadow-xs space-y-3.5">
                 <!-- Signed-Out View -->
-                <div id="comment-auth-logged-out" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-xl bg-[#fbf7ee]/70 dark:bg-white/[0.03] border border-[#ebdccb] dark:border-white/10 transition">
+                <div id="comment-auth-logged-out" class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-xl bg-[var(--surface-2)] dark:bg-white/[0.03] border border-[var(--border)] dark:border-white/10 transition">
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-full bg-amber-100/80 dark:bg-white/10 text-amber-900 dark:text-amber-200 flex items-center justify-center text-sm flex-shrink-0">
                             💬
                         </div>
                         <div class="min-w-0">
-                            <p class="text-xs font-bold text-[#1e1b18] dark:text-white leading-tight">അഭിപ്രായം രേഖപ്പെടുത്താം</p>
+                            <p class="text-xs font-bold text-[var(--text)] dark:text-white leading-tight">അഭിപ്രായം രേഖപ്പെടുത്താം</p>
                             <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">Sign in with Google to post your thoughts</p>
                         </div>
                     </div>
 
-                    <button type="button" id="google-signin-btn" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/20 border border-[#ebdccb] dark:border-white/15 text-xs font-bold text-[#1e1b18] dark:text-white shadow-xs hover:shadow transition-all cursor-pointer font-english active:scale-95 flex-shrink-0 touch-target-44">
+                    <button type="button" id="google-signin-btn" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/20 border border-[var(--border)] dark:border-white/15 text-xs font-bold text-[var(--text)] dark:text-white shadow-xs hover:shadow transition-all cursor-pointer font-english active:scale-95 flex-shrink-0 touch-target-44">
                         <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -434,7 +434,7 @@
                         </div>
                         <div class="min-w-0">
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <span id="user-display-name" class="text-xs font-bold text-[#1e1b18] dark:text-white truncate">User Name</span>
+                                <span id="user-display-name" class="text-xs font-bold text-[var(--text)] dark:text-white truncate">User Name</span>
                                 <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-bold font-english flex items-center gap-0.5">
                                     <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                                     Verified
@@ -452,7 +452,7 @@
 
                 <!-- Comment Textarea -->
                 <div class="relative">
-                    <textarea id="comment-text" rows="3" placeholder="ഈ പുസ്തകത്തെക്കുറിച്ചുള്ള നിങ്ങളുടെ അഭിപ്രായം ഇവിടെ എഴുതുക... (Write your thoughts here...)" class="w-full p-3.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[#ebdccb] dark:border-white/10 text-xs sm:text-sm text-[#1e1b18] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c] resize-y leading-relaxed font-sans"></textarea>
+                    <textarea id="comment-text" rows="3" placeholder="ഈ പുസ്തകത്തെക്കുറിച്ചുള്ള നിങ്ങളുടെ അഭിപ്രായം ഇവിടെ എഴുതുക... (Write your thoughts here...)" class="w-full p-3.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[var(--border)] dark:border-white/10 text-xs sm:text-sm text-[var(--text)] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c] resize-y leading-relaxed font-sans"></textarea>
                 </div>
 
                 <!-- Action Bar -->
@@ -476,7 +476,7 @@
         </section>
 
         <!-- Footer Back Link -->
-        <div class="pt-8 border-t border-[#ebdccb] dark:border-white/10 flex justify-center">
+        <div class="pt-8 border-t border-[var(--border)] dark:border-white/10 flex justify-center">
             <a href="index.html" class="px-6 py-3 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md touch-target-44 inline-flex items-center">
                 &larr; Back to all stories
             </a>
@@ -945,13 +945,13 @@
                 <div class="space-y-6 sm:space-y-8 animate-fade-in">
                     <!-- Top Navigation & Action Row -->
                     <div class="flex items-center justify-between pb-1 flex-wrap gap-2 text-xs font-english">
-                        <a href="${categoryUrl('BOOKS')}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-[#1c2030] transition shadow-2xs group touch-target-44">
+                        <a href="${categoryUrl('BOOKS')}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[var(--border)] dark:border-white/10 font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-[#1c2030] transition shadow-2xs group touch-target-44">
                             <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">&larr;</span>
                             <span class="notranslate" translate="no">ALL EDITIONS (എല്ലാ പതിപ്പുകളും)</span>
                         </a>
 
                         <div class="flex items-center gap-2">
-                            <button id="book-bookmark-btn" onclick="toggleBookBookmark()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[#ebdccb] dark:border-white/10 font-bold text-slate-700 dark:text-slate-200 hover:text-[#b4532c] dark:hover:text-[#f87171] transition shadow-2xs cursor-pointer touch-target-44" aria-label="${isBookmarked ? 'Remove bookmark' : 'Bookmark this book'}">
+                            <button id="book-bookmark-btn" onclick="toggleBookBookmark()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[var(--border)] dark:border-white/10 font-bold text-slate-700 dark:text-slate-200 hover:text-[#b4532c] dark:hover:text-[#f87171] transition shadow-2xs cursor-pointer touch-target-44" aria-label="${isBookmarked ? 'Remove bookmark' : 'Bookmark this book'}">
                                 <svg id="bookmark-icon" class="w-4 h-4 text-amber-500" fill="${isBookmarked ? '#f59e0b' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
                                 <span id="bookmark-text">${isBookmarked ? 'Saved' : 'Save'}</span>
                             </button>
@@ -1059,12 +1059,12 @@
 
                     <!-- Sequential Articles Section ("EDITION ARTICLES") -->
                     <div id="edition-articles-section" class="space-y-4 pt-4">
-                        <div class="border-b border-[#ebdccb] dark:border-white/10 pb-3 flex items-center justify-between flex-wrap gap-2">
-                            <h3 class="text-sm sm:text-base font-black text-[#1e1b18] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
+                        <div class="border-b border-[var(--border)] dark:border-white/10 pb-3 flex items-center justify-between flex-wrap gap-2">
+                            <h3 class="text-sm sm:text-base font-black text-[var(--text)] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#b4532c] dark:bg-[#f87171]"></span>
                                 <span>പുസ്തകത്തിലെ അധ്യായങ്ങൾ (BOOK CHAPTERS & ARTICLES)</span>
                             </h3>
-                            <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-english bg-white/70 dark:bg-white/5 px-2.5 py-1 rounded-full border border-[#ebdccb]/60 dark:border-white/10">
+                            <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-english bg-white/70 dark:bg-white/5 px-2.5 py-1 rounded-full border border-[var(--border)]/60 dark:border-white/10">
                                 Sequential Reading &bull; അധ്യായങ്ങൾ
                             </span>
                         </div>
@@ -1074,7 +1074,7 @@
 
                         <!-- Load More Button Container -->
                         <div id="book-load-more-container" class="pt-3 text-center hidden">
-                            <button id="book-load-more-btn" class="px-6 py-3 rounded-full bg-white dark:bg-[#1a1e2e] border border-[#ebdccb] dark:border-white/15 text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-[#fff7ee] dark:hover:bg-[#22273a] shadow-2xs active:scale-95 transition-all cursor-pointer font-english touch-target-44">
+                            <button id="book-load-more-btn" class="px-6 py-3 rounded-full bg-white dark:bg-[#1a1e2e] border border-[var(--border)] dark:border-white/15 text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-[#fff7ee] dark:hover:bg-[#22273a] shadow-2xs active:scale-95 transition-all cursor-pointer font-english touch-target-44">
                                 കൂടുതൽ അധ്യായങ്ങൾ കാണുക (Load More) ↓
                             </button>
                         </div>
@@ -1124,9 +1124,9 @@
 
             if (articles.length === 0) {
                 listEl.innerHTML = `
-                    <div class="p-8 sm:p-12 text-center rounded-2xl bg-white/60 dark:bg-white/5 border border-dashed border-[#ebdccb] dark:border-white/10 space-y-2">
+                    <div class="p-8 sm:p-12 text-center rounded-2xl bg-white/60 dark:bg-white/5 border border-dashed border-[var(--border)] dark:border-white/10 space-y-2">
                         <span class="text-3xl">📖</span>
-                        <p class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Noto_Sans_Malayalam']">
+                        <p class="text-xs sm:text-sm font-bold text-[var(--text)] dark:text-white font-['Noto_Sans_Malayalam']">
                             ഈ പുസ്തകത്തിൽ ഇതുവരെ ലേഖനങ്ങളില്ല
                         </p>
                         <p class="text-[11px] text-[#8c7a6b] dark:text-[#94a3b8]">
@@ -1148,14 +1148,14 @@
 
                 const chapterImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
                 return `
-                <a href="article.html?id=${art.id}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44">
+                <a href="article.html?id=${art.id}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44">
                     <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${chapterImg ? `
-                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 aspect-[16/10]">
+                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 aspect-[16/10]">
                             <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
                         </div>
                     ` : `
-                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
+                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
                             📄
                         </div>
                     `}
@@ -1165,7 +1165,7 @@
                                 അധ്യായം ${idx + 1}
                             </span>
                         </div>
-                        <h4 class="text-sm sm:text-base font-bold text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
+                        <h4 class="text-sm sm:text-base font-bold text-[var(--text)] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
                             ${cleanArtTitle}
                         </h4>
                         ${cleanExcerpt ? `
@@ -1243,7 +1243,7 @@
             if (otherBooks.length === 0) return;
 
             grid.innerHTML = otherBooks.slice(0, 4).map(b => `
-                <a href="article.html?id=${b.id}" class="group flex flex-col p-2.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 transition-all shadow-2xs hover:shadow-md">
+                <a href="article.html?id=${b.id}" class="group flex flex-col p-2.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition-all shadow-2xs hover:shadow-md">
                     <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 mb-2 border border-black/5 dark:border-white/10">
                         ${b.imageUrl ? `
                             <img src="${b.imageUrl}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
@@ -1251,7 +1251,7 @@
                             <div class="w-full h-full flex items-center justify-center text-2xl">📚</div>
                         `}
                     </div>
-                    <h5 class="text-xs font-bold text-[#1e1b18] dark:text-white line-clamp-2 leading-snug font-['Anek_Malayalam'] group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors">
+                    <h5 class="text-xs font-bold text-[var(--text)] dark:text-white line-clamp-2 leading-snug font-['Anek_Malayalam'] group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors">
                         ${b.title}
                     </h5>
                     <span class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english pt-1">
@@ -1407,11 +1407,11 @@
                     let navHtml = '';
                     if (prevChapter) {
                         navHtml += `
-                        <a href="article.html?id=${prevChapter.id}" class="group flex items-center gap-3 p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 transition shadow-2xs">
+                        <a href="article.html?id=${prevChapter.id}" class="group flex items-center gap-3 p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition shadow-2xs">
                             <span class="text-lg text-[#b4532c] dark:text-[#f87171] group-hover:-translate-x-1 transition-transform">&larr;</span>
                             <div class="min-w-0 flex-1">
                                 <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] uppercase font-english">മുൻ അധ്യായം (Prev)</span>
-                                <h5 class="text-xs font-bold text-[#1e1b18] dark:text-white truncate font-['Anek_Malayalam'] group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors">${prevChapter.title}</h5>
+                                <h5 class="text-xs font-bold text-[var(--text)] dark:text-white truncate font-['Anek_Malayalam'] group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors">${prevChapter.title}</h5>
                             </div>
                         </a>`;
                     } else {
@@ -1420,10 +1420,10 @@
 
                     if (nextChapter) {
                         navHtml += `
-                        <a href="article.html?id=${nextChapter.id}" class="group flex items-center justify-end text-right gap-3 p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/50 transition shadow-2xs">
+                        <a href="article.html?id=${nextChapter.id}" class="group flex items-center justify-end text-right gap-3 p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition shadow-2xs">
                             <div class="min-w-0 flex-1">
                                 <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] uppercase font-english">അടുത്ത അധ്യായം (Next)</span>
-                                <h5 class="text-xs font-bold text-[#1e1b18] dark:text-white truncate font-['Anek_Malayalam'] group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors">${nextChapter.title}</h5>
+                                <h5 class="text-xs font-bold text-[var(--text)] dark:text-white truncate font-['Anek_Malayalam'] group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors">${nextChapter.title}</h5>
                             </div>
                             <span class="text-lg text-[#b4532c] dark:text-[#f87171] group-hover:translate-x-1 transition-transform">&rarr;</span>
                         </a>`;
@@ -1473,10 +1473,10 @@
                     }
 
                     if (p.startsWith("## ")) {
-                        return `<h2 class="article-h2 text-xl font-bold mt-6 mb-2 text-[#1e1b18] dark:text-white">${p.replace("## ", "")}</h2>`;
+                        return `<h2 class="article-h2 text-xl font-bold mt-6 mb-2 text-[var(--text)] dark:text-white">${p.replace("## ", "")}</h2>`;
                     }
                     if (p.startsWith("### ")) {
-                        return `<h3 class="article-h3 text-lg font-bold mt-4 mb-2 text-[#1e1b18] dark:text-white">${p.replace("### ", "")}</h3>`;
+                        return `<h3 class="article-h3 text-lg font-bold mt-4 mb-2 text-[var(--text)] dark:text-white">${p.replace("### ", "")}</h3>`;
                     }
 
                     if (p.startsWith("> ")) {
@@ -1491,7 +1491,7 @@
                         const caption = imgMatch[1] || "";
                         const url = imgMatch[3];
                         return `
-                            <div class="my-6 rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10">
+                            <div class="my-6 rounded-2xl overflow-hidden border border-[var(--border)] dark:border-white/10">
                                 <img src="${url}" alt="${caption}" class="w-full h-auto" loading="lazy">
                                 ${caption && caption !== "ചിത്രം" ? `<div class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</div>` : ''}
                             </div>
@@ -1499,7 +1499,7 @@
                     }
 
                     let formatted = p
-                        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18] dark:text-white">$1</strong>')
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[var(--text)] dark:text-white">$1</strong>')
                         .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
 
                     return `<p ${contentStyle || contentStyleAttr || ""}>${formatted}</p>`;
@@ -1553,13 +1553,13 @@
                         <div class="p-4 flex flex-col justify-between flex-1 gap-2">
                             <div class="space-y-1">
                                 ${categoryTag(item.category, { className: 'text-[10px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english' })}
-                                <h4 class="text-sm font-bold line-clamp-2 text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
+                                <h4 class="text-sm font-bold line-clamp-2 text-[var(--text)] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
                                     <a href="article.html?id=${item.id}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                                 </h4>
                                 ${cleanExcerpt ? `<p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed">${cleanExcerpt}</p>` : ''}
                             </div>
-                            <div class="pt-2 border-t border-[#ebdccb]/60 dark:border-white/10 flex items-center justify-between text-[10px] text-[#8c7a6b] dark:text-[#94a3b8]">
-                                <span class="font-bold text-[#1e1b18] dark:text-white">${item.author || "NUQTHA"}</span>
+                            <div class="pt-2 border-t border-[var(--border)]/60 dark:border-white/10 flex items-center justify-between text-[10px] text-[#8c7a6b] dark:text-[#94a3b8]">
+                                <span class="font-bold text-[var(--text)] dark:text-white">${item.author || "NUQTHA"}</span>
                                 <span>${item.date || "Recent"}</span>
                             </div>
                         </div>
@@ -1591,7 +1591,7 @@
                             <button onclick="window.location.reload()" class="px-5 py-2.5 rounded-full bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold font-english transition shadow-sm active:scale-95 inline-flex items-center gap-1.5 cursor-pointer touch-target-44">
                                 <span>🔄 വീണ്ടും ശ്രമിക്കുക (Retry)</span>
                             </button>
-                            <a href="index.html" class="px-5 py-2.5 rounded-full bg-white dark:bg-white/10 hover:bg-amber-100 dark:hover:bg-white/15 text-[#1e1b18] dark:text-white text-xs font-bold font-english transition border border-amber-300 dark:border-white/10 touch-target-44 inline-flex items-center">
+                            <a href="index.html" class="px-5 py-2.5 rounded-full bg-white dark:bg-white/10 hover:bg-amber-100 dark:hover:bg-white/15 text-[var(--text)] dark:text-white text-xs font-bold font-english transition border border-amber-300 dark:border-white/10 touch-target-44 inline-flex items-center">
                                 <span>ഹോം പേജ് (Home)</span>
                             </a>
                         </div>
@@ -1804,7 +1804,7 @@
                 if (countBadge) countBadge.textContent = comments.length;
                 if (!comments || comments.length === 0) {
                     commentsList.innerHTML = `
-                        <div class="p-6 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8] rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-dashed border-[#ebdccb] dark:border-white/10">
+                        <div class="p-6 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8] rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-dashed border-[var(--border)] dark:border-white/10">
                             ആദ്യത്തെ അഭിപ്രായം രേഖപ്പെടുത്തൂ (Be the first to share your thoughts)
                         </div>
                     `;
@@ -1830,18 +1830,18 @@
                     const cleanComment = (c.comment || "").replace(/<[^>]*>?/gm, '');
 
                     return `
-                        <div class="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[#ebdccb]/80 dark:border-white/10 shadow-2xs space-y-2 transition hover:bg-white dark:hover:bg-white/10">
+                        <div class="p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)]/80 dark:border-white/10 shadow-2xs space-y-2 transition hover:bg-white dark:hover:bg-white/10">
                             <div class="flex items-center justify-between gap-2">
                                 <div class="flex items-center gap-2.5 min-w-0">
                                     ${c.avatar ? `
-                                        <img src="${c.avatar}" alt="${cleanName}" class="w-7 h-7 rounded-full object-cover flex-shrink-0 border border-[#ebdccb] dark:border-white/10" onerror="this.onerror=null;this.replaceWith(document.createElement('div'))" />
+                                        <img src="${c.avatar}" alt="${cleanName}" class="w-7 h-7 rounded-full object-cover flex-shrink-0 border border-[var(--border)] dark:border-white/10" onerror="this.onerror=null;this.replaceWith(document.createElement('div'))" />
                                     ` : `
                                         <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
                                             ${initial}
                                         </div>
                                     `}
                                     <div class="flex items-center gap-1.5 min-w-0">
-                                        <span class="text-xs font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam'] truncate">
+                                        <span class="text-xs font-bold text-[var(--text)] dark:text-white font-['Anek_Malayalam'] truncate">
                                             ${cleanName}
                                         </span>
                                         ${(c.uid || c.email) ? `<span class="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold font-english">✓</span>` : ''}
