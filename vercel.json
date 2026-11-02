@@ -4,6 +4,66 @@
   "cleanUrls": false,
   "rewrites": [
     {
+      "source": "/story/:bookSlug/:chapterSlug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
+        }
+      ],
+      "destination": "/api/og?bookSlug=:bookSlug&chapterSlug=:chapterSlug&slug=:chapterSlug"
+    },
+    {
+      "source": "/story/:bookSlug/:chapterSlug",
+      "destination": "/article.html?bookSlug=:bookSlug&chapterSlug=:chapterSlug&slug=:chapterSlug"
+    },
+    {
+      "source": "/story/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
+        }
+      ],
+      "destination": "/api/og?slug=:slug&id=:slug"
+    },
+    {
+      "source": "/story/:slug",
+      "destination": "/article.html?slug=:slug&id=:slug"
+    },
+    {
+      "source": "/article/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
+        }
+      ],
+      "destination": "/api/og?slug=:slug&id=:slug"
+    },
+    {
+      "source": "/article/:slug",
+      "destination": "/article.html?slug=:slug&id=:slug"
+    },
+    {
+      "source": "/book/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
+        }
+      ],
+      "destination": "/api/og?slug=:slug&id=:slug&edition=true"
+    },
+    {
+      "source": "/book/:slug",
+      "destination": "/article.html?slug=:slug&id=:slug&edition=true"
+    },
+    {
       "source": "/article.html",
       "has": [
         {
@@ -26,18 +86,6 @@
       "destination": "/api/og"
     },
     { "source": "/article", "destination": "/article.html" },
-    {
-      "source": "/story/:id",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
-        }
-      ],
-      "destination": "/api/og?id=:id"
-    },
-    { "source": "/story/:id", "destination": "/article.html?id=:id" },
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/admin/", "destination": "/admin.html" },
     { "source": "/profile/author/:id", "destination": "/author.html?id=:id" },

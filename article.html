@@ -515,14 +515,46 @@
     <script type="module">
         import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, getStoryUrl } from "./schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
 
         const urlParams = new URLSearchParams(window.location.search);
+
+        // Clean SEO Path Parsing:
+        // /story/:bookSlug/:chapterSlug
+        // /story/:slug
+        // /article/:slug
+        // /book/:slug
+        const rawPath = window.location.pathname || "";
+        let pathBookSlug = "";
+        let pathChapterSlug = "";
+        let pathStorySlug = "";
+        let isBookRoute = false;
+
+        const twoPartStoryMatch = rawPath.match(/^\/story\/([^\/]+)\/([^\/]+)\/?$/i);
+        if (twoPartStoryMatch) {
+            pathBookSlug = safeDecodeParam(twoPartStoryMatch[1]);
+            pathChapterSlug = safeDecodeParam(twoPartStoryMatch[2]);
+        } else {
+            const onePartStoryMatch = rawPath.match(/^\/(?:story|article)\/([^\/]+)\/?$/i);
+            if (onePartStoryMatch) {
+                pathStorySlug = safeDecodeParam(onePartStoryMatch[1]);
+            } else {
+                const bookMatch = rawPath.match(/^\/book\/([^\/]+)\/?$/i);
+                if (bookMatch) {
+                    pathBookSlug = safeDecodeParam(bookMatch[1]);
+                    isBookRoute = true;
+                }
+            }
+        }
+
         let articleId = urlParams.get('id');
-        const editionParam = urlParams.get('edition') || urlParams.get('book');
+        const querySlug = urlParams.get('slug') || urlParams.get('chapterSlug') || pathChapterSlug || pathStorySlug;
+        const queryBookSlug = urlParams.get('bookSlug') || pathBookSlug;
+        const editionParam = urlParams.get('edition') || urlParams.get('book') || (isBookRoute ? pathBookSlug : "");
+        let targetIdentifier = querySlug || articleId || pathStorySlug || "";
 
         // Fast In-Memory Cache
         const memoryCache = window.__NUQTHA_MEM_CACHE__ || new Map();
@@ -773,7 +805,7 @@
 
         // ═══════════ MAIN LOADING ORCHESTRATOR ═══════════
         async function loadArticle() {
-            if (!articleId && !editionParam) {
+            if (!articleId && !querySlug && !editionParam && !targetIdentifier) {
                 showErrorWithRetry("ലേഖനത്തിന്റെ ഐഡി നൽകിയിട്ടില്ല.");
                 return;
             }
@@ -786,10 +818,11 @@
             // 1. FAST CACHE PATH (Instant Paint in 0ms)
             let cachedBook = null;
             let cachedChapters = null;
-            if (articleId) {
+            const cacheKey = articleId || targetIdentifier;
+            if (cacheKey) {
                 try {
-                    const cachedBookStr = sessionStorage.getItem(`nuqtha_book_${articleId}`);
-                    const cachedChaptersStr = sessionStorage.getItem(`nuqtha_book_articles_${articleId}`);
+                    const cachedBookStr = sessionStorage.getItem(`nuqtha_book_${cacheKey}`);
+                    const cachedChaptersStr = sessionStorage.getItem(`nuqtha_book_articles_${cacheKey}`);
                     if (cachedBookStr) cachedBook = JSON.parse(cachedBookStr);
                     if (cachedChaptersStr) cachedChapters = JSON.parse(cachedChaptersStr);
                 } catch (e) {}
@@ -822,28 +855,43 @@
                 let currentDoc = null;
                 let allArticles = [];
 
-                if (articleId) {
-                    const [targetDocResult, allArticlesResult] = await Promise.allSettled([
-                        fetchTargetDocument(articleId, controller.signal),
-                        fetchLightweightArticles(controller.signal)
-                    ]);
-                    currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
-                    allArticles = allArticlesResult.status === "fulfilled" ? (allArticlesResult.value || []) : [];
-                } else if (editionParam) {
-                    allArticles = await fetchLightweightArticles(controller.signal);
-                    const cleanTarget = (editionParam || "").toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
-                    currentDoc = allArticles.find(a => a.type === "BOOK" && (
-                        (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget) ||
-                        (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget)
-                    )) || allArticles.find(a => 
-                        (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget) ||
-                        (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget)
-                    );
-                    if (currentDoc) {
-                        articleId = currentDoc.id;
-                        try {
-                            window.history.replaceState(null, '', `article.html?id=${articleId}&edition=${encodeURIComponent(editionParam)}`);
-                        } catch (e) {}
+                const lookupId = articleId || targetIdentifier;
+                const [targetDocResult, allArticlesResult] = await Promise.allSettled([
+                    lookupId ? fetchTargetDocument(lookupId, controller.signal) : Promise.resolve(null),
+                    fetchLightweightArticles(controller.signal)
+                ]);
+                currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
+                allArticles = allArticlesResult.status === "fulfilled" ? (allArticlesResult.value || []) : [];
+
+                // Slug and metadata matching in pool if direct ID fetch did not hit
+                if (!currentDoc && allArticles.length > 0) {
+                    if (pathChapterSlug && pathBookSlug) {
+                        currentDoc = allArticles.find(a => 
+                            (a.slug === pathChapterSlug || slugifyText(a.title) === pathChapterSlug) &&
+                            (a.bookSlug === pathBookSlug || slugifyText(a.bookName) === pathBookSlug || a.bookId === pathBookSlug)
+                        );
+                    }
+                    if (!currentDoc && querySlug) {
+                        currentDoc = allArticles.find(a => 
+                            a.slug === querySlug ||
+                            slugifyText(a.title) === querySlug ||
+                            a.id === querySlug ||
+                            slugifyAuthor(a.title) === slugifyAuthor(querySlug)
+                        );
+                    }
+                    if (!currentDoc && editionParam) {
+                        const cleanTarget = (editionParam || "").toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+                        currentDoc = allArticles.find(a => a.type === "BOOK" && (
+                            a.slug === editionParam ||
+                            slugifyText(a.bookName) === editionParam ||
+                            slugifyText(a.title) === editionParam ||
+                            a.id === editionParam ||
+                            (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget) ||
+                            (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget)
+                        )) || allArticles.find(a => 
+                            (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget) ||
+                            (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget)
+                        );
                     }
                 }
                 clearTimeout(timeoutTimer);
@@ -854,6 +902,21 @@
                     }
                     return;
                 }
+
+                articleId = currentDoc.id;
+                const cleanUrl = getStoryUrl(currentDoc);
+                try {
+                    window.history.replaceState(null, '', cleanUrl);
+                } catch (e) {}
+
+                // Update canonical tag
+                let canonicalEl = document.querySelector('link[rel="canonical"]');
+                if (!canonicalEl) {
+                    canonicalEl = document.createElement('link');
+                    canonicalEl.setAttribute('rel', 'canonical');
+                    document.head.appendChild(canonicalEl);
+                }
+                canonicalEl.setAttribute('href', window.location.origin + cleanUrl);
 
                 try {
                     sessionStorage.setItem(`nuqtha_book_${articleId}`, JSON.stringify(currentDoc));
@@ -1150,7 +1213,7 @@
 
                 const chapterImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
                 return `
-                <a href="article.html?id=${art.id}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44">
+                <a href="${getStoryUrl(art)}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44">
                     <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${chapterImg ? `
                         <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 aspect-[16/10]">
@@ -1245,7 +1308,7 @@
             if (otherBooks.length === 0) return;
 
             grid.innerHTML = otherBooks.slice(0, 4).map(b => `
-                <a href="article.html?id=${b.id}" class="group flex flex-col p-2.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition-all shadow-2xs hover:shadow-md">
+                <a href="${getStoryUrl(b)}" class="group flex flex-col p-2.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition-all shadow-2xs hover:shadow-md">
                     <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 mb-2 border border-black/5 dark:border-white/10">
                         ${b.imageUrl ? `
                             <img src="${b.imageUrl}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
@@ -1319,7 +1382,7 @@
                     bookBadgeText.textContent = `📚 ${article.bookName}${article.priority ? ' • അധ്യായം ' + article.priority : ''}`;
                 }
                 if (bookBadgeLink && article.bookId) {
-                    bookBadgeLink.href = `article.html?id=${article.bookId}`;
+                    bookBadgeLink.href = getStoryUrl({ id: article.bookId, title: article.bookName, type: "BOOK" });
                 }
                 bookBadgeContainer.classList.remove('hidden');
             } else if (bookBadgeContainer) {
@@ -1409,7 +1472,7 @@
                     let navHtml = '';
                     if (prevChapter) {
                         navHtml += `
-                        <a href="article.html?id=${prevChapter.id}" class="group flex items-center gap-3 p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition shadow-2xs">
+                        <a href="${getStoryUrl(prevChapter)}" class="group flex items-center gap-3 p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition shadow-2xs">
                             <span class="text-lg text-[#b4532c] dark:text-[#f87171] group-hover:-translate-x-1 transition-transform">&larr;</span>
                             <div class="min-w-0 flex-1">
                                 <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] uppercase font-english">മുൻ അധ്യായം (Prev)</span>
@@ -1422,7 +1485,7 @@
 
                     if (nextChapter) {
                         navHtml += `
-                        <a href="article.html?id=${nextChapter.id}" class="group flex items-center justify-end text-right gap-3 p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition shadow-2xs">
+                        <a href="${getStoryUrl(nextChapter)}" class="group flex items-center justify-end text-right gap-3 p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition shadow-2xs">
                             <div class="min-w-0 flex-1">
                                 <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] uppercase font-english">അടുത്ത അധ്യായം (Next)</span>
                                 <h5 class="text-xs font-bold text-[var(--text)] dark:text-white truncate font-['Anek_Malayalam'] group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors">${nextChapter.title}</h5>
@@ -1546,7 +1609,7 @@
                 const cleanExcerpt = (item.excerpt || (item.content ? item.content.substring(0, 100) : "")).replace(/[*_#~`]/g, "").trim();
                 const itemImg = item.thumbnailUrl || item.ogImage || item.imageUrl;
                 return `
-                    <div class="related-card group touch-target-44 cursor-pointer relative stretched-card-wrap" onclick="if(!event.target.closest('a')) window.location.href='article.html?id=${item.id}'">
+                    <div class="related-card group touch-target-44 cursor-pointer relative stretched-card-wrap" onclick="if(!event.target.closest('a')) window.location.href=getStoryUrl(item)">
                         ${itemImg ? `
                             <div class="related-img-container">
                                 <img src="${itemImg}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
@@ -1556,7 +1619,7 @@
                             <div class="space-y-1">
                                 ${categoryTag(item.category, { className: 'text-[10px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english' })}
                                 <h4 class="text-sm font-bold line-clamp-2 text-[var(--text)] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
-                                    <a href="article.html?id=${item.id}" class="stretched-card-link text-inherit">${cleanTitle}</a>
+                                    <a href="${getStoryUrl(item)}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                                 </h4>
                                 ${cleanExcerpt ? `<p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed">${cleanExcerpt}</p>` : ''}
                             </div>
@@ -2015,7 +2078,10 @@
         // ═══════════ SOCIAL SHARE ═══════════
         window.shareArticlePage = function(platform) {
             const canonicalEl = document.querySelector('link[rel="canonical"]');
-            const url = (canonicalEl && canonicalEl.getAttribute("href")) || window.location.href;
+            let url = (canonicalEl && canonicalEl.getAttribute("href")) || window.location.href;
+            if (url.startsWith("/")) {
+                url = window.location.origin + url;
+            }
             const title = document.title || "NUQTHA Article";
             if (platform === 'whatsapp') {
                 window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(title + " " + url)}`, '_blank');

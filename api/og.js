@@ -30,17 +30,35 @@ function cleanText(text = "", maxLen = 200) {
     return clean.slice(0, maxLen).trim() + "…";
 }
 
-async function fetchArticle(idOrSlug) {
+function slugifyText(str = "") {
+    if (!str) return "";
+    return String(str)
+        .normalize("NFC")
+        .replace(/\u0D23\u0D4D\u200D/g, "\u0D7A")
+        .replace(/\u0D28\u0D4D\u200D/g, "\u0D7B")
+        .replace(/\u0D30\u0D4D\u200D/g, "\u0D7C")
+        .replace(/\u0D32\u0D4D\u200D/g, "\u0D7D")
+        .replace(/\u0D33\u0D4D\u200D/g, "\u0D7E")
+        .replace(/\u0D15\u0D4D\u200D/g, "\u0D7F")
+        .replace(/[\u200B-\u200D\uFEFF]/g, "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\u0D00-\u0D7F]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
+
+async function fetchArticle(idOrSlug, bookSlug = "") {
     if (!idOrSlug) return null;
+    const cleanIdentifier = decodeURIComponent(idOrSlug).trim();
 
     // 1. Try direct fetch by document ID
     try {
-        const docUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/articles/${encodeURIComponent(idOrSlug)}?key=${FIRESTORE_API_KEY}`;
+        const docUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/articles/${encodeURIComponent(cleanIdentifier)}?key=${FIRESTORE_API_KEY}`;
         const res = await fetch(docUrl);
         if (res.ok) {
             const data = await res.json();
             if (data && data.fields) {
-                return { id: idOrSlug, fields: data.fields };
+                return { id: cleanIdentifier, fields: data.fields };
             }
         }
     } catch (e) {
@@ -57,7 +75,7 @@ async function fetchArticle(idOrSlug) {
                     fieldFilter: {
                         field: { fieldPath: "slug" },
                         op: "EQUAL",
-                        value: { stringValue: idOrSlug }
+                        value: { stringValue: cleanIdentifier }
                     }
                 },
                 limit: 1
@@ -74,7 +92,7 @@ async function fetchArticle(idOrSlug) {
             const results = await res.json();
             if (Array.isArray(results) && results[0] && results[0].document) {
                 const doc = results[0].document;
-                const docId = doc.name ? doc.name.split("/").pop() : idOrSlug;
+                const docId = doc.name ? doc.name.split("/").pop() : cleanIdentifier;
                 return { id: docId, fields: doc.fields || {} };
             }
         }
@@ -82,37 +100,80 @@ async function fetchArticle(idOrSlug) {
         console.warn("[api/og] Slug query error:", e);
     }
 
+    // 3. Scan recent articles to match by title slug (handles legacy articles without stored slug)
+    try {
+        const listUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/articles?pageSize=100&key=${FIRESTORE_API_KEY}`;
+        const res = await fetch(listUrl);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && Array.isArray(data.documents)) {
+                const targetSlug = slugifyText(cleanIdentifier);
+                for (const doc of data.documents) {
+                    const fields = doc.fields || {};
+                    const titleSlug = slugifyText(fields.title?.stringValue || "");
+                    const bookNameSlug = slugifyText(fields.bookName?.stringValue || "");
+                    const docId = doc.name ? doc.name.split("/").pop() : "";
+
+                    if (bookSlug) {
+                        const bSlug = slugifyText(bookSlug);
+                        if ((titleSlug === targetSlug || docId === cleanIdentifier) && (bookNameSlug === bSlug || fields.bookId?.stringValue === bookSlug)) {
+                            return { id: docId, fields };
+                        }
+                    }
+
+                    if (titleSlug === targetSlug || docId === cleanIdentifier || bookNameSlug === targetSlug) {
+                        return { id: docId, fields };
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("[api/og] Document scan error:", e);
+    }
+
     return null;
 }
 
 export default async function handler(req, res) {
-    const rawId = (req.query.id || req.query.articleId || req.query.slug || "").trim();
+    const rawId = (req.query.slug || req.query.id || req.query.chapterSlug || req.query.articleId || "").trim();
+    const bookSlug = (req.query.bookSlug || "").trim();
+    const isEdition = req.query.edition === "true" || req.query.edition === true;
     const userAgent = req.headers["user-agent"] || "";
 
     // Check if requester is a bot/crawler
     const isBot = /facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot/i.test(userAgent);
 
-    // If a human visits /api/og directly in their browser, redirect them to the article page
+    // Resolve clean share path
+    let cleanPath = "/";
+    if (rawId) {
+        if (bookSlug) {
+            cleanPath = `/story/${encodeURIComponent(bookSlug)}/${encodeURIComponent(rawId)}`;
+        } else if (isEdition) {
+            cleanPath = `/book/${encodeURIComponent(rawId)}`;
+        } else {
+            cleanPath = `/story/${encodeURIComponent(rawId)}`;
+        }
+    }
+
+    // If a human visits /api/og directly in their browser, redirect to the clean story path
     if (!isBot && rawId && !req.query.debug) {
-        return res.redirect(302, `${DOMAIN}/article.html?id=${encodeURIComponent(rawId)}`);
+        return res.redirect(302, `${DOMAIN}${cleanPath}`);
     }
 
     let title = DEFAULT_SITE_TITLE;
     let description = DEFAULT_SITE_DESC;
     let imageUrl = DEFAULT_BANNER;
     let imageMime = "image/png";
-    let shareUrl = `${DOMAIN}/`;
+    let shareUrl = `${DOMAIN}${cleanPath}`;
     let articleId = rawId;
 
     if (rawId) {
-        shareUrl = `${DOMAIN}/article.html?id=${encodeURIComponent(rawId)}`;
-        const article = await fetchArticle(rawId);
+        const article = await fetchArticle(rawId, bookSlug);
 
         if (article && article.fields) {
             articleId = article.id || rawId;
-            shareUrl = `${DOMAIN}/article.html?id=${encodeURIComponent(articleId)}`;
-
             const f = article.fields;
+
             if (f.title?.stringValue) {
                 title = cleanText(f.title.stringValue, 120);
             }
@@ -120,21 +181,47 @@ export default async function handler(req, res) {
                 description = cleanText(f.excerpt.stringValue, 200);
             } else if (f.content?.stringValue) {
                 description = cleanText(f.content.stringValue, 200);
+            } else if (f.introduction?.stringValue) {
+                description = cleanText(f.introduction.stringValue, 200);
             }
 
             // Image resolution
-            const rawImage = f.thumbnailUrl?.stringValue || 
-                             f.ogImage?.stringValue || 
-                             f.imageUrl?.stringValue || 
-                             f.coverImage?.stringValue || "";
+            let rawImage = f.thumbnailUrl?.stringValue || 
+                           f.ogImage?.stringValue || 
+                           f.imageUrl?.stringValue || 
+                           f.coverImage?.stringValue || "";
+
+            // Fallback: If chapter has no own image, inherit from parent book
+            if (!rawImage && (f.bookId?.stringValue || f.bookName?.stringValue)) {
+                const bookDoc = await fetchArticle(f.bookId?.stringValue || f.bookName?.stringValue);
+                if (bookDoc && bookDoc.fields) {
+                    rawImage = bookDoc.fields.thumbnailUrl?.stringValue || 
+                               bookDoc.fields.ogImage?.stringValue || 
+                               bookDoc.fields.imageUrl?.stringValue || 
+                               bookDoc.fields.coverImage?.stringValue || "";
+                }
+            }
 
             if (rawImage.startsWith("data:image/")) {
-                imageUrl = `${DOMAIN}/api/image?id=${encodeURIComponent(articleId)}`;
+                imageUrl = `${DOMAIN}/api/image?id=${encodeURIComponent(articleId)}&slug=${encodeURIComponent(rawId)}`;
                 const match = rawImage.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,/);
                 imageMime = match ? match[1] : "image/jpeg";
             } else if (rawImage.startsWith("http://") || rawImage.startsWith("https://")) {
                 imageUrl = rawImage.replace(/^http:\/\//, "https://");
                 imageMime = imageUrl.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+            } else {
+                imageUrl = DEFAULT_BANNER;
+            }
+
+            // Refine clean share path based on resolved article type & bookName
+            const artSlug = f.slug?.stringValue || slugifyText(f.title?.stringValue) || articleId;
+            if (f.type?.stringValue === "BOOK") {
+                shareUrl = `${DOMAIN}/book/${encodeURIComponent(artSlug)}`;
+            } else if (f.bookName?.stringValue) {
+                const bSlug = f.bookSlug?.stringValue || slugifyText(f.bookName.stringValue);
+                shareUrl = `${DOMAIN}/story/${encodeURIComponent(bSlug)}/${encodeURIComponent(artSlug)}`;
+            } else {
+                shareUrl = `${DOMAIN}/story/${encodeURIComponent(artSlug)}`;
             }
         }
     }
@@ -193,7 +280,7 @@ export default async function handler(req, res) {
             .replace(/<meta\s+property=["']og:[^"']*["'][^>]*>/gi, "")
             .replace(/<meta\s+name=["']twitter:[^"']*["'][^>]*>/gi, "");
 
-        // Inject our rich dynamic meta block right inside <head>
+        // Inject dynamic meta block right inside <head>
         finalHtml = cleanedHead.replace("<head>", `<head>\n${metaTagsBlock}`);
     } else {
         // High-fidelity fallback HTML for bots & redirect for browsers
@@ -210,7 +297,7 @@ export default async function handler(req, res) {
         }
     </script>
 </head>
-<body style="font-family: sans-serif; padding: 2rem; text-align: center; background: #fbf7ee; color: #1e1b18;">
+<body style="font-family: sans-serif; padding: 2rem; text-align: center; background: #FAF9F5; color: #1F1A14;">
     <h2>${escapeHtml(title)}</h2>
     <p>${escapeHtml(description)}</p>
     <p><a href="${escapeHtml(shareUrl)}" style="color: #b4532c; font-weight: bold;">ലേഖനം വായിക്കുക (Read on NUQTHA) &rarr;</a></p>

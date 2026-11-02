@@ -9,11 +9,13 @@ export default defineConfig(() => {
       react(),
       tailwindcss(),
       {
-        name: 'admin-route-rewrite',
+        name: 'route-rewrite',
         configureServer(server) {
           server.middlewares.use((req, res, next) => {
             if (req.url === '/admin' || req.url === '/admin/') {
               req.url = '/admin.html';
+            } else if (req.url?.startsWith('/story/') || req.url?.startsWith('/article/') || req.url?.startsWith('/book/')) {
+              req.url = '/article.html';
             }
             next();
           });
@@ -43,6 +45,4 @@ export default defineConfig(() => {
       },
     },
   };
-
-
 });

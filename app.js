@@ -5,7 +5,7 @@ import { safeInit } from "./js/ui-safe.js";
  * Protected by Strict Schema Validator & Safe Fallbacks
  */
 import { db, collection, onSnapshot, doc, getDoc, fetchWithRetry, getFirebaseApiKey } from "./firebase-config.js";
-import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
+import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, getStoryUrl } from "./schema-validator.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
@@ -1341,7 +1341,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
             <!-- Content Area with Bolder Typography -->
             <div class="p-4 sm:p-6 space-y-2.5 sm:space-y-3">
                 <h3 class="text-xl sm:text-2xl md:text-[1.65rem] font-black text-[#1e1b18] dark:text-white leading-snug tracking-tight group-hover:text-[${t.color}] transition-colors" ${titleStyle}>
-                    <a href="article.html?id=${art.id}" class="stretched-card-link text-inherit">${cleanTitle}</a>
+                    <a href="${getStoryUrl(art)}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                 </h3>
 
                 ${preview ? `
@@ -1422,7 +1422,7 @@ function buildFeaturedCard(art) {
 
                 <!-- Bold Title -->
                 <h2 class="featured-title text-2xl sm:text-3xl font-black leading-snug tracking-tight hover:text-[#b4532c] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
-                    <a href="article.html?id=${art.id}" class="stretched-card-link text-inherit">${cleanTitle}</a>
+                    <a href="${getStoryUrl(art)}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                 </h2>
 
                 <!-- Excerpt text -->
@@ -1489,7 +1489,7 @@ function buildCompactRecentCard(art, theme = null) {
                 ${categoryTag(art.category, { variant: 'bracket', theme: t })}
 
                 <h4 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[${t.color}] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
-                    <a href="article.html?id=${art.id}" class="stretched-card-link text-inherit">${cleanTitle}</a>
+                    <a href="${getStoryUrl(art)}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                 </h4>
 
                 <div class="flex items-center gap-1.5 text-[11px] sm:text-xs flex-wrap font-['Noto_Sans_Malayalam']">
@@ -1531,7 +1531,7 @@ function buildBannerCarousel(articles) {
         return '<div class="banner-slide' + activeClass + '" data-index="' + i + '" data-id="' + art.id + '">' +
             '<div class="banner-slide-bg" style="' + bgStyle + '"></div>' +
             '<div class="banner-slide-overlay"></div>' +
-            '<a href="article.html?id=' + art.id + '" class="banner-slide-content" draggable="false">' +
+            '<a href="' + getStoryUrl(art) + '" class="banner-slide-content" draggable="false">' +
                 '<span class="banner-cat-pill">' + catLabel + '</span>' +
                 '<h2 class="banner-slide-title">' + cleanTitle + '</h2>' +
                 (excerpt ? '<p class="banner-slide-excerpt">' + excerpt + '</p>' : '') +
@@ -1600,7 +1600,7 @@ function buildCarouselCard(art) {
         imgHtml +
         '<div class="carousel-card-body">' +
             categoryTag(art.category, { variant: 'carousel' }) +
-            '<h4 class="carousel-card-title" ' + titleStyle + '><a href="article.html?id=' + art.id + '" class="stretched-card-link text-inherit">' + cleanTitle + '</a></h4>' +
+            '<h4 class="carousel-card-title" ' + titleStyle + '><a href="' + getStoryUrl(art) + '" class="stretched-card-link text-inherit">' + cleanTitle + '</a></h4>' +
             '<p class="carousel-card-meta font-bold text-[#1e1b18] dark:text-white">' + authorName + '</p>' +
             '<p class="carousel-card-meta">' + dateStr + '</p>' +
         '</div>' +
@@ -1890,7 +1890,7 @@ function buildBookWidget(seriesName, articles) {
             </div>
             <div class="playlist-item-info min-w-0 flex-1">
                 <h5 class="playlist-item-title line-clamp-1 group-hover/row:text-[#b4532c] dark:group-hover/row:text-[#f87171] transition-colors" ${titleStyle}>
-                    <a href="article.html?id=${art.id}" class="stretched-card-link text-inherit">${art.title}</a>
+                    <a href="${getStoryUrl(art)}" class="stretched-card-link text-inherit">${art.title}</a>
                 </h5>
                 <div class="flex items-center gap-2 text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
                     ${categoryTag(art.category, { className: 'hover:underline font-bold text-[#b4532c] dark:text-[#f87171]' })}
@@ -1973,7 +1973,7 @@ function attachCardListeners() {
                     // Open Book index page/modal
                     openBookIndex(art);
                 } else {
-                    window.location.href = `article.html?id=${id}`;
+                    window.location.href = getStoryUrl(art || { id });
                 }
             }
         });
@@ -1990,7 +1990,7 @@ function openBookIndex(book) {
             }
         } catch (e) {}
     }
-    window.location.href = `article.html?id=${book.id}`;
+    window.location.href = getStoryUrl(book);
 }
 
 /* ═══════════ Empty State ═══════════ */
@@ -2159,7 +2159,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
         );
 
         const bookId = book.id || '';
-        const bookHref = bookId ? `article.html?id=${encodeURIComponent(bookId)}` : '#';
+        const bookHref = bookId ? getStoryUrl(book) : '#';
 
         return `
         <div class="premium-book-card-wrap ${isHidden ? 'hidden' : ''}">

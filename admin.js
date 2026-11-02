@@ -60,7 +60,9 @@ import {
     sanitizePriority,
     sanitizeString,
     parseTimestampMillis,
-    ALLOWED_CATEGORIES
+    ALLOWED_CATEGORIES,
+    slugifyText,
+    getStoryUrl
 } from "./schema-validator.js";
 
 let editingArticleId = null; // null = create mode, string = edit mode
@@ -455,15 +457,21 @@ async function handleFormSubmit() {
         const rawBookName = document.getElementById("art-playlist-name")?.value || "";
         const isBookCover = document.getElementById("art-is-book")?.checked || false;
 
+        const effectiveCover = selectedBase64Image || selectedBase64Thumbnail || "";
+        const effectiveThumb = selectedBase64Thumbnail || selectedBase64Image || "";
+        const articleSlug = slugifyText(rawTitle);
+
         // STRICT SCHEMA VALIDATION & SANITIZATION
         const sanitized = validateAndSanitizeArticleForSave({
             title: rawTitle,
+            slug: articleSlug,
             category: rawCategory,
             author: rawAuthor,
             authorId,
             transcription: rawTranscription,
-            imageUrl: selectedBase64Image || "",
-            thumbnailUrl: selectedBase64Thumbnail || "",
+            imageUrl: effectiveCover,
+            thumbnailUrl: effectiveThumb,
+            ogImage: effectiveThumb,
             excerpt: rawExcerpt,
             content: rawContent,
             titleColor: rawTitleColor,
@@ -481,6 +489,7 @@ async function handleFormSubmit() {
             const articleRef = doc(db, "articles", editingArticleId);
             const updatePayload = {
                 title: sanitized.title,
+                slug: sanitized.slug || articleSlug,
                 category: sanitized.category,
                 author: sanitized.author,
                 authorId: sanitized.authorId || authorId,
@@ -500,12 +509,19 @@ async function handleFormSubmit() {
             };
 
             // Only update imageUrl if selected/changed or explicitly set
-            if (selectedBase64Image !== undefined) {
+            if (selectedBase64Image !== undefined && selectedBase64Image !== "") {
                 updatePayload.imageUrl = selectedBase64Image;
+                if (!selectedBase64Thumbnail) {
+                    updatePayload.thumbnailUrl = selectedBase64Image;
+                    updatePayload.ogImage = selectedBase64Image;
+                }
             }
-            if (selectedBase64Thumbnail !== undefined) {
+            if (selectedBase64Thumbnail !== undefined && selectedBase64Thumbnail !== "") {
                 updatePayload.thumbnailUrl = selectedBase64Thumbnail;
                 updatePayload.ogImage = selectedBase64Thumbnail;
+                if (!selectedBase64Image && !updatePayload.imageUrl) {
+                    updatePayload.imageUrl = selectedBase64Thumbnail;
+                }
             }
 
             await updateDoc(articleRef, updatePayload);
@@ -519,8 +535,8 @@ async function handleFormSubmit() {
                 hasCustomExcerpt: Boolean(typedExcerpt),
                 storedExcerpt: typedExcerpt,
                 excerpt: typedExcerpt,
-                thumbnailUrl: selectedBase64Thumbnail || "",
-                ogImage: selectedBase64Thumbnail || "",
+                thumbnailUrl: effectiveThumb,
+                ogImage: effectiveThumb,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
@@ -1552,7 +1568,11 @@ async function handleSaveBookStep1(e) {
             bookName: name,
             author: author,
             category: tag,
+            slug: slugifyText(name),
+            bookSlug: slugifyText(name),
             imageUrl: coverImage,
+            thumbnailUrl: coverImage,
+            ogImage: coverImage,
             introduction: intro,
             excerpt: intro,
             content: intro,
@@ -2112,9 +2132,15 @@ function initChapterWriter() {
                 const existingChapter = (activeBookChapters && activeBookChapters.find(c => c.id === editingChapterId)) ||
                                         (currentArticlesList && currentArticlesList.find(a => a.id === editingChapterId));
                 const chapterOrder = existingChapter ? (existingChapter.order !== undefined ? existingChapter.order : (existingChapter.priority || 1)) : nextOrder;
+                const chapterSlug = slugifyText(title);
+                const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
+                const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
+                const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";
 
                 const raw = {
                     title,
+                    slug: chapterSlug,
+                    bookSlug: bookSlug,
                     author,
                     authorId,
                     category: bookTag,
@@ -2126,7 +2152,9 @@ function initChapterWriter() {
                     order: chapterOrder,
                     priority: chapterOrder,
                     content,
-                    imageUrl,
+                    imageUrl: chapterImg,
+                    thumbnailUrl: chapterThumb,
+                    ogImage: chapterThumb,
                     bookId: activeBookId,
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
@@ -2154,8 +2182,15 @@ function initChapterWriter() {
                 showGlobalStatus(`✨ അധ്യായം '${title}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
             } else {
                 // Save new chapter as article in Firestore with bookId, order, status published, author from book
+                const chapterSlug = slugifyText(title);
+                const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
+                const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
+                const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";
+
                 const raw = {
                     title,
+                    slug: chapterSlug,
+                    bookSlug: bookSlug,
                     author,
                     authorId,
                     category: bookTag,
@@ -2167,7 +2202,9 @@ function initChapterWriter() {
                     order: nextOrder,
                     priority: nextOrder,
                     content,
-                    imageUrl,
+                    imageUrl: chapterImg,
+                    thumbnailUrl: chapterThumb,
+                    ogImage: chapterThumb,
                     bookId: activeBookId,
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
@@ -2933,7 +2970,7 @@ function renderAdminBooksTab(articles) {
                 </div>
 
                 <div class="flex items-center justify-between pt-2.5 border-t border-[#f0e6d6] gap-2 flex-wrap">
-                    <a href="article.html?id=${book.id}&edition=${encodeURIComponent(bookTitle)}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline font-english">
+                    <a href="${getStoryUrl(book)}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline font-english">
                         <span>👁️ Live</span>
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     </a>
@@ -3324,7 +3361,7 @@ export function renderAdminPublishedList(items) {
                 </div>
 
                 <div class="flex items-center justify-between pt-2.5 border-t border-[#ebdccb]/60 dark:border-white/10">
-                    <a href="article.html?id=${data.id}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#b4532c] hover:underline font-english">
+                    <a href="${getStoryUrl(data)}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#b4532c] hover:underline font-english">
                         <span>Live Preview</span>
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     </a>

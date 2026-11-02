@@ -18,6 +18,53 @@ export const CATEGORY_LABELS = {
     "GENERAL": "GENERAL"
 };
 
+/**
+ * Clean URL slug generator for Malayalam and English text.
+ */
+export function slugifyText(str) {
+    if (!str) return "";
+    return String(str)
+        .normalize("NFC")
+        .replace(/\u0D23\u0D4D\u200D/g, "\u0D7A") // ൺ
+        .replace(/\u0D28\u0D4D\u200D/g, "\u0D7B") // ൻ
+        .replace(/\u0D30\u0D4D\u200D/g, "\u0D7C") // ർ
+        .replace(/\u0D32\u0D4D\u200D/g, "\u0D7D") // ൽ
+        .replace(/\u0D33\u0D4D\u200D/g, "\u0D7E") // ൾ
+        .replace(/\u0D15\u0D4D\u200D/g, "\u0D7F") // ൿ
+        .replace(/[\u200B-\u200D\uFEFF]/g, "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\u0D00-\u0D7F]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Builds clean SEO-friendly URLs:
+ * - Standalone story: /story/:slug
+ * - Book edition chapter: /story/:bookSlug/:chapterSlug
+ * - Book edition overview: /book/:slug
+ */
+export function getStoryUrl(item) {
+    if (!item) return "/";
+    const slug = item.slug || slugifyText(item.title) || item.id || "";
+    if (item.type === "BOOK") {
+        return `/book/${encodeURIComponent(slug)}`;
+    }
+    const bookTitle = item.bookName || item.playlistName;
+    if (bookTitle && String(bookTitle).trim()) {
+        const bookSlug = item.bookSlug || slugifyText(bookTitle);
+        if (bookSlug && slug) {
+            return `/story/${encodeURIComponent(bookSlug)}/${encodeURIComponent(slug)}`;
+        }
+    }
+    return `/story/${encodeURIComponent(slug)}`;
+}
+
+if (typeof window !== "undefined") {
+    window.slugifyText = slugifyText;
+    window.getStoryUrl = getStoryUrl;
+}
+
 const CP437_MAP = {
     0x00C7: 0x80, 0x00FC: 0x81, 0x00E9: 0x82, 0x00E2: 0x83, 0x00E4: 0x84, 0x00E0: 0x85, 0x00E5: 0x86, 0x00E7: 0x87,
     0x00EA: 0x88, 0x00EB: 0x89, 0x00E8: 0x8A, 0x00EF: 0x8B, 0x00EE: 0x8C, 0x00EC: 0x8D, 0x00C4: 0x8E, 0x00C5: 0x8F,
@@ -262,8 +309,8 @@ export function validateAndSanitizeArticleForSave(raw) {
     }
 
     // 6. Cover image
-    const imageUrl = sanitizeImageUrl(raw.imageUrl);
-    const thumbnailUrl = sanitizeImageUrl(raw.thumbnailUrl || raw.ogImage || "");
+    const imageUrl = sanitizeImageUrl(raw.imageUrl || raw.thumbnailUrl || "");
+    const thumbnailUrl = sanitizeImageUrl(raw.thumbnailUrl || raw.ogImage || raw.imageUrl || "");
 
     // 7. Colors & Font Size
     const titleColor = sanitizeColor(raw.titleColor, "#1e1b18");
@@ -283,6 +330,8 @@ export function validateAndSanitizeArticleForSave(raw) {
     const issue = sanitizeString(raw.issue, 50, "");
     const leadTitle = sanitizeString(raw.leadTitle, 250, "");
     const featuredTitle = sanitizeString(raw.featuredTitle, 250, "");
+    const slug = sanitizeString(raw.slug || slugifyText(title), 200, "");
+    const bookSlug = sanitizeString(raw.bookSlug || (bookName ? slugifyText(bookName) : ""), 200, "");
 
     // 10. Type (ARTICLE or BOOK)
     const type = raw.type === "BOOK" ? "BOOK" : "ARTICLE";
@@ -300,6 +349,8 @@ export function validateAndSanitizeArticleForSave(raw) {
 
     return {
         title,
+        slug,
+        bookSlug,
         category,
         author,
         authorId,
@@ -340,6 +391,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         return {
             id: docId || "unknown",
             title: "തലക്കെട്ടില്ല (Untitled)",
+            slug: "",
+            bookSlug: "",
             category: "GENERAL",
             author: "NUQTHA",
             authorId: "",
@@ -365,8 +418,10 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const author = sanitizeString(rawDoc.author, 100, "NUQTHA");
     const authorId = sanitizeString(rawDoc.authorId || "", 100, "");
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
-    const imageUrl = sanitizeImageUrl(rawDoc.imageUrl);
-    const thumbnailUrl = sanitizeImageUrl(rawDoc.thumbnailUrl || rawDoc.ogImage || "");
+    const imageUrl = sanitizeImageUrl(rawDoc.imageUrl || rawDoc.thumbnailUrl || rawDoc.ogImage || "");
+    const thumbnailUrl = sanitizeImageUrl(rawDoc.thumbnailUrl || rawDoc.ogImage || rawDoc.imageUrl || "");
+    const slug = sanitizeString(rawDoc.slug || slugifyText(title), 200, "");
+    const bookSlug = sanitizeString(rawDoc.bookSlug || (bookName ? slugifyText(bookName) : ""), 200, "");
     const content = sanitizeString(rawDoc.content, 500000, "");
     
     const rawExcerptVal = rawDoc.excerpt || rawDoc.intro || rawDoc.introduction || rawDoc.summary || "";
@@ -400,6 +455,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     return {
         id,
         title,
+        slug,
+        bookSlug,
         category,
         author,
         authorId,
