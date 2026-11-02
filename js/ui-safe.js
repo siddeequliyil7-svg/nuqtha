@@ -207,3 +207,40 @@ if (typeof window !== "undefined") {
     window.safeGetLocalStorage = safeGetLocalStorage;
     window.safeSetSessionStorage = safeSetSessionStorage;
 }
+
+// ═══════════ PRIVACY & ANTI-SCREENSHOT BLUR ═══════════
+(function initPrivacyBlur() {
+    if (typeof window === "undefined") return;
+
+    const applyBlurTransition = () => {
+        if (document.body && !document.body.style.transition.includes("filter")) {
+            document.body.style.transition = (document.body.style.transition ? document.body.style.transition + ", " : "") + "filter 0.25s ease";
+        }
+    };
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", applyBlurTransition);
+    } else {
+        applyBlurTransition();
+    }
+
+    window.addEventListener("blur", () => {
+        // Exempt admin pages to preserve writing workflow
+        if (window.location.pathname && window.location.pathname.includes("admin")) return;
+
+        // Prevent blurring when user interacts with reCAPTCHA or open auth modal
+        const authModal = document.getElementById("nuqtha-auth-modal");
+        if (authModal && !authModal.classList.contains("hidden")) return;
+        if (document.activeElement && document.activeElement.tagName === "IFRAME") return;
+
+        if (document.body) {
+            document.body.style.filter = "blur(20px)";
+        }
+    });
+
+    window.addEventListener("focus", () => {
+        if (document.body) {
+            document.body.style.filter = "none";
+        }
+    });
+})();
