@@ -5,11 +5,30 @@ html {
     background-color: var(--bg, #FAF9F5);
     color: var(--text, #1F1A14);
     color-scheme: light;
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none;    /* Firefox */
+    -ms-user-select: none;     /* IE 10+ */
+    user-select: none;         /* Standard */
 }
 
 body {
     background-color: var(--bg, #FAF9F5);
     color: var(--text, #1F1A14);
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* ഇൻപുട്ടുകളിലും കമന്റ് ബോക്സുകളിലും ടൈപ്പ് ചെയ്യാനും എഡിറ്റ് ചെയ്യാനും അനുവദിക്കുന്നു */
+input,
+textarea,
+select,
+[contenteditable="true"] {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
 }
 
 html.dark {
