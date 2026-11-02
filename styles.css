@@ -3078,7 +3078,13 @@ html.dark .book3d-floor-shadow {
     --article-font-size: 16px;
 }
 
+#article-content,
+#art-content {
+    transition: filter 0.25s ease;
+}
+
 .article-body,
+#article-content,
 #art-content,
 #reader-content {
     font-size: var(--article-font-size, 16px);

@@ -243,4 +243,32 @@ if (typeof window !== "undefined") {
             document.body.style.filter = "none";
         }
     });
+
+    // ═══════════ ANTI-SCREENSHOT (PRINTSCREEN) PROTECTION ═══════════
+    document.addEventListener("keyup", (e) => {
+        // Exempt admin pages
+        if (window.location.pathname && window.location.pathname.includes("admin")) return;
+
+        if (e.key === "PrintScreen" || e.key === "Snapshot" || e.keyCode === 44) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText("").catch(() => {});
+            }
+            alert("Screenshots are disabled on this article!");
+            const artEl = document.getElementById("article-content") || document.getElementById("art-content") || document.querySelector(".article-body");
+            if (artEl) {
+                artEl.style.filter = "blur(15px)";
+                const restoreOnInteraction = () => {
+                    artEl.style.filter = "none";
+                    document.removeEventListener("click", restoreOnInteraction);
+                    document.removeEventListener("keydown", restoreOnInteraction);
+                };
+                setTimeout(() => {
+                    document.addEventListener("click", restoreOnInteraction, { once: true });
+                    document.addEventListener("keydown", restoreOnInteraction, { once: true });
+                }, 300);
+            } else if (document.body) {
+                document.body.style.filter = "blur(15px)";
+            }
+        }
+    });
 })();
