@@ -38,7 +38,7 @@ export function getFirebaseApiKey() {
       return process.env.VITE_FIREBASE_API_KEY;
     }
   } catch (e) {}
-  return "AIzaSyBTKoMKudzOtgv-BY5j1gs7dN162S9e3HE";
+  return "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
 }
 
 export const firebaseConfig = {
@@ -47,7 +47,7 @@ export const firebaseConfig = {
   projectId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_PROJECT_ID) || "nuqtha-c0900",
   storageBucket: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET) || "nuqtha-c0900.firebasestorage.app",
   messagingSenderId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID) || "902747954424",
-  appId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_APP_ID) || "1:902747954424:web:af61e4fc48033b20e1",
+  appId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_APP_ID) || "1:902747954424:web:af61e4fc48033b20e1af0d",
   measurementId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID) || "G-W383N5EMVT"
 };
 
