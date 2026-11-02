@@ -8,7 +8,7 @@ import fs from "fs";
 import path from "path";
 
 const FIRESTORE_PROJECT_ID = "nuqtha-c0900";
-const FIRESTORE_API_KEY = process.env.VITE_FIREBASE_API_KEY || "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
+const FIRESTORE_API_KEY = "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
 const DEFAULT_SITE_TITLE = "NUQTHA - നുഖ്ത | Malayalam Publishing Platform";
 const DEFAULT_SITE_DESC = "A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher.";
 const DEFAULT_BANNER = "https://nuqtha.vercel.app/og-cover.png";

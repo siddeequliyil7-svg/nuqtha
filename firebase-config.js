@@ -1,20 +1,20 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { 
+import {
   initializeFirestore,
-  getFirestore, 
+  getFirestore,
   setLogLevel,
-  collection, 
-  getDocs, 
-  getDoc, 
-  addDoc, 
+  collection,
+  getDocs,
+  getDoc,
+  addDoc,
   setDoc,
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  serverTimestamp, 
-  query, 
-  orderBy, 
-  onSnapshot 
+  doc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 /**
@@ -22,23 +22,14 @@ import {
  * Supports Vite (import.meta.env), Node/Vercel (process.env), and runtime window injection.
  */
 export function getFirebaseApiKey() {
+  const verifiedKey = "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
   if (typeof window !== "undefined" && window.__FIREBASE_API_KEY__) {
     return window.__FIREBASE_API_KEY__;
   }
   if (typeof window !== "undefined" && window.FIREBASE_CONFIG?.apiKey) {
     return window.FIREBASE_CONFIG.apiKey;
   }
-  try {
-    if (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_API_KEY) {
-      return import.meta.env.VITE_FIREBASE_API_KEY;
-    }
-  } catch (e) {}
-  try {
-    if (typeof process !== "undefined" && process.env?.VITE_FIREBASE_API_KEY) {
-      return process.env.VITE_FIREBASE_API_KEY;
-    }
-  } catch (e) {}
-  return "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
+  return verifiedKey;
 }
 
 export const firebaseConfig = {
@@ -115,18 +106,18 @@ if (typeof window !== "undefined" && !window.__NUQTHA_IMG_RETRY_INSTALLED__) {
   );
 }
 
-export { 
+export {
   app,
-  collection, 
-  getDocs, 
-  getDoc, 
-  addDoc, 
+  collection,
+  getDocs,
+  getDoc,
+  addDoc,
   setDoc,
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  serverTimestamp, 
-  query, 
-  orderBy, 
-  onSnapshot 
+  doc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  onSnapshot
 };
