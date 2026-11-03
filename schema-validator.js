@@ -446,7 +446,12 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const issue = sanitizeString(rawDoc.issue, 50, "");
     const leadTitle = sanitizeString(rawDoc.leadTitle, 250, "");
     const featuredTitle = sanitizeString(rawDoc.featuredTitle, 250, "");
-    const type = rawDoc.type === "BOOK" ? "BOOK" : "ARTICLE";
+    // Normalizing Type (ARTICLE or BOOK)
+    const rawCat = (rawDoc.category || "").toString().toLowerCase().trim();
+    const isBookCat = rawCat === "premium book" || rawCat === "book" || rawCat === "books";
+    const hasChaptersArray = chapters.length > 0;
+    const isBook = rawDoc.type === "BOOK" || (isBookCat && !bookId) || (hasChaptersArray && !bookId);
+    const type = isBook ? "BOOK" : "ARTICLE";
 
     // Normalizing createdAt timestamp
     const createdAt = rawDoc.createdAt || rawDoc.createTime || null;

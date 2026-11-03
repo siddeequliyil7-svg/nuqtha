@@ -694,6 +694,17 @@
             return false;
         }
 
+        // Helper to determine if an entity is specifically a Book Edition Overview (NOT a chapter)
+        function isBookEditionDoc(item) {
+            if (!item) return false;
+            if (item.type === "BOOK") return true;
+            if (item.isBook === true) return true;
+            if (Array.isArray(item.chapters) && item.chapters.length > 0 && !item.bookId) return true;
+            const cat = (item.category || "").toLowerCase().trim();
+            if ((cat === "books" || cat === "book" || cat === "premium book") && !item.bookId) return true;
+            return false;
+        }
+
         // Clean text matching helper for single-author book binding
         function matchesBook(art, targetBook) {
             if (!art || !targetBook) return false;
@@ -886,8 +897,9 @@
                 let allArticles = [];
 
                 const lookupId = articleId || targetIdentifier;
+                const isFirestoreDocId = typeof lookupId === 'string' && /^[A-Za-z0-9_-]{15,35}$/.test(lookupId) && !lookupId.includes('--');
                 const [targetDocResult, allArticlesResult] = await Promise.allSettled([
-                    lookupId ? fetchTargetDocument(lookupId, controller.signal) : Promise.resolve(null),
+                    isFirestoreDocId ? fetchTargetDocument(lookupId, controller.signal) : Promise.resolve(null),
                     fetchLightweightArticles(controller.signal)
                 ]);
                 currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
@@ -914,7 +926,8 @@
                         const cleanTarget = (bookSearch || "").toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
                         const spaceTarget = cleanTarget.replace(/-/g, ' ');
 
-                        currentDoc = allArticles.find(a => a.type === "BOOK" && (
+                        // Must match a dedicated BOOK entity, never a standalone chapter
+                        currentDoc = allArticles.find(a => (a.type === "BOOK" || isBookEditionDoc(a)) && (
                             a.slug === targetBookSlug ||
                             slugifyText(a.bookName) === targetBookSlug ||
                             slugifyText(a.title) === targetBookSlug ||
@@ -922,13 +935,25 @@
                             a.id === bookSearch ||
                             (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget) ||
                             (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
-                        )) || allArticles.find(a => 
-                            a.slug === targetBookSlug ||
-                            slugifyText(a.bookName) === targetBookSlug ||
-                            slugifyText(a.title) === targetBookSlug ||
-                            (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget) ||
-                            (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
-                        );
+                        ));
+
+                        // Fallback: If book overview doc not found directly, find any chapter of this book and fetch parent book by chapter.bookId
+                        if (!currentDoc) {
+                            const chapterWithBookId = allArticles.find(a => 
+                                (a.bookSlug === targetBookSlug || slugifyText(a.bookName) === targetBookSlug || (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)) && a.bookId
+                            );
+                            if (chapterWithBookId && chapterWithBookId.bookId) {
+                                currentDoc = allArticles.find(a => a.id === chapterWithBookId.bookId);
+                                if (!currentDoc) {
+                                    currentDoc = await fetchTargetDocument(chapterWithBookId.bookId, controller.signal);
+                                }
+                            }
+                        }
+
+                        // Ensure currentDoc is configured with type BOOK for the reader
+                        if (currentDoc) {
+                            currentDoc.type = "BOOK";
+                        }
                     }
 
                     // C. General article slug or title match (/story/:slug or /article/:slug or ?id=...)
@@ -1432,8 +1457,8 @@
                 if (bookBadgeText) {
                     bookBadgeText.textContent = `📚 ${article.bookName}${article.priority ? ' • അധ്യായം ' + article.priority : ''}`;
                 }
-                if (bookBadgeLink && article.bookId) {
-                    bookBadgeLink.href = getStoryUrl({ id: article.bookId, title: article.bookName, type: "BOOK" });
+                if (bookBadgeLink) {
+                    bookBadgeLink.href = getStoryUrl({ id: article.bookId, title: article.bookName, bookName: article.bookName, type: "BOOK" });
                 }
                 bookBadgeContainer.classList.remove('hidden');
             } else if (bookBadgeContainer) {

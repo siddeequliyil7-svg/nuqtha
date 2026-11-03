@@ -1963,7 +1963,7 @@ function buildBookCard(book, articles) {
 
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
 function attachCardListeners() {
-    document.querySelectorAll(".featured-article-card, .category-featured-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card").forEach(card => {
+    document.querySelectorAll(".featured-article-card, .category-featured-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card, .premium-book-card").forEach(card => {
         card.addEventListener("click", function (e) {
             // Direct navigation to article.html
             const id = this.dataset.id;
