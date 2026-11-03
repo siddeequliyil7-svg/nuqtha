@@ -35,12 +35,9 @@ function categorySlug(raw) {
 function getIndexBaseUrl() {
     if (typeof window !== 'undefined' && window.location) {
         if (window.location.protocol === 'file:') return 'index.html';
-        const pathname = window.location.pathname || '';
-        if (pathname.startsWith('/story/') || pathname.startsWith('/profile/') || pathname.startsWith('/author/')) {
-            return '/index.html';
-        }
+        return '/';
     }
-    return 'index.html';
+    return '/';
 }
 
 function categoryUrl(name) {
@@ -48,11 +45,13 @@ function categoryUrl(name) {
     if (!norm || norm.toUpperCase() === 'ALL') {
         return getIndexBaseUrl();
     }
+    const base = getIndexBaseUrl();
     if (norm.toUpperCase() === 'BOOKS') {
-        return `${getIndexBaseUrl()}#books`;
+        return base === '/' ? '/#books' : `${base}#books`;
     }
     const slug = categorySlug(norm);
-    return slug ? `${getIndexBaseUrl()}#${slug}` : getIndexBaseUrl();
+    if (!slug) return base;
+    return base === '/' ? `/#${slug}` : `${base}#${slug}`;
 }
 
 function getCategoryDisplayLabel(cat) {

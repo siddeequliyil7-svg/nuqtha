@@ -2,6 +2,7 @@
 <html lang="ml">
 <head>
     <meta charset="UTF-8">
+    <base href="/">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Author Profile - NUQTHA</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23b4532c'/></svg>">
@@ -37,7 +38,7 @@
     <header class="sticky top-0 z-40 bg-[var(--bg)]/90 dark:bg-[#0b0c10]/90 backdrop-blur-md border-b border-[var(--border)] dark:border-white/10">
         <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
             <!-- Brand Logo returning to Home -->
-            <a href="index.html" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20" title="Return to Home Page">
+            <a href="/" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20" title="Return to Home Page">
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-sm flex items-center justify-center p-1.5 text-white flex-shrink-0 group-hover:scale-110 transition-transform">
                     <svg class="w-full h-full" viewBox="0 0 24 24" fill="currentColor"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z"/></svg>
                 </div>
@@ -104,7 +105,7 @@
                     </div>
                 </div>
 
-                <a href="index.html" class="text-xs font-bold font-english uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-[var(--border)] dark:border-white/15 text-[#5a4b41] dark:text-[#cbd5e1] hover:bg-black/5 dark:hover:bg-white/10 transition">
+                <a href="/" class="text-xs font-bold font-english uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-[var(--border)] dark:border-white/15 text-[#5a4b41] dark:text-[#cbd5e1] hover:bg-black/5 dark:hover:bg-white/10 transition">
                     &larr; Home
                 </a>
                 <!-- Theme Toggle Button -->
@@ -202,7 +203,7 @@
 
         <!-- Back to feed CTA -->
         <div class="pt-8 border-t border-[var(--border)] dark:border-white/10 flex justify-center">
-            <a href="index.html" class="px-6 py-2.5 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
+            <a href="/" class="px-6 py-2.5 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
                 &larr; Back to all stories
             </a>
         </div>
@@ -297,7 +298,7 @@
                     grid.innerHTML = `
                     <div class="col-span-full py-12 text-center space-y-3 bg-white/40 dark:bg-white/5 rounded-3xl p-6 border border-dashed border-[var(--border)] dark:border-white/10">
                         <p class="text-sm font-bold text-[#5a4b41] dark:text-[#cbd5e1]">എഴുത്തുകാരന്റെ വിവരങ്ങൾ നൽകിയിട്ടില്ല.</p>
-                        <a href="index.html" class="inline-block px-4 py-2 rounded-full bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition">
+                        <a href="/" class="inline-block px-4 py-2 rounded-full bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition">
                             ഹോം പേജിലേക്ക് പോകുക
                         </a>
                     </div>`;
@@ -471,7 +472,7 @@
                 const preview = (art.excerpt || (art.content ? art.content.substring(0, 120) : '')).replace(/<[^>]*>?/gm, '');
 
                 return `
-                <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300" onclick="if(!event.target.closest('a')) window.location.href=getStoryUrl(art)">
+                <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300" onclick="if(!event.target.closest('a')) window.location.href='${getStoryUrl(art)}'">
                     <div class="flex items-center p-3.5 sm:p-4 gap-3.5 w-full stretched-card-wrap">
                         <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#b8542c] to-[#803113]">
                             ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
