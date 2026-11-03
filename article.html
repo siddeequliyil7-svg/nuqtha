@@ -872,25 +872,34 @@
                         );
                     }
                     if (!currentDoc && querySlug) {
+                        const targetQuerySlug = slugifyText(querySlug);
+                        const cleanQuery = (querySlug || "").toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+                        const spaceQuery = cleanQuery.replace(/-/g, ' ');
                         currentDoc = allArticles.find(a => 
-                            a.slug === querySlug ||
-                            slugifyText(a.title) === querySlug ||
+                            a.slug === targetQuerySlug ||
+                            slugifyText(a.title) === targetQuerySlug ||
                             a.id === querySlug ||
+                            (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceQuery) ||
                             slugifyAuthor(a.title) === slugifyAuthor(querySlug)
                         );
                     }
                     if (!currentDoc && editionParam) {
+                        const targetEditionSlug = slugifyText(editionParam);
                         const cleanTarget = (editionParam || "").toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+                        const spaceTarget = cleanTarget.replace(/-/g, ' ');
                         currentDoc = allArticles.find(a => a.type === "BOOK" && (
-                            a.slug === editionParam ||
-                            slugifyText(a.bookName) === editionParam ||
-                            slugifyText(a.title) === editionParam ||
+                            a.slug === targetEditionSlug ||
+                            slugifyText(a.bookName) === targetEditionSlug ||
+                            slugifyText(a.title) === targetEditionSlug ||
                             a.id === editionParam ||
-                            (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget) ||
-                            (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget)
+                            (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget) ||
+                            (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
                         )) || allArticles.find(a => 
-                            (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget) ||
-                            (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === cleanTarget)
+                            a.slug === targetEditionSlug ||
+                            slugifyText(a.bookName) === targetEditionSlug ||
+                            slugifyText(a.title) === targetEditionSlug ||
+                            (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget) ||
+                            (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
                         );
                     }
                 }

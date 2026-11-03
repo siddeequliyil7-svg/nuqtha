@@ -331,7 +331,7 @@ export function validateAndSanitizeArticleForSave(raw) {
     const leadTitle = sanitizeString(raw.leadTitle, 250, "");
     const featuredTitle = sanitizeString(raw.featuredTitle, 250, "");
     const slug = sanitizeString(raw.slug || slugifyText(title), 200, "");
-    const bookSlug = sanitizeString(raw.bookSlug || (bookName ? slugifyText(bookName) : ""), 200, "");
+    const bookSlug = sanitizeString(raw.bookSlug || (raw.bookName ? slugifyText(raw.bookName) : (bookName ? slugifyText(bookName) : "")), 200, "");
 
     // 10. Type (ARTICLE or BOOK)
     const type = raw.type === "BOOK" ? "BOOK" : "ARTICLE";
@@ -421,7 +421,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const imageUrl = sanitizeImageUrl(rawDoc.imageUrl || rawDoc.thumbnailUrl || rawDoc.ogImage || "");
     const thumbnailUrl = sanitizeImageUrl(rawDoc.thumbnailUrl || rawDoc.ogImage || rawDoc.imageUrl || "");
     const slug = sanitizeString(rawDoc.slug || slugifyText(title), 200, "");
-    const bookSlug = sanitizeString(rawDoc.bookSlug || (bookName ? slugifyText(bookName) : ""), 200, "");
+    const bookSlug = sanitizeString(rawDoc.bookSlug || (rawDoc.bookName ? slugifyText(rawDoc.bookName) : (rawDoc.playlistName ? slugifyText(rawDoc.playlistName) : "")), 200, "");
     const content = sanitizeString(rawDoc.content, 500000, "");
     
     const rawExcerptVal = rawDoc.excerpt || rawDoc.intro || rawDoc.introduction || rawDoc.summary || "";
