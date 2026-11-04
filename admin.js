@@ -206,6 +206,7 @@ function initAdminDashboard() {
     safeInit("listenToFirestoreArticles", listenToFirestoreArticles);
     safeInit("initAuthorManager", initAuthorManager);
     safeInit("initMoreMenuManager", initMoreMenuManager);
+    safeInit("initUserAnalyticsDashboard", initUserAnalyticsDashboard);
 }
 
 function initPlaylistPresets() {
@@ -411,7 +412,7 @@ function initTabNavigation() {
 
     // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=book)
     const hash = window.location.hash.replace("#tab=", "").trim();
-    if (["create", "book", "layout", "published", "authors", "menu"].includes(hash)) {
+    if (["create", "book", "layout", "published", "authors", "menu", "analytics"].includes(hash)) {
         try {
             switchAdminTab(hash);
         } catch (err) {
@@ -435,6 +436,12 @@ export function switchAdminTab(tabName) {
 
     // Update window hash without scrolling
     history.replaceState(null, null, `#tab=${tabName}`);
+
+    // If switching to analytics tab, refresh rendering
+    if (tabName === "analytics") {
+        if (typeof renderReadingActivityTable === "function") renderReadingActivityTable();
+        if (typeof renderRegisteredUsersTable === "function") renderRegisteredUsersTable();
+    }
 
     // If switching to book tab, refresh the active book overview and all articles
     if (tabName === "book") {
@@ -4622,4 +4629,305 @@ function initMoreMenuManager() {
         adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
         renderMenuList();
     }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   8. USER ACTIVITY & ADVANCED READING ANALYTICS (TAB 7)
+   ═══════════════════════════════════════════════════════════ */
+let rawReadingLogs = [];
+let rawRegisteredUsers = [];
+let activeAnalyticsFilter = "all";
+
+export function initUserAnalyticsDashboard() {
+    const readingTbody = document.getElementById("analytics-reading-history-tbody");
+    const usersTbody = document.getElementById("analytics-users-tbody");
+    const filterSelect = document.getElementById("filter-engagement-status");
+    const refreshBtn = document.getElementById("refresh-analytics-btn");
+
+    if (filterSelect) {
+        filterSelect.addEventListener("change", () => {
+            activeAnalyticsFilter = filterSelect.value;
+            renderReadingActivityTable();
+        });
+    }
+
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => {
+            refreshBtn.classList.add("opacity-50", "pointer-events-none");
+            renderReadingActivityTable();
+            renderRegisteredUsersTable();
+            setTimeout(() => refreshBtn.classList.remove("opacity-50", "pointer-events-none"), 350);
+        });
+    }
+
+    // 1. Realtime Listener on `reading_history`
+    try {
+        const historyCol = collection(db, "reading_history");
+        onSnapshot(historyCol, (snapshot) => {
+            const logs = [];
+            snapshot.forEach(docSnap => {
+                logs.push({ id: docSnap.id, ...docSnap.data() });
+            });
+
+            // Sort newest first
+            logs.sort((a, b) => {
+                const timeA = parseTimestampMillis(a.updatedAt) || parseTimestampMillis(a.createdAt) || 0;
+                const timeB = parseTimestampMillis(b.updatedAt) || parseTimestampMillis(b.createdAt) || 0;
+                return timeB - timeA;
+            });
+
+            rawReadingLogs = logs;
+            updateReadingAnalyticsCounters(logs);
+            renderReadingActivityTable();
+        }, (err) => {
+            console.warn("[Admin Analytics] reading_history listener notice:", err);
+            if (readingTbody && rawReadingLogs.length === 0) {
+                readingTbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-xs text-[#8c7a6b]">വായനകളുടെ രേഖകൾ ഇതുവരെ ലഭ്യമായിട്ടില്ല.</td></tr>`;
+            }
+        });
+    } catch (err) {
+        console.warn("[Admin Analytics] Failed to listen to reading_history:", err);
+    }
+
+    // 2. Realtime Listener on `users`
+    try {
+        const usersCol = collection(db, "users");
+        onSnapshot(usersCol, (snapshot) => {
+            const users = [];
+            snapshot.forEach(docSnap => {
+                users.push({ id: docSnap.id, ...docSnap.data() });
+            });
+
+            // Sort by latest active / login first
+            users.sort((a, b) => {
+                const timeA = parseTimestampMillis(a.lastLogin) || parseTimestampMillis(a.lastActive) || 0;
+                const timeB = parseTimestampMillis(b.lastLogin) || parseTimestampMillis(b.lastActive) || 0;
+                return timeB - timeA;
+            });
+
+            rawRegisteredUsers = users;
+            const usersCountEl = document.getElementById("stat-google-users");
+            const usersBadgeEl = document.getElementById("registered-users-count");
+            if (usersCountEl) usersCountEl.textContent = users.length;
+            if (usersBadgeEl) usersBadgeEl.textContent = `${users.length} Users`;
+            renderRegisteredUsersTable();
+        }, (err) => {
+            console.warn("[Admin Analytics] users listener notice:", err);
+            if (usersTbody && rawRegisteredUsers.length === 0) {
+                usersTbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-xs text-[#8c7a6b]">ഉപയോക്താക്കളുടെ വിവരങ്ങൾ ലഭ്യമല്ല.</td></tr>`;
+            }
+        });
+    } catch (err) {
+        console.warn("[Admin Analytics] Failed to listen to users:", err);
+    }
+}
+
+export function updateReadingAnalyticsCounters(logs) {
+    const totalViewsEl = document.getElementById("stat-total-views");
+    const engagedReadersEl = document.getElementById("stat-engaged-readers");
+    const fullReadsEl = document.getElementById("stat-full-reads");
+    const activityBadgeEl = document.getElementById("reading-activity-count");
+    const tabAnalyticsBadgeEl = document.getElementById("tab-analytics-badge");
+
+    const totalViews = logs.length;
+    const engagedCount = logs.filter(r => r.event === "engaged_read" || r.event === "full_read" || r.durationSeconds >= 5).length;
+    const fullReadsCount = logs.filter(r => r.event === "full_read" || (r.scrollPercent && r.scrollPercent >= 80)).length;
+
+    if (totalViewsEl) totalViewsEl.textContent = totalViews;
+    if (engagedReadersEl) engagedReadersEl.textContent = engagedCount;
+    if (fullReadsEl) fullReadsEl.textContent = fullReadsCount;
+    if (activityBadgeEl) activityBadgeEl.textContent = `${totalViews} Logs`;
+    if (tabAnalyticsBadgeEl) tabAnalyticsBadgeEl.textContent = totalViews;
+}
+
+export function renderReadingActivityTable() {
+    const tbody = document.getElementById("analytics-reading-history-tbody");
+    if (!tbody) return;
+
+    let filtered = rawReadingLogs;
+    if (activeAnalyticsFilter === "full_read") {
+        filtered = rawReadingLogs.filter(r => r.event === "full_read" || (r.scrollPercent && r.scrollPercent >= 80));
+    } else if (activeAnalyticsFilter === "engaged_read") {
+        filtered = rawReadingLogs.filter(r => r.event === "engaged_read" || r.durationSeconds >= 5);
+    } else if (activeAnalyticsFilter === "page_view") {
+        filtered = rawReadingLogs.filter(r => r.event === "page_view" && !r.hasEngaged && !r.hasFullRead);
+    } else if (activeAnalyticsFilter === "google_only") {
+        filtered = rawReadingLogs.filter(r => r.userType === "google" || (!r.isGuest && r.uid));
+    } else if (activeAnalyticsFilter === "guest_only") {
+        filtered = rawReadingLogs.filter(r => r.isGuest || r.userType === "guest");
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="py-10 text-center text-[#8c7a6b] font-medium">
+                    <span class="text-2xl block mb-1">🔍</span>
+                    തിരഞ്ഞെടുത്ത ഫിൽട്ടറിൽ വിവരങ്ങൾ ലഭ്യമല്ല (No activity found).
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    // Display latest 100 entries for smooth UI performance
+    const displayed = filtered.slice(0, 100);
+
+    tbody.innerHTML = displayed.map(log => {
+        const isGoogle = log.userType === "google" || (!log.isGuest && log.uid);
+        const name = log.displayName || (isGoogle ? "Google User" : "Guest Visitor");
+        const email = log.email || "";
+        const photo = log.photoURL || "";
+        const guestId = log.guestId || "";
+
+        // User Identity Cell
+        let userCell = "";
+        if (isGoogle) {
+            const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3b82f6&color=fff&size=64`;
+            userCell = `
+                <div class="flex items-center gap-2.5 py-1">
+                    <img src="${photo || fallbackAvatar}" alt="${name}" class="w-8 h-8 rounded-full object-cover border border-[#ebdccb] shadow-2xs" onerror="this.onerror=null;this.src='${fallbackAvatar}'">
+                    <div class="min-w-0">
+                        <div class="font-bold text-[#1e1b18] truncate max-w-[150px] sm:max-w-[180px]">${name}</div>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 font-english uppercase tracking-wider">Google</span>
+                            ${email ? `<span class="text-[10px] text-[#8c7a6b] truncate max-w-[120px]" title="${email}">${email}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            const shortId = guestId ? (guestId.startsWith("guest_") ? guestId.replace("guest_", "").slice(0, 8) : guestId.slice(0, 8)) : "anon";
+            userCell = `
+                <div class="flex items-center gap-2.5 py-1">
+                    <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs font-english shadow-2xs">
+                        G
+                    </div>
+                    <div class="min-w-0">
+                        <div class="font-bold text-[#4a3c33] font-english">Guest Visitor</div>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-100 text-stone-700 font-english font-mono">id: ${shortId}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Engagement Status Badge Cell
+        let statusBadge = "";
+        if (log.event === "full_read" || (log.scrollPercent && log.scrollPercent >= 80)) {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 font-english shadow-2xs">
+                    <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                    <span>Full Read (80%+)</span>
+                </span>
+            `;
+        } else if (log.event === "engaged_read" || log.durationSeconds >= 5) {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 font-english shadow-2xs">
+                    <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>Engaged (5s+)</span>
+                </span>
+            `;
+        } else {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200 font-english shadow-2xs">
+                    <svg class="w-3.5 h-3.5 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path></svg>
+                    <span>Just Opened</span>
+                </span>
+            `;
+        }
+
+        // Article Title & Link
+        const title = log.articleTitle || "Untitled Story";
+        const cat = log.category || "General";
+        const storyHref = log.slug ? `/story/${encodeURIComponent(log.slug)}` : (log.articleId ? `/article.html?id=${encodeURIComponent(log.articleId)}` : '#');
+
+        // Formatted Activity Time
+        const millis = parseTimestampMillis(log.updatedAt) || parseTimestampMillis(log.createdAt) || 0;
+        const formattedTime = formatAnalyticsTime(millis);
+
+        return `
+            <tr class="hover:bg-[#fbf7ee]/60 transition">
+                <td class="py-3 px-3">${userCell}</td>
+                <td class="py-3 px-3">${statusBadge}</td>
+                <td class="py-3 px-3">
+                    <div class="font-bold text-[#1e1b18] hover:text-[#b4532c] transition line-clamp-1 max-w-[260px] sm:max-w-xs">
+                        <a href="${storyHref}" target="_blank" rel="noopener noreferrer" class="hover:underline flex items-center gap-1">
+                            <span>${title}</span>
+                            <span class="text-[10px] text-[#8c7a6b] font-normal">↗</span>
+                        </a>
+                    </div>
+                    <span class="inline-block mt-0.5 text-[10px] font-bold text-[#8c7a6b] font-english uppercase tracking-wider">${cat}</span>
+                </td>
+                <td class="py-3 px-3 text-right whitespace-nowrap text-[#8c7a6b] font-english text-[11px] font-medium">
+                    ${formattedTime}
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+export function renderRegisteredUsersTable() {
+    const tbody = document.getElementById("analytics-users-tbody");
+    if (!tbody) return;
+
+    if (rawRegisteredUsers.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="py-10 text-center text-[#8c7a6b] font-medium">
+                    <span class="text-2xl block mb-1">👤</span>
+                    ഇതുവരെ ലോഗിൻ ചെയ്ത ഉപയോക്താക്കൾ ഇല്ല (No registered users yet).
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = rawRegisteredUsers.map(user => {
+        const name = user.displayName || user.name || "Google User";
+        const email = user.email || "No email";
+        const photo = user.photoURL || user.avatar || "";
+        const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4f46e5&color=fff&size=64`;
+        const uid = user.uid || user.id || "";
+        const shortUid = uid.length > 14 ? `${uid.slice(0, 10)}...${uid.slice(-4)}` : uid;
+
+        const millis = parseTimestampMillis(user.lastLogin) || parseTimestampMillis(user.lastActive) || 0;
+        const formattedTime = formatAnalyticsTime(millis);
+
+        return `
+            <tr class="hover:bg-[#fbf7ee]/60 transition">
+                <td class="py-3 px-3">
+                    <div class="flex items-center gap-2.5">
+                        <img src="${photo || fallbackAvatar}" alt="${name}" class="w-8 h-8 rounded-full object-cover border border-[#ebdccb] shadow-2xs" onerror="this.onerror=null;this.src='${fallbackAvatar}'">
+                        <div class="font-bold text-[#1e1b18]">${name}</div>
+                    </div>
+                </td>
+                <td class="py-3 px-3 font-english text-[#4a3c33] font-medium">
+                    <a href="mailto:${email}" class="hover:text-[#b4532c] hover:underline">${email}</a>
+                </td>
+                <td class="py-3 px-3 font-mono text-[10px] text-[#8c7a6b] font-english">
+                    <span class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200" title="${uid}">${shortUid}</span>
+                </td>
+                <td class="py-3 px-3 text-right whitespace-nowrap text-[#8c7a6b] font-english text-[11px] font-medium">
+                    ${formattedTime}
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+export function formatAnalyticsTime(millis) {
+    if (!millis) return "Recently";
+    const diff = Date.now() - millis;
+    if (diff < 60000) return "Just now (ഇപ്പോൾ)";
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    const date = new Date(millis);
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+if (typeof window !== "undefined") {
+    window.initUserAnalyticsDashboard = initUserAnalyticsDashboard;
+    window.renderReadingActivityTable = renderReadingActivityTable;
+    window.renderRegisteredUsersTable = renderRegisteredUsersTable;
 }

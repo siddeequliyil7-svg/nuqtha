@@ -5,6 +5,7 @@
  */
 
 import { app } from "../firebase-config.js";
+import { syncUserProfileToFirestore } from "./analytics-tracker.js";
 
 // Cache for loaded Firebase Auth SDK module
 let authModulePromise = null;
@@ -157,6 +158,7 @@ export function initAuthStateListener(onUserChange) {
             if (firebaseUser) {
                 const profile = mapFirebaseUser(firebaseUser);
                 safeSaveAuthUser(profile);
+                try { syncUserProfileToFirestore(profile); } catch (_) {}
                 if (onUserChange) onUserChange(profile);
             } else {
                 safeSaveAuthUser(null);
@@ -178,6 +180,7 @@ export async function signInWithGoogle() {
     const res = await signInWithPopup(auth, provider);
     const profile = mapFirebaseUser(res.user);
     safeSaveAuthUser(profile);
+    try { await syncUserProfileToFirestore(profile); } catch (_) {}
     return profile;
 }
 

@@ -518,6 +518,7 @@
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
+        import { trackReadingActivity } from "./js/analytics-tracker.js";
 
         const urlParams = new URLSearchParams(window.location.search);
 
@@ -1316,6 +1317,11 @@
 
             // Render chapters
             renderPaginatedChapters(attachedArticles);
+
+            // 3-Stage Reading Activity Tracker for Book
+            try {
+                trackReadingActivity(book);
+            } catch (_) {}
         }
 
         // ═══════════ MOBILE STICKY CONTINUE BAR ═══════════
@@ -1737,6 +1743,13 @@
                     return `<p ${contentStyle || contentStyleAttr || ""}>${formatted}</p>`;
                 })
                 .join('');
+
+            // 3-Stage Reading Activity Tracker (Instant View, 5s Engaged, 80% Full Read)
+            try {
+                trackReadingActivity(article);
+            } catch (err) {
+                console.warn("[Analytics] Track invocation failed:", err);
+            }
         }
 
         // ═══════════ RELATED ARTICLES LOADER (Uses Cached List) ═══════════
