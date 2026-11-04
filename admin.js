@@ -11,18 +11,22 @@ import {
 
 export function isMainBook(art) {
     if (!art) return false;
-    // Strictly exclude any document that has a bookId referencing a book (these are chapters)
+    // Strictly exclude any document that is a chapter or sub-item
+    if (art.isChapter === true || art.type === "CHAPTER") return false;
+    if (art.order !== undefined && art.order !== null && !isNaN(art.order) && Number(art.order) > 0) return false;
+    if (art.chapterIndex !== undefined && art.chapterIndex !== null) return false;
+
+    // Strictly exclude any document that has a bookId referencing another book (these are chapters)
     if (art.bookId && String(art.bookId).trim() && String(art.bookId).trim() !== String(art.id)) {
         return false;
     }
-    // Strictly exclude chapters or sub-items
-    if (art.type === "CHAPTER" || art.isChapter === true) {
+    // If it has a parent bookName different from its own title, it is a chapter
+    const t = (art.title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    const b = (art.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    if (b && t && b !== t) {
         return false;
     }
-    // An article with bookId, bookName, or chapter order is a chapter/sub-item
-    if (art.type === "ARTICLE" && (art.bookId || art.bookName || art.order !== undefined || art.chapterIndex !== undefined)) {
-        return false;
-    }
+
     // Main books created via Step 1 have type === "BOOK"
     if (art.type === "BOOK") {
         return true;
@@ -1570,7 +1574,7 @@ async function handleSaveBookStep1(e) {
     if (hasError) return;
 
     // Check if existing in Firestore
-    const existing = currentArticlesList.find(a => a.type === "BOOK" && (
+    const existing = currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
         normalizeStringClean(a.bookName) === normalizeStringClean(name) ||
         normalizeStringClean(a.title) === normalizeStringClean(name)
     ));
@@ -1765,7 +1769,7 @@ function selectActiveBook(bookName) {
     }
 
     const cleanTarget = normalizeStringClean(bookName);
-    const bookCover = currentArticlesList.find(a => a.type === "BOOK" && (
+    const bookCover = currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
         normalizeStringClean(a.bookName) === cleanTarget ||
         normalizeStringClean(a.title) === cleanTarget
     ));
@@ -2073,7 +2077,7 @@ function initChapterWriter() {
             const rawTargetName = (activeBookName || document.getElementById("bm-active-book-select")?.value || document.getElementById("book-meta-name")?.value || "").trim();
             if (rawTargetName && Array.isArray(currentArticlesList)) {
                 const cleanTarget = normalizeStringClean(rawTargetName);
-                targetBookDoc = currentArticlesList.find(a => a.type === "BOOK" && (
+                targetBookDoc = currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
                     normalizeStringClean(a.bookName) === cleanTarget ||
                     normalizeStringClean(a.title) === cleanTarget
                 )) || null;
@@ -2168,7 +2172,7 @@ function initChapterWriter() {
                     bookSlug: bookSlug,
                     author,
                     authorId,
-                    category: bookTag,
+                    category: "Chapter",
                     transcription,
                     excerpt,
                     titleColor,
@@ -2184,6 +2188,7 @@ function initChapterWriter() {
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
                     type: "ARTICLE",
+                    isChapter: true,
                     placement: "AUTO",
                     date: new Date().toLocaleDateString("en-GB")
                 };
@@ -2218,7 +2223,7 @@ function initChapterWriter() {
                     bookSlug: bookSlug,
                     author,
                     authorId,
-                    category: bookTag,
+                    category: "Chapter",
                     transcription,
                     excerpt,
                     titleColor,
@@ -2234,6 +2239,7 @@ function initChapterWriter() {
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
                     type: "ARTICLE",
+                    isChapter: true,
                     placement: "AUTO",
                     date: new Date().toLocaleDateString("en-GB")
                 };
@@ -2262,6 +2268,14 @@ function initChapterWriter() {
                         updatedAt: serverTimestamp()
                     });
                     console.log("[ChapterWriter] Appended chapter ID to book doc chapters array:", targetBookDoc.id);
+                }
+
+                const bIdx = currentArticlesList.findIndex(a => a.id === targetBookDoc.id);
+                if (bIdx !== -1) {
+                    currentArticlesList[bIdx].chapters = existingChapters;
+                }
+                if (activeBookCoverDoc && activeBookCoverDoc.id === targetBookDoc.id) {
+                    activeBookCoverDoc.chapters = existingChapters;
                 }
 
                 // Immediately update in-memory chapters and render Step 3

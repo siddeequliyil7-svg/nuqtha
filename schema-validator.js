@@ -422,7 +422,14 @@ export function validateAndSanitizeArticleForSave(raw) {
     const bookSlug = sanitizeString(raw.bookSlug || (raw.bookName ? slugifyText(raw.bookName) : (bookName ? slugifyText(bookName) : "")), 200, "");
 
     // 10. Type (ARTICLE or BOOK)
-    const type = raw.type === "BOOK" ? "BOOK" : "ARTICLE";
+    const cleanRawTitle = (title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    const cleanRawBookName = (bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    const isExplicitChapter = raw.isChapter === true || 
+                              raw.type === "CHAPTER" || 
+                              Boolean(bookId && raw.id && bookId !== raw.id) ||
+                              Boolean(cleanRawBookName && cleanRawTitle && cleanRawBookName !== cleanRawTitle) ||
+                              (raw.order !== undefined && raw.order !== null && !isNaN(raw.order) && Number(raw.order) > 0);
+    const type = isExplicitChapter ? "ARTICLE" : (raw.type === "BOOK" ? "BOOK" : "ARTICLE");
 
     // 11. Date string
     const date = sanitizeString(raw.date, 30, new Date().toLocaleDateString("en-GB"));
@@ -538,11 +545,25 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const rawCat = (rawDoc.category || "").toString().toLowerCase().trim();
     const isBookCat = rawCat === "premium book" || rawCat === "book" || rawCat === "books";
     const hasChaptersArray = chapters.length > 0;
-    const hasParentBook = Boolean(bookId || bookName || rawDoc.playlistName);
+    const cleanDocId = String(id || docId || "").trim();
+    const cleanBookId = String(bookId || "").trim();
+    const cleanTitle = (title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    const cleanBookName = (bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    const hasDifferentParentBookName = Boolean(cleanBookName && cleanTitle && cleanBookName !== cleanTitle);
+    const hasDifferentParentBookId = Boolean(cleanBookId && cleanDocId && cleanBookId !== cleanDocId);
 
-    // It is ONLY a BOOK if explicitly marked BOOK or (isBookCat/hasChapters without parent book or chapter indicators)
-    const isBook = (rawDoc.type === "BOOK" && !hasParentBook) ||
-                   (!hasParentBook && (isBookCat || hasChaptersArray) && rawDoc.order === undefined && rawDoc.type !== "ARTICLE");
+    const isChapter = rawDoc.isChapter === true ||
+                      rawDoc.type === "CHAPTER" ||
+                      hasDifferentParentBookId ||
+                      hasDifferentParentBookName ||
+                      (rawDoc.order !== undefined && rawDoc.order !== null && !isNaN(rawDoc.order) && Number(rawDoc.order) > 0) ||
+                      (rawDoc.chapterIndex !== undefined && rawDoc.chapterIndex !== null);
+
+    const isBook = !isChapter && (
+        rawDoc.type === "BOOK" ||
+        hasChaptersArray ||
+        (isBookCat && rawDoc.type !== "ARTICLE")
+    );
     const type = isBook ? "BOOK" : "ARTICLE";
 
     // Normalizing createdAt timestamp

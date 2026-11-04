@@ -339,6 +339,18 @@ function isBookEntity(article) {
     return false;
 }
 
+function isChapterEntity(article) {
+    if (!article) return false;
+    if (article.isChapter === true || article.type === "CHAPTER") return true;
+    if (article.order !== undefined && article.order !== null && !isNaN(article.order) && Number(article.order) > 0) return true;
+    if (article.chapterIndex !== undefined && article.chapterIndex !== null) return true;
+    if (article.bookId && String(article.bookId).trim() && String(article.bookId).trim() !== String(article.id)) return true;
+    const t = (article.title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    const b = (article.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    if (b && t && b !== t) return true;
+    return false;
+}
+
 function updateMoreCategoriesMenu() {
     // Populate dynamic categories into Articles dropdown
     const container = document.getElementById("dynamic-articles-categories");
@@ -876,7 +888,7 @@ function renderSearchFeed(container, query) {
 function renderHomeFeed(container) {
     // Filter out book covers and chapters completely from standard home feed
     const regularArticles = allArticles.filter(a => !isBookEntity(a));
-    const bookCovers = allArticles.filter(a => a.type === "BOOK");
+    const bookCovers = allArticles.filter(a => a.type === "BOOK" && !isChapterEntity(a));
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) return;
@@ -2233,7 +2245,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
 
 /* ═══════════ 2. BOOKS CATEGORY PAGE LAYOUT ═══════════ */
 function renderBooksCategoryFeed(container) {
-    const bookCovers = allArticles.filter(a => a.type === "BOOK");
+    const bookCovers = allArticles.filter(a => a.type === "BOOK" && !isChapterEntity(a));
 
     let html = `
     <div class="category-filter-banner flex items-center justify-between p-4 mb-6 rounded-2xl bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10 shadow-xs">

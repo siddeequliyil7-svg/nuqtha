@@ -27,7 +27,8 @@ export function normalizeBookKey(s) {
 export function isArticleInBook(article, targetBook) {
     if (!article || !targetBook) return false;
     if (article.id && targetBook.id && article.id === targetBook.id) return false;
-    if (article.type === "BOOK") return false;
+    // Strictly exclude if this is another standalone book entity (not a chapter)
+    if (article.type === "BOOK" && !article.bookId && article.order === undefined && (!article.bookName || normalizeBookKey(article.bookName) === normalizeBookKey(article.title))) return false;
 
     // Check chapters array on targetBook doc if present
     if (Array.isArray(targetBook.chapters)) {
