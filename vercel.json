@@ -49,6 +49,21 @@
       "destination": "/article.html?slug=:slug&id=:slug"
     },
     {
+      "source": "/book/:bookSlug/:chapterSlug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
+        }
+      ],
+      "destination": "/api/og?bookSlug=:bookSlug&chapterSlug=:chapterSlug&slug=:chapterSlug"
+    },
+    {
+      "source": "/book/:bookSlug/:chapterSlug",
+      "destination": "/article.html?bookSlug=:bookSlug&chapterSlug=:chapterSlug&slug=:chapterSlug"
+    },
+    {
       "source": "/book/:slug",
       "has": [
         {
@@ -57,11 +72,11 @@
           "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
         }
       ],
-      "destination": "/api/og?slug=:slug&id=:slug&edition=true"
+      "destination": "/api/og?bookSlug=:slug&slug=:slug&edition=true"
     },
     {
       "source": "/book/:slug",
-      "destination": "/article.html?slug=:slug&id=:slug&edition=true"
+      "destination": "/article.html?bookSlug=:slug&slug=:slug&edition=true"
     },
     {
       "source": "/article.html",

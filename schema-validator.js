@@ -19,23 +19,109 @@ export const CATEGORY_LABELS = {
 };
 
 /**
- * Clean URL slug generator for Malayalam and English text.
+ * High-precision Malayalam-to-English phonetic transliterator.
+ * Produces clean, readable Latin URLs (e.g., 'ആമുഖം' -> 'aamukham',
+ * 'ഇമാമുമാരുടെ ജീവിതം' -> 'imamumaarude-jeevitham').
  */
-export function slugifyText(str) {
+export function transliterateMalayalam(str) {
+    if (!str) return "";
+    const VOWELS = {
+        '\u0D05': 'a', '\u0D06': 'aa', '\u0D07': 'i', '\u0D08': 'ee',
+        '\u0D09': 'u', '\u0D0A': 'oo', '\u0D0B': 'ri', '\u0D0E': 'e',
+        '\u0D0F': 'e', '\u0D10': 'ai', '\u0D12': 'o', '\u0D13': 'o',
+        '\u0D14': 'au'
+    };
+    const MATRAS = {
+        '\u0D3E': 'aa', '\u0D3F': 'i', '\u0D40': 'ee', '\u0D41': 'u',
+        '\u0D42': 'oo', '\u0D43': 'ri', '\u0D46': 'e', '\u0D47': 'e',
+        '\u0D48': 'ai', '\u0D4A': 'o', '\u0D4B': 'o', '\u0D4C': 'au',
+        '\u0D57': 'au'
+    };
+    const CONSONANTS = {
+        '\u0D15': 'k', '\u0D16': 'kh', '\u0D17': 'g', '\u0D18': 'gh', '\u0D19': 'ng',
+        '\u0D1A': 'ch', '\u0D1B': 'chh', '\u0D1C': 'j', '\u0D1D': 'jh', '\u0D1E': 'ny',
+        '\u0D1F': 't', '\u0D20': 'th', '\u0D21': 'd', '\u0D22': 'dh', '\u0D23': 'n',
+        '\u0D24': 'th', '\u0D25': 'th', '\u0D26': 'd', '\u0D27': 'dh', '\u0D28': 'n',
+        '\u0D2A': 'p', '\u0D2B': 'ph', '\u0D2C': 'b', '\u0D2D': 'bh', '\u0D2E': 'm',
+        '\u0D2F': 'y', '\u0D30': 'r', '\u0D31': 'r', '\u0D32': 'l', '\u0D33': 'l',
+        '\u0D34': 'zh', '\u0D35': 'v', '\u0D36': 'sh', '\u0D37': 'sh', '\u0D38': 's',
+        '\u0D39': 'h'
+    };
+    const CHILLUS = {
+        '\u0D7A': 'n', '\u0D7B': 'n', '\u0D7C': 'r', '\u0D7D': 'l',
+        '\u0D7E': 'l', '\u0D7F': 'k'
+    };
+
+    const s = String(str)
+        .normalize("NFC")
+        .replace(/\u0D23\u0D4D\u200D/g, "\u0D7A")
+        .replace(/\u0D28\u0D4D\u200D/g, "\u0D7B")
+        .replace(/\u0D30\u0D4D\u200D/g, "\u0D7C")
+        .replace(/\u0D32\u0D4D\u200D/g, "\u0D7D")
+        .replace(/\u0D33\u0D4D\u200D/g, "\u0D7E")
+        .replace(/\u0D15\u0D4D\u200D/g, "\u0D7F")
+        .replace(/[\u200B-\u200D\uFEFF]/g, "");
+
+    let out = "";
+    for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (VOWELS[c]) {
+            out += VOWELS[c];
+        } else if (CHILLUS[c]) {
+            out += CHILLUS[c];
+        } else if (c === '\u0D02') { // Anusvara (ം)
+            out += 'm';
+        } else if (c === '\u0D03') { // Visarga (ഃ)
+            out += 'h';
+        } else if (CONSONANTS[c]) {
+            const base = CONSONANTS[c];
+            const next = s[i + 1];
+            if (next === '\u0D4D') { // Virama (്)
+                out += base;
+                i++; // skip virama
+            } else if (next && MATRAS[next]) {
+                out += base + MATRAS[next];
+                i++; // skip matra
+            } else {
+                // Inherent 'a'
+                out += base + 'a';
+            }
+        } else {
+            out += c;
+        }
+    }
+    return out;
+}
+
+/**
+ * Clean Malayalam Raw Slug generator (keeps Malayalam characters)
+ */
+export function slugifyMalayalamRaw(str) {
     if (!str) return "";
     return String(str)
         .normalize("NFC")
-        .replace(/\u0D23\u0D4D\u200D/g, "\u0D7A") // ൺ
-        .replace(/\u0D28\u0D4D\u200D/g, "\u0D7B") // ൻ
-        .replace(/\u0D30\u0D4D\u200D/g, "\u0D7C") // ർ
-        .replace(/\u0D32\u0D4D\u200D/g, "\u0D7D") // ൽ
-        .replace(/\u0D33\u0D4D\u200D/g, "\u0D7E") // ൾ
-        .replace(/\u0D15\u0D4D\u200D/g, "\u0D7F") // ൿ
         .replace(/[\u200B-\u200D\uFEFF]/g, "")
         .trim()
         .toLowerCase()
         .replace(/[^a-z0-9\u0D00-\u0D7F]+/g, "-")
         .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Clean URL slug generator for English and Malayalam text.
+ * Generates SEO-friendly transliterated slugs for Malayalam (e.g. aamukham)
+ * avoiding messy %E0%B4%86... percent-encoded URLs on WhatsApp and social sharing.
+ */
+export function slugifyText(str) {
+    if (!str) return "";
+    const transliterated = transliterateMalayalam(str);
+    const slug = transliterated
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    if (slug) return slug;
+    return slugifyMalayalamRaw(str);
 }
 
 /**
@@ -61,6 +147,8 @@ export function getStoryUrl(item) {
 }
 
 if (typeof window !== "undefined") {
+    window.transliterateMalayalam = transliterateMalayalam;
+    window.slugifyMalayalamRaw = slugifyMalayalamRaw;
     window.slugifyText = slugifyText;
     window.getStoryUrl = getStoryUrl;
 }
@@ -450,7 +538,11 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const rawCat = (rawDoc.category || "").toString().toLowerCase().trim();
     const isBookCat = rawCat === "premium book" || rawCat === "book" || rawCat === "books";
     const hasChaptersArray = chapters.length > 0;
-    const isBook = rawDoc.type === "BOOK" || (isBookCat && !bookId) || (hasChaptersArray && !bookId);
+    const hasParentBook = Boolean(bookId || bookName || rawDoc.playlistName);
+
+    // It is ONLY a BOOK if explicitly marked BOOK or (isBookCat/hasChapters without parent book or chapter indicators)
+    const isBook = (rawDoc.type === "BOOK" && !hasParentBook) ||
+                   (!hasParentBook && (isBookCat || hasChaptersArray) && rawDoc.order === undefined && rawDoc.type !== "ARTICLE");
     const type = isBook ? "BOOK" : "ARTICLE";
 
     // Normalizing createdAt timestamp

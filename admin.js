@@ -461,6 +461,27 @@ async function handleFormSubmit() {
         const effectiveThumb = selectedBase64Thumbnail || selectedBase64Image || "";
         const articleSlug = slugifyText(rawTitle);
 
+        // Resolve bookId and bookSlug if an article belongs to a book
+        let resolvedBookId = "";
+        let resolvedBookSlug = "";
+        if (rawBookName && Array.isArray(currentArticlesList)) {
+            const cleanTarget = rawBookName.trim().toLowerCase();
+            const matchedBook = currentArticlesList.find(a => 
+                (a.type === "BOOK" || (a.category && (a.category.toLowerCase() === "premium book" || a.category.toLowerCase() === "book"))) &&
+                (
+                    (a.bookName && a.bookName.trim().toLowerCase() === cleanTarget) ||
+                    (a.title && a.title.trim().toLowerCase() === cleanTarget)
+                )
+            );
+            if (matchedBook) {
+                resolvedBookId = matchedBook.id || "";
+                resolvedBookSlug = matchedBook.slug || slugifyText(matchedBook.bookName || matchedBook.title);
+            }
+        }
+        if (!resolvedBookSlug && rawBookName) {
+            resolvedBookSlug = slugifyText(rawBookName);
+        }
+
         // STRICT SCHEMA VALIDATION & SANITIZATION
         const sanitized = validateAndSanitizeArticleForSave({
             title: rawTitle,
@@ -480,6 +501,8 @@ async function handleFormSubmit() {
             placement: rawPlacement,
             priority: rawPriority,
             bookName: rawBookName,
+            bookId: resolvedBookId,
+            bookSlug: resolvedBookSlug,
             type: isBookCover ? "BOOK" : "ARTICLE",
             date: new Date().toLocaleDateString("en-GB")
         });
@@ -504,6 +527,8 @@ async function handleFormSubmit() {
                 placement: sanitized.placement,
                 priority: sanitized.priority,
                 bookName: sanitized.bookName,
+                bookId: sanitized.bookId || resolvedBookId || "",
+                bookSlug: sanitized.bookSlug || resolvedBookSlug || "",
                 type: sanitized.type,
                 updatedAt: serverTimestamp()
             };

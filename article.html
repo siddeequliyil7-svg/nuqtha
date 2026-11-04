@@ -514,7 +514,7 @@
     <script type="module">
         import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, getStoryUrl } from "./schema-validator.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl } from "./schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
@@ -522,9 +522,8 @@
         const urlParams = new URLSearchParams(window.location.search);
 
         // Clean SEO Path Parsing:
-        // /story/:bookSlug/:chapterSlug
-        // /story/:slug
-        // /article/:slug
+        // /story/:bookSlug/:chapterSlug OR /book/:bookSlug/:chapterSlug
+        // /story/:slug OR /article/:slug
         // /book/:slug
         const rawPath = window.location.pathname || "";
         let pathBookSlug = "";
@@ -532,10 +531,10 @@
         let pathStorySlug = "";
         let isBookRoute = false;
 
-        const twoPartStoryMatch = rawPath.match(/^\/story\/([^\/]+)\/([^\/]+)\/?$/i);
-        if (twoPartStoryMatch) {
-            pathBookSlug = safeDecodeParam(twoPartStoryMatch[1]);
-            pathChapterSlug = safeDecodeParam(twoPartStoryMatch[2]);
+        const twoPartMatch = rawPath.match(/^\/(?:story|book)\/([^\/]+)\/([^\/]+)\/?$/i);
+        if (twoPartMatch) {
+            pathBookSlug = safeDecodeParam(twoPartMatch[1]);
+            pathChapterSlug = safeDecodeParam(twoPartMatch[2]);
         } else {
             const onePartStoryMatch = rawPath.match(/^\/(?:story|article)\/([^\/]+)\/?$/i);
             if (onePartStoryMatch) {
@@ -895,7 +894,10 @@
                 let allArticles = [];
 
                 const lookupId = articleId || targetIdentifier;
-                const isFirestoreDocId = typeof lookupId === 'string' && /^[A-Za-z0-9_-]{15,35}$/.test(lookupId) && !lookupId.includes('--');
+                const isFirestoreDocId = typeof lookupId === 'string' && 
+                    !lookupId.includes('-') && 
+                    !lookupId.includes('/') && 
+                    /^[A-Za-z0-9]{18,32}$/.test(lookupId);
                 const [targetDocResult, allArticlesResult] = await Promise.allSettled([
                     isFirestoreDocId ? fetchTargetDocument(lookupId, controller.signal) : Promise.resolve(null),
                     fetchLightweightArticles(controller.signal)
@@ -905,40 +907,49 @@
 
                 // Slug and metadata matching in pool if direct ID fetch did not hit
                 if (!currentDoc && allArticles.length > 0) {
-                    // A. Chapter inside book (/story/:bookSlug/:chapterSlug)
+                    // A. Chapter inside book (/story/:bookSlug/:chapterSlug OR /book/:bookSlug/:chapterSlug)
                     if (pathChapterSlug && pathBookSlug) {
                         const targetChapterSlug = slugifyText(pathChapterSlug);
+                        const rawChapterSlug = slugifyMalayalamRaw(pathChapterSlug);
                         const targetBookSlug = slugifyText(pathBookSlug);
+                        const rawBookSlug = slugifyMalayalamRaw(pathBookSlug);
                         currentDoc = allArticles.find(a => 
-                            (a.slug === targetChapterSlug || slugifyText(a.title) === targetChapterSlug || a.id === pathChapterSlug) &&
-                            (a.bookSlug === targetBookSlug || slugifyText(a.bookName) === targetBookSlug || slugifyText(a.playlistName) === targetBookSlug || a.bookId === pathBookSlug)
+                            (a.slug === targetChapterSlug || a.slug === rawChapterSlug || slugifyText(a.title) === targetChapterSlug || slugifyMalayalamRaw(a.title) === rawChapterSlug || a.id === pathChapterSlug) &&
+                            (a.bookSlug === targetBookSlug || a.bookSlug === rawBookSlug || slugifyText(a.bookName) === targetBookSlug || slugifyMalayalamRaw(a.bookName) === rawBookSlug || slugifyText(a.playlistName) === targetBookSlug || slugifyMalayalamRaw(a.playlistName) === rawBookSlug || a.bookId === pathBookSlug)
                         ) || allArticles.find(a =>
-                            a.slug === targetChapterSlug || slugifyText(a.title) === targetChapterSlug || a.id === pathChapterSlug
+                            a.slug === targetChapterSlug || a.slug === rawChapterSlug || slugifyText(a.title) === targetChapterSlug || slugifyMalayalamRaw(a.title) === rawChapterSlug || a.id === pathChapterSlug
                         );
+                        if (currentDoc) {
+                            isBookRoute = false;
+                        }
                     }
 
                     // B. Book edition route (/book/:slug or ?edition=...)
                     if (!currentDoc && (isBookRoute || editionParam)) {
                         const bookSearch = editionParam || pathBookSlug || querySlug;
                         const targetBookSlug = slugifyText(bookSearch);
-                        const cleanTarget = (bookSearch || "").toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+                        const rawTargetSlug = slugifyMalayalamRaw(bookSearch);
+                        const cleanTarget = (bookSearch || "").toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
                         const spaceTarget = cleanTarget.replace(/-/g, ' ');
 
-                        // Must match a dedicated BOOK entity, never a standalone chapter
+                        // 1. Must match a dedicated BOOK entity, never a standalone chapter
                         currentDoc = allArticles.find(a => (a.type === "BOOK" || isBookEditionDoc(a)) && (
                             a.slug === targetBookSlug ||
+                            a.slug === rawTargetSlug ||
                             slugifyText(a.bookName) === targetBookSlug ||
+                            slugifyMalayalamRaw(a.bookName) === rawTargetSlug ||
                             slugifyText(a.title) === targetBookSlug ||
+                            slugifyMalayalamRaw(a.title) === rawTargetSlug ||
                             slugifyText(a.playlistName) === targetBookSlug ||
                             a.id === bookSearch ||
-                            (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget) ||
-                            (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
+                            (a.bookName && a.bookName.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget) ||
+                            (a.title && a.title.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
                         ));
 
-                        // Fallback: If book overview doc not found directly, find any chapter of this book and fetch parent book by chapter.bookId
+                        // 2. Fallback: If book overview doc not found directly, find any chapter of this book and fetch parent book by chapter.bookId
                         if (!currentDoc) {
                             const chapterWithBookId = allArticles.find(a => 
-                                (a.bookSlug === targetBookSlug || slugifyText(a.bookName) === targetBookSlug || (a.bookName && a.bookName.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)) && a.bookId
+                                (a.bookSlug === targetBookSlug || a.bookSlug === rawTargetSlug || slugifyText(a.bookName) === targetBookSlug || slugifyMalayalamRaw(a.bookName) === rawTargetSlug || (a.bookName && a.bookName.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)) && a.bookId
                             );
                             if (chapterWithBookId && chapterWithBookId.bookId) {
                                 currentDoc = allArticles.find(a => a.id === chapterWithBookId.bookId);
@@ -952,19 +963,39 @@
                         if (currentDoc) {
                             currentDoc.type = "BOOK";
                         }
+
+                        // 3. Fallback for chapter URL mistakenly routed to /book/:chapterSlug (e.g. /book/ആമുഖം)
+                        if (!currentDoc) {
+                            const matchedChapter = allArticles.find(a => 
+                                a.slug === targetBookSlug ||
+                                a.slug === rawTargetSlug ||
+                                slugifyText(a.title) === targetBookSlug ||
+                                slugifyMalayalamRaw(a.title) === rawTargetSlug ||
+                                a.id === bookSearch ||
+                                (a.title && a.title.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
+                            );
+                            if (matchedChapter) {
+                                currentDoc = matchedChapter;
+                                isBookRoute = false; // Render in chapter/article mode instead of 404
+                            }
+                        }
                     }
 
                     // C. General article slug or title match (/story/:slug or /article/:slug or ?id=...)
-                    if (!currentDoc && querySlug) {
-                        const targetQuerySlug = slugifyText(querySlug);
-                        const cleanQuery = (querySlug || "").toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+                    if (!currentDoc && (querySlug || pathBookSlug || targetIdentifier)) {
+                        const targetSearch = querySlug || pathBookSlug || targetIdentifier;
+                        const targetQuerySlug = slugifyText(targetSearch);
+                        const rawQuerySlugMatch = slugifyMalayalamRaw(targetSearch);
+                        const cleanQuery = (targetSearch || "").toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
                         const spaceQuery = cleanQuery.replace(/-/g, ' ');
                         currentDoc = allArticles.find(a => 
                             a.slug === targetQuerySlug ||
+                            a.slug === rawQuerySlugMatch ||
                             slugifyText(a.title) === targetQuerySlug ||
-                            a.id === querySlug ||
-                            (a.title && a.title.toString().normalize('NFC').replace(/[​-‍﻿]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceQuery) ||
-                            slugifyAuthor(a.title) === slugifyAuthor(querySlug)
+                            slugifyMalayalamRaw(a.title) === rawQuerySlugMatch ||
+                            a.id === targetSearch ||
+                            (a.title && a.title.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceQuery) ||
+                            slugifyAuthor(a.title) === slugifyAuthor(targetSearch)
                         );
                     }
                 }
