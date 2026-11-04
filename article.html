@@ -799,23 +799,37 @@
                 return memoryCache.get(`doc_${identifier}`);
             }
 
-            // 1. Try querying Firestore by 'slug' field
-            try {
-                const slugQ = query(
-                    collection(db, "articles"),
-                    where("slug", "==", identifier),
-                    limit(1)
-                );
-                const querySnapshot = await getDocs(slugQ);
-                if (!querySnapshot.empty) {
-                    const docSnap = querySnapshot.docs[0];
-                    const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                    memoryCache.set(`doc_${identifier}`, normalized);
-                    memoryCache.set(`doc_${docSnap.id}`, normalized);
-                    return normalized;
+            const cleanId = String(identifier).trim().replace(/^\/+|\/+$/g, "");
+            const candidates = [cleanId];
+            if (cleanId.startsWith("story/")) {
+                candidates.push(cleanId.replace(/^story\//, ""));
+            } else {
+                candidates.push(`story/${cleanId}`);
+            }
+            if (cleanId.startsWith("book/")) {
+                candidates.push(cleanId.replace(/^book\//, ""));
+            }
+
+            // 1. Try querying Firestore by 'slug' field across candidates
+            for (const cand of candidates) {
+                try {
+                    const slugQ = query(
+                        collection(db, "articles"),
+                        where("slug", "==", cand),
+                        limit(1)
+                    );
+                    const querySnapshot = await getDocs(slugQ);
+                    if (!querySnapshot.empty) {
+                        const docSnap = querySnapshot.docs[0];
+                        const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                        memoryCache.set(`doc_${identifier}`, normalized);
+                        memoryCache.set(`doc_${cand}`, normalized);
+                        memoryCache.set(`doc_${docSnap.id}`, normalized);
+                        return normalized;
+                    }
+                } catch (err) {
+                    console.warn("[Reader] Query by slug failed:", cand, err);
                 }
-            } catch (err) {
-                console.warn("[Reader] Query by slug failed, checking fallback:", err);
             }
 
             // 2. Direct document ID lookup
@@ -1042,6 +1056,8 @@
                         const spaceQuery = cleanQuery.replace(/-/g, ' ');
                         currentDoc = allArticles.find(a => 
                             a.slug === targetSearch ||
+                            a.slug === `story/${targetSearch}` ||
+                            (a.slug && a.slug.replace(/^story\//, '') === targetSearch) ||
                             a.slug === targetQuerySlug ||
                             a.slug === rawQuerySlugMatch ||
                             slugifyText(a.title) === targetQuerySlug ||

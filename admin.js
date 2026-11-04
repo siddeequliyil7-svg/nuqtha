@@ -89,8 +89,24 @@ export function generateSlug(text) {
         .replace(/[\s_-]+/g, "-")  // Spaces & underscores to hyphens
         .replace(/^-+|-+$/g, "");  // Trim start/end hyphens
 }
+
+// Clean manually editable custom path / slug (preserves slashes for custom prefixes)
+export function cleanCustomPath(text, fallbackTitle = "") {
+    let clean = (text || "").trim();
+    if (!clean && fallbackTitle) {
+        clean = "story/" + generateSlug(fallbackTitle);
+    }
+    // Remove leading and trailing slashes
+    clean = clean.replace(/^\/+|\/+$/g, "");
+    return clean
+        .toLowerCase()
+        .replace(/[^\w\s\/-]/g, "") // Allow letters, numbers, hyphens, and slashes
+        .replace(/[\s_]+/g, "-")    // Spaces to hyphens
+        .replace(/\/{2,}/g, "/");   // Collapse multiple slashes
+}
 if (typeof window !== "undefined") {
     window.generateSlug = generateSlug;
+    window.cleanCustomPath = cleanCustomPath;
 }
 
 // Title dynamic auto-slug generator
@@ -102,7 +118,7 @@ export function setupSlugGenerators() {
         slugInput.dataset.slugBound = "true";
         titleInput.addEventListener("input", () => {
             if (!slugInput.dataset.touched) {
-                slugInput.value = generateSlug(titleInput.value);
+                slugInput.value = "story/" + generateSlug(titleInput.value);
             }
         });
 
@@ -111,7 +127,12 @@ export function setupSlugGenerators() {
                 delete slugInput.dataset.touched;
             } else {
                 slugInput.dataset.touched = "true";
-                slugInput.value = generateSlug(slugInput.value);
+                // 100% manually editable: allow typing any prefix/path with slashes preserved
+                const raw = slugInput.value;
+                slugInput.value = raw
+                    .toLowerCase()
+                    .replace(/[^\w\s\/-]/g, "")
+                    .replace(/[\s_]+/g, "-");
             }
         });
     }
@@ -123,7 +144,7 @@ export function setupSlugGenerators() {
         bookSlugInput.dataset.slugBound = "true";
         bookTitleInput.addEventListener("input", () => {
             if (!bookSlugInput.dataset.touched) {
-                bookSlugInput.value = generateSlug(bookTitleInput.value);
+                bookSlugInput.value = "book/" + generateSlug(bookTitleInput.value);
             }
         });
 
@@ -132,7 +153,11 @@ export function setupSlugGenerators() {
                 delete bookSlugInput.dataset.touched;
             } else {
                 bookSlugInput.dataset.touched = "true";
-                bookSlugInput.value = generateSlug(bookSlugInput.value);
+                const raw = bookSlugInput.value;
+                bookSlugInput.value = raw
+                    .toLowerCase()
+                    .replace(/[^\w\s\/-]/g, "")
+                    .replace(/[\s_]+/g, "-");
             }
         });
     }
@@ -144,7 +169,8 @@ export function setupSlugGenerators() {
         chapterSlugInput.dataset.slugBound = "true";
         chapterTitleInput.addEventListener("input", () => {
             if (!chapterSlugInput.dataset.touched) {
-                chapterSlugInput.value = generateSlug(chapterTitleInput.value);
+                const bookSlug = activeBookCoverDoc?.slug || generateSlug(activeBookName) || "book";
+                chapterSlugInput.value = `story/${bookSlug}/${generateSlug(chapterTitleInput.value)}`;
             }
         });
 
@@ -153,7 +179,11 @@ export function setupSlugGenerators() {
                 delete chapterSlugInput.dataset.touched;
             } else {
                 chapterSlugInput.dataset.touched = "true";
-                chapterSlugInput.value = generateSlug(chapterSlugInput.value);
+                const raw = chapterSlugInput.value;
+                chapterSlugInput.value = raw
+                    .toLowerCase()
+                    .replace(/[^\w\s\/-]/g, "")
+                    .replace(/[\s_]+/g, "-");
             }
         });
     }
@@ -566,7 +596,7 @@ async function handleFormSubmit() {
         const effectiveThumb = selectedBase64Thumbnail || selectedBase64Image || "";
         const customSlugEl = document.getElementById("customSlug");
         const customSlugVal = customSlugEl ? customSlugEl.value.trim() : "";
-        const articleSlug = customSlugVal ? generateSlug(customSlugVal) : (slugifyText(rawTitle) || generateSlug(rawTitle));
+        const articleSlug = cleanCustomPath(customSlugVal, rawTitle);
 
         // Resolve bookId and bookSlug if an article belongs to a book
         let resolvedBookId = "";
@@ -805,7 +835,7 @@ window.startEditArticle = function (id) {
     if (titleInput) titleInput.value = art.title || "";
     const slugInput = document.getElementById("customSlug");
     if (slugInput) {
-        slugInput.value = art.slug || (art.title ? generateSlug(art.title) : "");
+        slugInput.value = art.slug || (art.title ? cleanCustomPath("", art.title) : "");
         if (art.slug) slugInput.dataset.touched = "true";
         else delete slugInput.dataset.touched;
     }
@@ -1710,7 +1740,7 @@ async function handleSaveBookStep1(e) {
     try {
         const customBookSlugEl = document.getElementById("book-meta-slug");
         const customBookSlugVal = customBookSlugEl ? customBookSlugEl.value.trim() : "";
-        const bookSlug = customBookSlugVal ? generateSlug(customBookSlugVal) : (slugifyText(name) || generateSlug(name));
+        const bookSlug = cleanCustomPath(customBookSlugVal, name);
 
         const payload = {
             title: name,
@@ -1916,7 +1946,7 @@ function selectActiveBook(bookName) {
     if (nameInput) nameInput.value = activeBookName;
     const bookSlugInput = document.getElementById("book-meta-slug");
     if (bookSlugInput) {
-        bookSlugInput.value = bookCover?.slug || (activeBookName ? generateSlug(activeBookName) : "");
+        bookSlugInput.value = bookCover?.slug || (activeBookName ? cleanCustomPath("", activeBookName) : "");
         if (bookCover?.slug) bookSlugInput.dataset.touched = "true";
         else delete bookSlugInput.dataset.touched;
     }
@@ -2147,7 +2177,7 @@ function initChapterWriter() {
         if (titleInput) titleInput.value = art.title || "";
         const chapterSlugInput = document.getElementById("bm-customSlug");
         if (chapterSlugInput) {
-            chapterSlugInput.value = art.slug || (art.title ? generateSlug(art.title) : "");
+            chapterSlugInput.value = art.slug || (art.title ? cleanCustomPath("", art.title) : "");
             if (art.slug) chapterSlugInput.dataset.touched = "true";
             else delete chapterSlugInput.dataset.touched;
         }
@@ -2305,7 +2335,7 @@ function initChapterWriter() {
                 const chapterOrder = existingChapter ? (existingChapter.order !== undefined ? existingChapter.order : (existingChapter.priority || 1)) : nextOrder;
                 const customChapterSlugEl = document.getElementById("bm-customSlug");
                 const customChapterSlugVal = customChapterSlugEl ? customChapterSlugEl.value.trim() : "";
-                const chapterSlug = customChapterSlugVal ? generateSlug(customChapterSlugVal) : (slugifyText(title) || generateSlug(title));
+                const chapterSlug = cleanCustomPath(customChapterSlugVal, title);
                 const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
                 const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
                 const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";
@@ -2358,7 +2388,7 @@ function initChapterWriter() {
                 // Save new chapter as article in Firestore with bookId, order, status published, author from book
                 const customChapterSlugEl = document.getElementById("bm-customSlug");
                 const customChapterSlugVal = customChapterSlugEl ? customChapterSlugEl.value.trim() : "";
-                const chapterSlug = customChapterSlugVal ? generateSlug(customChapterSlugVal) : (slugifyText(title) || generateSlug(title));
+                const chapterSlug = cleanCustomPath(customChapterSlugVal, title);
                 const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
                 const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
                 const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";

@@ -295,3 +295,4 @@ if (typeof window !== "undefined") {
     window.syncUserProfileToFirestore = syncUserProfileToFirestore;
     window.getOrCreateGuestId = getOrCreateGuestId;
 }
+

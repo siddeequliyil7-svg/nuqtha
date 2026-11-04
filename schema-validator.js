@@ -132,7 +132,15 @@ export function slugifyText(str) {
  */
 export function getStoryUrl(item) {
     if (!item) return "/";
-    const slug = item.slug || slugifyText(item.title) || item.id || "";
+    let slug = String(item.slug || slugifyText(item.title) || item.id || "").trim();
+    if (slug.startsWith("/")) slug = slug.slice(1);
+
+    // If slug is already a complete custom path/prefix (e.g. "story/intro", "opinion/article", "book/title")
+    if (slug.includes("/")) {
+        const cleanPath = slug.split("/").map(seg => encodeURIComponent(seg)).join("/");
+        return `/${cleanPath}`;
+    }
+
     if (item.type === "BOOK") {
         return `/book/${encodeURIComponent(slug)}`;
     }
