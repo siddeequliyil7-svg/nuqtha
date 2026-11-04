@@ -412,7 +412,8 @@ export function validateAndSanitizeArticleForSave(raw) {
     // 9. Book Name
     const bookName = sanitizeString(raw.bookName || raw.playlistName, 120, "");
     const bookId = sanitizeString(raw.bookId, 120, "");
-    const order = (raw.order !== undefined && raw.order !== null && !isNaN(raw.order)) ? parseInt(raw.order, 10) : ((raw.priority !== undefined && !isNaN(raw.priority)) ? parseInt(raw.priority, 10) : 10);
+    const hasOrder = raw.order !== undefined && raw.order !== null && raw.order !== "" && !isNaN(raw.order);
+    const order = hasOrder ? parseInt(raw.order, 10) : undefined;
     const status = sanitizeString(raw.status, 50, "published");
     const volume = sanitizeString(raw.volume, 50, "");
     const issue = sanitizeString(raw.issue, 50, "");
@@ -428,7 +429,7 @@ export function validateAndSanitizeArticleForSave(raw) {
                               raw.type === "CHAPTER" || 
                               Boolean(bookId && raw.id && bookId !== raw.id) ||
                               Boolean(cleanRawBookName && cleanRawTitle && cleanRawBookName !== cleanRawTitle) ||
-                              (raw.order !== undefined && raw.order !== null && !isNaN(raw.order) && Number(raw.order) > 0);
+                              Boolean(hasOrder && Number(raw.order) > 0 && (bookId || (cleanRawBookName && cleanRawBookName !== cleanRawTitle)));
     const type = isExplicitChapter ? "ARTICLE" : (raw.type === "BOOK" ? "BOOK" : "ARTICLE");
 
     // 11. Date string
@@ -534,7 +535,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const priority = sanitizePriority(rawDoc.priority, 10);
     const bookName = sanitizeString(rawDoc.bookName || rawDoc.playlistName, 120, "");
     const bookId = sanitizeString(rawDoc.bookId, 120, "");
-    const order = (rawDoc.order !== undefined && rawDoc.order !== null && !isNaN(rawDoc.order)) ? parseInt(rawDoc.order, 10) : ((rawDoc.priority !== undefined && !isNaN(rawDoc.priority)) ? parseInt(rawDoc.priority, 10) : 10);
+    const hasOrder = rawDoc.order !== undefined && rawDoc.order !== null && rawDoc.order !== "" && !isNaN(rawDoc.order);
+    const order = hasOrder ? parseInt(rawDoc.order, 10) : undefined;
     const status = sanitizeString(rawDoc.status, 50, "published");
     const chapters = Array.isArray(rawDoc.chapters) ? rawDoc.chapters : [];
     const volume = sanitizeString(rawDoc.volume, 50, "");
@@ -556,7 +558,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
                       rawDoc.type === "CHAPTER" ||
                       hasDifferentParentBookId ||
                       hasDifferentParentBookName ||
-                      (rawDoc.order !== undefined && rawDoc.order !== null && !isNaN(rawDoc.order) && Number(rawDoc.order) > 0) ||
+                      (hasOrder && Number(rawDoc.order) > 0 && (cleanBookId || hasDifferentParentBookName)) ||
                       (rawDoc.chapterIndex !== undefined && rawDoc.chapterIndex !== null);
 
     const isBook = !isChapter && (

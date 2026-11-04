@@ -342,12 +342,12 @@ function isBookEntity(article) {
 function isChapterEntity(article) {
     if (!article) return false;
     if (article.isChapter === true || article.type === "CHAPTER") return true;
-    if (article.order !== undefined && article.order !== null && !isNaN(article.order) && Number(article.order) > 0) return true;
     if (article.chapterIndex !== undefined && article.chapterIndex !== null) return true;
     if (article.bookId && String(article.bookId).trim() && String(article.bookId).trim() !== String(article.id)) return true;
     const t = (article.title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
     const b = (article.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
     if (b && t && b !== t) return true;
+    if (article.order !== undefined && article.order !== null && !isNaN(article.order) && Number(article.order) > 0 && (article.bookId || (b && t && b !== t))) return true;
     return false;
 }
 
@@ -615,6 +615,7 @@ function listenForArticles() {
     let restFetchPromise = null;
 
     onSnapshot(articlesRef, snapshot => {
+        console.log(`[NUQTHA Feed] Firestore snapshot received ${snapshot.docs.length} documents (fromCache: ${snapshot.metadata.fromCache})`);
         const snapshotArticles = snapshot.docs.map(articleDoc => {
             const article = articleDoc.data();
             return normalizeArticleDoc({
@@ -637,7 +638,7 @@ function listenForArticles() {
             renderFeed();
         }
     }, error => {
-        console.error("Firestore articles listener failed:", error);
+        console.error("Firestore articles listener failed:", error.code || "", error.message, error);
         loadArticlesFromRest();
     });
 

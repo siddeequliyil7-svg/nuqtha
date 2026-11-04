@@ -695,7 +695,7 @@
         function isBookEditionDoc(item) {
             if (!item) return false;
             if (item.isChapter === true || item.type === "CHAPTER") return false;
-            if (item.order !== undefined && item.order !== null && !isNaN(item.order) && Number(item.order) > 0) return false;
+            if (item.order !== undefined && item.order !== null && !isNaN(item.order) && Number(item.order) > 0 && (item.bookId || (b && t && b !== t))) return false;
             if (item.chapterIndex !== undefined && item.chapterIndex !== null) return false;
             if (item.bookId && String(item.bookId).trim() && String(item.bookId).trim() !== String(item.id)) return false;
 

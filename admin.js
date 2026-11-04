@@ -11,9 +11,8 @@ import {
 
 export function isMainBook(art) {
     if (!art) return false;
-    // Strictly exclude any document that is a chapter or sub-item
+    // Strictly exclude any document that is explicitly a chapter or sub-item
     if (art.isChapter === true || art.type === "CHAPTER") return false;
-    if (art.order !== undefined && art.order !== null && !isNaN(art.order) && Number(art.order) > 0) return false;
     if (art.chapterIndex !== undefined && art.chapterIndex !== null) return false;
 
     // Strictly exclude any document that has a bookId referencing another book (these are chapters)
@@ -27,12 +26,21 @@ export function isMainBook(art) {
         return false;
     }
 
+    // Only exclude by order if it has an associated parent book
+    if (art.order !== undefined && art.order !== null && !isNaN(art.order) && Number(art.order) > 0 && (art.bookId || (b && t && b !== t))) {
+        return false;
+    }
+
     // Main books created via Step 1 have type === "BOOK"
     if (art.type === "BOOK") {
         return true;
     }
-    // Legacy support: category is premium book/book, has chapters array, and no parent book
-    if (Array.isArray(art.chapters) && !art.bookId && art.category && (art.category.toLowerCase() === "premium book" || art.category.toLowerCase() === "book")) {
+    // Also include books identified by category "Premium Book" or having chapters (without a parent book)
+    const cat = (art.category || "").toLowerCase().trim();
+    if ((cat === "premium book" || cat === "book" || cat === "books") && (!art.bookId || String(art.bookId).trim() === String(art.id))) {
+        return true;
+    }
+    if (Array.isArray(art.chapters) && (!art.bookId || String(art.bookId).trim() === String(art.id))) {
         return true;
     }
     return false;
@@ -3150,6 +3158,8 @@ function listenToFirestoreArticles() {
         const standardArticles = items.filter(a => !isBookOrChapter(a));
         const allBooks = items.filter(a => isMainBook(a));
 
+        console.log(`[NUQTHA ADMIN] processArticlesData: Total ${items.length} items -> ${allBooks.length} Books, ${standardArticles.length} Standard Articles.`);
+
         safeArticles = Array.isArray(standardArticles) ? standardArticles : [];
         if (typeof window !== "undefined") {
             window.safeArticles = safeArticles;
@@ -3244,17 +3254,20 @@ function listenToFirestoreArticles() {
     }
 
     try {
+        console.log("[NUQTHA ADMIN] Subscribing to Firestore 'articles' collection onSnapshot...");
         onSnapshot(colRef, (snapshot) => {
+            console.log(`[NUQTHA ADMIN] onSnapshot received ${snapshot.docs.length} documents (fromCache: ${snapshot.metadata.fromCache})`);
             const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
             if (items.length > 0) processArticlesData(items);
         }, (err) => {
-            console.warn("[NUQTHA ADMIN] Realtime listener failed; trying a one-time Firestore read:", err);
+            console.error("[NUQTHA ADMIN] Realtime onSnapshot listener failed:", err.code || "", err.message, err);
             getDocs(colRef).then(snapshot => {
+                console.log(`[NUQTHA ADMIN] Fallback getDocs received ${snapshot.docs.length} documents`);
                 if (snapshot.empty) return;
                 const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
                 processArticlesData(items);
             }).catch(fallbackErr => {
-                console.warn("[NUQTHA ADMIN] One-time Firestore read failed:", fallbackErr);
+                console.error("[NUQTHA ADMIN] Fallback getDocs read failed:", fallbackErr.code || "", fallbackErr.message, fallbackErr);
             });
         });
     } catch (error) {
@@ -3262,12 +3275,13 @@ function listenToFirestoreArticles() {
     }
 
     getDocs(colRef).then(snapshot => {
+        console.log(`[NUQTHA ADMIN] Initial getDocs received ${snapshot.docs.length} documents`);
         if (!snapshot.empty) {
             const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
             processArticlesData(items);
         }
     }).catch(error => {
-        console.warn("[NUQTHA ADMIN] Initial Firestore read failed; REST fallback will be used:", error);
+        console.warn("[NUQTHA ADMIN] Initial Firestore read failed; REST fallback will be used:", error.code || "", error.message);
     });
 
     async function fetchAdminViaRest() {
