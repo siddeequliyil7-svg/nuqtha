@@ -438,7 +438,9 @@ export function validateAndSanitizeArticleForSave(raw) {
                               Boolean(bookId && raw.id && bookId !== raw.id) ||
                               Boolean(cleanRawBookName && cleanRawTitle && cleanRawBookName !== cleanRawTitle) ||
                               Boolean(hasOrder && Number(raw.order) > 0 && (bookId || (cleanRawBookName && cleanRawBookName !== cleanRawTitle)));
-    const type = isExplicitChapter ? "ARTICLE" : (raw.type === "BOOK" ? "BOOK" : "ARTICLE");
+    const rawTypeVal = (raw.type || "").toString().toLowerCase().trim();
+    const isExplicitBook = !isExplicitChapter && (rawTypeVal === "book" || raw.isBook === true);
+    const type = isExplicitChapter ? "ARTICLE" : (isExplicitBook ? "BOOK" : "ARTICLE");
 
     // 11. Date string
     const date = sanitizeString(raw.date, 30, new Date().toLocaleDateString("en-GB"));
@@ -481,6 +483,7 @@ export function validateAndSanitizeArticleForSave(raw) {
         leadTitle,
         featuredTitle,
         type,
+        isBook: isExplicitBook,
         date
     };
 }
@@ -569,12 +572,10 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
                       (hasOrder && Number(rawDoc.order) > 0 && (cleanBookId || hasDifferentParentBookName)) ||
                       (rawDoc.chapterIndex !== undefined && rawDoc.chapterIndex !== null);
 
-    const isBook = !isChapter && (
-        rawDoc.type === "BOOK" ||
-        hasChaptersArray ||
-        (isBookCat && rawDoc.type !== "ARTICLE")
-    );
-    const type = isBook ? "BOOK" : "ARTICLE";
+    const rawType = (rawDoc.type || "").toString().toLowerCase().trim();
+    const isExplicitBook = rawType === "book" || rawDoc.isBook === true;
+    const isBook = !isChapter && isExplicitBook;
+    const type = isBook ? "BOOK" : (rawType === "chapter" ? "CHAPTER" : (rawType === "book" ? "BOOK" : "ARTICLE"));
 
     // Normalizing createdAt timestamp
     const createdAt = rawDoc.createdAt || rawDoc.createTime || null;
@@ -611,6 +612,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         leadTitle,
         featuredTitle,
         type,
+        isBook: isExplicitBook,
         date,
         createdAt
     };

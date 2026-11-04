@@ -331,7 +331,8 @@ function setupMoreDropdown() {
 
 function isBookEntity(article) {
     if (!article) return false;
-    if (article.type === "BOOK") return true;
+    const artType = (article.type || "").toUpperCase();
+    if (artType === "BOOK" || article.isBook === true) return true;
     if (article.bookId && String(article.bookId).trim()) return true;
     if (article.bookName && String(article.bookName).trim()) return true;
     if (article.playlistName && String(article.playlistName).trim()) return true;
@@ -889,7 +890,7 @@ function renderSearchFeed(container, query) {
 function renderHomeFeed(container) {
     // Filter out book covers and chapters completely from standard home feed
     const regularArticles = allArticles.filter(a => !isBookEntity(a));
-    const bookCovers = allArticles.filter(a => a.type === "BOOK" && !isChapterEntity(a));
+    const bookCovers = allArticles.filter(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && !isChapterEntity(a));
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) return;
@@ -1982,7 +1983,7 @@ function attachCardListeners() {
             const id = this.dataset.id;
             const art = allArticles.find(a => a.id === id);
             if (id && !e.target.closest("button") && !e.target.closest("a")) {
-                if (art && art.type === "BOOK") {
+                if (art && ((art.type || "").toUpperCase() === "BOOK" || art.isBook === true)) {
                     // Open Book index page/modal
                     openBookIndex(art);
                 } else {
@@ -2246,7 +2247,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
 
 /* ═══════════ 2. BOOKS CATEGORY PAGE LAYOUT ═══════════ */
 function renderBooksCategoryFeed(container) {
-    const bookCovers = allArticles.filter(a => a.type === "BOOK" && !isChapterEntity(a));
+    const bookCovers = allArticles.filter(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && !isChapterEntity(a));
 
     let html = `
     <div class="category-filter-banner flex items-center justify-between p-4 mb-6 rounded-2xl bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10 shadow-xs">

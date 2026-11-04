@@ -31,16 +31,9 @@ export function isMainBook(art) {
         return false;
     }
 
-    // Main books created via Step 1 have type === "BOOK"
-    if (art.type === "BOOK") {
-        return true;
-    }
-    // Also include books identified by category "Premium Book" or having chapters (without a parent book)
-    const cat = (art.category || "").toLowerCase().trim();
-    if ((cat === "premium book" || cat === "book" || cat === "books") && (!art.bookId || String(art.bookId).trim() === String(art.id))) {
-        return true;
-    }
-    if (Array.isArray(art.chapters) && (!art.bookId || String(art.bookId).trim() === String(art.id))) {
+    // Filter strictly so only items where type === 'book' / 'BOOK' or isBook === true qualify as books
+    const artType = (art.type || "").toString().toLowerCase().trim();
+    if (artType === "book" || art.isBook === true) {
         return true;
     }
     return false;
@@ -49,11 +42,13 @@ window.isMainBook = isMainBook;
 
 export function isBookOrChapter(art) {
     if (!art) return false;
-    if (art.type === "BOOK") return true;
+    const artType = (art.type || "").toString().toLowerCase().trim();
+    if (artType === "book" || art.isBook === true) return true;
+    if (art.isChapter === true || artType === "chapter") return true;
     if (art.bookId && String(art.bookId).trim()) return true;
-    if (art.bookName && String(art.bookName).trim()) return true;
-    if (art.playlistName && String(art.playlistName).trim()) return true;
-    if (art.category && (art.category.toLowerCase() === "premium book" || art.category.toLowerCase() === "book")) return true;
+    const t = (art.title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    const b = (art.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    if (b && t && b !== t) return true;
     return false;
 }
 window.isBookOrChapter = isBookOrChapter;
@@ -1756,6 +1751,7 @@ async function handleSaveBookStep1(e) {
             excerpt: intro,
             content: intro,
             type: "BOOK",
+            isBook: true,
             placement: "AUTO",
             priority: 1,
             date: dateVal,
@@ -3128,7 +3124,12 @@ function renderAdminBooksTab(articles) {
     const tabBadgeEl = document.getElementById("tab-book-badge");
 
     const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
-    const rawBooks = pool.filter(a => isMainBook(a));
+    const rawBooks = pool.filter(a => {
+        if (!a) return false;
+        const artType = (a.type || "").toString().toLowerCase().trim();
+        const isBook = artType === "book" || a.isBook === true;
+        return isBook && isMainBook(a);
+    });
 
     const books = [];
     const seenIds = new Set();
