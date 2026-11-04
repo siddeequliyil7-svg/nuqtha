@@ -612,14 +612,26 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ═══════════ RISALA UPDATE STYLE SIGN IN PILL & USER MENU ═══════════ */
 .header-signin-pill {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background-color: #1e1b18;
     color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
     cursor: pointer;
-    white-space: nowrap;
-    letter-spacing: 0.05em;
-    min-height: 32px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+    .header-signin-pill {
+        width: 36px;
+        height: 36px;
+    }
 }
 
 .header-signin-pill:hover {
@@ -645,30 +657,35 @@ body.dark-mode .header-signin-pill:hover {
 }
 
 #header-user-btn {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(235, 220, 203, 0.85);
-    color: #1e1b18;
+    background: transparent;
+    border: none;
+    padding: 0;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #header-user-btn:hover {
-    border-color: var(--terracotta, #b4532c);
-    background: rgba(255, 255, 255, 0.95);
+    transform: scale(1.06);
+    background: transparent;
+    border: none;
 }
 
 html.dark #header-user-btn,
 body.dark-mode #header-user-btn {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: transparent;
+    border: none;
     color: #f8fafc;
 }
 
 html.dark #header-user-btn:hover,
 body.dark-mode #header-user-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: transparent;
+    border: none;
 }
 
 .glass-dropdown-menu {
