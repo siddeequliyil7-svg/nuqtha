@@ -256,6 +256,21 @@
                         <input id="art-title" type="text" required placeholder="ലേഖനത്തിന്റെ പേര് നൽകുക..." class="w-full text-base sm:text-lg font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 text-[#1e1b18]">
                     </div>
 
+                    <!-- Custom Permalink (URL Slug) -->
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="customSlug" style="font-weight: bold; display: block; font-size: 13px; color: #4a3c33; margin-bottom: 6px;">Custom Permalink (URL Slug):</label>
+                        <div style="display: flex; align-items: center; background: #fbf7ee; border: 1px solid #ebdccb; border-radius: 8px; padding: 6px 12px;">
+                            <span style="color: #8c7a6b; font-size: 13px; font-family: monospace; white-space: nowrap; user-select: none;">nuqtha.vercel.app/story/</span>
+                            <input 
+                                type="text" 
+                                id="customSlug" 
+                                placeholder="eg: umaviyya-khilafath-intro" 
+                                style="border: none; background: transparent; outline: none; width: 100%; padding: 4px 6px; font-family: monospace; font-size: 13px; font-weight: 600; color: #1e1b18;"
+                            >
+                        </div>
+                        <small style="color: #777; font-size: 11px; display: block; margin-top: 4px;">Only letters, numbers, and hyphens (-) are allowed.</small>
+                    </div>
+
                     <!-- Category, Author & Transcription Row -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
@@ -676,6 +691,23 @@
                                     <p id="book-title-error" class="hidden text-[11px] font-bold text-rose-600 mt-1"></p>
                                 </div>
 
+                                <!-- Book Permalink (URL Slug) -->
+                                <div class="form-group">
+                                    <label for="book-meta-slug" class="block text-[11px] font-bold uppercase tracking-wider text-blue-950 mb-1">
+                                        Custom Permalink (Book URL Slug)
+                                    </label>
+                                    <div class="flex items-center bg-white border border-blue-200 rounded-xl px-3 py-1.5 focus-within:border-blue-600 transition">
+                                        <span class="text-xs font-mono text-blue-800 select-none whitespace-nowrap pr-1">nuqtha.vercel.app/book/</span>
+                                        <input 
+                                            type="text" 
+                                            id="book-meta-slug" 
+                                            placeholder="eg: umaviyya-khilafath" 
+                                            class="w-full text-xs font-mono bg-transparent border-none outline-none font-bold text-slate-800 py-1"
+                                        >
+                                    </div>
+                                    <small class="block text-[10px] text-slate-500 mt-1">Only letters, numbers, and hyphens (-) are allowed.</small>
+                                </div>
+
                                 <!-- Author & Publication Date -->
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                     <div>
@@ -774,6 +806,24 @@
                                         </label>
                                         <input type="text" id="bm-art-transcription" placeholder="കേട്ടെഴുത്ത് (ഓപ്ഷണൽ)..." class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition">
                                     </div>
+                                </div>
+
+                                <!-- Chapter Custom Permalink (URL Slug) -->
+                                <div class="form-group">
+                                    <label for="bm-customSlug" class="block text-xs font-bold uppercase tracking-wider text-emerald-950 font-english mb-1 flex items-center justify-between">
+                                        <span>Custom Chapter Permalink (URL Slug)</span>
+                                        <span class="text-[10px] text-emerald-700 font-normal font-sans">യൂണിക് അധ്യായ ലിങ്ക്</span>
+                                    </label>
+                                    <div class="flex items-center bg-white border border-emerald-200 rounded-xl px-3 py-1.5 focus-within:border-emerald-600 transition">
+                                        <span class="text-xs font-mono text-emerald-800 select-none whitespace-nowrap pr-1">nuqtha.vercel.app/story/[book]/</span>
+                                        <input 
+                                            type="text" 
+                                            id="bm-customSlug" 
+                                            placeholder="eg: chapter-1-intro" 
+                                            class="w-full text-xs font-mono bg-transparent border-none outline-none font-bold text-slate-800 py-1"
+                                        >
+                                    </div>
+                                    <small class="block text-[10px] text-slate-500 mt-1">Only letters, numbers, and hyphens (-) are allowed.</small>
                                 </div>
 
                                 <!-- Chapter Image Upload -->

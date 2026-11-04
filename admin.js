@@ -74,8 +74,93 @@ import {
     parseTimestampMillis,
     ALLOWED_CATEGORIES,
     slugifyText,
+    transliterateMalayalam,
     getStoryUrl
 } from "./schema-validator.js";
+
+// Helper function to sanitize slug for SEO URLs
+export function generateSlug(text) {
+    if (!text) return "";
+    const cleanText = typeof transliterateMalayalam === "function" ? transliterateMalayalam(text) : text;
+    return cleanText
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, "") // Remove special characters
+        .replace(/[\s_-]+/g, "-")  // Spaces & underscores to hyphens
+        .replace(/^-+|-+$/g, "");  // Trim start/end hyphens
+}
+if (typeof window !== "undefined") {
+    window.generateSlug = generateSlug;
+}
+
+// Title dynamic auto-slug generator
+export function setupSlugGenerators() {
+    // 1. Article Form (art-title <-> customSlug)
+    const titleInput = document.getElementById("art-title");
+    const slugInput = document.getElementById("customSlug");
+    if (titleInput && slugInput && !slugInput.dataset.slugBound) {
+        slugInput.dataset.slugBound = "true";
+        titleInput.addEventListener("input", () => {
+            if (!slugInput.dataset.touched) {
+                slugInput.value = generateSlug(titleInput.value);
+            }
+        });
+
+        slugInput.addEventListener("input", () => {
+            if (slugInput.value.trim() === "") {
+                delete slugInput.dataset.touched;
+            } else {
+                slugInput.dataset.touched = "true";
+                slugInput.value = generateSlug(slugInput.value);
+            }
+        });
+    }
+
+    // 2. Book Step 1 Form (book-meta-name <-> book-meta-slug)
+    const bookTitleInput = document.getElementById("book-meta-name");
+    const bookSlugInput = document.getElementById("book-meta-slug");
+    if (bookTitleInput && bookSlugInput && !bookSlugInput.dataset.slugBound) {
+        bookSlugInput.dataset.slugBound = "true";
+        bookTitleInput.addEventListener("input", () => {
+            if (!bookSlugInput.dataset.touched) {
+                bookSlugInput.value = generateSlug(bookTitleInput.value);
+            }
+        });
+
+        bookSlugInput.addEventListener("input", () => {
+            if (bookSlugInput.value.trim() === "") {
+                delete bookSlugInput.dataset.touched;
+            } else {
+                bookSlugInput.dataset.touched = "true";
+                bookSlugInput.value = generateSlug(bookSlugInput.value);
+            }
+        });
+    }
+
+    // 3. Chapter Writer Form (bm-art-title <-> bm-customSlug)
+    const chapterTitleInput = document.getElementById("bm-art-title");
+    const chapterSlugInput = document.getElementById("bm-customSlug");
+    if (chapterTitleInput && chapterSlugInput && !chapterSlugInput.dataset.slugBound) {
+        chapterSlugInput.dataset.slugBound = "true";
+        chapterTitleInput.addEventListener("input", () => {
+            if (!chapterSlugInput.dataset.touched) {
+                chapterSlugInput.value = generateSlug(chapterTitleInput.value);
+            }
+        });
+
+        chapterSlugInput.addEventListener("input", () => {
+            if (chapterSlugInput.value.trim() === "") {
+                delete chapterSlugInput.dataset.touched;
+            } else {
+                chapterSlugInput.dataset.touched = "true";
+                chapterSlugInput.value = generateSlug(chapterSlugInput.value);
+            }
+        });
+    }
+}
+if (typeof window !== "undefined") {
+    window.setupSlugGenerators = setupSlugGenerators;
+}
 
 let editingArticleId = null; // null = create mode, string = edit mode
 let currentArticlesList = [];
@@ -117,6 +202,7 @@ function initAdminDashboard() {
     safeInit("initLayoutManagerControls", initLayoutManagerControls);
     safeInit("initPublishedSearchFilter", initPublishedSearchFilter);
     safeInit("initBookManagerSuite", initBookManagerSuite);
+    safeInit("setupSlugGenerators", setupSlugGenerators);
     safeInit("listenToFirestoreArticles", listenToFirestoreArticles);
     safeInit("initAuthorManager", initAuthorManager);
     safeInit("initMoreMenuManager", initMoreMenuManager);
@@ -471,7 +557,9 @@ async function handleFormSubmit() {
 
         const effectiveCover = selectedBase64Image || selectedBase64Thumbnail || "";
         const effectiveThumb = selectedBase64Thumbnail || selectedBase64Image || "";
-        const articleSlug = slugifyText(rawTitle);
+        const customSlugEl = document.getElementById("customSlug");
+        const customSlugVal = customSlugEl ? customSlugEl.value.trim() : "";
+        const articleSlug = customSlugVal ? generateSlug(customSlugVal) : (slugifyText(rawTitle) || generateSlug(rawTitle));
 
         // Resolve bookId and bookSlug if an article belongs to a book
         let resolvedBookId = "";
@@ -665,6 +753,13 @@ function resetFormFields() {
     if (typeof updateAdminExcerptUI === "function") {
         updateAdminExcerptUI();
     }
+
+    // Reset Custom Slug
+    const slugInput = document.getElementById("customSlug");
+    if (slugInput) {
+        slugInput.value = "";
+        delete slugInput.dataset.touched;
+    }
 }
 
 function exitEditMode() {
@@ -701,6 +796,12 @@ window.startEditArticle = function (id) {
     const contentInput = document.getElementById("art-content");
 
     if (titleInput) titleInput.value = art.title || "";
+    const slugInput = document.getElementById("customSlug");
+    if (slugInput) {
+        slugInput.value = art.slug || (art.title ? generateSlug(art.title) : "");
+        if (art.slug) slugInput.dataset.touched = "true";
+        else delete slugInput.dataset.touched;
+    }
     if (catInput) catInput.value = (art.category || "HISTORY").toUpperCase();
     if (authorInput) authorInput.value = art.author || "";
     if (transcriptionInput) transcriptionInput.value = art.transcription || "";
@@ -1600,13 +1701,17 @@ async function handleSaveBookStep1(e) {
     }
 
     try {
+        const customBookSlugEl = document.getElementById("book-meta-slug");
+        const customBookSlugVal = customBookSlugEl ? customBookSlugEl.value.trim() : "";
+        const bookSlug = customBookSlugVal ? generateSlug(customBookSlugVal) : (slugifyText(name) || generateSlug(name));
+
         const payload = {
             title: name,
             bookName: name,
             author: author,
             category: tag,
-            slug: slugifyText(name),
-            bookSlug: slugifyText(name),
+            slug: bookSlug,
+            bookSlug: bookSlug,
             imageUrl: coverImage,
             thumbnailUrl: coverImage,
             ogImage: coverImage,
@@ -1756,6 +1861,11 @@ function resetBookManagerForm() {
     if (tagInput) tagInput.value = "Premium Book";
     if (introInput) introInput.value = "";
     if (dateInput) dateInput.value = "";
+    const bookSlugInput = document.getElementById("book-meta-slug");
+    if (bookSlugInput) {
+        bookSlugInput.value = "";
+        delete bookSlugInput.dataset.touched;
+    }
     if (removeBtn) removeBtn.click();
 
     const wrapper = document.getElementById("bm-step2-3-wrapper");
@@ -1797,6 +1907,12 @@ function selectActiveBook(bookName) {
     const placeholder = document.getElementById("book-upload-placeholder");
 
     if (nameInput) nameInput.value = activeBookName;
+    const bookSlugInput = document.getElementById("book-meta-slug");
+    if (bookSlugInput) {
+        bookSlugInput.value = bookCover?.slug || (activeBookName ? generateSlug(activeBookName) : "");
+        if (bookCover?.slug) bookSlugInput.dataset.touched = "true";
+        else delete bookSlugInput.dataset.touched;
+    }
     if (authorInput) authorInput.value = activeBookAuthor;
     if (tagInput) tagInput.value = bookCover?.category || "Premium Book";
     if (introInput) introInput.value = bookCover?.introduction || bookCover?.excerpt || bookCover?.content || "";
@@ -1995,6 +2111,11 @@ function initChapterWriter() {
         if (excerptInput) excerptInput.value = "";
         const resetColorsBtn = document.getElementById("bm-reset-colors-btn");
         if (resetColorsBtn) resetColorsBtn.click();
+        const chapterSlugInput = document.getElementById("bm-customSlug");
+        if (chapterSlugInput) {
+            chapterSlugInput.value = "";
+            delete chapterSlugInput.dataset.touched;
+        }
     }
 
     function startEditChapter(id) {
@@ -2017,6 +2138,12 @@ function initChapterWriter() {
         const publishBtn = document.getElementById("bm-publish-article-btn");
 
         if (titleInput) titleInput.value = art.title || "";
+        const chapterSlugInput = document.getElementById("bm-customSlug");
+        if (chapterSlugInput) {
+            chapterSlugInput.value = art.slug || (art.title ? generateSlug(art.title) : "");
+            if (art.slug) chapterSlugInput.dataset.touched = "true";
+            else delete chapterSlugInput.dataset.touched;
+        }
         if (contentInput) contentInput.value = art.content || "";
         if (transcriptionInput) transcriptionInput.value = art.transcription || "";
         if (excerptInput) excerptInput.value = art.storedExcerpt || (art.hasCustomExcerpt ? art.excerpt : "") || art.excerpt || "";
@@ -2169,7 +2296,9 @@ function initChapterWriter() {
                 const existingChapter = (activeBookChapters && activeBookChapters.find(c => c.id === editingChapterId)) ||
                                         (currentArticlesList && currentArticlesList.find(a => a.id === editingChapterId));
                 const chapterOrder = existingChapter ? (existingChapter.order !== undefined ? existingChapter.order : (existingChapter.priority || 1)) : nextOrder;
-                const chapterSlug = slugifyText(title);
+                const customChapterSlugEl = document.getElementById("bm-customSlug");
+                const customChapterSlugVal = customChapterSlugEl ? customChapterSlugEl.value.trim() : "";
+                const chapterSlug = customChapterSlugVal ? generateSlug(customChapterSlugVal) : (slugifyText(title) || generateSlug(title));
                 const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
                 const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
                 const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";
@@ -2220,7 +2349,9 @@ function initChapterWriter() {
                 showGlobalStatus(`✨ അധ്യായം '${title}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
             } else {
                 // Save new chapter as article in Firestore with bookId, order, status published, author from book
-                const chapterSlug = slugifyText(title);
+                const customChapterSlugEl = document.getElementById("bm-customSlug");
+                const customChapterSlugVal = customChapterSlugEl ? customChapterSlugEl.value.trim() : "";
+                const chapterSlug = customChapterSlugVal ? generateSlug(customChapterSlugVal) : (slugifyText(title) || generateSlug(title));
                 const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
                 const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
                 const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";

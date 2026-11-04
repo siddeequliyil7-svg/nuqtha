@@ -512,7 +512,7 @@
 
     <!-- Main Module Script -->
     <script type="module">
-        import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
+        import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "./firebase-config.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl } from "./schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
@@ -791,6 +791,36 @@
             return null;
         }
 
+        // Direct Query by Custom Slug (with Document ID fallback)
+        async function fetchTargetBySlugOrId(identifier, signal) {
+            if (!identifier) return null;
+            if (memoryCache.has(`doc_${identifier}`)) {
+                return memoryCache.get(`doc_${identifier}`);
+            }
+
+            // 1. Try querying Firestore by 'slug' field
+            try {
+                const slugQ = query(
+                    collection(db, "articles"),
+                    where("slug", "==", identifier),
+                    limit(1)
+                );
+                const querySnapshot = await getDocs(slugQ);
+                if (!querySnapshot.empty) {
+                    const docSnap = querySnapshot.docs[0];
+                    const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                    memoryCache.set(`doc_${identifier}`, normalized);
+                    memoryCache.set(`doc_${docSnap.id}`, normalized);
+                    return normalized;
+                }
+            } catch (err) {
+                console.warn("[Reader] Query by slug failed, checking fallback:", err);
+            }
+
+            // 2. Direct document ID lookup
+            return await fetchTargetDocument(identifier, signal);
+        }
+
         // 2. Fetch Lightweight Articles Collection (Projected Fields Only - ~95% smaller payload)
         async function fetchLightweightArticles(signal) {
             if (memoryCache.has("lightweight_articles")) {
@@ -919,12 +949,8 @@
                 let allArticles = [];
 
                 const lookupId = articleId || targetIdentifier;
-                const isFirestoreDocId = typeof lookupId === 'string' && 
-                    !lookupId.includes('-') && 
-                    !lookupId.includes('/') && 
-                    /^[A-Za-z0-9]{18,32}$/.test(lookupId);
                 const [targetDocResult, allArticlesResult] = await Promise.allSettled([
-                    isFirestoreDocId ? fetchTargetDocument(lookupId, controller.signal) : Promise.resolve(null),
+                    lookupId ? fetchTargetBySlugOrId(lookupId, controller.signal) : Promise.resolve(null),
                     fetchLightweightArticles(controller.signal)
                 ]);
                 currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
@@ -1014,6 +1040,7 @@
                         const cleanQuery = (targetSearch || "").toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
                         const spaceQuery = cleanQuery.replace(/-/g, ' ');
                         currentDoc = allArticles.find(a => 
+                            a.slug === targetSearch ||
                             a.slug === targetQuerySlug ||
                             a.slug === rawQuerySlugMatch ||
                             slugifyText(a.title) === targetQuerySlug ||
