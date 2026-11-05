@@ -1793,6 +1793,11 @@ async function handleSaveBookStep1(e) {
         let savedDocId = "";
         if (existing) {
             await updateDoc(doc(db, "articles", existing.id), payload);
+            try {
+                await setDoc(doc(db, "books", existing.id), payload, { merge: true });
+            } catch (bkErr) {
+                console.warn("[Admin] Could not dual-write to books collection:", bkErr);
+            }
             savedDocId = existing.id;
             Object.assign(existing, payload);
             showGlobalStatus(`✨ പുസ്തകം '${name}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
@@ -1802,6 +1807,14 @@ async function handleSaveBookStep1(e) {
                 createdAt: serverTimestamp()
             });
             savedDocId = docRef.id;
+            try {
+                await setDoc(doc(db, "books", savedDocId), {
+                    ...payload,
+                    createdAt: serverTimestamp()
+                }, { merge: true });
+            } catch (bkErr) {
+                console.warn("[Admin] Could not dual-write new book to books collection:", bkErr);
+            }
             currentArticlesList.unshift({ id: savedDocId, ...payload });
             showGlobalStatus(`📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
         }
@@ -3354,6 +3367,9 @@ window.deleteBookById = async function(bookId, bookTitle) {
 
     try {
         await deleteDoc(doc(db, "articles", bookId));
+        try {
+            await deleteDoc(doc(db, "books", bookId));
+        } catch (_) {}
 
         // Unlink chapters belonging to this book
         const linkedChapters = currentArticlesList.filter(a => a.bookId === bookId || (cleanTitle && a.bookName === cleanTitle));
@@ -3547,7 +3563,7 @@ function listenToFirestoreArticles() {
     }
 
     try {
-        console.log("[NUQTHA ADMIN] Subscribing to Firestore 'articles' collection onSnapshot...");
+        console.log("[NUQTHA ADMIN] Subscribing to Firestore 'articles' & 'books' collections onSnapshot...");
         onSnapshot(colRef, (snapshot) => {
             console.log(`[NUQTHA ADMIN] onSnapshot received ${snapshot.docs.length} documents (fromCache: ${snapshot.metadata.fromCache})`);
             const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
@@ -3563,6 +3579,24 @@ function listenToFirestoreArticles() {
                 console.error("[NUQTHA ADMIN] Fallback getDocs read failed:", fallbackErr.code || "", fallbackErr.message, fallbackErr);
             });
         });
+
+        // Dual subscribe to "books" collection
+        const booksColRef = collection(db, "books");
+        onSnapshot(booksColRef, (snapshot) => {
+            snapshot.docs.forEach(doc => {
+                const bk = normalizeArticleDoc(doc.data(), doc.id);
+                bk.type = "BOOK";
+                bk.isBook = true;
+                bk.isChapter = false;
+                const existingIdx = currentArticlesList.findIndex(a => a.id === doc.id);
+                if (existingIdx >= 0) {
+                    currentArticlesList[existingIdx] = { ...currentArticlesList[existingIdx], ...bk };
+                } else {
+                    currentArticlesList.unshift(bk);
+                }
+            });
+            processArticlesData(currentArticlesList);
+        }, () => {});
     } catch (error) {
         console.error("[NUQTHA ADMIN] Could not start Firestore listener:", error);
     }
@@ -3588,36 +3622,61 @@ function listenToFirestoreArticles() {
                     throw new Error("Firebase project ID or API key is missing.");
                 }
 
-                const documents = [];
-                let nextPageToken = "";
-                do {
-                    const params = new URLSearchParams({ pageSize: "300", key: apiKey });
-                    if (nextPageToken) params.set("pageToken", nextPageToken);
-                    const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/articles?${params}`;
-                    const response = await fetchWithRetry(url, {}, 3, 300);
-                    if (!response || !response.ok) {
-                        const status = response ? response.status : "network error";
-                        throw new Error(`Firestore REST request failed (${status})`);
-                    }
+                async function fetchColRest(colName) {
+                    const docs = [];
+                    let nextPageToken = "";
+                    do {
+                        const params = new URLSearchParams({ pageSize: "300", key: apiKey });
+                        if (nextPageToken) params.set("pageToken", nextPageToken);
+                        const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/${colName}?${params}`;
+                        const response = await fetchWithRetry(url, {}, 3, 300);
+                        if (!response || !response.ok) break;
+                        const page = await response.json();
+                        if (page && Array.isArray(page.documents)) {
+                            docs.push(...page.documents);
+                        }
+                        nextPageToken = page?.nextPageToken || "";
+                    } while (nextPageToken);
+                    return docs;
+                }
 
-                    const page = await response.json();
-                    if (page && Array.isArray(page.documents)) {
-                        documents.push(...page.documents);
-                    }
-                    nextPageToken = page?.nextPageToken || "";
-                } while (nextPageToken);
+                const [articleDocs, bookDocs] = await Promise.all([
+                    fetchColRest("articles"),
+                    fetchColRest("books").catch(() => [])
+                ]);
 
-                const restArticles = documents.map(document => {
+                const combinedMap = new Map();
+                articleDocs.forEach(document => {
                     const id = document.name ? document.name.split("/").pop() : "";
-                    if (!id) return null;
+                    if (!id) return;
                     const fields = decodeFirestoreFields(document.fields || {});
-                    return normalizeArticleDoc({
+                    combinedMap.set(id, normalizeArticleDoc({
                         ...fields,
                         createdAt: fields.createdAt || document.createTime,
                         updatedAt: fields.updatedAt || document.updateTime
+                    }, id));
+                });
+                bookDocs.forEach(document => {
+                    const id = document.name ? document.name.split("/").pop() : "";
+                    if (!id) return;
+                    const fields = decodeFirestoreFields(document.fields || {});
+                    const existing = combinedMap.get(id);
+                    const norm = normalizeArticleDoc({
+                        ...(existing || {}),
+                        ...fields,
+                        type: "BOOK",
+                        isBook: true,
+                        isChapter: false,
+                        createdAt: fields.createdAt || document.createTime,
+                        updatedAt: fields.updatedAt || document.updateTime
                     }, id);
-                }).filter(Boolean);
+                    norm.type = "BOOK";
+                    norm.isBook = true;
+                    norm.isChapter = false;
+                    combinedMap.set(id, norm);
+                });
 
+                const restArticles = Array.from(combinedMap.values());
                 if (restArticles.length > 0 || currentArticlesList.length === 0) {
                     processArticlesData(restArticles);
                 }

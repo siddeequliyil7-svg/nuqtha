@@ -533,7 +533,7 @@
         function cleanRouteSlug(str) {
             if (!str) return "";
             let s = String(str).trim();
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 4; i++) {
                 if (!s.includes("%")) break;
                 try {
                     const decoded = decodeURIComponent(s);
@@ -545,9 +545,11 @@
             }
             s = s.split("?")[0].split("#")[0].trim();
             s = s.replace(/^\/+|\/+$/g, "");
-            s = s.replace(/^(?:book|story|article)\/+/gi, "");
-            s = s.replace(/^2f/gi, "");
-            s = s.replace(/^(?:book|story|article)\/+/gi, "");
+            for (let i = 0; i < 4; i++) {
+                s = s.replace(/^(?:book|story|article)[\/\\]+/gi, "")
+                     .replace(/^2f/gi, "")
+                     .replace(/^\/+|\/+$/g, "");
+            }
             s = s.replace(/\/(?:index(?:\.html)?)?$/gi, "");
             return s.trim();
         }
@@ -789,7 +791,7 @@
 
         // ═══════════ PARALLEL DATA FETCHERS WITH FIELD PROJECTION ═══════════
 
-        // 1. Fetch Target Document (Direct SDK + REST fallback with timeout)
+        // 1. Fetch Target Document (Direct SDK + REST fallback with dual collection support)
         async function fetchTargetDocument(id, signal) {
             if (!id) return null;
             const cleanId = safeDecodeParam(id);
@@ -800,52 +802,65 @@
                 return memoryCache.get(`doc_${id}`);
             }
 
-            try {
-                const docRef = doc(db, "articles", cleanId);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                    memoryCache.set(`doc_${cleanId}`, normalized);
-                    memoryCache.set(`doc_${id}`, normalized);
-                    return normalized;
-                }
-            } catch (err) {
-                console.warn("[Reader] Direct getDoc error, trying REST:", err);
-            }
+            const collectionsToTry = (isBookRoute || editionParam) ? ["books", "articles"] : ["articles", "books"];
 
-            try {
-                // Ensure encodeURIComponent is applied once to decoded ID
-                const encodedId = encodeURIComponent(cleanId);
-                const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodedId}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE`, { signal });
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json && json.fields) {
-                        const data = {};
-                        for (const [k, v] of Object.entries(json.fields)) {
-                            if (v.stringValue !== undefined) data[k] = v.stringValue;
-                            else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
-                            else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
-                            else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
-                            else if (v.arrayValue && v.arrayValue.values) {
-                                data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
-                            } else {
-                                data[k] = null;
-                            }
+            for (const col of collectionsToTry) {
+                try {
+                    const docRef = doc(db, col, cleanId);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                        if (col === "books") {
+                            normalized.type = "BOOK";
+                            normalized.isBook = true;
+                            normalized.isChapter = false;
                         }
-                        const normalized = normalizeArticleDoc(data, cleanId);
                         memoryCache.set(`doc_${cleanId}`, normalized);
                         memoryCache.set(`doc_${id}`, normalized);
                         return normalized;
                     }
+                } catch (err) {
+                    console.warn(`[Reader] Direct getDoc error in ${col}:`, err);
                 }
-            } catch (err) {
-                console.warn("[Reader] REST direct fetch error:", err);
+
+                try {
+                    const encodedId = encodeURIComponent(cleanId);
+                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/${col}/${encodedId}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE`, { signal });
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json && json.fields) {
+                            const data = {};
+                            for (const [k, v] of Object.entries(json.fields)) {
+                                if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                else if (v.arrayValue && v.arrayValue.values) {
+                                    data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                } else {
+                                    data[k] = null;
+                                }
+                            }
+                            const normalized = normalizeArticleDoc(data, cleanId);
+                            if (col === "books") {
+                                normalized.type = "BOOK";
+                                normalized.isBook = true;
+                                normalized.isChapter = false;
+                            }
+                            memoryCache.set(`doc_${cleanId}`, normalized);
+                            memoryCache.set(`doc_${id}`, normalized);
+                            return normalized;
+                        }
+                    }
+                } catch (err) {
+                    console.warn(`[Reader] REST direct fetch error in ${col}:`, err);
+                }
             }
 
             return null;
         }
 
-        // Direct Query by Custom Slug (with Document ID fallback)
+        // Direct Query by Custom Slug (with Document ID fallback & dual collection query)
         async function fetchTargetBySlugOrId(identifier, signal) {
             if (!identifier) return null;
             const decodedId = safeDecodeParam(identifier);
@@ -856,86 +871,97 @@
                 return memoryCache.get(`doc_${identifier}`);
             }
 
-            const cleanDecoded = String(decodedId).trim().replace(/^\/+|\/+$/g, "");
-            const cleanRaw = String(identifier).trim().replace(/^\/+|\/+$/g, "");
+            const cleanDecoded = cleanRouteSlug(decodedId);
+            const cleanRaw = cleanRouteSlug(identifier);
 
             const candidateSet = new Set();
-            [cleanDecoded, cleanRaw].forEach(base => {
+            [cleanDecoded, cleanRaw, decodedId, identifier].forEach(base => {
                 if (!base) return;
+                const clean = cleanRouteSlug(base);
                 candidateSet.add(base);
+                if (clean) candidateSet.add(clean);
                 candidateSet.add(slugifyText(base));
                 candidateSet.add(slugifyMalayalamRaw(base));
-
-                const noStory = base.replace(/^story\//i, "");
-                const noBook = base.replace(/^book\//i, "");
-                const noArticle = base.replace(/^article\//i, "");
-
-                candidateSet.add(noStory);
-                candidateSet.add(noBook);
-                candidateSet.add(noArticle);
-                candidateSet.add(`story/${noStory}`);
-                candidateSet.add(`book/${noBook}`);
-                candidateSet.add(`article/${noArticle}`);
-                candidateSet.add(slugifyText(noStory));
-                candidateSet.add(slugifyMalayalamRaw(noStory));
+                if (clean) {
+                    candidateSet.add(slugifyText(clean));
+                    candidateSet.add(slugifyMalayalamRaw(clean));
+                }
             });
 
-            // 1. Try querying Firestore by 'slug' field across candidates
-            for (const cand of candidateSet) {
-                if (!cand) continue;
-                try {
-                    const slugQ = query(
-                        collection(db, "articles"),
-                        where("slug", "==", cand),
-                        limit(1)
-                    );
-                    const querySnapshot = await getDocs(slugQ);
-                    if (!querySnapshot.empty) {
-                        const docSnap = querySnapshot.docs[0];
-                        const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                        memoryCache.set(`doc_${decodedId}`, normalized);
-                        memoryCache.set(`doc_${identifier}`, normalized);
-                        memoryCache.set(`doc_${cand}`, normalized);
-                        memoryCache.set(`doc_${docSnap.id}`, normalized);
-                        return normalized;
+            const collectionsToSearch = (isBookRoute || editionParam) ? ["books", "articles"] : ["articles", "books"];
+
+            for (const col of collectionsToSearch) {
+                // 1. Try querying Firestore by 'slug' field across candidates
+                for (const cand of candidateSet) {
+                    if (!cand) continue;
+                    try {
+                        const slugQ = query(
+                            collection(db, col),
+                            where("slug", "==", cand),
+                            limit(1)
+                        );
+                        const querySnapshot = await getDocs(slugQ);
+                        if (!querySnapshot.empty) {
+                            const docSnap = querySnapshot.docs[0];
+                            const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                            if (col === "books") {
+                                normalized.type = "BOOK";
+                                normalized.isBook = true;
+                                normalized.isChapter = false;
+                            }
+                            memoryCache.set(`doc_${decodedId}`, normalized);
+                            memoryCache.set(`doc_${identifier}`, normalized);
+                            memoryCache.set(`doc_${cand}`, normalized);
+                            memoryCache.set(`doc_${docSnap.id}`, normalized);
+                            return normalized;
+                        }
+                    } catch (err) {
+                        console.warn(`[Reader] Query by slug in ${col} failed:`, cand, err);
                     }
-                } catch (err) {
-                    console.warn("[Reader] Query by slug failed:", cand, err);
+                }
+
+                // 2. Try querying Firestore by 'bookSlug' field
+                for (const cand of candidateSet) {
+                    if (!cand) continue;
+                    try {
+                        const bookSlugQ = query(
+                            collection(db, col),
+                            where("bookSlug", "==", cand),
+                            limit(1)
+                        );
+                        const querySnapshot = await getDocs(bookSlugQ);
+                        if (!querySnapshot.empty) {
+                            const docSnap = querySnapshot.docs[0];
+                            const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                            if (col === "books") {
+                                normalized.type = "BOOK";
+                                normalized.isBook = true;
+                                normalized.isChapter = false;
+                            }
+                            memoryCache.set(`doc_${decodedId}`, normalized);
+                            memoryCache.set(`doc_${identifier}`, normalized);
+                            memoryCache.set(`doc_${cand}`, normalized);
+                            memoryCache.set(`doc_${docSnap.id}`, normalized);
+                            return normalized;
+                        }
+                    } catch (_) {}
                 }
             }
 
-            // 2. Try querying Firestore by 'bookSlug' field (for /book/[slug] routes)
-            for (const cand of candidateSet) {
-                if (!cand) continue;
-                try {
-                    const bookSlugQ = query(
-                        collection(db, "articles"),
-                        where("bookSlug", "==", cand),
-                        limit(1)
-                    );
-                    const querySnapshot = await getDocs(bookSlugQ);
-                    if (!querySnapshot.empty) {
-                        const docSnap = querySnapshot.docs[0];
-                        const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                        memoryCache.set(`doc_${decodedId}`, normalized);
-                        memoryCache.set(`doc_${identifier}`, normalized);
-                        memoryCache.set(`doc_${cand}`, normalized);
-                        memoryCache.set(`doc_${docSnap.id}`, normalized);
-                        return normalized;
-                    }
-                } catch (_) {}
-            }
-
-            // 3. Direct document ID lookup
+            // 3. Direct document ID lookup in both collections
             const direct = await fetchTargetDocument(cleanDecoded, signal);
             if (direct) return direct;
-            if (cleanRaw !== cleanDecoded) {
-                return await fetchTargetDocument(cleanRaw, signal);
+            if (cleanRaw && cleanRaw !== cleanDecoded) {
+                const directRaw = await fetchTargetDocument(cleanRaw, signal);
+                if (directRaw) return directRaw;
+            }
+            if (decodedId && decodedId !== cleanDecoded) {
+                return await fetchTargetDocument(decodedId, signal);
             }
             return null;
         }
 
-        // 2. Fetch Lightweight Articles Collection (Projected Fields Only - ~95% smaller payload)
+        // 2. Fetch Lightweight Articles & Books Collections
         async function fetchLightweightArticles(signal) {
             if (memoryCache.has("lightweight_articles")) {
                 return memoryCache.get("lightweight_articles");
@@ -950,15 +976,15 @@
                 "slug", "bookSlug", "isBook"
             ];
             const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
-            const allArticlesList = [];
+            const combinedArticlesMap = new Map();
 
-            try {
+            async function fetchCol(colName) {
                 let nextPageToken = "";
                 let pageCount = 0;
                 do {
                     pageCount++;
                     const pageTokenParam = nextPageToken ? `&pageToken=${encodeURIComponent(nextPageToken)}` : "";
-                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?pageSize=100&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE&${maskParams}${pageTokenParam}`, { signal });
+                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/${colName}?pageSize=100&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE&${maskParams}${pageTokenParam}`, { signal });
                     if (!res.ok) break;
                     const json = await res.json();
                     if (json && json.documents && Array.isArray(json.documents)) {
@@ -978,24 +1004,48 @@
                                     }
                                 }
                             }
-                            allArticlesList.push(normalizeArticleDoc(data, docId));
+                            const normalized = normalizeArticleDoc(data, docId);
+                            if (colName === "books") {
+                                normalized.type = "BOOK";
+                                normalized.isBook = true;
+                                normalized.isChapter = false;
+                            }
+                            combinedArticlesMap.set(docId, normalized);
                         }
                     }
                     nextPageToken = json.nextPageToken || "";
                 } while (nextPageToken && pageCount < 10);
+            }
 
-                if (allArticlesList.length > 0) {
-                    memoryCache.set("lightweight_articles", allArticlesList);
-                    return allArticlesList;
+            try {
+                await Promise.all([
+                    fetchCol("articles"),
+                    fetchCol("books").catch(() => {})
+                ]);
+
+                if (combinedArticlesMap.size > 0) {
+                    const list = Array.from(combinedArticlesMap.values());
+                    memoryCache.set("lightweight_articles", list);
+                    return list;
                 }
             } catch (err) {
                 console.warn("[Reader] Projected REST fetch failed, fallback to SDK getDocs:", err);
             }
 
             try {
-                const snap = await getDocs(collection(db, "articles"));
+                const [articlesSnap, booksSnap] = await Promise.all([
+                    getDocs(collection(db, "articles")),
+                    getDocs(collection(db, "books")).catch(() => ({ forEach: () => {} }))
+                ]);
                 const articles = [];
-                snap.forEach(d => articles.push(normalizeArticleDoc(d.data(), d.id)));
+                articlesSnap.forEach(d => articles.push(normalizeArticleDoc(d.data(), d.id)));
+                booksSnap.forEach(d => {
+                    const norm = normalizeArticleDoc(d.data(), d.id);
+                    norm.type = "BOOK";
+                    norm.isBook = true;
+                    norm.isChapter = false;
+                    articles.push(norm);
+                });
                 memoryCache.set("lightweight_articles", articles);
                 return articles;
             } catch (e) {
