@@ -682,13 +682,21 @@ function listenForArticles() {
                     throw new Error("Firebase project ID or API key is missing.");
                 }
 
+                const homeFields = [
+                    "title", "slug", "bookSlug", "bookId", "bookName", "isBook", "type",
+                    "category", "author", "priority", "date", "createdAt", "thumbnailUrl",
+                    "imageUrl", "order", "excerpt", "hasCustomExcerpt", "storedExcerpt",
+                    "isPremium", "price", "placement", "transcription"
+                ];
+                const maskParams = homeFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+
                 async function fetchColRest(colName) {
                     const documents = [];
                     let nextPageToken = "";
                     do {
                         const params = new URLSearchParams({ pageSize: "300", key: apiKey });
                         if (nextPageToken) params.set("pageToken", nextPageToken);
-                        const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/${colName}?${params}`;
+                        const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/${colName}?${params}&${maskParams}`;
                         const response = await fetchWithRetry(url, {}, 3, 300);
                         if (!response.ok) break;
                         const page = await response.json();

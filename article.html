@@ -920,31 +920,33 @@
                     }
                 }
 
-                // 2. Try querying Firestore by 'bookSlug' field
-                for (const cand of candidateSet) {
-                    if (!cand) continue;
-                    try {
-                        const bookSlugQ = query(
-                            collection(db, col),
-                            where("bookSlug", "==", cand),
-                            limit(1)
-                        );
-                        const querySnapshot = await getDocs(bookSlugQ);
-                        if (!querySnapshot.empty) {
-                            const docSnap = querySnapshot.docs[0];
-                            const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                            if (col === "books") {
-                                normalized.type = "BOOK";
-                                normalized.isBook = true;
-                                normalized.isChapter = false;
+                // 2. Try querying Firestore by 'bookSlug' field ONLY if looking for a book
+                if (isBookRoute || editionParam) {
+                    for (const cand of candidateSet) {
+                        if (!cand) continue;
+                        try {
+                            const bookSlugQ = query(
+                                collection(db, col),
+                                where("bookSlug", "==", cand),
+                                limit(1)
+                            );
+                            const querySnapshot = await getDocs(bookSlugQ);
+                            if (!querySnapshot.empty) {
+                                const docSnap = querySnapshot.docs[0];
+                                const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                                if (col === "books") {
+                                    normalized.type = "BOOK";
+                                    normalized.isBook = true;
+                                    normalized.isChapter = false;
+                                }
+                                memoryCache.set(`doc_${decodedId}`, normalized);
+                                memoryCache.set(`doc_${identifier}`, normalized);
+                                memoryCache.set(`doc_${cand}`, normalized);
+                                memoryCache.set(`doc_${docSnap.id}`, normalized);
+                                return normalized;
                             }
-                            memoryCache.set(`doc_${decodedId}`, normalized);
-                            memoryCache.set(`doc_${identifier}`, normalized);
-                            memoryCache.set(`doc_${cand}`, normalized);
-                            memoryCache.set(`doc_${docSnap.id}`, normalized);
-                            return normalized;
-                        }
-                    } catch (_) {}
+                        } catch (_) {}
+                    }
                 }
             }
 
@@ -1028,11 +1030,11 @@
 
             const projectedFields = [
                 "title", "bookName", "bookId", "playlistName",
-                "priority", "imageUrl", "thumbnailUrl", "ogImage",
+                "priority", "thumbnailUrl", "ogImage",
                 "excerpt", "storedExcerpt", "hasCustomExcerpt", "author",
-                "date", "createdAt", "type", "category", "content",
+                "date", "createdAt", "type", "category",
                 "order", "chapters", "transcription", "status",
-                "slug", "bookSlug", "isBook"
+                "slug", "bookSlug", "isBook", "isPremium", "price"
             ];
             const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
             const combinedArticlesMap = new Map();
@@ -1136,6 +1138,27 @@
                     if (cachedBookStr) cachedBook = JSON.parse(cachedBookStr);
                     if (cachedChaptersStr) cachedChapters = JSON.parse(cachedChaptersStr);
                 } catch (e) {}
+
+                if (!cachedBook) {
+                    try {
+                        const allCachedStr = sessionStorage.getItem("nuqtha_cached_articles");
+                        if (allCachedStr) {
+                            const allCached = JSON.parse(allCachedStr);
+                            if (Array.isArray(allCached)) {
+                                const targetSlug = slugifyText(cacheKey);
+                                const found = allCached.find(a => 
+                                    a.id === cacheKey || 
+                                    a.slug === cacheKey || 
+                                    a.slug === targetSlug || 
+                                    slugifyText(a.title) === targetSlug
+                                );
+                                if (found) {
+                                    cachedBook = found;
+                                }
+                            }
+                        }
+                    } catch (_) {}
+                }
 
                 if (cachedBook) {
                     const cleanCachedUrl = getStoryUrl(cachedBook);

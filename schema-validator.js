@@ -124,6 +124,26 @@ export function slugifyText(str) {
     return slugifyMalayalamRaw(str);
 }
 
+function cleanUrlPart(str) {
+    if (!str) return "";
+    let s = String(str).trim();
+    for (let i = 0; i < 3; i++) {
+        if (!s.includes("%")) break;
+        try {
+            const dec = decodeURIComponent(s);
+            if (dec === s) break;
+            s = dec;
+        } catch (_) { break; }
+    }
+    s = s.trim().replace(/^\/+|\/+$/g, "");
+    for (let i = 0; i < 3; i++) {
+        s = s.replace(/^(?:book|story|article)[\/\\]+/gi, "")
+             .replace(/^2f/gi, "")
+             .trim();
+    }
+    return s.replace(/^\/+|\/+$/g, "");
+}
+
 /**
  * Builds clean SEO-friendly URLs:
  * - Standalone story: /story/:slug
@@ -132,50 +152,40 @@ export function slugifyText(str) {
  */
 export function getStoryUrl(item) {
     if (!item) return "/";
-    let rawSlug = String(item.slug || item.bookSlug || slugifyText(item.title) || item.id || "").trim();
-    if (rawSlug.startsWith("/")) rawSlug = rawSlug.slice(1);
-
-    // Decode URL encodings (up to 3 times for double/triple encoded paths like book%252F...)
-    let slug = rawSlug;
-    for (let i = 0; i < 3; i++) {
-        if (!slug.includes("%")) break;
-        try {
-            const dec = decodeURIComponent(slug);
-            if (dec === slug) break;
-            slug = dec;
-        } catch (_) { break; }
-    }
-    slug = slug.trim().replace(/^\/+|\/+$/g, "");
-
     const isBook = (item.type || "").toString().toUpperCase() === "BOOK" || item.isBook === true;
+
+    // 1. Dedicated Book: /book/:slug
     if (isBook) {
-        // Strip any redundant leading "book/", "story/", "article/", "2f"
-        let cleanBookSlug = slug;
-        for (let i = 0; i < 3; i++) {
-            cleanBookSlug = cleanBookSlug
-                .replace(/^(?:book|story|article)[\/\\]+/gi, "")
-                .replace(/^2f/gi, "")
-                .trim();
-        }
+        let rawBookSlug = item.slug || item.bookSlug || (item.title ? slugifyText(item.title) : "") || item.id || "";
+        let cleanBookSlug = cleanUrlPart(rawBookSlug);
         return `/book/${encodeURIComponent(cleanBookSlug)}`;
     }
 
-    // If slug is already a complete custom path/prefix (e.g. "story/intro", "opinion/article", "book/title")
-    if (slug.includes("/")) {
-        const cleanPath = slug.split("/").map(seg => encodeURIComponent(seg)).join("/");
-        return `/${cleanPath}`;
-    }
-
+    // 2. Chapter belonging to a book: /story/:bookSlug/:chapterSlug
     const bookTitle = item.bookName || item.playlistName;
-    if (bookTitle && String(bookTitle).trim()) {
-        const bookSlug = item.bookSlug || slugifyText(bookTitle);
-        if (bookSlug && slug) {
-            let cleanBook = bookSlug.replace(/^(?:book|story|article)[\/\\]+/gi, "").trim();
-            let cleanChapter = slug.replace(/^(?:book|story|article)[\/\\]+/gi, "").trim();
+    const hasParentBook = Boolean(item.bookId || (bookTitle && String(bookTitle).trim()));
+    if (hasParentBook) {
+        const parentBookSlug = item.bookSlug || (bookTitle ? slugifyText(bookTitle) : "") || item.bookId || "";
+        // Chapter's own slug must ALWAYS be its own slug or title, NEVER the parent's bookSlug!
+        const chapterSlug = item.slug || (item.title ? slugifyText(item.title) : "") || item.id || "";
+        let cleanBook = cleanUrlPart(parentBookSlug);
+        let cleanChapter = cleanUrlPart(chapterSlug);
+        if (cleanBook && cleanChapter) {
             return `/story/${encodeURIComponent(cleanBook)}/${encodeURIComponent(cleanChapter)}`;
         }
     }
-    return `/story/${encodeURIComponent(slug)}`;
+
+    // If slug is already a complete custom path/prefix with slash (e.g. "opinion/my-article")
+    let rawSlug = item.slug || (item.title ? slugifyText(item.title) : "") || item.id || "";
+    let s = String(rawSlug).trim().replace(/^\/+|\/+$/g, "");
+    if (s.includes("/")) {
+        const cleanPath = s.split("/").map(seg => encodeURIComponent(cleanUrlPart(seg))).join("/");
+        return `/${cleanPath}`;
+    }
+
+    // 3. Standalone Story: /story/:slug
+    let cleanStory = cleanUrlPart(rawSlug);
+    return `/story/${encodeURIComponent(cleanStory)}`;
 }
 
 if (typeof window !== "undefined") {
