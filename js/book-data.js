@@ -175,16 +175,26 @@ export async function getBookChapters(bookId, options = {}) {
         if (!bookDoc || !Array.isArray(bookDoc.chapters) || bookDoc.chapters.length === 0) {
             try {
                 const apiKey = getFirebaseApiKey();
-                const bookRes = await fetchWithRetry(
-                    `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
+                // 1. Try books collection first
+                let bookRes = await fetchWithRetry(
+                    `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
                     { signal: controller.signal },
                     2,
                     250
                 );
+                // 2. Fallback to articles collection
+                if (!bookRes || !bookRes.ok) {
+                    bookRes = await fetchWithRetry(
+                        `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
+                        { signal: controller.signal },
+                        2,
+                        250
+                    );
+                }
                 if (bookRes && bookRes.ok) {
                     const bookJson = await bookRes.json();
                     const directDoc = parseFirestoreRestDoc(bookJson, bookId);
-                    bookDoc = { ...(bookDoc || {}), ...directDoc };
+                    bookDoc = { ...(bookDoc || {}), ...directDoc, isBook: true, type: "BOOK" };
                 }
             } catch (bErr) {
                 console.warn("[BookData] Direct book fetch error:", bErr);

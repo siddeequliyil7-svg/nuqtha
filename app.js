@@ -15,25 +15,19 @@ import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCa
 function safeCacheArticles(articles) {
     if (!Array.isArray(articles) || articles.length === 0) return;
     try {
-        const lightweight = articles.slice(0, 30).map(a => {
+        const lightweight = articles.slice(0, 40).map(a => {
             const copy = { ...a };
-            if (copy.content && copy.content.length > 500) {
-                copy.content = copy.excerpt || copy.content.slice(0, 300);
-            }
-            if (copy.imageUrl && copy.imageUrl.startsWith("data:") && copy.imageUrl.length > 1000) {
-                copy.imageUrl = "";
-            }
-            if (copy.thumbnailUrl && copy.thumbnailUrl.startsWith("data:") && copy.thumbnailUrl.length > 1000) {
-                copy.thumbnailUrl = "";
-            }
-            if (copy.ogImage && copy.ogImage.startsWith("data:") && copy.ogImage.length > 1000) {
-                copy.ogImage = "";
-            }
+            // Never cache heavy article content in storage - feed cards only need title, author, excerpt, image
+            delete copy.content;
             return copy;
         });
         sessionStorage.setItem('nuqtha_cached_articles', JSON.stringify(lightweight));
     } catch (e) {
-        try { sessionStorage.removeItem('nuqtha_cached_articles'); } catch (_) {}
+        try {
+            if (typeof window.clearVolatileStorage === "function") {
+                window.clearVolatileStorage(sessionStorage);
+            }
+        } catch (_) {}
     }
 }
 
@@ -633,15 +627,35 @@ function escapeHtml(str) {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-/* ═══════════ Shared Firestore Article Listener ═══════════ */
+/* ═══════════ Shared Firestore Article & Book Listener ═══════════ */
 function listenForArticles() {
     const articlesRef = collection(db, "articles");
+    const booksRef = collection(db, "books");
     let hasServerSnapshot = false;
     let restFetchPromise = null;
+    let rawArticlesList = [];
+    let rawBooksList = [];
+
+    function combineAndRenderFeed() {
+        const combined = [...rawArticlesList];
+        rawBooksList.forEach(bk => {
+            const exists = combined.some(a => a.id === bk.id || (a.slug && a.slug === bk.slug && a.type === "BOOK"));
+            if (!exists) combined.push(bk);
+        });
+
+        if (combined.length > 0) {
+            allArticles = sortArticles(combined);
+            safeCacheArticles(allArticles);
+            renderFeed();
+        } else if (!hasServerSnapshot) {
+            allArticles = [];
+            renderFeed();
+        }
+    }
 
     onSnapshot(articlesRef, snapshot => {
         console.log(`[NUQTHA Feed] Firestore 'articles' received ${snapshot.docs.length} docs`);
-        const list = [];
+        rawArticlesList = [];
         snapshot.docs.forEach(articleDoc => {
             const article = articleDoc.data();
             const normalized = normalizeArticleDoc({
@@ -652,22 +666,34 @@ function listenForArticles() {
                 content: sanitizeMalayalamText(article.content),
                 playlistName: sanitizeMalayalamText(article.playlistName)
             }, articleDoc.id);
-            list.push(normalized);
+            rawArticlesList.push(normalized);
         });
 
         hasServerSnapshot = !snapshot.metadata.fromCache;
-        if (list.length > 0) {
-            allArticles = sortArticles(list);
-            safeCacheArticles(allArticles);
-            renderFeed();
-        } else if (!hasServerSnapshot) {
-            allArticles = [];
-            renderFeed();
-        }
+        combineAndRenderFeed();
     }, error => {
         console.warn("Firestore articles listener warning:", error.code || "", error.message);
         loadArticlesFromRest();
     });
+
+    onSnapshot(booksRef, snapshot => {
+        console.log(`[NUQTHA Feed] Firestore 'books' received ${snapshot.docs.length} docs`);
+        rawBooksList = [];
+        snapshot.docs.forEach(bDoc => {
+            const bData = bDoc.data();
+            const norm = normalizeArticleDoc({
+                ...bData,
+                title: sanitizeMalayalamText(bData.title),
+                author: sanitizeMalayalamText(bData.author),
+                excerpt: sanitizeMalayalamText(bData.excerpt)
+            }, bDoc.id);
+            norm.type = "BOOK";
+            norm.isBook = true;
+            norm.isChapter = false;
+            rawBooksList.push(norm);
+        });
+        combineAndRenderFeed();
+    }, () => {});
 
     loadArticlesFromRest();
 
@@ -706,7 +732,10 @@ function listenForArticles() {
                     return documents;
                 }
 
-                const articleDocs = await fetchColRest("articles");
+                const [articleDocs, bookDocs] = await Promise.all([
+                    fetchColRest("articles"),
+                    fetchColRest("books").catch(() => [])
+                ]);
 
                 const restArticles = articleDocs.map(document => {
                     const id = document.name.split("/").pop();
@@ -718,8 +747,28 @@ function listenForArticles() {
                     }, id);
                 });
 
-                if (restArticles.length > 0) {
-                    allArticles = sortArticles(restArticles);
+                const restBooks = bookDocs.map(document => {
+                    const id = document.name.split("/").pop();
+                    const fields = decodeFirestoreFields(document.fields || {});
+                    const norm = normalizeArticleDoc({
+                        ...fields,
+                        createdAt: fields.createdAt || document.createTime,
+                        updatedAt: fields.updatedAt || document.updateTime
+                    }, id);
+                    norm.type = "BOOK";
+                    norm.isBook = true;
+                    norm.isChapter = false;
+                    return norm;
+                });
+
+                const combined = [...restArticles];
+                restBooks.forEach(bk => {
+                    const exists = combined.some(a => a.id === bk.id || (a.slug && a.slug === bk.slug && a.type === "BOOK"));
+                    if (!exists) combined.push(bk);
+                });
+
+                if (combined.length > 0) {
+                    allArticles = sortArticles(combined);
                     safeCacheArticles(allArticles);
                     renderFeed();
                 } else if (!hasServerSnapshot && allArticles.length === 0) {
@@ -1688,10 +1737,10 @@ function buildCarouselCard(art) {
     const cleanTitle = stripMarkdown(art.title);
     const authorName = art.author || "NUQTHA";
 
-    const cardImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
+    const cardImg = art.thumbnailUrl || art.ogImage || art.imageUrl || art.coverImage;
     const imgHtml = cardImg
-        ? '<img src="' + cardImg + '" alt="' + cleanTitle + '" class="carousel-card-img" loading="lazy">'
-        : '<div class="carousel-card-img-placeholder"><svg width="28" height="28" fill="none" stroke="rgba(255,255,255,0.45)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+        ? '<img src="' + cardImg + '" alt="' + cleanTitle + '" class="carousel-card-img" loading="lazy" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"><div class="carousel-card-img-placeholder" style="display:none; background: linear-gradient(135deg, #2a201c, #4a3328); align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;"><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>'
+        : '<div class="carousel-card-img-placeholder" style="background: linear-gradient(135deg, #2a201c, #4a3328); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;"><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
 
     return '<div class="carousel-card cursor-pointer stretched-card-wrap" data-id="' + art.id + '">' +
         imgHtml +
@@ -2255,14 +2304,18 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
         const displayDate = book.date || book.publishDate || '';
         const isHidden = idx >= 4;
 
-        // Premium marker check: category or tag or isPremium property
+        // Premium & Pricing Check
         const isPremium = Boolean(
             book.isPremium === true ||
             book.category === 'Premium Book' ||
             (typeof book.category === 'string' && book.category.toLowerCase().includes('premium')) ||
             (Array.isArray(book.tags) && book.tags.some(t => String(t).toLowerCase().includes('premium')))
         );
+        const rawPrice = Number(book.price);
+        const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
+        const isFree = !isPremium || price === 0;
 
+        const bookCoverImg = book.imageUrl || book.coverImage || book.thumbnailUrl;
         const bookId = book.id || '';
         const bookHref = bookId ? getStoryUrl(book) : '#';
 
@@ -2273,9 +2326,17 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
                     <div class="premium-book-floor-shadow" aria-hidden="true"></div>
                     <div class="premium-book-cover">
                         <div class="premium-book-spine" aria-hidden="true"></div>
-                        ${isPremium ? `<span class="premium-book-ribbon" translate="no">PREMIUM</span>` : ''}
-                        ${book.imageUrl ? `
-                            <img src="${book.imageUrl}" alt="${cleanTitle}" class="premium-book-img" width="300" height="400" loading="lazy">
+                        ${isFree ? `
+                            <span class="premium-book-ribbon" style="background: linear-gradient(135deg, #059669, #0d9488); color: #fff;" translate="no">₹0 FREE</span>
+                        ` : `
+                            <span class="premium-book-ribbon" translate="no">₹${price} • PREMIUM</span>
+                        `}
+                        ${bookCoverImg ? `
+                            <img src="${bookCoverImg}" alt="${cleanTitle}" class="premium-book-img" width="300" height="400" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="premium-book-placeholder" style="display:none;">
+                                <span class="text-3xl" aria-hidden="true">📚</span>
+                                <span class="font-english font-bold text-[10px] uppercase opacity-75 mt-1" translate="no">NUQTHA EDITION</span>
+                            </div>
                         ` : `
                             <div class="premium-book-placeholder">
                                 <span class="text-3xl" aria-hidden="true">📚</span>
@@ -2291,6 +2352,9 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
                         <span class="premium-book-chip">
                             <span aria-hidden="true">📖</span>
                             <span>${count} അധ്യായങ്ങൾ</span>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase font-english ${isFree ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300'}">
+                            ${isFree ? '₹0 • സൗജന്യം' : `₹${price} • PREMIUM`}
                         </span>
                         ${displayDate ? `<span>${displayDate}</span>` : ''}
                     </div>
@@ -2371,11 +2435,28 @@ function renderBooksCategoryFeed(container) {
             ${bookCovers.map(book => {
                 const cleanTitle = stripMarkdown(book.title);
                 const count = getBookArticleCount(book, allArticles);
+                const isPremium = Boolean(
+                    book.isPremium === true ||
+                    book.category === 'Premium Book' ||
+                    (typeof book.category === 'string' && book.category.toLowerCase().includes('premium'))
+                );
+                const rawPrice = Number(book.price);
+                const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
+                const isFree = !isPremium || price === 0;
+                const bookCoverImg = book.imageUrl || book.coverImage || book.thumbnailUrl;
+
                 return `
-                <div class="book-glass-card group cursor-pointer flex flex-col bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] dark:hover:border-[#f87171] shadow-2xs hover:shadow-lg transition-all duration-300" data-id="${book.id}">
+                <div class="book-glass-card group cursor-pointer flex flex-col bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] dark:hover:border-[#f87171] shadow-2xs hover:shadow-lg transition-all duration-300 relative" data-id="${book.id}">
                     <div class="aspect-[3/4] w-full bg-[#f7eedf] dark:bg-[#0c0d12] overflow-hidden relative">
-                        ${book.imageUrl ? `
-                            <img src="${book.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                        <span class="absolute top-2.5 right-2.5 z-10 px-2.5 py-1 rounded-full text-[10px] font-black uppercase font-english ${isFree ? 'bg-emerald-600 text-white shadow-md' : 'bg-amber-500 text-white shadow-md'}">
+                            ${isFree ? '₹0 • FREE' : `₹${price} • PREMIUM`}
+                        </span>
+                        ${bookCoverImg ? `
+                            <img src="${bookCoverImg}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="w-full h-full flex flex-col items-center justify-center text-[#b4532c] dark:text-white/40 space-y-1" style="display:none;">
+                                <span class="text-3xl">📚</span>
+                                <span class="text-xs font-bold font-english uppercase">Book Edition</span>
+                            </div>
                         ` : `
                             <div class="w-full h-full flex flex-col items-center justify-center text-[#b4532c] dark:text-white/40 space-y-1">
                                 <span class="text-3xl">📚</span>

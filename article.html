@@ -563,7 +563,7 @@
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
         import { trackReadingActivity } from "./js/analytics-tracker.js";
-        import { isBookPurchased, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "./js/paywall-service.js";
+        import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "./js/paywall-service.js";
 
         const urlParams = new URLSearchParams(window.location.search);
 
@@ -1476,6 +1476,25 @@
                     initComments(currentDoc.id);
 
                 } else {
+                    // Check if chapter belongs to a book and requires login / paywall
+                    const hasParentBook = Boolean(currentDoc.bookId || currentDoc.bookName || currentDoc.isChapter || (currentDoc.type || "").toUpperCase() === "CHAPTER");
+                    if (hasParentBook) {
+                        const parentBook = allArticles.find(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && (a.id === currentDoc.bookId || a.bookName === currentDoc.bookName || a.title === currentDoc.bookName || a.slug === currentDoc.bookSlug));
+                        if (parentBook) {
+                            const isUnlocked = await isUserUnlockedForBook(parentBook);
+                            if (!isUnlocked) {
+                                if (skeletonEl) skeletonEl.classList.add("hidden");
+                                showPaywallModal({
+                                    book: parentBook,
+                                    onUnlocked: () => {
+                                        window.location.reload();
+                                    }
+                                });
+                                return;
+                            }
+                        }
+                    }
+
                     if (bookContainerEl) bookContainerEl.classList.add("hidden");
                     if (articleViewEl) articleViewEl.classList.remove("hidden");
 
@@ -1532,12 +1551,15 @@
                 )
             );
 
-            // Access & Purchase Verification
-            const isPurchased = isPremium ? await isBookPurchased(book.id) : true;
-            const isLocked = isPremium && !isPurchased;
+            const rawPrice = Number(book.price);
+            const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
+            const isFree = !isPremium || price === 0;
+
+            // Access & Unlock Verification (checks Admin, Login state, App Install for Free books, and Purchases for Paid books)
+            const isUnlocked = await isUserUnlockedForBook(book);
+            const isLocked = !isUnlocked;
             const platform = getDevicePlatform();
             const isAndroid = platform === "android";
-            const price = Number(book.price) || 49;
             const apkUrl = book.apkUrl || "https://nuqtha.vercel.app/download/nuqtha.apk";
 
             // Bookmark status
@@ -1568,7 +1590,7 @@
 
                     <!-- ═══════════ BOOK HERO (FULL-WIDTH BAND) ═══════════ -->
                     <article class="book-hero-card book-edition-hero" aria-labelledby="book-hero-title">
-                        <!-- Top Row: Eyebrow Left + Premium Pill Right -->
+                        <!-- Top Row: Eyebrow Left + Dual Pricing Pill Right -->
                         <div class="book-hero-top-row flex items-center justify-between gap-3 mb-5 sm:mb-7">
                             <div class="book-hero-eyebrow font-english" translate="no">
                                 <span class="font-['Noto_Sans_Malayalam'] font-bold">പുസ്തകം</span>
@@ -1576,15 +1598,16 @@
                                 <span class="tracking-widest font-black uppercase text-xs">BOOK</span>
                             </div>
                             <div class="flex items-center gap-2">
-                                ${isPremium ? `
-                                <a href="${categoryUrl('BOOKS')}" class="book-hero-premium-pill notranslate cursor-pointer hover:opacity-90 transition inline-flex items-center gap-1.5" translate="no" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)" aria-label="എല്ലാ പുസ്തകങ്ങളും കാണുക">
-                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
-                                    </svg>
-                                    <span>PREMIUM</span>
-                                </a>
-                                ` : ''}
-                                ${isPremium && isPurchased ? `
+                                ${isFree ? `
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-black uppercase tracking-wider font-english" translate="no">
+                                        ₹0 • FREE (സൗജന്യം)
+                                    </span>
+                                ` : `
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-black uppercase tracking-wider font-english" translate="no">
+                                        ₹${price} • PREMIUM
+                                    </span>
+                                `}
+                                ${isUnlocked ? `
                                 <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase font-english">
                                     ✓ UNLOCKED
                                 </span>
@@ -1664,20 +1687,20 @@
                                     </div>
                                 ` : ''}
 
-                                <!-- Dynamic Unlock Prompt if Locked -->
+                                <!-- Dynamic Unlock / App Install Prompt if Locked -->
                                 ${isLocked ? `
-                                    <div class="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+                                    <div class="mt-4 p-4 rounded-2xl ${isFree ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-amber-500/10 border border-amber-500/30'} space-y-3">
                                         <div class="flex items-center justify-between flex-wrap gap-2">
                                             <div class="space-y-0.5">
-                                                <p class="text-xs font-bold text-amber-950 dark:text-amber-200 font-['Noto_Sans_Malayalam']">
-                                                    🔒 പ്രീമിയം പുസ്തകം (Chapters Locked)
+                                                <p class="text-xs font-bold ${isFree ? 'text-emerald-950 dark:text-emerald-200' : 'text-amber-950 dark:text-amber-200'} font-['Noto_Sans_Malayalam']">
+                                                    ${isFree ? '📲 ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്ത് സൗജന്യമായി വായിക്കാം' : '🔒 പ്രീമിയം പുസ്തകം (Chapters Locked)'}
                                                 </p>
-                                                <p class="text-[11px] text-amber-800 dark:text-amber-400 font-english">
-                                                    ${isAndroid ? 'ആൻഡ്രോയിഡ് ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്തോ ഓൺലൈനായോ വായിക്കാം' : `One-time purchase: ₹${price} to unlock full book`}
+                                                <p class="text-[11px] ${isFree ? 'text-emerald-800 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-400'} font-english">
+                                                    ${isFree ? 'Install NUQTHA Android App to read all chapters free (₹0)' : `One-time purchase: ₹${price} to unlock full book`}
                                                 </p>
                                             </div>
-                                            <button id="hero-unlock-btn" class="px-5 py-2.5 rounded-full bg-[#b4532c] hover:bg-[#923e1b] text-white font-bold text-xs sm:text-sm font-english transition shadow-md active:scale-95 cursor-pointer touch-target-44 flex items-center gap-2">
-                                                <span>⚡ Unlock Book (${isAndroid ? 'App / Pay' : `₹${price}`})</span>
+                                            <button id="hero-unlock-btn" class="px-5 py-2.5 rounded-full ${isFree ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-[#b4532c] hover:bg-[#923e1b]'} text-white font-bold text-xs sm:text-sm font-english transition shadow-md active:scale-95 cursor-pointer touch-target-44 flex items-center gap-2">
+                                                <span>${isFree ? '📲 Install App to Read Free (₹0)' : `⚡ Unlock Book (₹${price})`}</span>
                                             </button>
                                         </div>
                                     </div>
@@ -1868,11 +1891,16 @@
                 listEl.querySelectorAll('.chapter-card-link[data-locked="true"]').forEach(card => {
                     card.addEventListener("click", (e) => {
                         e.preventDefault();
+                        const targetChapterHref = card.getAttribute("href");
                         showPaywallModal({
                             book: parentBook,
                             onUnlocked: () => {
-                                const bookContainerEl = document.getElementById("edition-view-container");
-                                renderBookIndex(parentBook, bookContainerEl, articles);
+                                if (targetChapterHref && targetChapterHref !== "#") {
+                                    window.location.href = targetChapterHref;
+                                } else {
+                                    const bookContainerEl = document.getElementById("edition-view-container");
+                                    renderBookIndex(parentBook, bookContainerEl, articles);
+                                }
                             }
                         });
                     });
