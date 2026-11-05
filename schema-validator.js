@@ -137,8 +137,8 @@ export function getStoryUrl(item) {
 
     const isBook = (item.type || "").toString().toUpperCase() === "BOOK" || item.isBook === true;
     if (isBook) {
-        // Strip any redundant leading "book/" or "story/" from the slug to avoid double prefixing
-        const cleanBookSlug = slug.replace(/^(?:book|story)\//i, "");
+        // Strip any redundant leading "book/" or "story/" or leftover hex "2f" from the slug to avoid double prefixing
+        let cleanBookSlug = slug.replace(/^(?:book|story)\//gi, "").replace(/^2f/gi, "").replace(/^(?:book|story)\//gi, "").trim();
         return `/book/${encodeURIComponent(cleanBookSlug)}`;
     }
 
@@ -448,6 +448,9 @@ export function validateAndSanitizeArticleForSave(raw) {
 
     // 11. Date string
     const date = sanitizeString(raw.date, 30, new Date().toLocaleDateString("en-GB"));
+    const isPremium = Boolean(raw.isPremium === true || (typeof raw.category === "string" && raw.category.toLowerCase().includes("premium")));
+    const price = !isNaN(raw.price) && Number(raw.price) >= 0 ? Number(raw.price) : 0;
+    const apkUrl = sanitizeString(raw.apkUrl, 500, "");
 
     // Estimate payload size for Firestore 1MB doc ceiling
     const estimatedBytes = (title.length + content.length + imageUrl.length + excerpt.length + author.length + transcription.length) * 2;
@@ -489,6 +492,9 @@ export function validateAndSanitizeArticleForSave(raw) {
         type,
         isBook: isExplicitBook,
         isChapter: isExplicitChapter,
+        isPremium,
+        price,
+        apkUrl,
         date
     };
 }
@@ -586,6 +592,9 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     // Normalizing createdAt timestamp
     const createdAt = rawDoc.createdAt || rawDoc.createTime || null;
     const date = sanitizeString(rawDoc.date, 30, formatDateSafe(createdAt, "Recent"));
+    const isPremium = Boolean(rawDoc.isPremium === true || isBookCat || (Array.isArray(rawDoc.tags) && rawDoc.tags.some(t => String(t).toLowerCase().includes("premium"))));
+    const price = !isNaN(rawDoc.price) && Number(rawDoc.price) >= 0 ? Number(rawDoc.price) : 0;
+    const apkUrl = sanitizeString(rawDoc.apkUrl, 500, "");
 
     return {
         id,
@@ -619,6 +628,9 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         featuredTitle,
         type,
         isBook: isExplicitBook,
+        isPremium,
+        price,
+        apkUrl,
         date,
         createdAt
     };

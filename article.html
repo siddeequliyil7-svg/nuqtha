@@ -519,8 +519,32 @@
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
         import { trackReadingActivity } from "./js/analytics-tracker.js";
+        import { isBookPurchased, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "./js/paywall-service.js";
 
         const urlParams = new URLSearchParams(window.location.search);
+
+        // Robust Route & Slug Sanitizer
+        function cleanRouteSlug(str) {
+            if (!str) return "";
+            let s = String(str).trim();
+            for (let i = 0; i < 3; i++) {
+                if (!s.includes("%")) break;
+                try {
+                    const decoded = decodeURIComponent(s);
+                    if (decoded === s) break;
+                    s = decoded;
+                } catch (_) {
+                    break;
+                }
+            }
+            s = s.split("?")[0].split("#")[0].trim();
+            s = s.replace(/^\/+|\/+$/g, "");
+            s = s.replace(/^(?:book|story|article)\/+/gi, "");
+            s = s.replace(/^2f/gi, "");
+            s = s.replace(/^(?:book|story|article)\/+/gi, "");
+            s = s.replace(/\/(?:index(?:\.html)?)?$/gi, "");
+            return s.trim();
+        }
 
         // Clean SEO Path Parsing:
         // /story/:bookSlug/:chapterSlug OR /book/:bookSlug/:chapterSlug
@@ -536,28 +560,28 @@
 
         const twoPartMatch = cleanPath.match(/^\/(?:story|book)\/([^\/]+)\/([^\/]+)\/?$/i);
         if (twoPartMatch) {
-            const seg1 = safeDecodeParam(twoPartMatch[1]).trim();
-            const seg2 = safeDecodeParam(twoPartMatch[2]).trim();
+            const seg1 = cleanRouteSlug(twoPartMatch[1]);
+            const seg2 = cleanRouteSlug(twoPartMatch[2]);
             if (seg1.toLowerCase() === "book" || seg1.toLowerCase() === "story") {
                 // Collapsed duplicate prefix e.g. /book/book/:slug or /book/book%2F:slug
                 if (cleanPath.toLowerCase().startsWith("/book/")) {
-                    pathBookSlug = seg2.replace(/^(?:book|story)\//i, "");
+                    pathBookSlug = seg2;
                     isBookRoute = true;
                 } else {
-                    pathStorySlug = seg2.replace(/^(?:book|story)\//i, "");
+                    pathStorySlug = seg2;
                 }
             } else {
-                pathBookSlug = seg1.replace(/^(?:book|story)\//i, "");
-                pathChapterSlug = seg2.replace(/^(?:book|story)\//i, "");
+                pathBookSlug = seg1;
+                pathChapterSlug = seg2;
             }
         } else {
             const onePartStoryMatch = cleanPath.match(/^\/(?:story|article)\/([^\/]+)\/?$/i);
             if (onePartStoryMatch) {
-                pathStorySlug = safeDecodeParam(onePartStoryMatch[1]).replace(/^(?:story|article)\//i, "");
+                pathStorySlug = cleanRouteSlug(onePartStoryMatch[1]);
             } else {
                 const bookMatch = cleanPath.match(/^\/book\/([^\/]+)\/?$/i);
                 if (bookMatch) {
-                    pathBookSlug = safeDecodeParam(bookMatch[1]).replace(/^(?:book|story)\//i, "");
+                    pathBookSlug = cleanRouteSlug(bookMatch[1]);
                     isBookRoute = true;
                 }
             }
@@ -584,13 +608,13 @@
                 isBookRoute = true;
             }
         }
-        const querySlug = rawQuerySlug;
-        const queryBookSlug = urlParams.get('bookSlug') || pathBookSlug;
+        const querySlug = cleanRouteSlug(rawQuerySlug);
+        const queryBookSlug = cleanRouteSlug(urlParams.get('bookSlug')) || pathBookSlug;
 
         // Correctly handle editionParam (if 'true' or '1' from vercel rewrite, treat querySlug or pathBookSlug as target book)
         const rawEdition = urlParams.get('edition') || urlParams.get('book');
         const editionParam = (rawEdition && rawEdition !== 'true' && rawEdition !== '1')
-            ? rawEdition
+            ? cleanRouteSlug(rawEdition)
             : (isBookRoute ? (pathBookSlug || querySlug) : "");
 
         let targetIdentifier = querySlug || articleId || pathStorySlug || pathBookSlug || "";
@@ -1014,14 +1038,14 @@
                         if (articleViewEl) articleViewEl.classList.add("hidden");
                         if (bookContainerEl) {
                             bookContainerEl.classList.remove("hidden");
-                            renderBookIndex(cachedBook, bookContainerEl, cachedChapters || []);
+                            await renderBookIndex(cachedBook, bookContainerEl, cachedChapters || []);
                         }
                         if (cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
                         initComments(cachedBook.id);
                     } else {
                         if (bookContainerEl) bookContainerEl.classList.add("hidden");
                         if (articleViewEl) articleViewEl.classList.remove("hidden");
-                        renderArticle(cachedBook);
+                        await renderArticle(cachedBook);
                         markArticleAsRead(cachedBook.id);
                         initComments(cachedBook.id);
                     }
@@ -1066,7 +1090,7 @@
                     // B. Book edition route (/book/:slug or ?edition=...)
                     if (!currentDoc && (isBookRoute || editionParam)) {
                         const rawBookSearch = (editionParam || pathBookSlug || querySlug || "").toString().trim();
-                        const bookSearch = rawBookSearch.replace(/^(?:book|story)\//i, "");
+                        const bookSearch = cleanRouteSlug(rawBookSearch);
                         const targetBookSlug = slugifyText(bookSearch);
                         const rawTargetSlug = slugifyMalayalamRaw(bookSearch);
                         const cleanTarget = (bookSearch || "").toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -1222,7 +1246,7 @@
                             sessionStorage.setItem(`nuqtha_book_articles_${slugifyText(currentDoc.title)}`, JSON.stringify(bookChapters));
                         }
                     } catch (_) {}
-                    renderBookIndex(currentDoc, bookContainerEl, bookChapters);
+                    await renderBookIndex(currentDoc, bookContainerEl, bookChapters);
                     renderRelatedBooks(currentDoc, allArticles);
                     initComments(currentDoc.id);
 
@@ -1230,7 +1254,7 @@
                     if (bookContainerEl) bookContainerEl.classList.add("hidden");
                     if (articleViewEl) articleViewEl.classList.remove("hidden");
 
-                    renderArticle(currentDoc);
+                    await renderArticle(currentDoc, allArticles);
                     markArticleAsRead(currentDoc.id);
                     loadRelatedArticlesFromList(currentDoc, allArticles);
                     initComments(currentDoc.id);
@@ -1249,7 +1273,7 @@
         window.toggleBookIntro = function() {};
 
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
-        function renderBookIndex(book, container, attachedArticles = []) {
+        async function renderBookIndex(book, container, attachedArticles = []) {
             const errorContainerEl = document.getElementById("page-error-container");
             if (errorContainerEl) {
                 errorContainerEl.classList.add("hidden");
@@ -1282,6 +1306,14 @@
                     (Array.isArray(book.tags) && book.tags.some(t => String(t).toLowerCase().includes('premium')))
                 )
             );
+
+            // Access & Purchase Verification
+            const isPurchased = isPremium ? await isBookPurchased(book.id) : true;
+            const isLocked = isPremium && !isPurchased;
+            const platform = getDevicePlatform();
+            const isAndroid = platform === "android";
+            const price = Number(book.price) || 49;
+            const apkUrl = book.apkUrl || "https://nuqtha.vercel.app/download/nuqtha.apk";
 
             // Bookmark status
             const savedBookIds = getSavedBookIds();
@@ -1318,14 +1350,21 @@
                                 <span class="opacity-50" aria-hidden="true">&middot;</span>
                                 <span class="tracking-widest font-black uppercase text-xs">BOOK</span>
                             </div>
-                            ${isPremium ? `
-                            <a href="${categoryUrl('BOOKS')}" class="book-hero-premium-pill notranslate cursor-pointer hover:opacity-90 transition inline-flex items-center gap-1.5" translate="no" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)" aria-label="എല്ലാ പുസ്തകങ്ങളും കാണുക">
-                                <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
-                                </svg>
-                                <span>PREMIUM</span>
-                            </a>
-                            ` : ''}
+                            <div class="flex items-center gap-2">
+                                ${isPremium ? `
+                                <a href="${categoryUrl('BOOKS')}" class="book-hero-premium-pill notranslate cursor-pointer hover:opacity-90 transition inline-flex items-center gap-1.5" translate="no" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)" aria-label="എല്ലാ പുസ്തകങ്ങളും കാണുക">
+                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+                                    </svg>
+                                    <span>PREMIUM</span>
+                                </a>
+                                ` : ''}
+                                ${isPremium && isPurchased ? `
+                                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase font-english">
+                                    ✓ UNLOCKED
+                                </span>
+                                ` : ''}
+                            </div>
                         </div>
 
                         <div class="flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
@@ -1399,6 +1438,25 @@
                                         </div>
                                     </div>
                                 ` : ''}
+
+                                <!-- Dynamic Unlock Prompt if Locked -->
+                                ${isLocked ? `
+                                    <div class="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+                                        <div class="flex items-center justify-between flex-wrap gap-2">
+                                            <div class="space-y-0.5">
+                                                <p class="text-xs font-bold text-amber-950 dark:text-amber-200 font-['Noto_Sans_Malayalam']">
+                                                    🔒 പ്രീമിയം പുസ്തകം (Chapters Locked)
+                                                </p>
+                                                <p class="text-[11px] text-amber-800 dark:text-amber-400 font-english">
+                                                    ${isAndroid ? 'ആൻഡ്രോയിഡ് ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്തോ ഓൺലൈനായോ വായിക്കാം' : `One-time purchase: ₹${price} to unlock full book`}
+                                                </p>
+                                            </div>
+                                            <button id="hero-unlock-btn" class="px-5 py-2.5 rounded-full bg-[#b4532c] hover:bg-[#923e1b] text-white font-bold text-xs sm:text-sm font-english transition shadow-md active:scale-95 cursor-pointer touch-target-44 flex items-center gap-2">
+                                                <span>⚡ Unlock Book (${isAndroid ? 'App / Pay' : `₹${price}`})</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                     </article>
@@ -1428,8 +1486,28 @@
                 </div>
             `;
 
-            // Render chapters
-            renderPaginatedChapters(attachedArticles);
+            // Wire Hero Unlock button if locked
+            if (isLocked) {
+                const heroUnlockBtn = container.querySelector("#hero-unlock-btn");
+                if (heroUnlockBtn) {
+                    heroUnlockBtn.addEventListener("click", () => {
+                        showPaywallModal({
+                            book,
+                            onUnlocked: () => {
+                                renderBookIndex(book, container, attachedArticles);
+                            }
+                        });
+                    });
+                }
+            } else if (!isPremium && isAndroid) {
+                // Subtle non-intrusive App Banner for Android users on Free Books
+                setTimeout(() => {
+                    renderAndroidAppBanner(document.getElementById("edition-articles-section"), apkUrl);
+                }, 50);
+            }
+
+            // Render chapters with lock state
+            renderPaginatedChapters(attachedArticles, { isLocked, book });
 
             // 3-Stage Reading Activity Tracker for Book
             try {
@@ -1467,11 +1545,14 @@
 
         // ═══════════ PAGINATED CHAPTER RENDERING ═══════════
         let visibleChapterCount = 10;
-        function renderPaginatedChapters(articles) {
+        function renderPaginatedChapters(articles, lockOptions = { isLocked: false, book: null }) {
             const listEl = document.getElementById("book-articles-list");
             const loadMoreContainer = document.getElementById("book-load-more-container");
             const loadMoreBtn = document.getElementById("book-load-more-btn");
             if (!listEl) return;
+
+            const isLocked = Boolean(lockOptions?.isLocked);
+            const parentBook = lockOptions?.book;
 
             if (articles.length === 0) {
                 listEl.innerHTML = `
@@ -1496,18 +1577,20 @@
                 const cleanArtTitle = (art.title || "അധ്യായം").replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
-
                 const chapterImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
+                const targetUrl = isLocked ? "#" : getStoryUrl(art);
+
                 return `
-                <a href="${getStoryUrl(art)}" data-article-id="${art.id}" class="group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44">
+                <a href="${targetUrl}" data-chapter-index="${idx}" data-article-id="${art.id}" data-locked="${isLocked ? 'true' : 'false'}" class="chapter-card-link group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isLocked ? 'cursor-pointer' : ''}">
                     <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${chapterImg ? `
-                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 aspect-[16/10]">
+                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 aspect-[16/10] relative">
                             <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
+                            ${isLocked ? `<div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-lg">🔒</div>` : ''}
                         </div>
                     ` : `
                         <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
-                            📄
+                            ${isLocked ? '🔒' : '📄'}
                         </div>
                     `}
                     <div class="flex-1 min-w-0 space-y-1.5">
@@ -1515,6 +1598,11 @@
                             <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
                                 അധ്യായം ${idx + 1}
                             </span>
+                            ${isLocked ? `
+                                <span class="text-[9px] font-black uppercase text-amber-700 dark:text-amber-300 font-english bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    🔒 LOCKED
+                                </span>
+                            ` : ''}
                         </div>
                         <h4 class="text-sm sm:text-base font-bold text-[var(--text)] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
                             ${cleanArtTitle}
@@ -1526,14 +1614,36 @@
                         ` : ""}
                         ${art.transcription ? `<p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${art.transcription}</p>` : ""}
                     </div>
-                    <div class="hidden sm:flex items-center pr-2 text-[#b4532c] dark:text-[#f87171] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
-                        &rarr;
+                    <div class="flex items-center pr-2 text-[#b4532c] dark:text-[#f87171]">
+                        ${isLocked ? `
+                            <span class="text-xs font-bold font-english text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                                Unlock &rarr;
+                            </span>
+                        ` : `
+                            <span class="hidden sm:inline-block opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">&rarr;</span>
+                        `}
                     </div>
                 </a>
                 `;
             }).join("");
 
-            attachChapterPrefetch();
+            // Wire paywall modal on locked chapter clicks
+            if (isLocked && parentBook) {
+                listEl.querySelectorAll('.chapter-card-link[data-locked="true"]').forEach(card => {
+                    card.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        showPaywallModal({
+                            book: parentBook,
+                            onUnlocked: () => {
+                                const bookContainerEl = document.getElementById("edition-view-container");
+                                renderBookIndex(parentBook, bookContainerEl, articles);
+                            }
+                        });
+                    });
+                });
+            } else {
+                attachChapterPrefetch();
+            }
 
             if (articles.length > visibleChapterCount) {
                 if (loadMoreContainer) {
@@ -1543,7 +1653,7 @@
                         loadMoreBtn.textContent = `കൂടുതൽ അധ്യായങ്ങൾ കാണുക (${remaining} ബാക്കി) ↓`;
                         loadMoreBtn.onclick = () => {
                             visibleChapterCount += 10;
-                            renderPaginatedChapters(articles);
+                            renderPaginatedChapters(articles, lockOptions);
                         };
                     }
                 }
@@ -1615,7 +1725,7 @@
         }
 
         // ═══════════ STANDARD ARTICLE RENDERER (NO "Date" / "ലോഡ് ചെയ്യുന്നു...") ═══════════
-        function renderArticle(article, allArticles = []) {
+        async function renderArticle(article, allArticles = []) {
             const errorContainerEl = document.getElementById("page-error-container");
             if (errorContainerEl) {
                 errorContainerEl.classList.add("hidden");
@@ -1628,6 +1738,26 @@
                     description: article.excerpt || "NUQTHA Malayalam Publishing",
                     imageUrl: article.thumbnailUrl || article.ogImage || article.imageUrl || ""
                 });
+            }
+
+            // Check if this article/chapter belongs to a premium parent book
+            let parentBook = null;
+            if (article.bookId) {
+                parentBook = allArticles.find(a => a.id === article.bookId);
+            }
+            if (!parentBook && article.bookName) {
+                parentBook = allArticles.find(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && (a.title === article.bookName || a.bookName === article.bookName));
+            }
+
+            let isChapterLocked = false;
+            if (parentBook) {
+                const parentIsPremium = Boolean(parentBook.isPremium === true || parentBook.category === "Premium Book" || (typeof parentBook.category === "string" && parentBook.category.toLowerCase().includes("premium")));
+                if (parentIsPremium) {
+                    const purchased = await isBookPurchased(parentBook.id);
+                    if (!purchased) {
+                        isChapterLocked = true;
+                    }
+                }
             }
             const titleEl = document.getElementById('art-title');
             if (titleEl) {
@@ -1815,6 +1945,74 @@
 
             const bodyContent = (article.content || "").trim();
             let rawParagraphs = bodyContent.split(/\r?\n\r?\n/).map(p => p.trim()).filter(Boolean);
+
+            // Locked Chapter Preview & Inline Paywall Card
+            if (isChapterLocked && parentBook) {
+                const platform = getDevicePlatform();
+                const isAndroid = platform === "android";
+                const price = Number(parentBook.price) || 49;
+                const apkUrl = parentBook.apkUrl || "https://nuqtha.vercel.app/download/nuqtha.apk";
+                const cleanParentTitle = (parentBook.title || "പ്രീമിയം പുസ്തകം").replace(/[*_#~`]/g, "");
+
+                const firstP = rawParagraphs[0] ? rawParagraphs[0].replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>').replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>') : (article.excerpt || "");
+
+                contentEl.innerHTML = `
+                    <div class="relative">
+                        <p ${contentStyle || contentStyleAttr || ""}>${firstP}</p>
+                        <!-- Gradient Blur Overlay -->
+                        <div class="h-28 bg-gradient-to-b from-transparent via-[var(--bg)]/80 to-[var(--bg)] pointer-events-none -mt-14"></div>
+                    </div>
+
+                    <!-- Sleek Paywall Card -->
+                    <div class="my-8 p-6 sm:p-8 rounded-3xl bg-amber-500/10 border-2 border-amber-500/30 text-center space-y-4 shadow-xl">
+                        <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center text-3xl shadow-lg shadow-amber-500/30">
+                            🔒
+                        </div>
+                        <div class="space-y-1">
+                            <span class="inline-block px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 text-[10px] font-black uppercase font-english">
+                                PREMIUM CHAPTER &bull; പ്രീമിയം അധ്യായം
+                            </span>
+                            <h4 class="text-lg sm:text-xl font-black text-[var(--text)] dark:text-white font-['Anek_Malayalam']">
+                                ഈ അധ്യായം പൂർണ്ണമായി വായിക്കാൻ '${cleanParentTitle}' അൺലോക്ക് ചെയ്യുക
+                            </h4>
+                            <p class="text-xs text-amber-900/90 dark:text-amber-300/90 font-['Noto_Sans_Malayalam']">
+                                ${isAndroid ? 'ആൻഡ്രോയിഡ് ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്തോ വെബ്സൈറ്റിൽ നേരിട്ടോ വായിക്കാം.' : 'മുഴുവൻ അധ്യായങ്ങളും ലഭ്യമാക്കാൻ ഇപ്പോൾ അൺലോക്ക് ചെയ്യുക.'}
+                            </p>
+                        </div>
+
+                        ${isAndroid ? `
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+                                <a href="${apkUrl}" download class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs sm:text-sm font-english transition shadow-md flex items-center justify-center gap-2 cursor-pointer touch-target-44">
+                                    <span>📲 Install App (ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യുക)</span>
+                                </a>
+                                <button id="inline-pay-btn" class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#b4532c] hover:bg-[#923e1b] text-white font-bold text-xs sm:text-sm font-english transition shadow-md flex items-center justify-center gap-2 cursor-pointer touch-target-44">
+                                    <span>💳 UPI വഴി വാങ്ങുക (₹${price})</span>
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="pt-3">
+                                <button id="inline-pay-btn" class="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#b4532c] hover:bg-[#923e1b] text-white font-bold text-sm font-english transition shadow-lg shadow-[#b4532c]/30 active:scale-95 flex items-center justify-center gap-2 mx-auto cursor-pointer touch-target-44">
+                                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                                    <span>⚡ Pay to Unlock (₹${price})</span>
+                                </button>
+                            </div>
+                        `}
+                    </div>
+                `;
+
+                const inlinePayBtn = contentEl.querySelector("#inline-pay-btn");
+                if (inlinePayBtn) {
+                    inlinePayBtn.addEventListener("click", () => {
+                        triggerRazorpayPayment({
+                            book: parentBook,
+                            onSuccess: () => {
+                                renderArticle(article, allArticles);
+                            }
+                        });
+                    });
+                }
+                return;
+            }
 
             contentEl.innerHTML = rawParagraphs
                 .map(paragraph => {

@@ -1661,6 +1661,17 @@ function initBookCoverUploader() {
     }
 }
 
+window.toggleBookPremiumFields = function(checked) {
+    const extraEl = document.getElementById("book-premium-extra-fields");
+    if (extraEl) {
+        if (checked) {
+            extraEl.classList.remove("hidden");
+        } else {
+            extraEl.classList.add("hidden");
+        }
+    }
+};
+
 /* ═══════════ 2. BOOK SWITCHER & STEP 1 SAVING ═══════════ */
 async function handleSaveBookStep1(e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -1737,6 +1748,11 @@ async function handleSaveBookStep1(e) {
         const customBookSlugVal = customBookSlugEl ? customBookSlugEl.value.trim() : "";
         const bookSlug = cleanCustomPath(customBookSlugVal, name);
 
+        const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
+        const isPremium = isPremiumToggle ? isPremiumToggle.checked : false;
+        const priceVal = parseFloat(document.getElementById("book-meta-price")?.value) || 0;
+        const apkUrlVal = (document.getElementById("book-meta-apk-url")?.value || "").trim();
+
         const payload = {
             title: name,
             bookName: name,
@@ -1752,6 +1768,9 @@ async function handleSaveBookStep1(e) {
             content: intro,
             type: "BOOK",
             isBook: true,
+            isPremium: isPremium,
+            price: priceVal,
+            apkUrl: apkUrlVal,
             placement: "AUTO",
             priority: 1,
             date: dateVal,
@@ -1894,6 +1913,13 @@ function resetBookManagerForm() {
     if (tagInput) tagInput.value = "Premium Book";
     if (introInput) introInput.value = "";
     if (dateInput) dateInput.value = "";
+    const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
+    if (isPremiumToggle) isPremiumToggle.checked = false;
+    if (window.toggleBookPremiumFields) window.toggleBookPremiumFields(false);
+    const priceInput = document.getElementById("book-meta-price");
+    if (priceInput) priceInput.value = "";
+    const apkUrlInput = document.getElementById("book-meta-apk-url");
+    if (apkUrlInput) apkUrlInput.value = "";
     const bookSlugInput = document.getElementById("book-meta-slug");
     if (bookSlugInput) {
         bookSlugInput.value = "";
@@ -1950,6 +1976,15 @@ function selectActiveBook(bookName) {
     if (tagInput) tagInput.value = bookCover?.category || "Premium Book";
     if (introInput) introInput.value = bookCover?.introduction || bookCover?.excerpt || bookCover?.content || "";
     if (dateInput) dateInput.value = bookCover?.date || "";
+
+    const isPrem = Boolean(bookCover?.isPremium === true || (typeof bookCover?.category === "string" && bookCover.category.toLowerCase().includes("premium")));
+    const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
+    if (isPremiumToggle) isPremiumToggle.checked = isPrem;
+    if (window.toggleBookPremiumFields) window.toggleBookPremiumFields(isPrem);
+    const priceInput = document.getElementById("book-meta-price");
+    if (priceInput) priceInput.value = (bookCover?.price !== undefined && bookCover.price !== null) ? bookCover.price : "";
+    const apkUrlInput = document.getElementById("book-meta-apk-url");
+    if (apkUrlInput) apkUrlInput.value = bookCover?.apkUrl || "";
 
     if (bookCover?.imageUrl && previewImg && previewContainer && placeholder) {
         previewImg.src = bookCover.imageUrl;

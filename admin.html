@@ -746,6 +746,43 @@
                                     <input type="text" id="book-meta-tag" name="book-meta-tag" placeholder="e.g. ചരിത്രം / പഠനം / Premium Book" value="Premium Book" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
                                 </div>
 
+                                <!-- Premium Book & Paywall Settings -->
+                                <div class="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <label for="book-meta-premium-toggle" class="text-xs font-black text-amber-950 flex items-center gap-1.5 cursor-pointer">
+                                                <span>💎 പ്രീമിയം പുസ്തകം (Premium / Paid Book)</span>
+                                            </label>
+                                            <p class="text-[10px] text-amber-800">പ്രീമിയം ആക്കിയാൽ വായനക്കാർ പണം നൽകിയോ ആപ്പ് വഴിയോ മാത്രമേ അധ്യായങ്ങൾ തുറക്കാൻ കഴിയൂ.</p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="book-meta-premium-toggle" class="sr-only peer" onchange="window.toggleBookPremiumFields && window.toggleBookPremiumFields(this.checked)">
+                                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                                        </label>
+                                    </div>
+
+                                    <!-- Collapsible Pricing and APK URL (visible when Premium is checked) -->
+                                    <div id="book-premium-extra-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-amber-200/60 hidden">
+                                        <div>
+                                            <label for="book-meta-price" class="block text-[10px] font-bold uppercase tracking-wider text-amber-950 mb-1">
+                                                വില (Book Price in ₹ INR) <span class="text-rose-500">*</span>
+                                            </label>
+                                            <div class="flex items-center bg-white border border-amber-300 rounded-xl px-3 py-1.5 focus-within:border-amber-600">
+                                                <span class="text-xs font-bold text-amber-700 pr-1">₹</span>
+                                                <input type="number" id="book-meta-price" placeholder="49" min="0" step="1" class="w-full text-xs font-bold bg-transparent outline-none text-slate-800">
+                                            </div>
+                                            <small class="text-[9px] text-amber-800">Razorpay വഴി നേരിട്ട് ഈടാക്കുന്ന തുക</small>
+                                        </div>
+                                        <div>
+                                            <label for="book-meta-apk-url" class="block text-[10px] font-bold uppercase tracking-wider text-amber-950 mb-1">
+                                                Android APK File URL
+                                            </label>
+                                            <input type="url" id="book-meta-apk-url" placeholder="https://nuqtha.com/app/nuqtha.apk" class="w-full text-xs font-medium p-2 rounded-xl border border-amber-300 bg-white outline-none focus:border-amber-600">
+                                            <small class="text-[9px] text-amber-800">ആൻഡ്രോയിഡ് ഉപയോക്താക്കൾക്ക് ഡൗൺലോഡ് ചെയ്യാനുള്ള ലിങ്ക്</small>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- ആമുഖം (Book Introduction / Foreword) -->
                                 <div>
                                     <label for="book-meta-intro" class="block text-[11px] font-bold uppercase tracking-wider text-blue-950 mb-1">
