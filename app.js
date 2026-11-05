@@ -1225,12 +1225,51 @@ window.filterBySavedArticles = function() {
     switchToCategory("SAVED");
 };
 
-/* ═══════════ Format Markdown/Rich Text (Bold, Highlight, Subheadings, Inline Images, Highlight Cards) ═══════════ */
+/* ═══════════ Format Markdown/Rich Text (Render helper only) ═══════════ */
 function formatRichContent(rawText, contentStyle = "") {
-    if (!rawText) return "";
-    return rawText
-        .split("\n\n")
-        .filter(p => p.trim())
+    if (!rawText || typeof rawText !== "string") return "";
+
+    // 1. Clean Rendering: Collapse 3+ line breaks to standard double line break
+    let cleaned = rawText
+        .trim()
+        .replace(/(?:\r?\n){3,}/g, "\n\n")
+        .replace(/(?:<br\s*\/?>\s*){3,}/gi, "<br><br>");
+
+    // 2. Strip clashing inline styles (font-size, color, font-family, line-height, text-align: justify)
+    // while strictly keeping classes like text-marker, font-black, highlight-glass-card
+    cleaned = cleaned.replace(/style\s*=\s*(["'])(.*?)\1/gi, (match, quote, styleStr) => {
+        const kept = styleStr
+            .split(";")
+            .map(s => s.trim())
+            .filter(rule => {
+                if (!rule) return false;
+                const lower = rule.toLowerCase();
+                if (lower.startsWith("font-size") ||
+                    lower.startsWith("font-family") ||
+                    lower.startsWith("line-height") ||
+                    lower.startsWith("color") ||
+                    lower.includes("text-align: justify") ||
+                    lower.includes("text-align:justify")) {
+                    return false;
+                }
+                return true;
+            })
+            .join("; ");
+        return kept ? `style="${kept}"` : "";
+    });
+
+    const paragraphs = cleaned
+        .split(/\r?\n\r?\n/)
+        .map(p => p.trim())
+        .filter(p => {
+            if (!p) return false;
+            // Filter out empty HTML paragraphs like <p></p> or <p>&nbsp;</p>
+            const stripped = p.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, "").trim();
+            if (!stripped && !p.includes("<img") && !p.includes("![") && !p.includes(":::")) return false;
+            return true;
+        });
+
+    return paragraphs
         .map(paragraph => {
             const p = paragraph.trim();
 
@@ -1245,33 +1284,39 @@ function formatRichContent(rawText, contentStyle = "") {
 
             // Subheadings: H2 (## ) and H3 (### )
             if (p.startsWith("## ")) {
-                return `<h2 class="article-h2">${p.replace("## ", "")}</h2>`;
+                return `<h2 class="article-h2 text-xl font-bold mt-6 mb-2 text-[var(--text)] dark:text-white">${p.replace("## ", "")}</h2>`;
             }
             if (p.startsWith("### ")) {
-                return `<h3 class="article-h3">${p.replace("### ", "")}</h3>`;
+                return `<h3 class="article-h3 text-lg font-bold mt-4 mb-2 text-[var(--text)] dark:text-white">${p.replace("### ", "")}</h3>`;
+            }
+
+            // Editorial Blockquote
+            if (p.startsWith("> ")) {
+                const quoteText = p.replace(/^>\s*/, "").trim()
+                    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
+                    .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
+                return `<blockquote class="editorial-quote"><p>${quoteText}</p></blockquote>`;
             }
 
             // Inline Image with Layout/Size: ![caption|size](url) or ![caption](url)
             const imgMatch = p.match(/^!\[(.*?)(?:\|(small|medium|full))?\]\((.*?)\)$/);
             if (imgMatch) {
                 const caption = imgMatch[1] || "";
-                const size = imgMatch[2] || "full";
                 const url = imgMatch[3];
-                const sizeClass = size === "small" ? "img-small" : size === "medium" ? "img-medium" : "img-full";
                 return `
-                    <div class="article-img-wrap ${sizeClass}">
-                        <img src="${url}" alt="${caption}">
-                        ${caption && caption !== "ചിത്രം" ? `<div class="article-img-caption">${caption}</div>` : ''}
-                    </div>
+                    <figure class="article-image-wrap my-6">
+                        <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block" loading="lazy">
+                        ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
+                    </figure>
                 `;
             }
 
             // Parse bold (**text**) and highlight (==text==)
             let formatted = p
-                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18] dark:text-white">$1</strong>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[var(--text)] dark:text-white">$1</strong>')
                 .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
 
-            return `<p class="text-base sm:text-lg leading-relaxed mb-4" ${contentStyle || ""}>${formatted}</p>`;
+            return `<p class="reading-p" ${contentStyle || ""}>${formatted}</p>`;
         })
         .join("");
 }

@@ -57,24 +57,62 @@
     <script type="module" src="site-config.js"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
-        .article-body p {
-            margin: 6.4px 0px;
-            line-height: 1.85;
-            font-size: var(--article-font-size, 16px);
-            color: #333333;
-            font-family: 'Anek Malayalam', sans-serif;
+        .reading-column,
+        #article-content,
+        #art-content,
+        .article-body {
+            max-width: 720px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            text-align: left !important;
+            overflow-wrap: break-word !important;
+            word-break: normal !important;
+            hyphens: auto !important;
+        }
+        .article-body p,
+        #art-content p,
+        .reading-p {
+            margin: 1.1em 0;
+            line-height: 1.9 !important;
+            font-size: var(--article-font-size, 18px);
+            color: var(--text, #1e1b18);
+            font-family: 'Anek Malayalam', sans-serif !important;
             letter-spacing: -0.01em;
+            text-align: left !important;
         }
         .article-title-text {
             font-family: 'Anek Malayalam', sans-serif;
             line-height: 1.32;
         }
         .dark-mode .article-body p,
-        html.dark .article-body p {
-            color: #cbd5e1;
+        html.dark .article-body p,
+        .dark-mode #art-content p,
+        html.dark #art-content p,
+        .dark-mode .reading-p,
+        html.dark .reading-p {
+            color: #e2e8f0 !important;
         }
         .dark-mode .article-title-text {
             color: #fbf7ee;
+        }
+
+        .article-body img,
+        #art-content img,
+        .article-image-wrap img {
+            display: block !important;
+            max-width: 100% !important;
+            height: auto !important;
+            margin: 1.75rem auto !important;
+            border-radius: 1rem !important;
+        }
+
+        @media (max-width: 640px) {
+            #standard-article-view,
+            #article-content {
+                padding-left: 16px;
+                padding-right: 16px;
+                overflow-x: hidden;
+            }
         }
 
         /* Editorial Blockquote */
@@ -352,7 +390,7 @@
                 <div class="inline-flex items-center gap-1 sm:gap-1.5 bg-[#ebdccb]/40 dark:bg-white/10 px-2 sm:px-2.5 py-1 rounded-xl border border-[var(--border)] dark:border-white/15 text-xs select-none flex-shrink-0 ml-auto" title="Text Size / അക്ഷര വലിപ്പം">
                     <span class="text-[10px] sm:text-[11px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-0.5">SIZE:</span>
                     <button type="button" class="font-decrease-btn w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Decrease text size" title="Smaller (A-)">A-</button>
-                    <button type="button" class="font-reset-btn px-1.5 h-6 sm:h-7 rounded-lg flex items-center justify-center font-bold text-[11px] sm:text-xs font-english text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-white/15 transition-all font-size-indicator cursor-pointer" title="Reset default size (16px)">16px</button>
+                    <button type="button" class="font-reset-btn px-1.5 h-6 sm:h-7 rounded-lg flex items-center justify-center font-bold text-[11px] sm:text-xs font-english text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-white/15 transition-all font-size-indicator cursor-pointer" title="Reset default size (18px)">18px</button>
                     <button type="button" class="font-increase-btn w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Increase text size" title="Larger (A+)">A+</button>
                 </div>
             </div>
@@ -889,21 +927,52 @@
             });
 
             const collectionsToSearch = (isBookRoute || editionParam) ? ["books", "articles"] : ["articles", "books"];
+            const candList = Array.from(candidateSet).filter(Boolean).slice(0, 10);
 
+            // 1. High-Speed REST Query with op: "IN" (150ms single-roundtrip response)
             for (const col of collectionsToSearch) {
-                // 1. Try querying Firestore by 'slug' field across candidates
-                for (const cand of candidateSet) {
-                    if (!cand) continue;
-                    try {
-                        const slugQ = query(
-                            collection(db, col),
-                            where("slug", "==", cand),
-                            limit(1)
-                        );
-                        const querySnapshot = await getDocs(slugQ);
-                        if (!querySnapshot.empty) {
-                            const docSnap = querySnapshot.docs[0];
-                            const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                try {
+                    const qRes = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            structuredQuery: {
+                                from: [{ collectionId: col }],
+                                where: {
+                                    fieldFilter: {
+                                        field: { fieldPath: "slug" },
+                                        op: "IN",
+                                        value: {
+                                            arrayValue: {
+                                                values: candList.map(c => ({ stringValue: c }))
+                                            }
+                                        }
+                                    }
+                                },
+                                limit: 1
+                            }
+                        })
+                    });
+                    if (qRes.ok) {
+                        const qJson = await qRes.json();
+                        if (Array.isArray(qJson) && qJson.length > 0 && qJson[0].document) {
+                            const docItem = qJson[0].document;
+                            const docId = docItem.name.split("/").pop();
+                            const data = {};
+                            if (docItem.fields) {
+                                for (const [k, v] of Object.entries(docItem.fields)) {
+                                    if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                    else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                    else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                    else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                    else if (v.arrayValue && v.arrayValue.values) {
+                                        data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                    } else {
+                                        data[k] = null;
+                                    }
+                                }
+                            }
+                            const normalized = normalizeArticleDoc(data, docId);
                             if (col === "books") {
                                 normalized.type = "BOOK";
                                 normalized.isBook = true;
@@ -911,49 +980,14 @@
                             }
                             memoryCache.set(`doc_${decodedId}`, normalized);
                             memoryCache.set(`doc_${identifier}`, normalized);
-                            memoryCache.set(`doc_${cand}`, normalized);
-                            memoryCache.set(`doc_${docSnap.id}`, normalized);
+                            memoryCache.set(`doc_${docId}`, normalized);
                             return normalized;
                         }
-                    } catch (err) {
-                        console.warn(`[Reader] Query by slug in ${col} failed:`, cand, err);
                     }
-                }
+                } catch (_) {}
 
-                // 2. Try querying Firestore by 'bookSlug' field ONLY if looking for a book
+                // If looking for a book, also query bookSlug with op: "IN"
                 if (isBookRoute || editionParam) {
-                    for (const cand of candidateSet) {
-                        if (!cand) continue;
-                        try {
-                            const bookSlugQ = query(
-                                collection(db, col),
-                                where("bookSlug", "==", cand),
-                                limit(1)
-                            );
-                            const querySnapshot = await getDocs(bookSlugQ);
-                            if (!querySnapshot.empty) {
-                                const docSnap = querySnapshot.docs[0];
-                                const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                                if (col === "books") {
-                                    normalized.type = "BOOK";
-                                    normalized.isBook = true;
-                                    normalized.isChapter = false;
-                                }
-                                memoryCache.set(`doc_${decodedId}`, normalized);
-                                memoryCache.set(`doc_${identifier}`, normalized);
-                                memoryCache.set(`doc_${cand}`, normalized);
-                                memoryCache.set(`doc_${docSnap.id}`, normalized);
-                                return normalized;
-                            }
-                        } catch (_) {}
-                    }
-                }
-            }
-
-            // 2b. High-Speed REST Query Fallback (bypasses any client WebChannel/SDK stall)
-            for (const col of collectionsToSearch) {
-                for (const cand of candidateSet) {
-                    if (!cand) continue;
                     try {
                         const qRes = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE", {
                             method: "POST",
@@ -963,15 +997,18 @@
                                     from: [{ collectionId: col }],
                                     where: {
                                         fieldFilter: {
-                                            field: { fieldPath: "slug" },
-                                            op: "EQUAL",
-                                            value: { stringValue: cand }
+                                            field: { fieldPath: "bookSlug" },
+                                            op: "IN",
+                                            value: {
+                                                arrayValue: {
+                                                    values: candList.map(c => ({ stringValue: c }))
+                                                }
+                                            }
                                         }
                                     },
                                     limit: 1
                                 }
-                            }),
-                            signal
+                            })
                         });
                         if (qRes.ok) {
                             const qJson = await qRes.json();
@@ -1000,10 +1037,60 @@
                                 }
                                 memoryCache.set(`doc_${decodedId}`, normalized);
                                 memoryCache.set(`doc_${identifier}`, normalized);
-                                memoryCache.set(`doc_${cand}`, normalized);
                                 memoryCache.set(`doc_${docId}`, normalized);
                                 return normalized;
                             }
+                        }
+                    } catch (_) {}
+                }
+            }
+
+            // 2. Fast SDK Query Fallback using 'in' operator (single round-trip)
+            for (const col of collectionsToSearch) {
+                try {
+                    const slugQ = query(
+                        collection(db, col),
+                        where("slug", "in", candList),
+                        limit(1)
+                    );
+                    const querySnapshot = await getDocs(slugQ);
+                    if (!querySnapshot.empty) {
+                        const docSnap = querySnapshot.docs[0];
+                        const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                        if (col === "books") {
+                            normalized.type = "BOOK";
+                            normalized.isBook = true;
+                            normalized.isChapter = false;
+                        }
+                        memoryCache.set(`doc_${decodedId}`, normalized);
+                        memoryCache.set(`doc_${identifier}`, normalized);
+                        memoryCache.set(`doc_${docSnap.id}`, normalized);
+                        return normalized;
+                    }
+                } catch (err) {
+                    console.warn(`[Reader] SDK in-query failed in ${col}:`, err);
+                }
+
+                if (isBookRoute || editionParam) {
+                    try {
+                        const bookSlugQ = query(
+                            collection(db, col),
+                            where("bookSlug", "in", candList),
+                            limit(1)
+                        );
+                        const querySnapshot = await getDocs(bookSlugQ);
+                        if (!querySnapshot.empty) {
+                            const docSnap = querySnapshot.docs[0];
+                            const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                            if (col === "books") {
+                                normalized.type = "BOOK";
+                                normalized.isBook = true;
+                                normalized.isChapter = false;
+                            }
+                            memoryCache.set(`doc_${decodedId}`, normalized);
+                            memoryCache.set(`doc_${identifier}`, normalized);
+                            memoryCache.set(`doc_${docSnap.id}`, normalized);
+                            return normalized;
                         }
                     } catch (_) {}
                 }
@@ -1192,7 +1279,7 @@
 
             // 2. PARALLEL REVALIDATION / FRESH FETCH
             const controller = new AbortController();
-            const timeoutTimer = setTimeout(() => controller.abort(), 8000);
+            const timeoutTimer = setTimeout(() => controller.abort(), 15000);
 
             try {
                 let currentDoc = null;
@@ -1716,7 +1803,18 @@
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
                 const chapterImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
-                const targetUrl = isLocked ? "#" : getStoryUrl(art);
+                let targetUrl = "#";
+                if (!isLocked) {
+                    const bSlug = (parentBook?.slug || parentBook?.bookSlug || (parentBook?.title ? slugifyText(parentBook.title) : "") || parentBook?.id || "").toString().trim();
+                    const cSlug = (art.slug && art.slug !== bSlug) ? art.slug : ((art.title ? slugifyText(art.title) : "") || art.id || "");
+                    const cleanBook = cleanUrlPart(bSlug);
+                    const cleanChapter = cleanUrlPart(cSlug);
+                    if (cleanBook && cleanChapter) {
+                        targetUrl = `/story/${encodeURIComponent(cleanBook)}/${encodeURIComponent(cleanChapter)}`;
+                    } else {
+                        targetUrl = getStoryUrl(art);
+                    }
+                }
 
                 return `
                 <a href="${targetUrl}" data-chapter-index="${idx}" data-article-id="${art.id}" data-locked="${isLocked ? 'true' : 'false'}" class="chapter-card-link group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isLocked ? 'cursor-pointer' : ''}">
@@ -2063,10 +2161,16 @@
             const contentEl = document.getElementById('art-content');
             if (!contentEl) return;
 
-            const fontSizeMap = { small: "14px", medium: "16px", large: "18px", xlarge: "21px" };
-            const savedUserFontSize = localStorage.getItem("nuqtha_font_size");
-            const articleBaseSize = fontSizeMap[article.fontSize] || "16px";
-            const effectiveSize = savedUserFontSize ? `${savedUserFontSize}px` : articleBaseSize;
+            let savedUserFontSize = null;
+            try {
+                savedUserFontSize = localStorage.getItem("nuqtha_reader_size_v2") || sessionStorage.getItem("nuqtha_reader_size_v2");
+            } catch (_) {}
+            const defaultSize = 18;
+            let currentReaderSize = savedUserFontSize ? parseInt(savedUserFontSize, 10) : defaultSize;
+            if (isNaN(currentReaderSize) || currentReaderSize < 15 || currentReaderSize > 26) {
+                currentReaderSize = defaultSize;
+            }
+            const effectiveSize = `${currentReaderSize}px`;
 
             contentEl.style.setProperty("--article-font-size", effectiveSize);
             document.documentElement.style.setProperty("--article-font-size", effectiveSize);
@@ -2082,7 +2186,42 @@
             const contentStyleAttr = contentStyle;
 
             const bodyContent = (article.content || "").trim();
-            let rawParagraphs = bodyContent.split(/\r?\n\r?\n/).map(p => p.trim()).filter(Boolean);
+            // Clean Rendering: Collapse 3+ line breaks to double line breaks
+            let cleanedBody = bodyContent
+                .replace(/(?:\r?\n){3,}/g, "\n\n")
+                .replace(/(?:<br\s*\/?>\s*){3,}/gi, "<br><br>");
+
+            // Strip clashing inline styles while preserving highlight classes
+            cleanedBody = cleanedBody.replace(/style\s*=\s*(["'])(.*?)\1/gi, (match, quote, styleStr) => {
+                const kept = styleStr
+                    .split(";")
+                    .map(s => s.trim())
+                    .filter(rule => {
+                        if (!rule) return false;
+                        const lower = rule.toLowerCase();
+                        if (lower.startsWith("font-size") ||
+                            lower.startsWith("font-family") ||
+                            lower.startsWith("line-height") ||
+                            lower.startsWith("color") ||
+                            lower.includes("text-align: justify") ||
+                            lower.includes("text-align:justify")) {
+                            return false;
+                        }
+                        return true;
+                    })
+                    .join("; ");
+                return kept ? `style="${kept}"` : "";
+            });
+
+            let rawParagraphs = cleanedBody
+                .split(/\r?\n\r?\n/)
+                .map(p => p.trim())
+                .filter(p => {
+                    if (!p) return false;
+                    const stripped = p.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, "").trim();
+                    if (!stripped && !p.includes("<img") && !p.includes("![") && !p.includes(":::")) return false;
+                    return true;
+                });
 
             // Locked Chapter Preview & Inline Paywall Card
             if (isChapterLocked && parentBook) {
@@ -2096,7 +2235,7 @@
 
                 contentEl.innerHTML = `
                     <div class="relative">
-                        <p ${contentStyle || contentStyleAttr || ""}>${firstP}</p>
+                        <p class="reading-p mb-4" ${contentStyle || contentStyleAttr || ""}>${firstP}</p>
                         <!-- Gradient Blur Overlay -->
                         <div class="h-28 bg-gradient-to-b from-transparent via-[var(--bg)]/80 to-[var(--bg)] pointer-events-none -mt-14"></div>
                     </div>
@@ -2183,10 +2322,10 @@
                         const caption = imgMatch[1] || "";
                         const url = imgMatch[3];
                         return `
-                            <div class="my-6 rounded-2xl overflow-hidden border border-[var(--border)] dark:border-white/10">
-                                <img src="${url}" alt="${caption}" class="w-full h-auto" loading="lazy">
-                                ${caption && caption !== "ചിത്രം" ? `<div class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</div>` : ''}
-                            </div>
+                            <figure class="article-image-wrap my-6">
+                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" loading="lazy">
+                                ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
+                            </figure>
                         `;
                     }
 
@@ -2194,7 +2333,7 @@
                         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[var(--text)] dark:text-white">$1</strong>')
                         .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
 
-                    return `<p ${contentStyle || contentStyleAttr || ""}>${formatted}</p>`;
+                    return `<p class="reading-p mb-4" ${contentStyle || contentStyleAttr || ""}>${formatted}</p>`;
                 })
                 .join('');
 
@@ -2641,25 +2780,47 @@
             const indicators = document.querySelectorAll(".font-size-indicator, #font-size-indicator");
             const contentEl = document.getElementById("art-content");
 
-            let currentSize = parseInt(localStorage.getItem("nuqtha_font_size"), 10) || 16;
+            const defaultSize = 18;
+            let saved = null;
+            try {
+                saved = localStorage.getItem("nuqtha_reader_size_v2") || sessionStorage.getItem("nuqtha_reader_size_v2");
+            } catch (_) {}
+            let currentSize = saved ? parseInt(saved, 10) : defaultSize;
+            if (isNaN(currentSize) || currentSize < 15 || currentSize > 26) {
+                currentSize = defaultSize;
+            }
 
             function updateSize(sz) {
-                currentSize = Math.max(13, Math.min(26, sz));
+                currentSize = Math.max(15, Math.min(26, sz));
                 try {
-                    localStorage.setItem("nuqtha_font_size", currentSize);
+                    localStorage.setItem("nuqtha_reader_size_v2", currentSize);
                 } catch (err) {
-                    try { sessionStorage.setItem("nuqtha_font_size", currentSize); } catch (_) {}
+                    try { sessionStorage.setItem("nuqtha_reader_size_v2", currentSize); } catch (_) {}
                 }
                 document.documentElement.style.setProperty("--article-font-size", `${currentSize}px`);
                 if (contentEl) contentEl.style.setProperty("--article-font-size", `${currentSize}px`);
                 indicators.forEach(ind => {
-                    ind.textContent = `${currentSize}px`;
+                    if (ind) {
+                        ind.textContent = `${currentSize}px`;
+                    }
                 });
             }
 
-            decBtns.forEach(btn => btn.addEventListener("click", () => updateSize(currentSize - 1)));
-            incBtns.forEach(btn => btn.addEventListener("click", () => updateSize(currentSize + 1)));
-            resetBtns.forEach(btn => btn.addEventListener("click", () => updateSize(16)));
+            decBtns.forEach(btn => {
+                if (btn) btn.onclick = () => updateSize(currentSize - 1);
+            });
+            incBtns.forEach(btn => {
+                if (btn) btn.onclick = () => updateSize(currentSize + 1);
+            });
+            resetBtns.forEach(btn => {
+                if (btn) btn.onclick = () => updateSize(18);
+            });
+            indicators.forEach(ind => {
+                if (ind) {
+                    ind.onclick = () => updateSize(18);
+                    ind.title = "Reset default size (18px)";
+                }
+            });
 
             updateSize(currentSize);
         }

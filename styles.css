@@ -3090,9 +3090,15 @@ html.dark .book3d-floor-shadow {
 }
 
 
-/* ═══════════ ARTICLE READING BODY TYPOGRAPHY ═══════════ */
+/* ═══════════ ARTICLE READING BODY TYPOGRAPHY & READING COLUMN ═══════════ */
 :root {
-    --article-font-size: 16px;
+    --article-font-size: 18px;
+}
+
+@media (max-width: 640px) {
+    :root {
+        --article-font-size: 17px;
+    }
 }
 
 #article-content,
@@ -3100,13 +3106,22 @@ html.dark .book3d-floor-shadow {
     transition: filter 0.25s ease;
 }
 
-.article-body,
+/* 1. Centered Reading Column (Max-width 720px, left-aligned, safe wrap) */
+.reading-column,
 #article-content,
 #art-content,
-#reader-content {
-    font-size: var(--article-font-size, 16px);
+.article-body {
+    max-width: 720px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: left !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    hyphens: auto !important;
+    font-size: var(--article-font-size, 18px);
 }
 
+/* 2. Professional Typography & Malayalam Support */
 .article-body p,
 .article-preview p,
 .article-content p,
@@ -3114,26 +3129,71 @@ html.dark .book3d-floor-shadow {
 #reader-content p,
 #preview-body {
     font-family: 'Anek Malayalam', sans-serif !important;
-    font-size: var(--article-font-size, 16px);
-    color: #333333;
-    margin: 6.4px 0px;
-    line-height: 1.85;
+    font-size: var(--article-font-size, 18px);
+    color: var(--text, #1e1b18);
+    margin: 1.1em 0;
+    line-height: 1.9 !important;
     letter-spacing: -0.01em;
+    text-align: left !important;
 }
 
+/* 3. Dark Mode Contrast (WCAG AA 11.5:1 ratio) */
+html.dark .article-body,
 html.dark .article-body p,
 html.dark .article-preview p,
 html.dark .article-content p,
 html.dark #art-content p,
 html.dark #reader-content p,
 html.dark #preview-body,
+body.dark-mode .article-body,
 body.dark-mode .article-body p,
 body.dark-mode .article-preview p,
 body.dark-mode .article-content p,
 body.dark-mode #art-content p,
 body.dark-mode #reader-content p,
 body.dark-mode #preview-body {
-    color: #cbd5e1;
+    color: #e2e8f0 !important;
+}
+
+/* Bold & Emphasis preservation */
+.article-body strong,
+.article-body b,
+#art-content strong,
+#art-content b {
+    font-weight: 700 !important;
+    color: var(--text, #1e1b18);
+}
+html.dark .article-body strong,
+html.dark .article-body b,
+html.dark #art-content strong,
+html.dark #art-content b,
+body.dark-mode .article-body strong,
+body.dark-mode #art-content strong {
+    color: #ffffff !important;
+}
+
+/* Responsive, Centered & Rounded Article Images */
+.article-body img,
+#art-content img,
+.article-image-wrap img,
+.article-img-wrap img {
+    display: block !important;
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 1.75rem auto !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
+}
+
+/* Mobile Side Padding & Overflow Control */
+@media (max-width: 640px) {
+    #standard-article-view,
+    #article-content,
+    .reading-column {
+        padding-left: 16px;
+        padding-right: 16px;
+        overflow-x: hidden;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════
