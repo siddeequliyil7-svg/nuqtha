@@ -829,7 +829,7 @@
 
         // ═══════════ PARALLEL DATA FETCHERS WITH FIELD PROJECTION ═══════════
 
-        // 1. Fetch Target Document (Direct SDK + REST fallback with dual collection support)
+        // 1. Fetch Target Document (High-speed REST first with SDK offline fallback)
         async function fetchTargetDocument(id, signal) {
             if (!id) return null;
             const cleanId = safeDecodeParam(id);
@@ -843,24 +843,7 @@
             const collectionsToTry = (isBookRoute || editionParam) ? ["books", "articles"] : ["articles", "books"];
 
             for (const col of collectionsToTry) {
-                try {
-                    const docRef = doc(db, col, cleanId);
-                    const docSnap = await getDoc(docRef);
-                    if (docSnap.exists()) {
-                        const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                        if (col === "books") {
-                            normalized.type = "BOOK";
-                            normalized.isBook = true;
-                            normalized.isChapter = false;
-                        }
-                        memoryCache.set(`doc_${cleanId}`, normalized);
-                        memoryCache.set(`doc_${id}`, normalized);
-                        return normalized;
-                    }
-                } catch (err) {
-                    console.warn(`[Reader] Direct getDoc error in ${col}:`, err);
-                }
-
+                // A. Ultra-fast REST fetch direct document lookup (~80ms)
                 try {
                     const encodedId = encodeURIComponent(cleanId);
                     const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/${col}/${encodedId}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE`, { signal });
@@ -891,7 +874,26 @@
                         }
                     }
                 } catch (err) {
-                    console.warn(`[Reader] REST direct fetch error in ${col}:`, err);
+                    if (err.name === 'AbortError') throw err;
+                }
+
+                // B. SDK / offline IndexedDB cache fallback
+                try {
+                    const docRef = doc(db, col, cleanId);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                        if (col === "books") {
+                            normalized.type = "BOOK";
+                            normalized.isBook = true;
+                            normalized.isChapter = false;
+                        }
+                        memoryCache.set(`doc_${cleanId}`, normalized);
+                        memoryCache.set(`doc_${id}`, normalized);
+                        return normalized;
+                    }
+                } catch (err) {
+                    if (err.name === 'AbortError') throw err;
                 }
             }
 
@@ -935,6 +937,7 @@
                     const qRes = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
+                        signal,
                         body: JSON.stringify({
                             structuredQuery: {
                                 from: [{ collectionId: col }],
@@ -984,7 +987,9 @@
                             return normalized;
                         }
                     }
-                } catch (_) {}
+                } catch (err) {
+                    if (err.name === 'AbortError') throw err;
+                }
 
                 // If looking for a book, also query bookSlug with op: "IN"
                 if (isBookRoute || editionParam) {
@@ -992,6 +997,7 @@
                         const qRes = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
+                            signal,
                             body: JSON.stringify({
                                 structuredQuery: {
                                     from: [{ collectionId: col }],
@@ -1041,71 +1047,19 @@
                                 return normalized;
                             }
                         }
-                    } catch (_) {}
-                }
-            }
-
-            // 2. Fast SDK Query Fallback using 'in' operator (single round-trip)
-            for (const col of collectionsToSearch) {
-                try {
-                    const slugQ = query(
-                        collection(db, col),
-                        where("slug", "in", candList),
-                        limit(1)
-                    );
-                    const querySnapshot = await getDocs(slugQ);
-                    if (!querySnapshot.empty) {
-                        const docSnap = querySnapshot.docs[0];
-                        const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                        if (col === "books") {
-                            normalized.type = "BOOK";
-                            normalized.isBook = true;
-                            normalized.isChapter = false;
-                        }
-                        memoryCache.set(`doc_${decodedId}`, normalized);
-                        memoryCache.set(`doc_${identifier}`, normalized);
-                        memoryCache.set(`doc_${docSnap.id}`, normalized);
-                        return normalized;
+                    } catch (err) {
+                        if (err.name === 'AbortError') throw err;
                     }
-                } catch (err) {
-                    console.warn(`[Reader] SDK in-query failed in ${col}:`, err);
-                }
-
-                if (isBookRoute || editionParam) {
-                    try {
-                        const bookSlugQ = query(
-                            collection(db, col),
-                            where("bookSlug", "in", candList),
-                            limit(1)
-                        );
-                        const querySnapshot = await getDocs(bookSlugQ);
-                        if (!querySnapshot.empty) {
-                            const docSnap = querySnapshot.docs[0];
-                            const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
-                            if (col === "books") {
-                                normalized.type = "BOOK";
-                                normalized.isBook = true;
-                                normalized.isChapter = false;
-                            }
-                            memoryCache.set(`doc_${decodedId}`, normalized);
-                            memoryCache.set(`doc_${identifier}`, normalized);
-                            memoryCache.set(`doc_${docSnap.id}`, normalized);
-                            return normalized;
-                        }
-                    } catch (_) {}
                 }
             }
 
-            // 3. Direct document ID lookup in both collections
-            const direct = await fetchTargetDocument(cleanDecoded, signal);
-            if (direct) return direct;
-            if (cleanRaw && cleanRaw !== cleanDecoded) {
-                const directRaw = await fetchTargetDocument(cleanRaw, signal);
-                if (directRaw) return directRaw;
+            // 2. Direct document ID lookup in both collections (deduplicated)
+            const idsToTry = Array.from(new Set([cleanDecoded, cleanRaw, decodedId])).filter(Boolean);
+            for (const tryId of idsToTry) {
+                const direct = await fetchTargetDocument(tryId, signal);
+                if (direct) return direct;
             }
-            if (decodedId && decodedId !== cleanDecoded) {
-                return await fetchTargetDocument(decodedId, signal);
-            }
+
             return null;
         }
 
@@ -1279,7 +1233,7 @@
 
             // 2. PARALLEL REVALIDATION / FRESH FETCH
             const controller = new AbortController();
-            const timeoutTimer = setTimeout(() => controller.abort(), 15000);
+            const timeoutTimer = setTimeout(() => controller.abort(), 25000);
 
             try {
                 let currentDoc = null;
@@ -1497,6 +1451,18 @@
 
                     if (bookContainerEl) bookContainerEl.classList.add("hidden");
                     if (articleViewEl) articleViewEl.classList.remove("hidden");
+
+                    // Guarantee complete article body content is loaded
+                    if ((!currentDoc.content || !currentDoc.content.trim()) && currentDoc.id) {
+                        try {
+                            const fullDoc = await fetchTargetDocument(currentDoc.id, controller.signal);
+                            if (fullDoc && fullDoc.content) {
+                                currentDoc.content = fullDoc.content;
+                                if (fullDoc.imageUrl && !currentDoc.imageUrl) currentDoc.imageUrl = fullDoc.imageUrl;
+                                if (fullDoc.transcription && !currentDoc.transcription) currentDoc.transcription = fullDoc.transcription;
+                            }
+                        } catch (_) {}
+                    }
 
                     await renderArticle(currentDoc, allArticles);
                     markArticleAsRead(currentDoc.id);
@@ -1832,7 +1798,10 @@
                     const cSlug = (art.slug && art.slug !== bSlug) ? art.slug : ((art.title ? slugifyText(art.title) : "") || art.id || "");
                     const cleanFn = typeof cleanUrlPart === "function" ? cleanUrlPart : cleanRouteSlug;
                     const cleanBook = cleanFn(bSlug);
-                    const cleanChapter = cleanFn(cSlug);
+                    let cleanChapter = cleanFn(cSlug);
+                    if (cleanChapter === cleanBook) {
+                        cleanChapter = cleanFn((art.title ? slugifyText(art.title) : "") || art.id || "");
+                    }
                     if (cleanBook && cleanChapter) {
                         targetUrl = `/story/${encodeURIComponent(cleanBook)}/${encodeURIComponent(cleanChapter)}`;
                     } else {
@@ -2213,6 +2182,18 @@
             }
             const contentStyle = contentStyleParts.length > 0 ? `style="${contentStyleParts.join('; ')}"` : '';
             const contentStyleAttr = contentStyle;
+
+            // If article content was not loaded (e.g. from cache or lightweight feed), fetch full body content
+            if ((!article.content || !article.content.trim()) && article.id) {
+                try {
+                    const fullDoc = await fetchTargetDocument(article.id);
+                    if (fullDoc && fullDoc.content) {
+                        article.content = fullDoc.content;
+                        if (fullDoc.imageUrl && !article.imageUrl) article.imageUrl = fullDoc.imageUrl;
+                        if (fullDoc.transcription && !article.transcription) article.transcription = fullDoc.transcription;
+                    }
+                } catch (_) {}
+            }
 
             const bodyContent = (article.content || "").trim();
             // Clean Rendering: Collapse 3+ line breaks to double line breaks

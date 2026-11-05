@@ -170,6 +170,9 @@ export function getStoryUrl(item) {
         const chapterSlug = item.slug || (item.title ? slugifyText(item.title) : "") || item.id || "";
         let cleanBook = cleanUrlPart(parentBookSlug);
         let cleanChapter = cleanUrlPart(chapterSlug);
+        if (cleanChapter === cleanBook) {
+            cleanChapter = cleanUrlPart((item.title ? slugifyText(item.title) : "") || item.id || "");
+        }
         if (cleanBook && cleanChapter) {
             return `/story/${encodeURIComponent(cleanBook)}/${encodeURIComponent(cleanChapter)}`;
         }
