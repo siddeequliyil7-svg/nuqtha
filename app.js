@@ -633,47 +633,15 @@ function escapeHtml(str) {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-/* ═══════════ Shared Firestore Article & Book Listener ═══════════ */
+/* ═══════════ Shared Firestore Article Listener ═══════════ */
 function listenForArticles() {
     const articlesRef = collection(db, "articles");
-    const booksRef = collection(db, "books");
-    const snapshotArticlesMap = new Map();
-    const snapshotBooksMap = new Map();
     let hasServerSnapshot = false;
     let restFetchPromise = null;
 
-    function mergeAndRender() {
-        const combined = new Map();
-        // 1. Add all articles from articles collection
-        snapshotArticlesMap.forEach((art, id) => {
-            combined.set(id, art);
-        });
-        // 2. Add all books from books collection (mark with type: "BOOK", isBook: true)
-        snapshotBooksMap.forEach((bk, id) => {
-            const existing = combined.get(id);
-            combined.set(id, {
-                ...(existing || {}),
-                ...bk,
-                type: "BOOK",
-                isBook: true,
-                isChapter: false
-            });
-        });
-
-        const list = Array.from(combined.values());
-        if (list.length > 0) {
-            allArticles = sortArticles(list);
-            safeCacheArticles(allArticles);
-            renderFeed();
-        } else if (!hasServerSnapshot) {
-            allArticles = [];
-            renderFeed();
-        }
-    }
-
     onSnapshot(articlesRef, snapshot => {
         console.log(`[NUQTHA Feed] Firestore 'articles' received ${snapshot.docs.length} docs`);
-        snapshotArticlesMap.clear();
+        const list = [];
         snapshot.docs.forEach(articleDoc => {
             const article = articleDoc.data();
             const normalized = normalizeArticleDoc({
@@ -684,39 +652,21 @@ function listenForArticles() {
                 content: sanitizeMalayalamText(article.content),
                 playlistName: sanitizeMalayalamText(article.playlistName)
             }, articleDoc.id);
-            snapshotArticlesMap.set(articleDoc.id, normalized);
+            list.push(normalized);
         });
 
         hasServerSnapshot = !snapshot.metadata.fromCache;
-        mergeAndRender();
+        if (list.length > 0) {
+            allArticles = sortArticles(list);
+            safeCacheArticles(allArticles);
+            renderFeed();
+        } else if (!hasServerSnapshot) {
+            allArticles = [];
+            renderFeed();
+        }
     }, error => {
         console.warn("Firestore articles listener warning:", error.code || "", error.message);
         loadArticlesFromRest();
-    });
-
-    onSnapshot(booksRef, snapshot => {
-        console.log(`[NUQTHA Feed] Firestore 'books' received ${snapshot.docs.length} docs`);
-        snapshotBooksMap.clear();
-        snapshot.docs.forEach(bookDoc => {
-            const book = bookDoc.data();
-            const normalized = normalizeArticleDoc({
-                ...book,
-                title: sanitizeMalayalamText(book.title),
-                author: sanitizeMalayalamText(book.author),
-                excerpt: sanitizeMalayalamText(book.excerpt),
-                content: sanitizeMalayalamText(book.content),
-                type: "BOOK",
-                isBook: true,
-                isChapter: false
-            }, bookDoc.id);
-            normalized.type = "BOOK";
-            normalized.isBook = true;
-            normalized.isChapter = false;
-            snapshotBooksMap.set(bookDoc.id, normalized);
-        });
-        mergeAndRender();
-    }, error => {
-        console.warn("Firestore books listener warning:", error.code || "", error.message);
     });
 
     loadArticlesFromRest();
@@ -748,44 +698,18 @@ function listenForArticles() {
                     return documents;
                 }
 
-                const [articleDocs, bookDocs] = await Promise.all([
-                    fetchColRest("articles"),
-                    fetchColRest("books").catch(() => [])
-                ]);
+                const articleDocs = await fetchColRest("articles");
 
-                const combinedMap = new Map();
-
-                articleDocs.forEach(document => {
+                const restArticles = articleDocs.map(document => {
                     const id = document.name.split("/").pop();
                     const fields = decodeFirestoreFields(document.fields || {});
-                    const normalized = normalizeArticleDoc({
+                    return normalizeArticleDoc({
                         ...fields,
                         createdAt: fields.createdAt || document.createTime,
                         updatedAt: fields.updatedAt || document.updateTime
                     }, id);
-                    combinedMap.set(id, normalized);
                 });
 
-                bookDocs.forEach(document => {
-                    const id = document.name.split("/").pop();
-                    const fields = decodeFirestoreFields(document.fields || {});
-                    const existing = combinedMap.get(id);
-                    const normalized = normalizeArticleDoc({
-                        ...(existing || {}),
-                        ...fields,
-                        type: "BOOK",
-                        isBook: true,
-                        isChapter: false,
-                        createdAt: fields.createdAt || document.createTime,
-                        updatedAt: fields.updatedAt || document.updateTime
-                    }, id);
-                    normalized.type = "BOOK";
-                    normalized.isBook = true;
-                    normalized.isChapter = false;
-                    combinedMap.set(id, normalized);
-                });
-
-                const restArticles = Array.from(combinedMap.values());
                 if (restArticles.length > 0) {
                     allArticles = sortArticles(restArticles);
                     safeCacheArticles(allArticles);
@@ -992,11 +916,11 @@ function renderSearchFeed(container, query) {
 
 /* ─── HOME FEED: Scrolling Carousel + Hero Featured + Dedicated Books + Category Feeds ─── */
 function renderHomeFeed(container) {
-    // Distinguish book covers from standard articles while allowing dual content coexistence
+    // Distinguish book covers from standard articles
     const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && !isChapterEntity(a);
     const bookCovers = allArticles.filter(isBookCoverItem);
-    // Regular articles: keep all articles that are NOT book covers (so dual articles with same title/bookName remain visible!)
-    const regularArticles = allArticles.filter(a => !isBookCoverItem(a));
+    // Regular articles: keep only genuine standalone articles (exclude book covers AND all book chapters)
+    const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapterEntity(a));
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) return;

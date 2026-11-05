@@ -948,6 +948,65 @@
                 }
             }
 
+            // 2b. High-Speed REST Query Fallback (bypasses any client WebChannel/SDK stall)
+            for (const col of collectionsToSearch) {
+                for (const cand of candidateSet) {
+                    if (!cand) continue;
+                    try {
+                        const qRes = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                structuredQuery: {
+                                    from: [{ collectionId: col }],
+                                    where: {
+                                        fieldFilter: {
+                                            field: { fieldPath: "slug" },
+                                            op: "EQUAL",
+                                            value: { stringValue: cand }
+                                        }
+                                    },
+                                    limit: 1
+                                }
+                            }),
+                            signal
+                        });
+                        if (qRes.ok) {
+                            const qJson = await qRes.json();
+                            if (Array.isArray(qJson) && qJson.length > 0 && qJson[0].document) {
+                                const docItem = qJson[0].document;
+                                const docId = docItem.name.split("/").pop();
+                                const data = {};
+                                if (docItem.fields) {
+                                    for (const [k, v] of Object.entries(docItem.fields)) {
+                                        if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                        else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                        else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                        else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                        else if (v.arrayValue && v.arrayValue.values) {
+                                            data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                        } else {
+                                            data[k] = null;
+                                        }
+                                    }
+                                }
+                                const normalized = normalizeArticleDoc(data, docId);
+                                if (col === "books") {
+                                    normalized.type = "BOOK";
+                                    normalized.isBook = true;
+                                    normalized.isChapter = false;
+                                }
+                                memoryCache.set(`doc_${decodedId}`, normalized);
+                                memoryCache.set(`doc_${identifier}`, normalized);
+                                memoryCache.set(`doc_${cand}`, normalized);
+                                memoryCache.set(`doc_${docId}`, normalized);
+                                return normalized;
+                            }
+                        }
+                    } catch (_) {}
+                }
+            }
+
             // 3. Direct document ID lookup in both collections
             const direct = await fetchTargetDocument(cleanDecoded, signal);
             if (direct) return direct;
