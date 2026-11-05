@@ -13,7 +13,7 @@ import { getCachedAuthUser, checkIsAdminUser, signInWithGoogle } from "./auth-sy
 import { openAuthModal } from "./auth-ui.js";
 
 // Default APK download URL if not specifically configured on the book doc
-export const DEFAULT_APK_URL = "https://nuqtha.vercel.app/download/nuqtha.apk";
+export const DEFAULT_APK_URL = "/nuqtha.apk";
 
 /**
  * Check if the active user has admin privileges

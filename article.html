@@ -1560,7 +1560,7 @@
             const isLocked = !isUnlocked;
             const platform = getDevicePlatform();
             const isAndroid = platform === "android";
-            const apkUrl = book.apkUrl || "https://nuqtha.vercel.app/download/nuqtha.apk";
+            const apkUrl = book.apkUrl || "/nuqtha.apk";
 
             // Bookmark status
             const savedBookIds = getSavedBookIds();
@@ -2256,7 +2256,7 @@
                 const platform = getDevicePlatform();
                 const isAndroid = platform === "android";
                 const price = Number(parentBook.price) || 49;
-                const apkUrl = parentBook.apkUrl || "https://nuqtha.vercel.app/download/nuqtha.apk";
+                const apkUrl = parentBook.apkUrl || "/nuqtha.apk";
                 const cleanParentTitle = (parentBook.title || "പ്രീമിയം പുസ്തകം").replace(/[*_#~`]/g, "");
 
                 const firstP = rawParagraphs[0] ? rawParagraphs[0].replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>').replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>') : (article.excerpt || "");
