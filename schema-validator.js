@@ -132,13 +132,31 @@ export function slugifyText(str) {
  */
 export function getStoryUrl(item) {
     if (!item) return "/";
-    let slug = String(item.slug || slugifyText(item.title) || item.id || "").trim();
-    if (slug.startsWith("/")) slug = slug.slice(1);
+    let rawSlug = String(item.slug || item.bookSlug || slugifyText(item.title) || item.id || "").trim();
+    if (rawSlug.startsWith("/")) rawSlug = rawSlug.slice(1);
+
+    // Decode URL encodings (up to 3 times for double/triple encoded paths like book%252F...)
+    let slug = rawSlug;
+    for (let i = 0; i < 3; i++) {
+        if (!slug.includes("%")) break;
+        try {
+            const dec = decodeURIComponent(slug);
+            if (dec === slug) break;
+            slug = dec;
+        } catch (_) { break; }
+    }
+    slug = slug.trim().replace(/^\/+|\/+$/g, "");
 
     const isBook = (item.type || "").toString().toUpperCase() === "BOOK" || item.isBook === true;
     if (isBook) {
-        // Strip any redundant leading "book/" or "story/" or leftover hex "2f" from the slug to avoid double prefixing
-        let cleanBookSlug = slug.replace(/^(?:book|story)\//gi, "").replace(/^2f/gi, "").replace(/^(?:book|story)\//gi, "").trim();
+        // Strip any redundant leading "book/", "story/", "article/", "2f"
+        let cleanBookSlug = slug;
+        for (let i = 0; i < 3; i++) {
+            cleanBookSlug = cleanBookSlug
+                .replace(/^(?:book|story|article)[\/\\]+/gi, "")
+                .replace(/^2f/gi, "")
+                .trim();
+        }
         return `/book/${encodeURIComponent(cleanBookSlug)}`;
     }
 
@@ -152,7 +170,9 @@ export function getStoryUrl(item) {
     if (bookTitle && String(bookTitle).trim()) {
         const bookSlug = item.bookSlug || slugifyText(bookTitle);
         if (bookSlug && slug) {
-            return `/story/${encodeURIComponent(bookSlug)}/${encodeURIComponent(slug)}`;
+            let cleanBook = bookSlug.replace(/^(?:book|story|article)[\/\\]+/gi, "").trim();
+            let cleanChapter = slug.replace(/^(?:book|story|article)[\/\\]+/gi, "").trim();
+            return `/story/${encodeURIComponent(cleanBook)}/${encodeURIComponent(cleanChapter)}`;
         }
     }
     return `/story/${encodeURIComponent(slug)}`;
@@ -300,15 +320,16 @@ export function sanitizeFontSize(size, defaultSize = "medium") {
 
 /**
  * Validate image URL or Base64 Data URI
- * Guards against malformed data, script injections, or broken headers
+ * Guards against malformed data, script injections, or broken headers.
+ * Disallows SVG Data URIs to prevent Stored XSS vectors.
  */
 export function sanitizeImageUrl(url) {
     if (!url || typeof url !== "string") return "";
     const trimmed = url.trim();
     if (trimmed.length === 0) return "";
 
-    // Allow valid Data URIs for images
-    if (/^data:image\/(jpeg|jpg|png|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(trimmed)) {
+    // Allow valid Data URIs for safe raster images only (JPEG, PNG, WEBP, GIF)
+    if (/^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(trimmed)) {
         return trimmed;
     }
 
@@ -317,9 +338,23 @@ export function sanitizeImageUrl(url) {
         return trimmed;
     }
 
-    // Disallow corrupted/unknown strings
+    // Disallow corrupted/unknown strings or dangerous pseudo-protocols
     console.warn("[Sanitizer] Ignored malformed image URL/DataURI");
     return "";
+}
+
+/**
+ * Validate HTTP/HTTPS URL
+ * Prevents javascript: or data: pseudo-protocol code execution.
+ */
+export function sanitizeUrl(url, fallback = "") {
+    if (!url || typeof url !== "string") return fallback;
+    const trimmed = url.trim();
+    if (!trimmed) return fallback;
+    if (/^https?:\/\/[^\s$.?#].[^\s]*$/i.test(trimmed)) {
+        return trimmed;
+    }
+    return fallback;
 }
 
 /**
@@ -450,7 +485,7 @@ export function validateAndSanitizeArticleForSave(raw) {
     const date = sanitizeString(raw.date, 30, new Date().toLocaleDateString("en-GB"));
     const isPremium = Boolean(raw.isPremium === true || (typeof raw.category === "string" && raw.category.toLowerCase().includes("premium")));
     const price = !isNaN(raw.price) && Number(raw.price) >= 0 ? Number(raw.price) : 0;
-    const apkUrl = sanitizeString(raw.apkUrl, 500, "");
+    const apkUrl = sanitizeUrl(raw.apkUrl, "");
 
     // Estimate payload size for Firestore 1MB doc ceiling
     const estimatedBytes = (title.length + content.length + imageUrl.length + excerpt.length + author.length + transcription.length) * 2;
@@ -578,6 +613,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
 
     const isChapter = rawDoc.isChapter === true ||
                       rawDoc.type === "CHAPTER" ||
+                      rawCat === "chapter" ||
                       hasDifferentParentBookId ||
                       Boolean(cleanBookId && (!cleanDocId || cleanBookId !== cleanDocId)) ||
                       hasDifferentParentBookName ||
@@ -594,7 +630,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const date = sanitizeString(rawDoc.date, 30, formatDateSafe(createdAt, "Recent"));
     const isPremium = Boolean(rawDoc.isPremium === true || isBookCat || (Array.isArray(rawDoc.tags) && rawDoc.tags.some(t => String(t).toLowerCase().includes("premium"))));
     const price = !isNaN(rawDoc.price) && Number(rawDoc.price) >= 0 ? Number(rawDoc.price) : 0;
-    const apkUrl = sanitizeString(rawDoc.apkUrl, 500, "");
+    const apkUrl = sanitizeUrl(rawDoc.apkUrl, "");
 
     return {
         id,
@@ -627,7 +663,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         leadTitle,
         featuredTitle,
         type,
-        isBook: isExplicitBook,
+        isBook: isBook,
+        isChapter: isChapter,
         isPremium,
         price,
         apkUrl,

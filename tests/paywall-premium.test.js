@@ -14,6 +14,10 @@ const book1 = { id: "57iJx0eBBXQKKF2MMRM6", title: "അബ്ബാസിയ്�
 const url1 = getStoryUrl(book1);
 assert.strictEqual(url1, "/book/abbaasiyya-khilaaphathth", `Expected /book/abbaasiyya-khilaaphathth, got ${url1}`);
 
+const book1Encoded = { id: "57iJx0eBBXQKKF2MMRM6", title: "അബ്ബാസിയ്യ ഖിലാഫത്ത്", slug: "book%2Fabbaasiyya-khilaaphathth", type: "BOOK" };
+const url1Encoded = getStoryUrl(book1Encoded);
+assert.strictEqual(url1Encoded, "/book/abbaasiyya-khilaaphathth", `Expected /book/abbaasiyya-khilaaphathth, got ${url1Encoded}`);
+
 const book2 = { id: "test", title: "Test", slug: "2fabbaasiyya-khilaaphathth", type: "BOOK" };
 const url2 = getStoryUrl(book2);
 assert.strictEqual(url2, "/book/abbaasiyya-khilaaphathth", `Expected /book/abbaasiyya-khilaaphathth, got ${url2}`);
@@ -66,3 +70,4 @@ console.log("  [OK] Chapter URLs correctly routed under /story/:bookSlug/:chapte
 console.log("==================================================");
 console.log("PASS: ALL PAYWALL & PREMIUM TESTS PASSED!");
 console.log("==================================================");
+

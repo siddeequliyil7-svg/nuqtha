@@ -2,13 +2,14 @@
  * NUQTHA — Premium Book Paywall & Razorpay UPI Payment Service
  * 
  * Features:
- * 1. Device-specific UX (Android APK install prompt vs. iOS/Web direct Razorpay UPI modal)
- * 2. Purchase verification & synchronization with Firestore `purchases` collection
- * 3. Dynamic book preview (introduction open, chapters locked until purchased)
- * 4. Seamless unlock on successful transaction
+ * 1. Seamless iOS Safari Razorpay integration (preloaded embedded modal, no popup blockers or redirect delays)
+ * 2. World-class Android APK Guided 3-Step Setup UI/UX
+ * 3. Server-side payment verification integration (/api/verify-payment & /api/razorpay-webhook)
+ * 4. Purchase verification & synchronization with Firestore `purchases` collection
+ * 5. Dynamic book preview (introduction open, chapters locked until purchased)
  */
 
-import { getCachedAuthUser, signInWithGoogle } from "./auth-system.js";
+import { getCachedAuthUser } from "./auth-system.js";
 
 // Default APK download URL if not specifically configured on the book doc
 export const DEFAULT_APK_URL = "https://nuqtha.vercel.app/download/nuqtha.apk";
@@ -134,16 +135,21 @@ export async function recordPurchase({ book, user, paymentId, orderId, amount })
 
 /**
  * Loads Razorpay Standard Checkout SDK from CDN
+ * Pre-warms cache and returns the Razorpay constructor
  */
 export function loadRazorpaySDK() {
     return new Promise((resolve, reject) => {
         if (typeof window !== "undefined" && window.Razorpay) {
             return resolve(window.Razorpay);
         }
+        if (typeof document === "undefined") {
+            return reject(new Error("Document is undefined"));
+        }
         const existing = document.querySelector('script[src*="checkout.razorpay.com"]');
         if (existing) {
             existing.addEventListener('load', () => resolve(window.Razorpay));
             existing.addEventListener('error', () => reject(new Error("Razorpay script load error")));
+            if (window.Razorpay) return resolve(window.Razorpay);
             return;
         }
         const script = document.createElement("script");
@@ -155,77 +161,133 @@ export function loadRazorpaySDK() {
     });
 }
 
+// Background pre-load Razorpay SDK immediately to eliminate delays and Safari popup blocks
+if (typeof window !== "undefined") {
+    loadRazorpaySDK().catch(() => {});
+}
+
 /**
  * Initiates Razorpay Standard Checkout Modal
+ * 
+ * iOS Safari Optimization:
+ * Executes synchronously in direct user click tick, using embedded iframe modal
+ * with redirect: false, preventing Safari popup window blocker from triggering.
  */
-export async function triggerRazorpayPayment({ book, user, onSuccess, onFailure }) {
-    try {
-        await loadRazorpaySDK();
-        const price = Number(book.price) || 49;
-        const amountPaise = Math.round(price * 100);
-        let activeUser = user || getCachedAuthUser();
+export function triggerRazorpayPayment({ book, user, onSuccess, onFailure }) {
+    if (!book) return;
 
-        // If user is not signed in, prompt Google Sign-In so purchase is preserved across devices
-        if (!activeUser || !activeUser.email) {
+    const price = Number(book.price) || 49;
+    const amountPaise = Math.round(price * 100);
+    const activeUser = user || getCachedAuthUser();
+    const guestId = (typeof localStorage !== "undefined" && localStorage.getItem("nuqtha_guest_id")) || "guest_" + Math.random().toString(36).substring(2, 9);
+    if (typeof localStorage !== "undefined" && !localStorage.getItem("nuqtha_guest_id")) {
+        try { localStorage.setItem("nuqtha_guest_id", guestId); } catch (_) {}
+    }
+
+    const cleanTitle = (book.title || "Premium Book").replace(/[*_#~`]/g, "").trim();
+    const rzpKey = (typeof window !== "undefined" && window.RAZORPAY_KEY_ID) || "rzp_test_51O7Q2Nuqtha";
+
+    const options = {
+        key: rzpKey,
+        amount: amountPaise,
+        currency: "INR",
+        name: "NUQTHA (നൂഖ്ത)",
+        description: `Unlock: ${cleanTitle}`,
+        image: book.imageUrl || "https://nuqtha.vercel.app/favicon.ico",
+        prefill: {
+            name: activeUser?.name || "",
+            email: activeUser?.email || "",
+            contact: activeUser?.phoneNumber || ""
+        },
+        notes: {
+            bookId: String(book.id || ""),
+            bookTitle: cleanTitle,
+            userId: activeUser?.uid || activeUser?.email || guestId,
+            userName: activeUser?.name || "വായനക്കാരൻ"
+        },
+        theme: {
+            color: "#b4532c",
+            backdrop_color: "rgba(0, 0, 0, 0.65)"
+        },
+        modal: {
+            backdropclose: false,
+            escape: true,
+            handleback: true,
+            confirm_close: true,
+            animation: true,
+            ondismiss: function () {
+                console.log("[Razorpay] Checkout modal dismissed");
+                if (typeof onFailure === "function") onFailure("dismissed");
+            }
+        },
+        // Prevent iOS Safari from opening external popup tabs or redirecting away
+        redirect: false,
+        handler: async function (response) {
+            console.log("[Razorpay] Transaction success:", response);
+
+            // 1. Client Server-Side Payment Verification Call
             try {
-                activeUser = await signInWithGoogle();
-            } catch (authErr) {
-                console.log("[Paywall] Google sign in bypassed, continuing as guest:", authErr);
+                fetch("/api/verify-payment", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        paymentId: response.razorpay_payment_id,
+                        orderId: response.razorpay_order_id || "",
+                        signature: response.razorpay_signature || "",
+                        bookId: book.id,
+                        bookTitle: cleanTitle,
+                        userId: activeUser?.uid || activeUser?.email || guestId,
+                        userEmail: activeUser?.email || response.razorpay_email || "",
+                        userName: activeUser?.name || "വായനക്കാരൻ",
+                        amount: price
+                    })
+                }).catch(err => console.warn("[VerifyPayment] Server background verification warning:", err));
+            } catch (_) {}
+
+            // 2. Commit purchase locally and to Firestore
+            await recordPurchase({
+                book,
+                user: activeUser,
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id,
+                amount: price
+            });
+
+            // 3. Invoke success callback
+            if (typeof onSuccess === "function") {
+                onSuccess(response);
             }
         }
+    };
 
-        const rzpKey = (typeof window !== "undefined" && window.RAZORPAY_KEY_ID) || "rzp_test_51O7Q2Nuqtha";
-
-        const options = {
-            key: rzpKey,
-            amount: amountPaise,
-            currency: "INR",
-            name: "NUQTHA (നൂഖ്ത)",
-            description: `Unlock: ${book.title || "Premium Book"}`,
-            image: book.imageUrl || "https://nuqtha.vercel.app/favicon.ico",
-            prefill: {
-                name: activeUser?.name || "",
-                email: activeUser?.email || "",
-                contact: activeUser?.phoneNumber || ""
-            },
-            theme: {
-                color: "#b4532c"
-            },
-            handler: async function (response) {
-                console.log("[Razorpay] Transaction success:", response);
-                await recordPurchase({
-                    book,
-                    user: activeUser,
-                    paymentId: response.razorpay_payment_id,
-                    orderId: response.razorpay_order_id,
-                    amount: price
-                });
-
-                if (typeof onSuccess === "function") {
-                    onSuccess(response);
-                }
-            },
-            modal: {
-                ondismiss: function () {
-                    console.log("[Razorpay] Modal closed");
-                    if (typeof onFailure === "function") onFailure("dismissed");
-                }
-            }
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-    } catch (err) {
-        console.error("[Paywall] Payment trigger failed:", err);
-        if (typeof onFailure === "function") onFailure(err);
+    // If Razorpay SDK is already loaded, open directly (maintains iOS Safari gesture token)
+    if (typeof window !== "undefined" && window.Razorpay) {
+        try {
+            const rzp = new window.Razorpay(options);
+            rzp.open();
+            return;
+        } catch (err) {
+            console.error("[Paywall] Direct Razorpay open error:", err);
+        }
     }
+
+    // Fallback load if not ready yet
+    loadRazorpaySDK()
+        .then((RazorpayConstructor) => {
+            const rzp = new RazorpayConstructor(options);
+            rzp.open();
+        })
+        .catch(err => {
+            console.error("[Paywall] Razorpay SDK load failure:", err);
+            if (typeof onFailure === "function") onFailure(err);
+        });
 }
 
 /**
  * Displays the device-specific Paywall Modal
  * 
- * - Android: "Please install our APK file first to continue", Direct Install App button + Razorpay Pay option.
- * - iOS/Web: Sleek Razorpay UPI "Pay to Unlock" modal directly.
+ * - Android: Polished 3-step APK installation guide with direct download CTA + Web UPI pay option.
+ * - iOS/Web: Direct sleek Razorpay UPI "Pay to Unlock" modal.
  */
 export function showPaywallModal({ book, onUnlocked }) {
     if (!book) return;
@@ -242,59 +304,110 @@ export function showPaywallModal({ book, onUnlocked }) {
 
     const modal = document.createElement("div");
     modal.id = "nuqtha-paywall-modal";
-    modal.className = "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in";
+    modal.className = "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-md animate-fade-in overflow-y-auto";
 
     modal.innerHTML = `
-        <div class="relative w-full max-w-md bg-white dark:bg-[#151722] rounded-3xl border border-[#ebdccb] dark:border-white/10 shadow-2xl p-6 sm:p-8 space-y-6 text-center overflow-hidden">
+        <div class="relative w-full max-w-md bg-white dark:bg-[#151722] rounded-3xl border border-[#ebdccb] dark:border-white/10 shadow-2xl p-5 sm:p-7 space-y-5 text-center overflow-hidden my-auto">
             <!-- Background Decorative Ambient Glow -->
-            <div class="absolute -top-20 -right-20 w-44 h-44 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" aria-hidden="true"></div>
-            <div class="absolute -bottom-20 -left-20 w-44 h-44 rounded-full bg-[#b4532c]/15 blur-3xl pointer-events-none" aria-hidden="true"></div>
+            <div class="absolute -top-24 -right-24 w-48 h-48 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" aria-hidden="true"></div>
+            <div class="absolute -bottom-24 -left-24 w-48 h-48 rounded-full bg-[#b4532c]/15 blur-3xl pointer-events-none" aria-hidden="true"></div>
 
             <!-- Close Button -->
-            <button id="pw-close-btn" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center text-sm font-bold transition cursor-pointer">
+            <button id="pw-close-btn" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center text-xs font-bold transition cursor-pointer z-10" aria-label="Close">
                 ✕
             </button>
 
             <!-- Header Badge & Icon -->
-            <div class="space-y-2">
-                <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center text-3xl shadow-lg shadow-amber-500/30">
-                    🔒
+            <div class="space-y-2 pt-1">
+                <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-amber-500/25">
+                    ${isAndroid ? '📲' : '🔒'}
                 </div>
                 <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 text-[10px] font-black uppercase tracking-widest font-english">
-                    <span>PREMIUM EDITION</span>
+                    <span>${isAndroid ? 'ANDROID APP & EDITION' : 'PREMIUM EDITION'}</span>
                 </div>
-                <h3 class="text-xl sm:text-2xl font-black text-[var(--text)] dark:text-white leading-tight font-['Anek_Malayalam']">
+                <h3 class="text-lg sm:text-xl font-black text-[var(--text)] dark:text-white leading-tight font-['Anek_Malayalam']">
                     ${cleanTitle}
                 </h3>
             </div>
 
             <!-- Device Specific Content -->
             ${isAndroid ? `
-                <!-- Android Experience -->
-                <div class="p-4 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 space-y-2 text-left">
-                    <div class="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-bold text-xs">
-                        <span>📲</span>
-                        <span>ആൻഡ്രോയിഡ് ആപ്പ് ഇൻസ്റ്റാളേഷൻ</span>
+                <!-- Android 3-Step Guided Installation Card -->
+                <div class="space-y-3 text-left">
+                    <div class="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-white/5">
+                        <span class="text-[11px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400 font-english flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span>Easy 3-Step Installation • ഇൻസ്റ്റാൾ ചെയ്യാം</span>
+                        </span>
+                        <span class="text-[9px] font-bold text-slate-400 dark:text-slate-500 font-english bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-full">v1.0 APK</span>
                     </div>
-                    <p class="text-xs text-amber-900/90 dark:text-amber-200/90 leading-relaxed font-['Noto_Sans_Malayalam'] font-semibold">
-                        ഈ പ്രീമിയം പുസ്തകം പൂർണ്ണമായി വായിക്കാൻ ദയവായി ആദ്യം ഞങ്ങളുടെ ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യുക.
-                    </p>
-                    <p class="text-[11px] text-amber-800/80 dark:text-amber-300/80 font-english">
-                        Please install our APK file first to continue.
-                    </p>
+
+                    <!-- Step Timeline Container -->
+                    <div class="space-y-2.5">
+                        <!-- Step 1 -->
+                        <div class="flex items-start gap-3 p-3 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 transition hover:border-emerald-500 shadow-2xs">
+                            <div class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[11px] font-black flex-shrink-0 shadow-xs">
+                                1
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h5 class="text-xs font-black text-emerald-950 dark:text-emerald-100 font-english">Download APK</h5>
+                                <p class="text-[11px] text-emerald-800 dark:text-emerald-300 font-english leading-tight mt-0.5">
+                                    Tap the button below to download the NUQTHA app file.
+                                </p>
+                            </div>
+                            <span class="text-base flex-shrink-0">📥</span>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="flex items-start gap-3 p-3 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/40 transition hover:border-amber-500 shadow-2xs">
+                            <div class="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center text-[11px] font-black flex-shrink-0 shadow-xs">
+                                2
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h5 class="text-xs font-black text-amber-950 dark:text-amber-100 font-english">Allow Install</h5>
+                                <p class="text-[11px] text-amber-800 dark:text-amber-300 font-english leading-tight mt-0.5">
+                                    If prompted, enable "Unknown Sources" in your phone settings.
+                                </p>
+                                <span class="inline-block mt-1 text-[9px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/60 dark:bg-amber-900/40 px-2 py-0.5 rounded-md font-english">
+                                    Settings ➔ Security ➔ Install Unknown Apps
+                                </span>
+                            </div>
+                            <span class="text-base flex-shrink-0">⚙️</span>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="flex items-start gap-3 p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/40 transition hover:border-indigo-500 shadow-2xs">
+                            <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[11px] font-black flex-shrink-0 shadow-xs">
+                                3
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h5 class="text-xs font-black text-indigo-950 dark:text-indigo-100 font-english">Install & Open</h5>
+                                <p class="text-[11px] text-indigo-800 dark:text-indigo-300 font-english leading-tight mt-0.5">
+                                    Tap Install and enjoy reading your books!
+                                </p>
+                            </div>
+                            <span class="text-base flex-shrink-0">🚀</span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Android Action Buttons -->
+                <!-- Action Buttons -->
                 <div class="space-y-3 pt-2">
-                    <!-- 1. Direct Install App (APK) -->
-                    <a href="${apkUrl}" download class="w-full py-3.5 px-6 rounded-2xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs sm:text-sm font-english transition shadow-md shadow-emerald-700/20 active:scale-98 flex items-center justify-center gap-2 cursor-pointer touch-target-44">
-                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-1.0002s.4482-1.0002.9993-1.0002c.5516 0 .9997.4486.9997 1.0002s-.4481 1.0002-.9997 1.0002m-11.046 0c-.5511 0-.9993-.4486-.9993-1.0002s.4482-1.0002.9993-1.0002c.5516 0 .9997.4486.9997 1.0002s-.4481 1.0002-.9997 1.0002m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.411 13.8566 8.1 12 8.1s-3.5902.311-5.1368.8497L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>
-                        <span>📲 Install App (ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യുക)</span>
+                    <!-- Primary CTA: Direct Download APK -->
+                    <a href="${apkUrl}" download id="pw-apk-download-btn" class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm font-english transition shadow-lg shadow-emerald-700/25 active:scale-98 flex items-center justify-center gap-2 cursor-pointer touch-target-44">
+                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                        <span>Download APK (NUQTHA App)</span>
                     </a>
 
-                    <!-- 2. Alternative: Razorpay Payment directly on web -->
-                    <button id="pw-pay-now-btn" class="w-full py-3 px-6 rounded-2xl bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/15 text-[var(--text)] dark:text-white border border-[#ebdccb] dark:border-white/10 font-bold text-xs font-english transition flex items-center justify-center gap-2 cursor-pointer touch-target-44">
-                        <span>💳 UPI / Razorpay വഴി ഇപ്പോൾ വാങ്ങുക (₹${price})</span>
+                    <!-- Divider -->
+                    <div class="relative flex items-center justify-center py-0.5">
+                        <div class="border-t border-slate-200 dark:border-white/10 w-full"></div>
+                        <span class="bg-white dark:bg-[#151722] px-2.5 text-[9px] uppercase font-black text-slate-400 font-english tracking-widest relative">or read on web</span>
+                    </div>
+
+                    <!-- Secondary CTA: Pay on Web Directly -->
+                    <button id="pw-pay-now-btn" class="w-full py-3 px-5 rounded-2xl bg-slate-50 dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-white/15 text-[var(--text)] dark:text-white border border-slate-200 dark:border-white/10 font-bold text-xs font-english transition flex items-center justify-center gap-2 cursor-pointer touch-target-44">
+                        <span>💳 Pay ₹${price} to Unlock in Browser</span>
                     </button>
                 </div>
             ` : `
@@ -325,13 +438,20 @@ export function showPaywallModal({ book, onUnlocked }) {
 
     document.body.appendChild(modal);
 
-    // Event Listeners
+    // Close button
     const closeBtn = modal.querySelector("#pw-close-btn");
     closeBtn?.addEventListener("click", () => modal.remove());
     modal.addEventListener("click", (e) => {
         if (e.target === modal) modal.remove();
     });
 
+    // Android APK download button toast helper
+    const downloadBtn = modal.querySelector("#pw-apk-download-btn");
+    downloadBtn?.addEventListener("click", () => {
+        showDownloadStartedToast();
+    });
+
+    // Pay Now button (Web / iOS or Android alternative)
     const payBtn = modal.querySelector("#pw-pay-now-btn");
     payBtn?.addEventListener("click", () => {
         modal.remove();
@@ -350,6 +470,28 @@ export function showPaywallModal({ book, onUnlocked }) {
             }
         });
     });
+}
+
+/**
+ * Toast notification when APK download begins with follow-up instructions
+ */
+function showDownloadStartedToast() {
+    const existing = document.getElementById("nuqtha-download-toast");
+    if (existing) existing.remove();
+
+    const toast = document.createElement("div");
+    toast.id = "nuqtha-download-toast";
+    toast.className = "fixed bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[90%] p-3.5 rounded-2xl bg-emerald-800 text-white shadow-2xl flex items-center gap-3 text-xs animate-bounce font-english";
+    toast.innerHTML = `
+        <span class="text-xl">📥</span>
+        <div class="min-w-0 flex-1">
+            <p class="font-bold">Downloading NUQTHA App...</p>
+            <p class="text-[10px] text-emerald-200">Once downloaded, open the file and follow Step 2 & 3 to install!</p>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white text-xs px-1">✕</button>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 6000);
 }
 
 /**

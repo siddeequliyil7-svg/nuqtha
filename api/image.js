@@ -132,12 +132,19 @@ export default async function handler(req, res) {
         if (rawImage.startsWith("data:image/")) {
             const matches = rawImage.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
             if (matches && matches.length === 3) {
-                const mimeType = matches[1];
+                const mimeType = matches[1].toLowerCase();
+                // Whitelist only safe raster image formats (blocks SVG script execution vectors)
+                const safeMimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+                if (!safeMimes.includes(mimeType)) {
+                    return res.redirect(302, DEFAULT_BANNER);
+                }
+
                 const base64Data = matches[2];
                 const buffer = Buffer.from(base64Data, "base64");
 
                 res.setHeader("Content-Type", mimeType);
                 res.setHeader("Content-Length", buffer.length);
+                res.setHeader("X-Content-Type-Options", "nosniff");
                 res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400");
                 return res.status(200).send(buffer);
             }

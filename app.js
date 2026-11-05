@@ -2154,7 +2154,15 @@ function getBookArticleCount(book, articles) {
     }
     if (!book || !articles) return 0;
     const bId = (book.id || "").trim();
-    return articles.filter(a => a && a.id !== book.id && a.type !== "BOOK" && ((bId && a.bookId === bId) || a.bookName === book.bookName || a.bookName === book.title)).length;
+    const bName = (book.bookName || "").trim();
+    const bTitle = (book.title || "").trim();
+    return articles.filter(a => {
+        if (!a || a.id === book.id || a.type === "BOOK" || a.isBook === true) return false;
+        if (bId && a.bookId && a.bookId === bId) return true;
+        if (bName && a.bookName && a.bookName === bName) return true;
+        if (bTitle && a.bookName && a.bookName === bTitle) return true;
+        return false;
+    }).length;
 }
 
 /* ═══════════ 1. HOME PAGE BOOK SHOWCASE / PREMIUM BOOK SHELF ═══════════ */

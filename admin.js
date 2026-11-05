@@ -13,6 +13,7 @@ export function isMainBook(art) {
     if (!art) return false;
     // Strictly exclude any document that is explicitly a chapter or sub-item
     if (art.isChapter === true || art.type === "CHAPTER") return false;
+    if ((art.category || "").toString().toLowerCase().trim() === "chapter") return false;
     if (art.chapterIndex !== undefined && art.chapterIndex !== null) return false;
 
     // Strictly exclude any document that has a bookId referencing another book (these are chapters)
@@ -139,7 +140,7 @@ export function setupSlugGenerators() {
         bookSlugInput.dataset.slugBound = "true";
         bookTitleInput.addEventListener("input", () => {
             if (!bookSlugInput.dataset.touched) {
-                bookSlugInput.value = "book/" + generateSlug(bookTitleInput.value);
+                bookSlugInput.value = generateSlug(bookTitleInput.value);
             }
         });
 
@@ -164,7 +165,7 @@ export function setupSlugGenerators() {
         chapterSlugInput.dataset.slugBound = "true";
         chapterTitleInput.addEventListener("input", () => {
             if (!chapterSlugInput.dataset.touched) {
-                const bookSlug = activeBookCoverDoc?.slug || generateSlug(activeBookName) || "book";
+                const bookSlug = (activeBookCoverDoc?.slug || generateSlug(activeBookName) || "book").replace(/^(?:book|story)\//gi, "");
                 chapterSlugInput.value = `story/${bookSlug}/${generateSlug(chapterTitleInput.value)}`;
             }
         });
@@ -1725,11 +1726,13 @@ async function handleSaveBookStep1(e) {
 
     if (hasError) return;
 
-    // Check if existing in Firestore
-    const existing = currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
-        normalizeStringClean(a.bookName) === normalizeStringClean(name) ||
-        normalizeStringClean(a.title) === normalizeStringClean(name)
-    ));
+    // Check if existing in Firestore (prioritize currently active book if editing)
+    const existing = (activeBookCoverDoc && activeBookCoverDoc.id)
+        ? (currentArticlesList.find(a => a.id === activeBookCoverDoc.id) || activeBookCoverDoc)
+        : currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
+            normalizeStringClean(a.bookName) === normalizeStringClean(name) ||
+            normalizeStringClean(a.title) === normalizeStringClean(name)
+        ));
 
     // Provide default SVG cover if no image was uploaded
     let coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "") || "";
@@ -1746,7 +1749,8 @@ async function handleSaveBookStep1(e) {
     try {
         const customBookSlugEl = document.getElementById("book-meta-slug");
         const customBookSlugVal = customBookSlugEl ? customBookSlugEl.value.trim() : "";
-        const bookSlug = cleanCustomPath(customBookSlugVal, name);
+        let bookSlug = cleanCustomPath(customBookSlugVal, name);
+        bookSlug = bookSlug.replace(/^(?:book|story|article)\/+/gi, "").trim() || slugifyText(name);
 
         const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
         const isPremium = isPremiumToggle ? isPremiumToggle.checked : false;
@@ -1768,6 +1772,7 @@ async function handleSaveBookStep1(e) {
             content: intro,
             type: "BOOK",
             isBook: true,
+            isChapter: false,
             isPremium: isPremium,
             price: priceVal,
             apkUrl: apkUrlVal,
@@ -1927,6 +1932,11 @@ function resetBookManagerForm() {
     }
     if (removeBtn) removeBtn.click();
 
+    const publishBtn = document.getElementById("publish-book-cover-btn");
+    if (publishBtn) {
+        publishBtn.innerHTML = `<span>സേവ് ചെയ്ത് അധ്യായങ്ങൾ ചേർക്കലിലേക്ക് കടക്കുക (Save & Continue to Step 2)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+    }
+
     const wrapper = document.getElementById("bm-step2-3-wrapper");
     if (wrapper) wrapper.classList.add("hidden");
 
@@ -1968,8 +1978,9 @@ function selectActiveBook(bookName) {
     if (nameInput) nameInput.value = activeBookName;
     const bookSlugInput = document.getElementById("book-meta-slug");
     if (bookSlugInput) {
-        bookSlugInput.value = bookCover?.slug || (activeBookName ? cleanCustomPath("", activeBookName) : "");
-        if (bookCover?.slug) bookSlugInput.dataset.touched = "true";
+        const cleanSlug = (bookCover?.slug || activeBookName ? cleanCustomPath("", activeBookName) : "").replace(/^(?:book|story)\//gi, "");
+        bookSlugInput.value = cleanSlug;
+        if (cleanSlug) bookSlugInput.dataset.touched = "true";
         else delete bookSlugInput.dataset.touched;
     }
     if (authorInput) authorInput.value = activeBookAuthor;
@@ -1991,6 +2002,12 @@ function selectActiveBook(bookName) {
         previewContainer.classList.remove("hidden");
         placeholder.classList.add("hidden");
         selectedBookCoverBase64 = bookCover.imageUrl;
+    }
+
+    // Update Step 1 button to clarify editing active book
+    const publishBtn = document.getElementById("publish-book-cover-btn");
+    if (publishBtn) {
+        publishBtn.innerHTML = `<span>💾 '${activeBookName}' വിവരങ്ങൾ അപ്‌ഡേറ്റ് ചെയ്യുക (Update Book Details)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
     }
 
     // Activate Step 2 & 3
@@ -2393,6 +2410,7 @@ function initChapterWriter() {
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
                     type: "ARTICLE",
+                    isBook: false,
                     isChapter: true,
                     placement: "AUTO",
                     date: new Date().toLocaleDateString("en-GB")
@@ -2446,6 +2464,7 @@ function initChapterWriter() {
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
                     type: "ARTICLE",
+                    isBook: false,
                     isChapter: true,
                     placement: "AUTO",
                     date: new Date().toLocaleDateString("en-GB")
@@ -2862,6 +2881,9 @@ function initBookAttachExistingArticles() {
                             author: activeBookAuthor || "NUQTHA AUTHOR",
                             priority: startPriority,
                             order: startPriority,
+                            type: "ARTICLE",
+                            isBook: false,
+                            isChapter: true,
                             updatedAt: serverTimestamp()
                         });
                         const item = currentArticlesList.find(a => a.id === id);
@@ -2871,8 +2893,24 @@ function initBookAttachExistingArticles() {
                             item.priority = startPriority;
                             item.order = startPriority;
                             item.bookId = activeBookCoverDoc?.id || "";
+                            item.type = "ARTICLE";
+                            item.isBook = false;
+                            item.isChapter = true;
                         }
                     }
+                }
+
+                if (activeBookCoverDoc && activeBookCoverDoc.id) {
+                    const existingChs = Array.isArray(activeBookCoverDoc.chapters) ? [...activeBookCoverDoc.chapters] : [];
+                    for (const chk of checked) {
+                        const id = chk.dataset.id;
+                        if (id && !existingChs.includes(id)) existingChs.push(id);
+                    }
+                    activeBookCoverDoc.chapters = existingChs;
+                    await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+                        chapters: existingChs,
+                        updatedAt: serverTimestamp()
+                    });
                 }
 
                 showGlobalStatus(`✨ ${checked.length} ലേഖനങ്ങൾ '${activeBookName}' ലേക്ക് അറ്റാച്ച് ചെയ്തു!`, "success");
@@ -3226,14 +3264,17 @@ function renderAdminBooksTab(articles) {
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     </a>
 
-                    <div class="flex items-center gap-1.5">
-                        <button type="button" onclick="window.manageBookById('${book.id}')" title="അധ്യായങ്ങൾ മാനേജ് ചെയ്യുക & പുനഃക്രമീകരിക്കുക" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs font-english cursor-pointer">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" onclick="window.addChapterToBookById('${book.id}')" title="ഈ പുസ്തകത്തിലേക്ക് പുതിയ അധ്യായം ചേർക്കുക" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs font-['Noto_Sans_Malayalam'] cursor-pointer">
+                            <span>➕ അധ്യായം ചേർക്കുക</span>
+                        </button>
+                        <button type="button" onclick="window.manageBookById('${book.id}')" title="അധ്യായങ്ങൾ മാനേജ് ചെയ്യുക & പുനഃക്രമീകരിക്കുക" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
                             <span>📖 Chapters</span>
                         </button>
-                        <button type="button" onclick="window.editBookMetadataById('${book.id}')" title="പുസ്തക വിവരങ്ങൾ എഡിറ്റ് ചെയ്യുക" class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
+                        <button type="button" onclick="window.editBookMetadataById('${book.id}')" title="പുസ്തക വിവരങ്ങൾ എഡിറ്റ് ചെയ്യുക" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
                             <span>✏️ Edit</span>
                         </button>
-                        <button type="button" onclick="window.deleteBookById('${book.id}', '${bookTitle.replace(/'/g, "\\'")}')" title="ഈ പുസ്തകം ഒഴിവാക്കുക" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition font-english cursor-pointer">
+                        <button type="button" onclick="window.deleteBookById('${book.id}', '${bookTitle.replace(/'/g, "\\'")}')" title="ഈ പുസ്തകം ഒഴിവാക്കുക" class="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition font-english cursor-pointer">
                             <span>✕</span>
                         </button>
                     </div>
@@ -3243,6 +3284,36 @@ function renderAdminBooksTab(articles) {
     }).join("");
 }
 window.renderAdminBooksTab = renderAdminBooksTab;
+
+window.addChapterToBookById = function(bookId) {
+    const book = currentArticlesList.find(a => a.id === bookId);
+    if (!book) return;
+    const name = book.bookName || book.title;
+    selectActiveBook(name);
+    resetChapterEditMode();
+
+    const titleInput = document.getElementById("bm-art-title");
+    const contentInput = document.getElementById("bm-art-content");
+    const transcriptionInput = document.getElementById("bm-art-transcription");
+    const excerptInput = document.getElementById("bm-art-excerpt");
+    if (titleInput) {
+        titleInput.value = "";
+    }
+    if (contentInput) contentInput.value = "";
+    if (transcriptionInput) transcriptionInput.value = "";
+    if (excerptInput) excerptInput.value = "";
+
+    const wrapper = document.getElementById("bm-step2-3-wrapper");
+    if (wrapper) {
+        wrapper.classList.remove("hidden");
+        const step2El = document.getElementById("bm-step2-section") || document.getElementById("bm-art-title")?.closest("div.bg-white") || wrapper;
+        setTimeout(() => {
+            step2El.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (titleInput) titleInput.focus();
+        }, 100);
+    }
+    showGlobalStatus(`📖 '${name}' ലേക്ക് പുതിയ അധ്യായം ചേർക്കാൻ താഴെയുള്ള ഘട്ടം 2 ഫോം ഉപയോഗിക്കുക.`, "info");
+};
 
 window.manageBookById = function(bookId) {
     const book = currentArticlesList.find(a => a.id === bookId);
