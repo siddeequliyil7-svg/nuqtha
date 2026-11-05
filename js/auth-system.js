@@ -14,6 +14,7 @@ let currentConfirmationResult = null;
 
 // Approved Admin Identifiers
 export const APPROVED_ADMIN_EMAILS = [
+    "sayyidsalman314@gmail.com",
     "aboobakersiddeequliyil@gmail.com",
     "admin@nuqtha.com",
     "nuqtha.editor@gmail.com"
@@ -122,6 +123,11 @@ export function safeSaveAuthUser(profile) {
                 sessionStorage.removeItem(AUTH_STORAGE_KEY);
                 sessionStorage.removeItem(LEGACY_GOOGLE_KEY);
             }
+        } catch (_) {}
+    }
+    if (typeof window !== "undefined") {
+        try {
+            window.dispatchEvent(new CustomEvent("nuqtha_auth_changed", { detail: { user: profile } }));
         } catch (_) {}
     }
 }

@@ -9,7 +9,7 @@
  * 5. Dynamic book preview (introduction open, chapters locked until purchased)
  */
 
-import { getCachedAuthUser } from "./auth-system.js";
+import { getCachedAuthUser, checkIsAdminUser } from "./auth-system.js";
 
 // Default APK download URL if not specifically configured on the book doc
 export const DEFAULT_APK_URL = "https://nuqtha.vercel.app/download/nuqtha.apk";
@@ -28,22 +28,29 @@ export function getDevicePlatform() {
 
 /**
  * Checks if a book is purchased by the current user
- * 1. Fast in-memory / localStorage check (0ms)
- * 2. Firestore `purchases` query for logged-in user
+ * 1. Admin Paywall Bypass (sayyidsalman314@gmail.com / Admin role): Immediate Free Access
+ * 2. Fast in-memory / localStorage check (0ms)
+ * 3. Firestore `purchases` query for logged-in user
  */
 export async function isBookPurchased(bookId, user = null) {
     if (!bookId) return false;
     const bId = String(bookId).trim();
 
-    // 1. Fast localStorage check
+    // 1. Admin Paywall Bypass: Free access to all books & chapters
+    const activeUser = user || getCachedAuthUser();
+    if (activeUser && (checkIsAdminUser(activeUser) || (activeUser.email && activeUser.email.toLowerCase().trim() === "sayyidsalman314@gmail.com"))) {
+        console.log(`[Paywall] Admin bypass granted for ${activeUser.email || activeUser.uid} on book ${bId}`);
+        return true;
+    }
+
+    // 2. Fast localStorage check
     try {
         if (localStorage.getItem(`nuqtha_purchased_${bId}`) === "true") {
             return true;
         }
     } catch (_) {}
 
-    // 2. Check logged-in user against Firestore purchases collection
-    const activeUser = user || getCachedAuthUser();
+    // 3. Check logged-in user against Firestore purchases collection
     if (!activeUser || (!activeUser.uid && !activeUser.email)) {
         return false;
     }
@@ -176,9 +183,16 @@ if (typeof window !== "undefined") {
 export function triggerRazorpayPayment({ book, user, onSuccess, onFailure }) {
     if (!book) return;
 
+    // Admin Paywall Bypass: Immediately grant access without payment
+    const activeUser = user || getCachedAuthUser();
+    if (activeUser && (checkIsAdminUser(activeUser) || (activeUser.email && activeUser.email.toLowerCase().trim() === "sayyidsalman314@gmail.com"))) {
+        console.log(`[Paywall] Admin payment bypass granted for ${activeUser.email || activeUser.uid}`);
+        if (typeof onSuccess === "function") onSuccess();
+        return;
+    }
+
     const price = Number(book.price) || 49;
     const amountPaise = Math.round(price * 100);
-    const activeUser = user || getCachedAuthUser();
     const guestId = (typeof localStorage !== "undefined" && localStorage.getItem("nuqtha_guest_id")) || "guest_" + Math.random().toString(36).substring(2, 9);
     if (typeof localStorage !== "undefined" && !localStorage.getItem("nuqtha_guest_id")) {
         try { localStorage.setItem("nuqtha_guest_id", guestId); } catch (_) {}
@@ -291,6 +305,14 @@ export function triggerRazorpayPayment({ book, user, onSuccess, onFailure }) {
  */
 export function showPaywallModal({ book, onUnlocked }) {
     if (!book) return;
+
+    // Admin Paywall Bypass: Immediately unlock without showing modal
+    const activeUser = getCachedAuthUser();
+    if (activeUser && (checkIsAdminUser(activeUser) || (activeUser.email && activeUser.email.toLowerCase().trim() === "sayyidsalman314@gmail.com"))) {
+        console.log(`[Paywall] Admin modal bypass granted for ${activeUser.email || activeUser.uid}`);
+        if (typeof onUnlocked === "function") onUnlocked();
+        return;
+    }
 
     // Remove any existing paywall modal
     const existingModal = document.getElementById("nuqtha-paywall-modal");
