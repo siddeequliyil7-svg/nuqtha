@@ -527,21 +527,23 @@
         // /story/:slug OR /article/:slug
         // /book/:slug
         const rawPath = window.location.pathname || "";
+        // Sanitize accidental trailing 'index.html', 'index', or trailing slashes for clean route parsing
+        const cleanPath = rawPath.replace(/\/index(?:\.html)?\/?$/i, "").replace(/\/+$/, "") || "/";
         let pathBookSlug = "";
         let pathChapterSlug = "";
         let pathStorySlug = "";
         let isBookRoute = false;
 
-        const twoPartMatch = rawPath.match(/^\/(?:story|book)\/([^\/]+)\/([^\/]+)\/?$/i);
+        const twoPartMatch = cleanPath.match(/^\/(?:story|book)\/([^\/]+)\/([^\/]+)\/?$/i);
         if (twoPartMatch) {
             pathBookSlug = safeDecodeParam(twoPartMatch[1]);
             pathChapterSlug = safeDecodeParam(twoPartMatch[2]);
         } else {
-            const onePartStoryMatch = rawPath.match(/^\/(?:story|article)\/([^\/]+)\/?$/i);
+            const onePartStoryMatch = cleanPath.match(/^\/(?:story|article)\/([^\/]+)\/?$/i);
             if (onePartStoryMatch) {
                 pathStorySlug = safeDecodeParam(onePartStoryMatch[1]);
             } else {
-                const bookMatch = rawPath.match(/^\/book\/([^\/]+)\/?$/i);
+                const bookMatch = cleanPath.match(/^\/book\/([^\/]+)\/?$/i);
                 if (bookMatch) {
                     pathBookSlug = safeDecodeParam(bookMatch[1]);
                     isBookRoute = true;
@@ -556,7 +558,6 @@
         }
         if (pathStorySlug && (pathStorySlug.toLowerCase() === 'index.html' || pathStorySlug.toLowerCase() === 'index')) {
             pathStorySlug = "";
-            window.location.replace('/');
         }
 
         let articleId = urlParams.get('id');
@@ -695,8 +696,7 @@
         // Helper to determine if an entity is specifically a Book Edition Overview (NOT a chapter)
         function isBookEditionDoc(item) {
             if (!item) return false;
-            if (item.isChapter === true || item.type === "CHAPTER") return false;
-            if (item.order !== undefined && item.order !== null && !isNaN(item.order) && Number(item.order) > 0 && (item.bookId || (b && t && b !== t))) return false;
+            if (item.isChapter === true || item.type === "CHAPTER" || item.type === "chapter") return false;
             if (item.chapterIndex !== undefined && item.chapterIndex !== null) return false;
             if (item.bookId && String(item.bookId).trim() && String(item.bookId).trim() !== String(item.id)) return false;
 
@@ -704,8 +704,10 @@
             const b = (item.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
             if (b && t && b !== t) return false;
 
-            if (item.type === "BOOK") return true;
-            if (item.isBook === true) return true;
+            if (item.order !== undefined && item.order !== null && !isNaN(item.order) && Number(item.order) > 0 && (item.bookId || (b && t && b !== t))) return false;
+
+            const artType = (item.type || "").toString().toLowerCase().trim();
+            if (artType === "book" || item.isBook === true) return true;
             if (Array.isArray(item.chapters) && item.chapters.length > 0) return true;
             const cat = (item.category || "").toLowerCase().trim();
             if (cat === "books" || cat === "book" || cat === "premium book") return true;
@@ -747,15 +749,21 @@
 
         // 1. Fetch Target Document (Direct SDK + REST fallback with timeout)
         async function fetchTargetDocument(id, signal) {
+            if (!id) return null;
+            const cleanId = safeDecodeParam(id);
+            if (memoryCache.has(`doc_${cleanId}`)) {
+                return memoryCache.get(`doc_${cleanId}`);
+            }
             if (memoryCache.has(`doc_${id}`)) {
                 return memoryCache.get(`doc_${id}`);
             }
 
             try {
-                const docRef = doc(db, "articles", id);
+                const docRef = doc(db, "articles", cleanId);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                    memoryCache.set(`doc_${cleanId}`, normalized);
                     memoryCache.set(`doc_${id}`, normalized);
                     return normalized;
                 }
@@ -764,7 +772,9 @@
             }
 
             try {
-                const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(id)}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE`, { signal });
+                // Ensure encodeURIComponent is applied once to decoded ID
+                const encodedId = encodeURIComponent(cleanId);
+                const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodedId}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE`, { signal });
                 if (res.ok) {
                     const json = await res.json();
                     if (json && json.fields) {
@@ -780,7 +790,8 @@
                                 data[k] = null;
                             }
                         }
-                        const normalized = normalizeArticleDoc(data, id);
+                        const normalized = normalizeArticleDoc(data, cleanId);
+                        memoryCache.set(`doc_${cleanId}`, normalized);
                         memoryCache.set(`doc_${id}`, normalized);
                         return normalized;
                     }
@@ -795,23 +806,41 @@
         // Direct Query by Custom Slug (with Document ID fallback)
         async function fetchTargetBySlugOrId(identifier, signal) {
             if (!identifier) return null;
+            const decodedId = safeDecodeParam(identifier);
+            if (memoryCache.has(`doc_${decodedId}`)) {
+                return memoryCache.get(`doc_${decodedId}`);
+            }
             if (memoryCache.has(`doc_${identifier}`)) {
                 return memoryCache.get(`doc_${identifier}`);
             }
 
-            const cleanId = String(identifier).trim().replace(/^\/+|\/+$/g, "");
-            const candidates = [cleanId];
-            if (cleanId.startsWith("story/")) {
-                candidates.push(cleanId.replace(/^story\//, ""));
-            } else {
-                candidates.push(`story/${cleanId}`);
-            }
-            if (cleanId.startsWith("book/")) {
-                candidates.push(cleanId.replace(/^book\//, ""));
-            }
+            const cleanDecoded = String(decodedId).trim().replace(/^\/+|\/+$/g, "");
+            const cleanRaw = String(identifier).trim().replace(/^\/+|\/+$/g, "");
+
+            const candidateSet = new Set();
+            [cleanDecoded, cleanRaw].forEach(base => {
+                if (!base) return;
+                candidateSet.add(base);
+                candidateSet.add(slugifyText(base));
+                candidateSet.add(slugifyMalayalamRaw(base));
+
+                const noStory = base.replace(/^story\//i, "");
+                const noBook = base.replace(/^book\//i, "");
+                const noArticle = base.replace(/^article\//i, "");
+
+                candidateSet.add(noStory);
+                candidateSet.add(noBook);
+                candidateSet.add(noArticle);
+                candidateSet.add(`story/${noStory}`);
+                candidateSet.add(`book/${noBook}`);
+                candidateSet.add(`article/${noArticle}`);
+                candidateSet.add(slugifyText(noStory));
+                candidateSet.add(slugifyMalayalamRaw(noStory));
+            });
 
             // 1. Try querying Firestore by 'slug' field across candidates
-            for (const cand of candidates) {
+            for (const cand of candidateSet) {
+                if (!cand) continue;
                 try {
                     const slugQ = query(
                         collection(db, "articles"),
@@ -822,6 +851,7 @@
                     if (!querySnapshot.empty) {
                         const docSnap = querySnapshot.docs[0];
                         const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                        memoryCache.set(`doc_${decodedId}`, normalized);
                         memoryCache.set(`doc_${identifier}`, normalized);
                         memoryCache.set(`doc_${cand}`, normalized);
                         memoryCache.set(`doc_${docSnap.id}`, normalized);
@@ -832,8 +862,35 @@
                 }
             }
 
-            // 2. Direct document ID lookup
-            return await fetchTargetDocument(identifier, signal);
+            // 2. Try querying Firestore by 'bookSlug' field (for /book/[slug] routes)
+            for (const cand of candidateSet) {
+                if (!cand) continue;
+                try {
+                    const bookSlugQ = query(
+                        collection(db, "articles"),
+                        where("bookSlug", "==", cand),
+                        limit(1)
+                    );
+                    const querySnapshot = await getDocs(bookSlugQ);
+                    if (!querySnapshot.empty) {
+                        const docSnap = querySnapshot.docs[0];
+                        const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                        memoryCache.set(`doc_${decodedId}`, normalized);
+                        memoryCache.set(`doc_${identifier}`, normalized);
+                        memoryCache.set(`doc_${cand}`, normalized);
+                        memoryCache.set(`doc_${docSnap.id}`, normalized);
+                        return normalized;
+                    }
+                } catch (_) {}
+            }
+
+            // 3. Direct document ID lookup
+            const direct = await fetchTargetDocument(cleanDecoded, signal);
+            if (direct) return direct;
+            if (cleanRaw !== cleanDecoded) {
+                return await fetchTargetDocument(cleanRaw, signal);
+            }
+            return null;
         }
 
         // 2. Fetch Lightweight Articles Collection (Projected Fields Only - ~95% smaller payload)
@@ -937,6 +994,10 @@
                         }
                     } catch (e) {}
                     if (skeletonEl) skeletonEl.classList.add("hidden");
+                    if (errorContainerEl) {
+                        errorContainerEl.classList.add("hidden");
+                        errorContainerEl.innerHTML = "";
+                    }
                     if (cachedBook.type === "BOOK") {
                         if (articleViewEl) articleViewEl.classList.add("hidden");
                         if (bookContainerEl) {
@@ -999,9 +1060,12 @@
                         const spaceTarget = cleanTarget.replace(/-/g, ' ');
 
                         // 1. Must match a dedicated BOOK entity, never a standalone chapter
-                        currentDoc = allArticles.find(a => (a.type === "BOOK" || isBookEditionDoc(a)) && (
+                        currentDoc = allArticles.find(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true || isBookEditionDoc(a)) && (
                             a.slug === targetBookSlug ||
                             a.slug === rawTargetSlug ||
+                            a.slug === bookSearch ||
+                            a.slug === `book/${bookSearch}` ||
+                            (a.slug && a.slug.replace(/^book\//, '') === bookSearch) ||
                             slugifyText(a.bookName) === targetBookSlug ||
                             slugifyMalayalamRaw(a.bookName) === rawTargetSlug ||
                             slugifyText(a.title) === targetBookSlug ||
@@ -1048,23 +1112,28 @@
                     }
 
                     // C. General article slug or title match (/story/:slug or /article/:slug or ?id=...)
-                    if (!currentDoc && (querySlug || pathBookSlug || targetIdentifier)) {
-                        const targetSearch = querySlug || pathBookSlug || targetIdentifier;
-                        const targetQuerySlug = slugifyText(targetSearch);
-                        const rawQuerySlugMatch = slugifyMalayalamRaw(targetSearch);
-                        const cleanQuery = (targetSearch || "").toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+                    if (!currentDoc && (querySlug || pathStorySlug || pathBookSlug || targetIdentifier)) {
+                        const targetSearch = querySlug || pathStorySlug || pathBookSlug || targetIdentifier;
+                        const decodedTarget = safeDecodeParam(targetSearch);
+                        const targetQuerySlug = slugifyText(decodedTarget);
+                        const rawQuerySlugMatch = slugifyMalayalamRaw(decodedTarget);
+                        const cleanQuery = (decodedTarget || "").toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
                         const spaceQuery = cleanQuery.replace(/-/g, ' ');
                         currentDoc = allArticles.find(a => 
+                            a.slug === decodedTarget ||
                             a.slug === targetSearch ||
+                            a.slug === `story/${decodedTarget}` ||
                             a.slug === `story/${targetSearch}` ||
+                            (a.slug && a.slug.replace(/^story\//, '') === decodedTarget) ||
                             (a.slug && a.slug.replace(/^story\//, '') === targetSearch) ||
                             a.slug === targetQuerySlug ||
                             a.slug === rawQuerySlugMatch ||
                             slugifyText(a.title) === targetQuerySlug ||
                             slugifyMalayalamRaw(a.title) === rawQuerySlugMatch ||
+                            a.id === decodedTarget ||
                             a.id === targetSearch ||
                             (a.title && a.title.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceQuery) ||
-                            slugifyAuthor(a.title) === slugifyAuthor(targetSearch)
+                            slugifyAuthor(a.title) === slugifyAuthor(decodedTarget)
                         );
                     }
                 }
@@ -1103,7 +1172,10 @@
                 if (currentDoc.imageUrl) preloadCoverImage(currentDoc.imageUrl);
 
                 if (skeletonEl) skeletonEl.classList.add("hidden");
-                if (errorContainerEl) errorContainerEl.classList.add("hidden");
+                if (errorContainerEl) {
+                    errorContainerEl.classList.add("hidden");
+                    errorContainerEl.innerHTML = "";
+                }
 
                 if (currentDoc.type === "BOOK") {
                     if (articleViewEl) articleViewEl.classList.add("hidden");
@@ -1158,6 +1230,11 @@
 
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
         function renderBookIndex(book, container, attachedArticles = []) {
+            const errorContainerEl = document.getElementById("page-error-container");
+            if (errorContainerEl) {
+                errorContainerEl.classList.add("hidden");
+                errorContainerEl.innerHTML = "";
+            }
             document.title = `${book.title || "NUQTHA Edition"} | NUQTHA`;
             if (window.NUQTHA_SITE_CONFIG?.updatePageMeta) {
                 window.NUQTHA_SITE_CONFIG.updatePageMeta({
@@ -1519,6 +1596,11 @@
 
         // ═══════════ STANDARD ARTICLE RENDERER (NO "Date" / "ലോഡ് ചെയ്യുന്നു...") ═══════════
         function renderArticle(article, allArticles = []) {
+            const errorContainerEl = document.getElementById("page-error-container");
+            if (errorContainerEl) {
+                errorContainerEl.classList.add("hidden");
+                errorContainerEl.innerHTML = "";
+            }
             document.title = `${article.title || "NUQTHA"} | NUQTHA`;
             if (window.NUQTHA_SITE_CONFIG?.updatePageMeta) {
                 window.NUQTHA_SITE_CONFIG.updatePageMeta({
