@@ -12,6 +12,31 @@ import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-servic
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
 
+function safeCacheArticles(articles) {
+    if (!Array.isArray(articles) || articles.length === 0) return;
+    try {
+        const lightweight = articles.slice(0, 30).map(a => {
+            const copy = { ...a };
+            if (copy.content && copy.content.length > 500) {
+                copy.content = copy.excerpt || copy.content.slice(0, 300);
+            }
+            if (copy.imageUrl && copy.imageUrl.startsWith("data:") && copy.imageUrl.length > 1000) {
+                copy.imageUrl = "";
+            }
+            if (copy.thumbnailUrl && copy.thumbnailUrl.startsWith("data:") && copy.thumbnailUrl.length > 1000) {
+                copy.thumbnailUrl = "";
+            }
+            if (copy.ogImage && copy.ogImage.startsWith("data:") && copy.ogImage.length > 1000) {
+                copy.ogImage = "";
+            }
+            return copy;
+        });
+        sessionStorage.setItem('nuqtha_cached_articles', JSON.stringify(lightweight));
+    } catch (e) {
+        try { sessionStorage.removeItem('nuqtha_cached_articles'); } catch (_) {}
+    }
+}
+
 let allArticles = [];
 try {
     const cachedArts = sessionStorage.getItem('nuqtha_cached_articles');
@@ -632,7 +657,7 @@ function listenForArticles() {
         hasServerSnapshot = !snapshot.metadata.fromCache;
         if (snapshotArticles.length > 0) {
             allArticles = sortArticles(snapshotArticles);
-            try { sessionStorage.setItem('nuqtha_cached_articles', JSON.stringify(allArticles)); } catch (e) {}
+            safeCacheArticles(allArticles);
             renderFeed();
         } else if (!snapshot.metadata.fromCache) {
             allArticles = [];
@@ -684,7 +709,7 @@ function listenForArticles() {
 
                 if (restArticles.length > 0) {
                     allArticles = sortArticles(restArticles);
-                    try { sessionStorage.setItem('nuqtha_cached_articles', JSON.stringify(allArticles)); } catch (e) {}
+                    safeCacheArticles(allArticles);
                     renderFeed();
                 } else if (!hasServerSnapshot && allArticles.length === 0) {
                     renderFeed();

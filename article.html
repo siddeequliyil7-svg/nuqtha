@@ -536,16 +536,28 @@
 
         const twoPartMatch = cleanPath.match(/^\/(?:story|book)\/([^\/]+)\/([^\/]+)\/?$/i);
         if (twoPartMatch) {
-            pathBookSlug = safeDecodeParam(twoPartMatch[1]);
-            pathChapterSlug = safeDecodeParam(twoPartMatch[2]);
+            const seg1 = safeDecodeParam(twoPartMatch[1]).trim();
+            const seg2 = safeDecodeParam(twoPartMatch[2]).trim();
+            if (seg1.toLowerCase() === "book" || seg1.toLowerCase() === "story") {
+                // Collapsed duplicate prefix e.g. /book/book/:slug or /book/book%2F:slug
+                if (cleanPath.toLowerCase().startsWith("/book/")) {
+                    pathBookSlug = seg2.replace(/^(?:book|story)\//i, "");
+                    isBookRoute = true;
+                } else {
+                    pathStorySlug = seg2.replace(/^(?:book|story)\//i, "");
+                }
+            } else {
+                pathBookSlug = seg1.replace(/^(?:book|story)\//i, "");
+                pathChapterSlug = seg2.replace(/^(?:book|story)\//i, "");
+            }
         } else {
             const onePartStoryMatch = cleanPath.match(/^\/(?:story|article)\/([^\/]+)\/?$/i);
             if (onePartStoryMatch) {
-                pathStorySlug = safeDecodeParam(onePartStoryMatch[1]);
+                pathStorySlug = safeDecodeParam(onePartStoryMatch[1]).replace(/^(?:story|article)\//i, "");
             } else {
                 const bookMatch = cleanPath.match(/^\/book\/([^\/]+)\/?$/i);
                 if (bookMatch) {
-                    pathBookSlug = safeDecodeParam(bookMatch[1]);
+                    pathBookSlug = safeDecodeParam(bookMatch[1]).replace(/^(?:book|story)\//i, "");
                     isBookRoute = true;
                 }
             }
@@ -905,7 +917,7 @@
                 "excerpt", "storedExcerpt", "hasCustomExcerpt", "author",
                 "date", "createdAt", "type", "category", "content",
                 "order", "chapters", "transcription", "status",
-                "slug", "bookSlug"
+                "slug", "bookSlug", "isBook"
             ];
             const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
             const allArticlesList = [];
@@ -998,7 +1010,7 @@
                         errorContainerEl.classList.add("hidden");
                         errorContainerEl.innerHTML = "";
                     }
-                    if (cachedBook.type === "BOOK") {
+                    if ((cachedBook.type || "").toUpperCase() === "BOOK" || cachedBook.isBook === true) {
                         if (articleViewEl) articleViewEl.classList.add("hidden");
                         if (bookContainerEl) {
                             bookContainerEl.classList.remove("hidden");
@@ -1053,7 +1065,8 @@
 
                     // B. Book edition route (/book/:slug or ?edition=...)
                     if (!currentDoc && (isBookRoute || editionParam)) {
-                        const bookSearch = editionParam || pathBookSlug || querySlug;
+                        const rawBookSearch = (editionParam || pathBookSlug || querySlug || "").toString().trim();
+                        const bookSearch = rawBookSearch.replace(/^(?:book|story)\//i, "");
                         const targetBookSlug = slugifyText(bookSearch);
                         const rawTargetSlug = slugifyMalayalamRaw(bookSearch);
                         const cleanTarget = (bookSearch || "").toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -1064,14 +1077,21 @@
                             a.slug === targetBookSlug ||
                             a.slug === rawTargetSlug ||
                             a.slug === bookSearch ||
+                            a.slug === rawBookSearch ||
                             a.slug === `book/${bookSearch}` ||
                             (a.slug && a.slug.replace(/^book\//, '') === bookSearch) ||
+                            a.bookSlug === targetBookSlug ||
+                            a.bookSlug === rawTargetSlug ||
+                            a.bookSlug === bookSearch ||
+                            a.bookSlug === rawBookSearch ||
+                            (a.bookSlug && a.bookSlug.replace(/^book\//, '') === bookSearch) ||
                             slugifyText(a.bookName) === targetBookSlug ||
                             slugifyMalayalamRaw(a.bookName) === rawTargetSlug ||
                             slugifyText(a.title) === targetBookSlug ||
                             slugifyMalayalamRaw(a.title) === rawTargetSlug ||
                             slugifyText(a.playlistName) === targetBookSlug ||
                             a.id === bookSearch ||
+                            a.id === rawBookSearch ||
                             (a.bookName && a.bookName.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget) ||
                             (a.title && a.title.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
                         ));
@@ -1177,7 +1197,7 @@
                     errorContainerEl.innerHTML = "";
                 }
 
-                if (currentDoc.type === "BOOK") {
+                if ((currentDoc.type || "").toUpperCase() === "BOOK" || currentDoc.isBook === true) {
                     if (articleViewEl) articleViewEl.classList.add("hidden");
                     if (bookContainerEl) bookContainerEl.classList.remove("hidden");
 

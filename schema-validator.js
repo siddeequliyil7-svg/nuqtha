@@ -135,15 +135,19 @@ export function getStoryUrl(item) {
     let slug = String(item.slug || slugifyText(item.title) || item.id || "").trim();
     if (slug.startsWith("/")) slug = slug.slice(1);
 
+    const isBook = (item.type || "").toString().toUpperCase() === "BOOK" || item.isBook === true;
+    if (isBook) {
+        // Strip any redundant leading "book/" or "story/" from the slug to avoid double prefixing
+        const cleanBookSlug = slug.replace(/^(?:book|story)\//i, "");
+        return `/book/${encodeURIComponent(cleanBookSlug)}`;
+    }
+
     // If slug is already a complete custom path/prefix (e.g. "story/intro", "opinion/article", "book/title")
     if (slug.includes("/")) {
         const cleanPath = slug.split("/").map(seg => encodeURIComponent(seg)).join("/");
         return `/${cleanPath}`;
     }
 
-    if (item.type === "BOOK") {
-        return `/book/${encodeURIComponent(slug)}`;
-    }
     const bookTitle = item.bookName || item.playlistName;
     if (bookTitle && String(bookTitle).trim()) {
         const bookSlug = item.bookSlug || slugifyText(bookTitle);
@@ -435,7 +439,7 @@ export function validateAndSanitizeArticleForSave(raw) {
     const cleanRawBookName = (bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
     const isExplicitChapter = raw.isChapter === true || 
                               raw.type === "CHAPTER" || 
-                              Boolean(bookId && raw.id && bookId !== raw.id) ||
+                              Boolean(bookId && (!raw.id || bookId !== raw.id)) ||
                               Boolean(cleanRawBookName && cleanRawTitle && cleanRawBookName !== cleanRawTitle) ||
                               Boolean(hasOrder && Number(raw.order) > 0 && (bookId || (cleanRawBookName && cleanRawBookName !== cleanRawTitle)));
     const rawTypeVal = (raw.type || "").toString().toLowerCase().trim();
@@ -484,6 +488,7 @@ export function validateAndSanitizeArticleForSave(raw) {
         featuredTitle,
         type,
         isBook: isExplicitBook,
+        isChapter: isExplicitChapter,
         date
     };
 }
@@ -568,6 +573,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const isChapter = rawDoc.isChapter === true ||
                       rawDoc.type === "CHAPTER" ||
                       hasDifferentParentBookId ||
+                      Boolean(cleanBookId && (!cleanDocId || cleanBookId !== cleanDocId)) ||
                       hasDifferentParentBookName ||
                       (hasOrder && Number(rawDoc.order) > 0 && (cleanBookId || hasDifferentParentBookName)) ||
                       (rawDoc.chapterIndex !== undefined && rawDoc.chapterIndex !== null);

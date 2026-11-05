@@ -3319,10 +3319,28 @@ function listenToFirestoreArticles() {
 
         currentArticlesList = items;
 
-        // Persist to session cache for seamless offline fallback
+        // Persist to session cache for seamless offline fallback safely without quota overflow
         try {
-            sessionStorage.setItem("nuqtha_cached_articles", JSON.stringify(items));
-        } catch (e) {}
+            const lightweight = items.slice(0, 30).map(a => {
+                const copy = { ...a };
+                if (copy.content && copy.content.length > 500) {
+                    copy.content = copy.excerpt || copy.content.slice(0, 300);
+                }
+                if (copy.imageUrl && copy.imageUrl.startsWith("data:") && copy.imageUrl.length > 1000) {
+                    copy.imageUrl = "";
+                }
+                if (copy.thumbnailUrl && copy.thumbnailUrl.startsWith("data:") && copy.thumbnailUrl.length > 1000) {
+                    copy.thumbnailUrl = "";
+                }
+                if (copy.ogImage && copy.ogImage.startsWith("data:") && copy.ogImage.length > 1000) {
+                    copy.ogImage = "";
+                }
+                return copy;
+            });
+            sessionStorage.setItem("nuqtha_cached_articles", JSON.stringify(lightweight));
+        } catch (e) {
+            try { sessionStorage.removeItem("nuqtha_cached_articles"); } catch (_) {}
+        }
 
         const standardArticles = items.filter(a => !isBookOrChapter(a));
         const allBooks = items.filter(a => isMainBook(a));
