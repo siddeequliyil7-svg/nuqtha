@@ -124,7 +124,7 @@ export function slugifyText(str) {
     return slugifyMalayalamRaw(str);
 }
 
-function cleanUrlPart(str) {
+export function cleanUrlPart(str) {
     if (!str) return "";
     let s = String(str).trim();
     for (let i = 0; i < 3; i++) {
@@ -192,6 +192,7 @@ if (typeof window !== "undefined") {
     window.transliterateMalayalam = transliterateMalayalam;
     window.slugifyMalayalamRaw = slugifyMalayalamRaw;
     window.slugifyText = slugifyText;
+    window.cleanUrlPart = cleanUrlPart;
     window.getStoryUrl = getStoryUrl;
 }
 

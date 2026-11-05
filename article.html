@@ -558,7 +558,7 @@
     <script type="module">
         import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "./firebase-config.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl } from "./schema-validator.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart } from "./schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
@@ -1830,8 +1830,9 @@
                 if (!isLocked) {
                     const bSlug = (parentBook?.slug || parentBook?.bookSlug || (parentBook?.title ? slugifyText(parentBook.title) : "") || parentBook?.id || "").toString().trim();
                     const cSlug = (art.slug && art.slug !== bSlug) ? art.slug : ((art.title ? slugifyText(art.title) : "") || art.id || "");
-                    const cleanBook = cleanUrlPart(bSlug);
-                    const cleanChapter = cleanUrlPart(cSlug);
+                    const cleanFn = typeof cleanUrlPart === "function" ? cleanUrlPart : cleanRouteSlug;
+                    const cleanBook = cleanFn(bSlug);
+                    const cleanChapter = cleanFn(cSlug);
                     if (cleanBook && cleanChapter) {
                         targetUrl = `/story/${encodeURIComponent(cleanBook)}/${encodeURIComponent(cleanChapter)}`;
                     } else {
