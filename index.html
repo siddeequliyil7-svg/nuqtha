@@ -63,6 +63,18 @@
 </head>
 <body class="bg-[var(--bg)] text-[var(--text)] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col">
 
+    <!-- HERO INTRO: Positioned ABOVE header so navbar is not visible during hero intro -->
+    <section id="hero" aria-labelledby="hero-title">
+        <h1 id="hero-title" class="hero-title">
+            <span class="hero-sr">NUQTHA</span>
+            <span aria-hidden="true" class="hero-typed" data-hero-typed>NUQTHA</span>
+        </h1>
+        <p class="hero-tagline" data-hero-tagline>
+            Curated articles, stories and publications, made for slow reading.
+        </p>
+        <button type="button" class="hero-skip" data-hero-skip>Skip intro</button>
+    </section>
+
     <!-- ═══════════ TOP CANOPY & FLOATING GLASS NAVIGATION ═══════════ -->
     <header id="home" class="relative w-full z-40 flex-shrink-0">
         <div class="top-canopy-band w-full"></div>
@@ -264,20 +276,7 @@
         </div>
         </header>
 
-    <!-- HERO: paste directly under the header -->
-    <section id="hero" aria-labelledby="hero-title">
-        <h1 id="hero-title" class="hero-title">
-            <!-- Full text for Google + screen readers -->
-            <span class="hero-sr">NUQTHA</span>
-            <!-- Visual typing only -->
-            <span aria-hidden="true" data-hero-typed></span>
-            <span aria-hidden="true" class="hero-caret" data-hero-caret></span>
-        </h1>
-        <p class="hero-tagline" data-hero-tagline>
-            Curated articles, stories and publications, made for slow reading.
-        </p>
-        <button type="button" class="hero-skip" data-hero-skip>Skip intro</button>
-    </section>
+
 
     <!-- ═══════════ MAIN FEED / BLOG-ROLL ═══════════ -->
     <main id="feed" class="flex-grow w-full page-wrapper feed-main-wrapper" style="scroll-margin-top: var(--header-h, 57px)">

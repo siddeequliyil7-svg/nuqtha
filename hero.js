@@ -3,29 +3,22 @@ import "./hero.css";
 /*
   NUQTHA hero (vanilla JS, ES module)
 
-  Timeline:  type "NUQTHA" for ~1.5s  ->  short pause  ->  auto smooth scroll to #feed
-
-  - Runs ONLY if #hero exists in the page, so it is safe to import from app.js
-    even if article.html shares that file. article.html simply has no #hero.
-  - Shows once per browser session. Test again with  /?hero=1
-  - If the visitor scrolls, taps or presses a key, the auto-scroll stops.
-  - prefers-reduced-motion: full text shown at once, no auto-scroll (button only).
+  Timeline:  smooth write-in of "NUQTHA" (~750ms) -> tagline fade -> auto smooth scroll to navbar & feed
+  - Positioned ABOVE <header>, so the navbar is completely hidden during intro
+  - No blinking caret/line
+  - Shows once per session (re-test with /?hero=1)
+  - Auto-scroll hands off control immediately if user scrolls or taps
 */
 
 const SEEN_KEY = "nuqtha:hero-seen";
-const TEXT = "NUQTHA";
-
-const TYPING_MS = 1500; // total time to type all letters
-const HOLD_MS = 700; // pause after typing, before scrolling
-const SCROLL_MS = 1400; // auto-scroll duration
-const SKIP_SCROLL_MS = 600; // scroll duration when "Skip" is pressed
+const HOLD_MS = 600; // brief pause after write-in before scrolling
+const SCROLL_MS = 950; // smooth scroll duration
+const SKIP_SCROLL_MS = 450;
 
 function markSeen() {
   try {
     sessionStorage.setItem(SEEN_KEY, "1");
-  } catch {
-    /* private mode: ignore */
-  }
+  } catch {}
 }
 
 const easeInOutCubic = (p) =>
@@ -33,56 +26,59 @@ const easeInOutCubic = (p) =>
 
 function initHero() {
   const hero = document.getElementById("hero");
-  const target = document.getElementById("feed");
-  if (!hero || !target) return; // not the home page
+  const target = document.getElementById("home") || document.getElementById("feed");
+  if (!hero || !target) return;
   if (document.documentElement.classList.contains("hero-seen")) return;
 
   const typedEl = hero.querySelector("[data-hero-typed]");
-  const caret = hero.querySelector("[data-hero-caret]");
   const tagline = hero.querySelector("[data-hero-tagline]");
   const skipBtn = hero.querySelector("[data-hero-skip]");
   if (!typedEl) return;
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const header = document.querySelector("header");
-  if (header) {
-    document.documentElement.style.setProperty("--header-h", header.offsetHeight + "px");
-  }
 
-  let runId = 0; // bump to cancel any running scroll
+  let runId = 0;
   let rafId = 0;
   const timers = [];
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
 
-  /* ---------- scrolling ---------- */
-
-  function scrollToFeed(duration) {
+  function scrollToContent(duration) {
     const myRun = ++runId;
     cancelAnimationFrame(rafId);
     markSeen();
 
-    const offset = header ? header.offsetHeight : 0;
     const startY = window.scrollY;
-    const endY = target.getBoundingClientRect().top + startY - offset;
+    const endY = target.getBoundingClientRect().top + startY;
     const dist = endY - startY;
 
-    // behavior:"instant" overrides any CSS scroll-behavior:smooth
     if (duration <= 0 || Math.abs(dist) < 2) {
       window.scrollTo({ top: endY, behavior: "instant" });
+      onScrollComplete();
       return;
     }
 
     const t0 = performance.now();
     const step = (now) => {
-      if (myRun !== runId) return; // cancelled
+      if (myRun !== runId) return;
       const p = Math.min((now - t0) / duration, 1);
       window.scrollTo({ top: startY + dist * easeInOutCubic(p), behavior: "instant" });
-      if (p < 1) rafId = requestAnimationFrame(step);
+      if (p < 1) {
+        rafId = requestAnimationFrame(step);
+      } else {
+        onScrollComplete();
+      }
     };
     rafId = requestAnimationFrame(step);
   }
 
-  // Visitor takes control: stop the automatic scroll
+  function onScrollComplete() {
+    markSeen();
+    document.documentElement.classList.add("hero-seen");
+    // After arriving at navbar, hide hero so page starts cleanly at navbar
+    if (hero) hero.style.display = "none";
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
   function stopAuto() {
     runId++;
     cancelAnimationFrame(rafId);
@@ -93,48 +89,44 @@ function initHero() {
     );
   }
 
-  /* ---------- typing ---------- */
-
   function showAll() {
-    typedEl.textContent = TEXT;
-    caret?.classList.add("is-done");
+    typedEl.classList.add("is-written");
     tagline?.classList.add("is-visible");
   }
 
-  function startTyping() {
-    const perLetter = TYPING_MS / TEXT.length; // 1500 / 6 = 250ms
-    let i = 0;
-    const tick = () => {
-      i += 1;
-      typedEl.textContent = TEXT.slice(0, i);
-      if (i === 2) tagline?.classList.add("is-visible");
-      if (i < TEXT.length) {
-        later(tick, perLetter);
-      } else {
-        caret?.classList.add("is-done");
-        later(() => scrollToFeed(SCROLL_MS), HOLD_MS);
-      }
-    };
-    later(tick, 400); // small delay so the page settles first
-  }
+  function startSmoothIntro() {
+    // 1. Smooth fast write-in (ink sweep)
+    later(() => {
+      typedEl.classList.add("is-written");
+    }, 150);
 
-  /* ---------- wire up ---------- */
+    // 2. Tagline reveals smoothly
+    later(() => {
+      tagline?.classList.add("is-visible");
+    }, 450);
+
+    // 3. Smooth auto-scroll down to navbar and content
+    later(() => {
+      scrollToContent(SCROLL_MS);
+    }, 450 + HOLD_MS);
+  }
 
   skipBtn?.addEventListener("click", () => {
     timers.forEach(clearTimeout);
     showAll();
-    scrollToFeed(reduced ? 0 : SKIP_SCROLL_MS);
+    scrollToContent(reduced ? 0 : SKIP_SCROLL_MS);
   });
 
   if (reduced) {
-    showAll(); // no typing, no auto-scroll
+    showAll();
     return;
   }
 
   ["wheel", "touchstart", "keydown", "pointerdown"].forEach((evt) =>
     window.addEventListener(evt, stopAuto, { passive: true })
   );
-  startTyping();
+
+  startSmoothIntro();
 }
 
 if (document.readyState === "loading") {
