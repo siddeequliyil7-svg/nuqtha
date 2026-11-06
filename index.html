@@ -28,8 +28,21 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@100..800&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&family=Noto+Serif+Malayalam:wght@400;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="./tailwind.css">
+
+    <!-- Hides the hero BEFORE first paint for returning visitors (no flash).
+         Also skipped for links with a #hash. Add ?hero=1 to the URL to force it. -->
+    <script>
+        try {
+            var forced = /[?&]hero=1/.test(location.search);
+            var seen = sessionStorage.getItem("nuqtha:hero-seen") === "1";
+            if (!forced && (seen || location.hash)) {
+                document.documentElement.classList.add("hero-seen");
+            }
+        } catch (e) {}
+    </script>
 
     <script>
         (function() {
@@ -251,8 +264,23 @@
         </div>
         </header>
 
+    <!-- HERO: paste directly under the header -->
+    <section id="hero" aria-labelledby="hero-title">
+        <h1 id="hero-title" class="hero-title">
+            <!-- Full text for Google + screen readers -->
+            <span class="hero-sr">NUQTHA</span>
+            <!-- Visual typing only -->
+            <span aria-hidden="true" data-hero-typed></span>
+            <span aria-hidden="true" class="hero-caret" data-hero-caret></span>
+        </h1>
+        <p class="hero-tagline" data-hero-tagline>
+            Curated articles, stories and publications, made for slow reading.
+        </p>
+        <button type="button" class="hero-skip" data-hero-skip>Skip intro</button>
+    </section>
+
     <!-- ═══════════ MAIN FEED / BLOG-ROLL ═══════════ -->
-    <main class="flex-grow w-full page-wrapper feed-main-wrapper">
+    <main id="feed" class="flex-grow w-full page-wrapper feed-main-wrapper" style="scroll-margin-top: var(--header-h, 57px)">
         
         <!-- Feed Container -->
         <div id="feed-container" class="space-y-6">
@@ -506,6 +534,7 @@
 
     <!-- App Module -->
     <script type="module" src="./js/category-link.js"></script>
+    <script type="module" src="./hero.js"></script>
     <script type="module" src="./app.js"></script>
 <script id="theme-sync-script">
         (function() {

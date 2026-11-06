@@ -1,0 +1,134 @@
+/* NUQTHA hero. Imported by hero.js (Vite bundles it). */
+
+#hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100svh - var(--header-h, 57px));
+  padding: 4rem 1.5rem;
+  text-align: center;
+  background: #faf6f0;
+  color: #2c221e;
+}
+
+html.dark #hero,
+body.dark-mode #hero {
+  background: #0f1016;
+  color: #e2e8f0;
+}
+
+.hero-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.1em; /* no layout jump while typing */
+  margin: 0;
+  font-family: "Noto Serif", "Noto Serif Malayalam", "Amiri", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(3.5rem, 18vw, 9rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #a75d3a;
+}
+
+html.dark .hero-title,
+body.dark-mode .hero-title {
+  color: #f87171;
+}
+
+.hero-caret {
+  display: inline-block;
+  width: 0.14em;
+  height: 0.8em;
+  margin-left: 0.12em;
+  background: #2c221e;
+}
+
+html.dark .hero-caret,
+body.dark-mode .hero-caret {
+  background: #e2e8f0;
+}
+
+.hero-caret.is-done {
+  animation: hero-blink 1s steps(2, start) infinite;
+}
+@keyframes hero-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.hero-tagline {
+  max-width: 28rem;
+  margin: 1.5rem 0 0;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: #5c4a42;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+
+html.dark .hero-tagline,
+body.dark-mode .hero-tagline {
+  color: #94a3b8;
+}
+
+.hero-tagline.is-visible {
+  opacity: 1;
+}
+
+.hero-skip {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #7a431d;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+html.dark .hero-skip,
+body.dark-mode .hero-skip {
+  color: #fca5a5;
+}
+
+.hero-skip:focus-visible {
+  outline: 2px solid #a75d3a;
+  outline-offset: 2px;
+}
+
+/* Visually hidden, still read by Google and screen readers */
+.hero-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Set by the inline <head> script for returning visitors (no flash) */
+.hero-seen #hero {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-caret.is-done {
+    animation: none;
+  }
+  .hero-tagline {
+    transition: none;
+  }
+}
