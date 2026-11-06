@@ -566,48 +566,78 @@ h1, h2, h3, h4, h5, h6 {
 /* ═══════════ Top Canopy Band ═══════════ */
 .top-canopy-band {
     background: linear-gradient(180deg, #b8542c 0%, #aa4923 100%);
-    height: 38px;
-    border-bottom-left-radius: 16px;
-    border-bottom-right-radius: 16px;
-    box-shadow: 0 4px 14px -3px rgba(170, 73, 35, 0.16);
+    height: 16px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    box-shadow: 0 2px 8px -2px rgba(170, 73, 35, 0.14);
 }
 
 @media (min-width: 641px) {
     .top-canopy-band {
-        height: 48px;
-        border-bottom-left-radius: 22px;
-        border-bottom-right-radius: 22px;
+        height: 20px;
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 16px;
     }
     .header-nav-wrapper {
-        margin-top: -20px;
+        margin-top: -12px;
     }
     .feed-main-wrapper {
-        padding-top: 14px !important;
+        padding-top: 10px !important;
     }
 }
 
 /* ═══════════ More Options (3-Dot) Menu & Dropdown ═══════════ */
-.more-dots-btn {
-    width: 32px;
-    height: 32px;
+.more-dots-btn,
+.header-profile-btn {
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     color: #4a3c33;
-    background: rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid var(--border);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.85);
-    box-shadow: 0 2px 6px rgba(70, 35, 15, 0.06);
+    box-shadow: 0 1px 3px rgba(70, 35, 15, 0.05);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     flex-shrink: 0;
 }
 
-.more-dots-btn:hover {
+@media (min-width: 641px) {
+    .more-dots-btn,
+    .header-profile-btn {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+.more-dots-btn:hover,
+.header-profile-btn:hover {
     background: rgba(255, 255, 255, 0.95);
     color: var(--terracotta);
-    box-shadow: 0 4px 10px rgba(80, 40, 20, 0.12);
+    border-color: rgba(180, 83, 44, 0.35);
+    box-shadow: 0 3px 8px rgba(80, 40, 20, 0.12);
+    transform: translateY(-1px);
+}
+
+body.dark-mode .more-dots-btn,
+body.dark-mode .header-profile-btn,
+html.dark .more-dots-btn,
+html.dark .header-profile-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+}
+
+body.dark-mode .more-dots-btn:hover,
+body.dark-mode .header-profile-btn:hover,
+html.dark .more-dots-btn:hover,
+html.dark .header-profile-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
 }
 
 /* ═══════════ RISALA UPDATE STYLE SIGN IN PILL & USER MENU ═══════════ */
@@ -716,22 +746,22 @@ body.dark-mode #header-user-btn:hover {
 
 /* ═══════════ Floating Glass Nav Capsule ═══════════ */
 .pro-floating-glass-card {
-    background: rgba(255, 255, 255, 0.75);
+    background: rgba(255, 255, 255, 0.82);
     backdrop-filter: blur(24px) saturate(190%);
     -webkit-backdrop-filter: blur(24px) saturate(190%);
     border: 1px solid rgba(255, 255, 255, 0.9);
     border-radius: 18px;
-    padding: 7px 12px 8px;
+    padding: 6px 12px 6px;
     width: 100%;
     box-sizing: border-box;
-    box-shadow: 0 10px 24px -6px rgba(70, 35, 15, 0.08),
+    box-shadow: 0 4px 18px -4px rgba(70, 35, 15, 0.08),
                 inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 @media (min-width: 641px) {
     .pro-floating-glass-card {
-        border-radius: 24px;
-        padding: 9px 20px 10px;
+        border-radius: 22px;
+        padding: 7px 18px 7px;
     }
 }
 
@@ -1084,20 +1114,20 @@ body.dark-mode .compact-recent-card:hover {
         padding-right: 14px;
     }
     .top-canopy-band {
-        height: 40px;
-        border-bottom-left-radius: 16px;
-        border-bottom-right-radius: 16px;
+        height: 16px;
+        border-bottom-left-radius: 12px;
+        border-bottom-right-radius: 12px;
     }
     .header-nav-wrapper {
-        margin-top: -20px;
+        margin-top: -10px;
     }
     .feed-main-wrapper {
-        padding-top: 14px !important;
+        padding-top: 10px !important;
         padding-bottom: 40px !important;
     }
     .pro-floating-glass-card {
-        border-radius: 18px;
-        padding: 6px 10px 8px;
+        border-radius: 16px;
+        padding: 5px 10px 5px;
     }
     .nav-top-row {
         gap: 8px;
@@ -3678,11 +3708,20 @@ html.dark .premium-books-load-more-btn:hover {
 }
 
 /* ═══════════ Clickable Category Links (Site-Wide) ═══════════ */
+.category-pill-link,
+.category-glass-badge,
+.category-badge-pill,
+.show-more-pill,
+.articles-dropdown-item,
+[data-category],
+[data-badge-category] {
+    position: relative;
+    z-index: 2;
+}
+
 .category-pill-link {
     display: inline-flex;
     align-items: center;
-    position: relative;
-    z-index: 2;
     cursor: pointer;
     text-decoration: none;
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;

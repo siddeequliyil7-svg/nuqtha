@@ -461,12 +461,14 @@ export function updateHeaderUserUI(user) {
     const userName = document.getElementById("header-user-name");
     const userInitial = document.getElementById("header-user-avatar-initial");
     const userAvatarImg = document.getElementById("header-user-avatar-img");
+    const userFallbackSvg = document.getElementById("header-user-avatar-fallback");
 
     const dropName = document.getElementById("dropdown-user-name");
     const dropIdent = document.getElementById("dropdown-user-ident");
     const dropRole = document.getElementById("dropdown-user-role-badge");
     const dropInitial = document.getElementById("dropdown-user-avatar-initial");
     const dropAvatarImg = document.getElementById("dropdown-user-avatar-img");
+    const dropFallbackSvg = document.getElementById("dropdown-user-avatar-fallback");
     const dropAdminLink = document.getElementById("dropdown-admin-link");
     const dropSavedCount = document.getElementById("dropdown-saved-count");
 
@@ -490,26 +492,44 @@ export function updateHeaderUserUI(user) {
         if (dropName) dropName.textContent = displayName;
         if (dropIdent) dropIdent.textContent = user.email || user.phoneNumber || "";
 
-        const initialLetter = displayName.charAt(0).toUpperCase() || "U";
-        if (userInitial) userInitial.textContent = initialLetter;
-        if (dropInitial) dropInitial.textContent = initialLetter;
+        const initialLetter = displayName.charAt(0).toUpperCase() || "";
 
         if (user.avatar) {
             if (userAvatarImg) {
                 userAvatarImg.src = user.avatar;
                 userAvatarImg.classList.remove("hidden");
-                if (userInitial) userInitial.classList.add("hidden");
             }
+            if (userInitial) userInitial.classList.add("hidden");
+            if (userFallbackSvg) userFallbackSvg.classList.add("hidden");
+
             if (dropAvatarImg) {
                 dropAvatarImg.src = user.avatar;
                 dropAvatarImg.classList.remove("hidden");
-                if (dropInitial) dropInitial.classList.add("hidden");
             }
+            if (dropInitial) dropInitial.classList.add("hidden");
+            if (dropFallbackSvg) dropFallbackSvg.classList.add("hidden");
+        } else if (initialLetter) {
+            if (userAvatarImg) userAvatarImg.classList.add("hidden");
+            if (userInitial) {
+                userInitial.textContent = initialLetter;
+                userInitial.classList.remove("hidden");
+            }
+            if (userFallbackSvg) userFallbackSvg.classList.add("hidden");
+
+            if (dropAvatarImg) dropAvatarImg.classList.add("hidden");
+            if (dropInitial) {
+                dropInitial.textContent = initialLetter;
+                dropInitial.classList.remove("hidden");
+            }
+            if (dropFallbackSvg) dropFallbackSvg.classList.add("hidden");
         } else {
             if (userAvatarImg) userAvatarImg.classList.add("hidden");
-            if (userInitial) userInitial.classList.remove("hidden");
+            if (userInitial) userInitial.classList.add("hidden");
+            if (userFallbackSvg) userFallbackSvg.classList.remove("hidden");
+
             if (dropAvatarImg) dropAvatarImg.classList.add("hidden");
-            if (dropInitial) dropInitial.classList.remove("hidden");
+            if (dropInitial) dropInitial.classList.add("hidden");
+            if (dropFallbackSvg) dropFallbackSvg.classList.remove("hidden");
         }
 
         // Admin badge & link
@@ -534,6 +554,25 @@ export function updateHeaderUserUI(user) {
         if (userBtn) {
             userBtn.classList.add("hidden");
             userBtn.classList.remove("inline-flex");
+        }
+        if (userInitial) {
+            userInitial.textContent = "";
+            userInitial.classList.add("hidden");
+        }
+        if (userAvatarImg) {
+            userAvatarImg.src = "";
+            userAvatarImg.classList.add("hidden");
+        }
+        if (dropInitial) {
+            dropInitial.textContent = "";
+            dropInitial.classList.add("hidden");
+        }
+        if (dropAvatarImg) {
+            dropAvatarImg.src = "";
+            dropAvatarImg.classList.add("hidden");
+        }
+        if (dropFallbackSvg) {
+            dropFallbackSvg.classList.remove("hidden");
         }
         const userDropdown = document.getElementById("header-user-dropdown");
         if (userDropdown) userDropdown.classList.add("hidden");

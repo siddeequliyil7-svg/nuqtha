@@ -128,6 +128,7 @@ function initApp() {
     setupHomeLink();
     setupSidebarDrawer();
     setupSearch();
+    setupGlobalCategoryBadges();
     checkUrlCategory();
     listenForArticles();
 }
@@ -407,13 +408,13 @@ function updateMoreCategoriesMenu() {
 
 function setupGlobalCategoryBadges() {
     document.addEventListener("click", (e) => {
-        const badge = e.target.closest(".category-glass-badge, .category-badge-pill, .carousel-card-cat, [data-badge-category], .category-pill-link, .show-more-pill");
+        const badge = e.target.closest(".category-glass-badge, .category-badge-pill, .carousel-card-cat, [data-badge-category], .category-pill-link, .show-more-pill, .articles-dropdown-item");
         if (badge) {
             const cat = badge.dataset.badgeCategory || badge.dataset.category;
             if (cat) {
                 e.preventDefault();
                 e.stopPropagation();
-                switchToCategory(cat.toUpperCase());
+                switchToCategory(cat);
             }
         }
     });
@@ -1111,7 +1112,18 @@ function renderHomeFeed(container) {
 }
 
 function renderCategoryFeed(container, category) {
-    const filtered = allArticles.filter(a => !isBookEntity(a) && (a.category || "").toUpperCase() === category);
+    const targetNorm = normalizeCategoryName(category).toUpperCase();
+    const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && !isChapterEntity(a);
+
+    const filtered = allArticles.filter(a => {
+        if (isBookCover(a)) return false;
+        const catNorm = normalizeCategoryName(a.category).toUpperCase();
+        return catNorm === targetNorm ||
+               categorySlug(catNorm) === categorySlug(targetNorm) ||
+               (targetNorm === "HISTORY" && (catNorm === "HISTORY" || catNorm === "ചരിത്രം")) ||
+               (targetNorm === "STUDY" && (catNorm === "STUDY" || catNorm === "പഠനം")) ||
+               (targetNorm === "STORY" && (catNorm === "STORY" || catNorm === "കഥ"));
+    });
 
     if (filtered.length === 0) {
         if (allArticles.length === 0) return; // Keep skeleton while articles load
@@ -1236,30 +1248,43 @@ function attachBookShelfListeners() {
 }
 
 function switchToCategory(cat) {
-    currentCategory = cat;
+    const norm = normalizeCategoryName(cat);
+    const upper = norm ? norm.toUpperCase() : "ALL";
+    currentCategory = upper;
     clearSearch(false);
 
     // Update active state on nav links
     const articlesBtn = document.getElementById("articles-dropdown-btn");
     const booksLink = document.getElementById("nav-books-link");
-    const isBook = cat === "BOOKS" || cat === "BOOK";
+    const isBook = upper === "BOOKS" || upper === "BOOK";
 
     if (booksLink) booksLink.classList.toggle("active", isBook);
-    if (articlesBtn) articlesBtn.classList.toggle("active", !isBook);
+    if (articlesBtn) articlesBtn.classList.toggle("active", !isBook && upper !== "ALL");
+
+    document.querySelectorAll("#category-nav .nav-category-link").forEach(link => {
+        const linkCat = (link.dataset.category || "").toUpperCase();
+        if (linkCat) {
+            link.classList.toggle("active", linkCat === upper);
+        }
+    });
 
     // Update page title & URL hash
-    if (cat === "ALL") {
+    if (upper === "ALL") {
         document.title = "NUQTHA | മലയാളം ഇ-മാഗസിൻ";
-        if (window.location.hash) {
-            history.pushState(null, "", window.location.pathname + window.location.search);
+        if (window.location.hash && window.location.hash !== "#home") {
+            try {
+                history.pushState(null, "", window.location.pathname + window.location.search);
+            } catch (_) {}
         }
     } else {
-        const catName = isBook ? "പുസ്തകങ്ങൾ (Books)" : categoryLabel(cat);
+        const catName = isBook ? "പുസ്തകങ്ങൾ (Books)" : categoryLabel(upper);
         document.title = `${catName} | NUQTHA`;
-        const slug = isBook ? "books" : categorySlug(cat);
+        const slug = isBook ? "books" : categorySlug(upper);
         const newHash = "#" + slug;
         if (window.location.hash !== newHash) {
-            history.pushState(null, "", newHash);
+            try {
+                history.pushState(null, "", newHash);
+            } catch (_) {}
         }
     }
 
