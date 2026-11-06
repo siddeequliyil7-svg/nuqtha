@@ -1,7 +1,7 @@
 /**
  * NUQTHA — Dynamic Open Graph (OG) & Twitter Card Meta Tag Injector
- * Serverless function for Vercel. Fetches article from Firestore and injects
- * dynamic metadata for social media crawlers (WhatsApp, Facebook, Twitter, etc.)
+ * Serverless function for Vercel. Fetches article or book from Firestore and injects
+ * dynamic metadata for social media crawlers (WhatsApp, Facebook, Twitter, Telegram, etc.)
  */
 
 import fs from "fs";
@@ -49,95 +49,126 @@ function slugifyText(str = "") {
 
 async function fetchArticle(idOrSlug, bookSlug = "") {
     if (!idOrSlug) return null;
-    const cleanIdentifier = decodeURIComponent(idOrSlug).trim();
+    const cleanId = decodeURIComponent(idOrSlug).trim();
+    const cleanNoPrefix = cleanId.replace(/^(?:story|book|article)[\/\\]+/gi, "").replace(/^\/+|\/+$/g, "");
+    const bSlug = bookSlug ? decodeURIComponent(bookSlug).trim().replace(/^(?:story|book|article)[\/\\]+/gi, "") : "";
 
-    // 1. Try direct fetch by document ID
-    try {
-        const docUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/articles/${encodeURIComponent(cleanIdentifier)}?key=${FIRESTORE_API_KEY}`;
-        const res = await fetch(docUrl);
-        if (res.ok) {
-            const data = await res.json();
-            if (data && data.fields) {
-                return { id: cleanIdentifier, fields: data.fields };
+    const candidateSlugs = Array.from(new Set([
+        cleanId,
+        cleanNoPrefix,
+        bSlug ? `story/${bSlug}/${cleanNoPrefix}` : "",
+        bSlug ? `${bSlug}/${cleanNoPrefix}` : "",
+        `story/${cleanNoPrefix}`,
+        `book/${cleanNoPrefix}`,
+        slugifyText(cleanNoPrefix),
+        slugifyText(cleanId)
+    ])).filter(Boolean);
+
+    const collections = ["articles", "books"];
+
+    // 1. Direct fetch by ID across articles and books
+    for (const col of collections) {
+        try {
+            const docUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/${col}/${encodeURIComponent(cleanId)}?key=${FIRESTORE_API_KEY}`;
+            const res = await fetch(docUrl);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.fields) {
+                    return { id: cleanId, fields: data.fields, collection: col };
+                }
             }
-        }
-    } catch (e) {
-        console.warn("[api/og] Direct document fetch error:", e);
+        } catch (_) {}
     }
 
-    // 2. Try structured query by slug
-    try {
-        const queryUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents:runQuery?key=${FIRESTORE_API_KEY}`;
-        const queryBody = {
-            structuredQuery: {
-                from: [{ collectionId: "articles" }],
-                where: {
-                    fieldFilter: {
-                        field: { fieldPath: "slug" },
-                        op: "EQUAL",
-                        value: { stringValue: cleanIdentifier }
-                    }
-                },
-                limit: 1
-            }
-        };
-
-        const res = await fetch(queryUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(queryBody)
-        });
-
-        if (res.ok) {
-            const results = await res.json();
-            if (Array.isArray(results) && results[0] && results[0].document) {
-                const doc = results[0].document;
-                const docId = doc.name ? doc.name.split("/").pop() : cleanIdentifier;
-                return { id: docId, fields: doc.fields || {} };
-            }
-        }
-    } catch (e) {
-        console.warn("[api/og] Slug query error:", e);
-    }
-
-    // 3. Scan recent articles to match by title slug (handles legacy articles without stored slug)
-    try {
-        const listUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/articles?pageSize=100&key=${FIRESTORE_API_KEY}`;
-        const res = await fetch(listUrl);
-        if (res.ok) {
-            const data = await res.json();
-            if (data && Array.isArray(data.documents)) {
-                const targetSlug = slugifyText(cleanIdentifier);
-                for (const doc of data.documents) {
-                    const fields = doc.fields || {};
-                    const titleSlug = slugifyText(fields.title?.stringValue || "");
-                    const bookNameSlug = slugifyText(fields.bookName?.stringValue || "");
-                    const docId = doc.name ? doc.name.split("/").pop() : "";
-
-                    if (bookSlug) {
-                        const bSlug = slugifyText(bookSlug);
-                        if ((titleSlug === targetSlug || docId === cleanIdentifier) && (bookNameSlug === bSlug || fields.bookId?.stringValue === bookSlug)) {
-                            return { id: docId, fields };
+    // 2. Structured query with IN filter for candidates across articles and books
+    for (const col of collections) {
+        try {
+            const queryUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents:runQuery?key=${FIRESTORE_API_KEY}`;
+            const queryBody = {
+                structuredQuery: {
+                    from: [{ collectionId: col }],
+                    where: {
+                        fieldFilter: {
+                            field: { fieldPath: "slug" },
+                            op: "IN",
+                            value: {
+                                arrayValue: {
+                                    values: candidateSlugs.map(s => ({ stringValue: s }))
+                                }
+                            }
                         }
-                    }
+                    },
+                    limit: 1
+                }
+            };
+            const res = await fetch(queryUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(queryBody)
+            });
+            if (res.ok) {
+                const results = await res.json();
+                const matched = Array.isArray(results) ? results.find(r => r && r.document)?.document : null;
+                if (matched) {
+                    const docId = matched.name ? matched.name.split("/").pop() : cleanId;
+                    return { id: docId, fields: matched.fields || {}, collection: col };
+                }
+            }
+        } catch (_) {}
+    }
 
-                    if (titleSlug === targetSlug || docId === cleanIdentifier || bookNameSlug === targetSlug) {
-                        return { id: docId, fields };
+    // 3. Scan recent documents across articles and books as fallback
+    for (const col of collections) {
+        try {
+            const listUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/${col}?pageSize=100&key=${FIRESTORE_API_KEY}`;
+            const res = await fetch(listUrl);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && Array.isArray(data.documents)) {
+                    const targetSlug = slugifyText(cleanNoPrefix);
+                    for (const doc of data.documents) {
+                        const fields = doc.fields || {};
+                        const titleSlug = slugifyText(fields.title?.stringValue || "");
+                        const docId = doc.name ? doc.name.split("/").pop() : "";
+                        const itemSlug = fields.slug?.stringValue || "";
+                        const itemNoPrefix = itemSlug.split("/").pop();
+
+                        if (
+                            candidateSlugs.includes(itemSlug) ||
+                            itemNoPrefix === cleanNoPrefix ||
+                            itemNoPrefix === targetSlug ||
+                            itemSlug.endsWith(`/${cleanNoPrefix}`) ||
+                            itemSlug.endsWith(`/${targetSlug}`) ||
+                            titleSlug === targetSlug ||
+                            docId === cleanId ||
+                            docId === cleanNoPrefix
+                        ) {
+                            return { id: docId, fields, collection: col };
+                        }
                     }
                 }
             }
-        }
-    } catch (e) {
-        console.warn("[api/og] Document scan error:", e);
+        } catch (_) {}
     }
 
     return null;
 }
 
 export default async function handler(req, res) {
-    const rawId = (req.query.slug || req.query.id || req.query.chapterSlug || req.query.articleId || "").trim();
-    const bookSlug = (req.query.bookSlug || "").trim();
-    const isEdition = req.query.edition === "true" || req.query.edition === true;
+    let rawId = (req.query?.slug || req.query?.id || req.query?.chapterSlug || req.query?.articleId || "").trim();
+    let bookSlug = (req.query?.bookSlug || "").trim();
+    let isEdition = req.query?.edition === "true" || req.query?.edition === true;
+
+    // Parse URL query if req.query is incomplete (common with custom vercel rewrites)
+    if ((!rawId || !bookSlug) && req.url) {
+        try {
+            const u = new URL(req.url, "http://localhost");
+            if (!rawId) rawId = (u.searchParams.get("slug") || u.searchParams.get("id") || u.searchParams.get("chapterSlug") || u.searchParams.get("articleId") || "").trim();
+            if (!bookSlug) bookSlug = (u.searchParams.get("bookSlug") || "").trim();
+            if (!isEdition) isEdition = u.searchParams.get("edition") === "true";
+        } catch (_) {}
+    }
+
     const userAgent = req.headers["user-agent"] || "";
 
     // Check if requester is a bot/crawler
@@ -156,7 +187,7 @@ export default async function handler(req, res) {
     }
 
     // If a human visits /api/og directly in their browser, redirect to the clean story path
-    if (!isBot && rawId && !req.query.debug) {
+    if (!isBot && rawId && !req.query?.debug) {
         return res.redirect(302, `${DOMAIN}${cleanPath}`);
     }
 
@@ -203,7 +234,8 @@ export default async function handler(req, res) {
             }
 
             if (rawImage.startsWith("data:image/")) {
-                imageUrl = `${DOMAIN}/api/image?id=${encodeURIComponent(articleId)}&slug=${encodeURIComponent(rawId)}`;
+                // Use a single query parameter ?id=... to prevent & / &amp; delimiter corruption by social scrapers
+                imageUrl = `${DOMAIN}/api/image?id=${encodeURIComponent(articleId)}`;
                 const match = rawImage.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,/);
                 imageMime = match ? match[1] : "image/jpeg";
             } else if (rawImage.startsWith("http://") || rawImage.startsWith("https://")) {
@@ -215,13 +247,15 @@ export default async function handler(req, res) {
 
             // Refine clean share path based on resolved article type & bookName
             const artSlug = f.slug?.stringValue || slugifyText(f.title?.stringValue) || articleId;
-            if (f.type?.stringValue === "BOOK") {
-                shareUrl = `${DOMAIN}/book/${encodeURIComponent(artSlug)}`;
-            } else if (f.bookName?.stringValue) {
-                const bSlug = f.bookSlug?.stringValue || slugifyText(f.bookName.stringValue);
-                shareUrl = `${DOMAIN}/story/${encodeURIComponent(bSlug)}/${encodeURIComponent(artSlug)}`;
+            const isBookDoc = article.collection === "books" || f.type?.stringValue === "BOOK" || isEdition;
+            if (isBookDoc) {
+                shareUrl = `${DOMAIN}/book/${encodeURIComponent(artSlug.replace(/^book\//, ''))}`;
+            } else if (f.bookName?.stringValue || bookSlug) {
+                const bSlug = bookSlug || f.bookSlug?.stringValue || slugifyText(f.bookName.stringValue);
+                const cSlug = artSlug.replace(/^story\//, '').replace(new RegExp(`^${bSlug}/`), '');
+                shareUrl = `${DOMAIN}/story/${encodeURIComponent(bSlug)}/${encodeURIComponent(cSlug)}`;
             } else {
-                shareUrl = `${DOMAIN}/story/${encodeURIComponent(artSlug)}`;
+                shareUrl = `${DOMAIN}/story/${encodeURIComponent(artSlug.replace(/^story\//, ''))}`;
             }
         }
     }

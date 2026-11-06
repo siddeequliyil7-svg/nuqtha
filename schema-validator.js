@@ -170,7 +170,16 @@ export function getStoryUrl(item) {
         const chapterSlug = item.slug || (item.title ? slugifyText(item.title) : "") || item.id || "";
         let cleanBook = cleanUrlPart(parentBookSlug);
         let cleanChapter = cleanUrlPart(chapterSlug);
-        if (cleanChapter === cleanBook) {
+
+        // Strip parent book slug prefix if chapter slug was prefixed with book slug (e.g. imaamumaarute-jeevitham/chapter)
+        if (cleanBook && cleanChapter.startsWith(cleanBook + "/")) {
+            cleanChapter = cleanChapter.slice(cleanBook.length + 1);
+        } else if (cleanBook && cleanChapter.startsWith(cleanBook + "-")) {
+            cleanChapter = cleanChapter.slice(cleanBook.length + 1);
+        }
+        cleanChapter = cleanUrlPart(cleanChapter);
+
+        if (!cleanChapter || cleanChapter === cleanBook) {
             cleanChapter = cleanUrlPart((item.title ? slugifyText(item.title) : "") || item.id || "");
         }
         if (cleanBook && cleanChapter) {

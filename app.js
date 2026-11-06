@@ -15,10 +15,20 @@ import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCa
 function safeCacheArticles(articles) {
     if (!Array.isArray(articles) || articles.length === 0) return;
     try {
-        const lightweight = articles.slice(0, 40).map(a => {
+        const lightweight = articles.slice(0, 30).map(a => {
             const copy = { ...a };
             // Never cache heavy article content in storage - feed cards only need title, author, excerpt, image
             delete copy.content;
+            delete copy.transcription;
+            if (copy.imageUrl && copy.imageUrl.startsWith("data:image/")) {
+                delete copy.imageUrl;
+            }
+            if (copy.thumbnailUrl && copy.thumbnailUrl.startsWith("data:image/")) {
+                delete copy.thumbnailUrl;
+            }
+            if (copy.ogImage && copy.ogImage.startsWith("data:image/")) {
+                delete copy.ogImage;
+            }
             return copy;
         });
         sessionStorage.setItem('nuqtha_cached_articles', JSON.stringify(lightweight));
@@ -2181,6 +2191,7 @@ function renderEmpty(message) {
 window.openFullScreenReader = function(id) {
     const art = allArticles.find(a => a.id === id);
     if (!art) return;
+    window.currentActiveArticle = art;
 
     const overlay = document.getElementById("fullscreen-reader-overlay");
     if (!overlay) return;
@@ -2236,7 +2247,16 @@ window.closeFullScreenReader = function() {
 };
 
 window.shareArticle = function(platform) {
-    const url = window.location.href;
+    let url = "";
+    if (window.currentActiveArticle) {
+        url = getStoryUrl(window.currentActiveArticle);
+    }
+    if (!url || url === "/" || url === "#") {
+        url = window.location.href;
+    }
+    if (url.startsWith("/")) {
+        url = window.location.origin + url;
+    }
     const title = document.getElementById("reader-title")?.textContent || document.title || "NUQTHA Article";
     if (platform === 'whatsapp') {
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(title + " " + url)}`, '_blank');

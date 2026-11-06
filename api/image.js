@@ -2,7 +2,7 @@
  * NUQTHA — Social Image Serving Endpoint
  * Decodes base64 images from Firestore into binary JPEG/PNG with proper MIME types,
  * or redirects to remote HTTPS thumbnail URLs.
- * Supports document IDs, slugs, and parent book image inheritance.
+ * Supports document IDs, slugs, and parent book image inheritance across articles & books collections.
  */
 
 const FIRESTORE_PROJECT_ID = "nuqtha-c0900";
@@ -29,73 +29,112 @@ function slugifyText(str = "") {
 async function fetchArticleDoc(identifier) {
     if (!identifier) return null;
     const cleanId = decodeURIComponent(identifier).trim();
+    const cleanNoPrefix = cleanId.replace(/^(?:story|book|article)[\/\\]+/gi, "").replace(/^\/+|\/+$/g, "");
 
-    // 1. Direct fetch by ID
-    try {
-        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/articles/${encodeURIComponent(cleanId)}?key=${FIRESTORE_API_KEY}`;
-        const response = await fetch(firestoreUrl);
-        if (response.ok) {
-            const data = await response.json();
-            if (data && data.fields) return data.fields;
-        }
-    } catch (_) {}
+    const candidateSlugs = Array.from(new Set([
+        cleanId,
+        cleanNoPrefix,
+        `story/${cleanNoPrefix}`,
+        `book/${cleanNoPrefix}`,
+        slugifyText(cleanNoPrefix),
+        slugifyText(cleanId)
+    ])).filter(Boolean);
 
-    // 2. Structured query by slug
-    try {
-        const queryUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents:runQuery?key=${FIRESTORE_API_KEY}`;
-        const queryBody = {
-            structuredQuery: {
-                from: [{ collectionId: "articles" }],
-                where: {
-                    fieldFilter: {
-                        field: { fieldPath: "slug" },
-                        op: "EQUAL",
-                        value: { stringValue: cleanId }
-                    }
-                },
-                limit: 1
+    const collections = ["articles", "books"];
+
+    // 1. Direct fetch by ID across articles and books
+    for (const col of collections) {
+        try {
+            const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/${col}/${encodeURIComponent(cleanId)}?key=${FIRESTORE_API_KEY}`;
+            const response = await fetch(firestoreUrl);
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.fields) return data.fields;
             }
-        };
-        const res = await fetch(queryUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(queryBody)
-        });
-        if (res.ok) {
-            const results = await res.json();
-            if (Array.isArray(results) && results[0] && results[0].document) {
-                return results[0].document.fields || null;
+        } catch (_) {}
+    }
+
+    // 2. Structured query with IN filter for candidate slugs across articles and books
+    for (const col of collections) {
+        try {
+            const queryUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents:runQuery?key=${FIRESTORE_API_KEY}`;
+            const queryBody = {
+                structuredQuery: {
+                    from: [{ collectionId: col }],
+                    where: {
+                        fieldFilter: {
+                            field: { fieldPath: "slug" },
+                            op: "IN",
+                            value: {
+                                arrayValue: {
+                                    values: candidateSlugs.map(s => ({ stringValue: s }))
+                                }
+                            }
+                        }
+                    },
+                    limit: 1
+                }
+            };
+            const res = await fetch(queryUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(queryBody)
+            });
+            if (res.ok) {
+                const results = await res.json();
+                const matched = Array.isArray(results) ? results.find(r => r && r.document)?.document : null;
+                if (matched && matched.fields) return matched.fields;
             }
-        }
-    } catch (_) {}
+        } catch (_) {}
+    }
 
-    // 3. Scan recent documents for slug match
-    try {
-        const listUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/articles?pageSize=100&key=${FIRESTORE_API_KEY}`;
-        const res = await fetch(listUrl);
-        if (res.ok) {
-            const data = await res.json();
-            if (data && Array.isArray(data.documents)) {
-                const targetSlug = slugifyText(cleanId);
-                for (const doc of data.documents) {
-                    const fields = doc.fields || {};
-                    const titleSlug = slugifyText(fields.title?.stringValue || "");
-                    const bookNameSlug = slugifyText(fields.bookName?.stringValue || "");
-                    const docId = doc.name ? doc.name.split("/").pop() : "";
+    // 3. Scan recent documents across articles and books
+    for (const col of collections) {
+        try {
+            const listUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/${col}?pageSize=100&key=${FIRESTORE_API_KEY}`;
+            const res = await fetch(listUrl);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && Array.isArray(data.documents)) {
+                    const targetSlug = slugifyText(cleanNoPrefix);
+                    for (const doc of data.documents) {
+                        const fields = doc.fields || {};
+                        const titleSlug = slugifyText(fields.title?.stringValue || "");
+                        const docId = doc.name ? doc.name.split("/").pop() : "";
+                        const itemSlug = fields.slug?.stringValue || "";
+                        const itemNoPrefix = itemSlug.split("/").pop();
 
-                    if (titleSlug === targetSlug || docId === cleanId || bookNameSlug === targetSlug) {
-                        return fields;
+                        if (
+                            candidateSlugs.includes(itemSlug) ||
+                            itemNoPrefix === cleanNoPrefix ||
+                            itemNoPrefix === targetSlug ||
+                            itemSlug.endsWith(`/${cleanNoPrefix}`) ||
+                            itemSlug.endsWith(`/${targetSlug}`) ||
+                            titleSlug === targetSlug ||
+                            docId === cleanId ||
+                            docId === cleanNoPrefix
+                        ) {
+                            return fields;
+                        }
                     }
                 }
             }
-        }
-    } catch (_) {}
+        } catch (_) {}
+    }
 
     return null;
 }
 
 export default async function handler(req, res) {
-    const rawId = (req.query.id || req.query.slug || req.query.articleId || "").trim();
+    let rawId = (req.query?.id || req.query?.slug || req.query?.articleId || "").trim();
+
+    // Fallback URL query parsing if req.query is incomplete
+    if (!rawId && req.url) {
+        try {
+            const u = new URL(req.url, "http://localhost");
+            rawId = (u.searchParams.get("id") || u.searchParams.get("slug") || u.searchParams.get("articleId") || "").trim();
+        } catch (_) {}
+    }
 
     if (!rawId) {
         return res.redirect(302, DEFAULT_BANNER);
@@ -130,16 +169,16 @@ export default async function handler(req, res) {
 
         // If it's a base64 data URI (e.g. data:image/jpeg;base64,...)
         if (rawImage.startsWith("data:image/")) {
-            const matches = rawImage.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+            const matches = rawImage.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/s);
             if (matches && matches.length === 3) {
                 const mimeType = matches[1].toLowerCase();
-                // Whitelist only safe raster image formats (blocks SVG script execution vectors)
+                // Whitelist only safe raster image formats
                 const safeMimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
                 if (!safeMimes.includes(mimeType)) {
                     return res.redirect(302, DEFAULT_BANNER);
                 }
 
-                const base64Data = matches[2];
+                const base64Data = matches[2].replace(/\s+/g, "");
                 const buffer = Buffer.from(base64Data, "base64");
 
                 res.setHeader("Content-Type", mimeType);
