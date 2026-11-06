@@ -1,5 +1,6 @@
 import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
+import { initLibraryAdmin } from "./admin-library.js";
 import { 
     checkIsAdminUser, 
     initAuthStateListener, 
@@ -233,6 +234,10 @@ function initAdminDashboard() {
     safeInit("initAuthorManager", initAuthorManager);
     safeInit("initMoreMenuManager", initMoreMenuManager);
     safeInit("initUserAnalyticsDashboard", initUserAnalyticsDashboard);
+    safeInit("initLibraryAdminPanel", () => {
+        const root = document.getElementById("library-admin");
+        if (root) initLibraryAdmin(root);
+    });
 }
 
 function initPlaylistPresets() {
@@ -438,7 +443,7 @@ function initTabNavigation() {
 
     // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=book)
     const hash = window.location.hash.replace("#tab=", "").trim();
-    if (["create", "book", "layout", "published", "authors", "menu", "analytics"].includes(hash)) {
+    if (["create", "book", "layout", "published", "authors", "menu", "analytics", "library"].includes(hash)) {
         try {
             switchAdminTab(hash);
         } catch (err) {
@@ -488,6 +493,14 @@ export function switchAdminTab(tabName) {
     if (tabName === "menu") {
         if (typeof renderAdminMenuListGlobal === "function") {
             renderAdminMenuListGlobal();
+        }
+    }
+
+    if (tabName === "library") {
+        const root = document.getElementById("library-admin");
+        if (root && !root.dataset.loaded) {
+            root.dataset.loaded = "true";
+            initLibraryAdmin(root);
         }
     }
 }

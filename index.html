@@ -59,6 +59,7 @@
         })();
     </script>
     <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="./library.css">
     <script type="module" src="./js/ui-safe.js"></script>
 </head>
 <body class="bg-[var(--bg)] text-[var(--text)] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col">
@@ -203,6 +204,12 @@
 
 
 
+        <!-- View Switcher (Articles vs Library) -->
+    <div role="group" aria-label="View" id="view-switch">
+        <button type="button" id="view-articles" class="view-switch-btn" aria-pressed="true">Articles</button>
+        <button type="button" id="view-library" class="view-switch-btn" aria-pressed="false">Library</button>
+    </div>
+
     <!-- ═══════════ MAIN FEED / BLOG-ROLL ═══════════ -->
     <main id="feed" class="flex-grow w-full page-wrapper feed-main-wrapper" style="scroll-margin-top: var(--header-h, 57px)">
         
@@ -266,7 +273,10 @@
             </section>
         </div>
 
-    </main>
+        </main>
+
+    <!-- ═══════════ 3D INTERACTIVE LIBRARY VIEW (SHELF & TABLE) ═══════════ -->
+    <section id="library" class="flex-grow w-full page-wrapper pb-16" hidden></section>
 
     <!-- ═══════════ FULL SCREEN READING INTERFACE (OPTION 2) ═══════════ -->
     <div id="fullscreen-reader-overlay" class="fixed inset-0 z-50 bg-[var(--bg)] overflow-y-auto hidden">
@@ -428,6 +438,13 @@
                             <span>BOOKS & EDITIONS (പുസ്തകങ്ങൾ)</span>
                         </span>
                     </a>
+                                    <button type="button" id="drawer-library-link" class="w-full drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition cursor-pointer text-left font-english">
+                        <span class="flex items-center gap-2.5">
+                            <span class="text-base">🏛️</span>
+                            <span>LIBRARY (ലൈബ്രറി 3D)</span>
+                        </span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#b4532c]/15 text-[#b4532c] dark:text-[#f87171] font-bold">New</span>
+                    </button>
                 </nav>
             </div>
 

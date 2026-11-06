@@ -138,6 +138,7 @@ function initApp() {
     setupHomeLink();
     setupSidebarDrawer();
     setupSearch();
+    setupLibraryView();
     setupGlobalCategoryBadges();
     checkUrlCategory();
     listenForArticles();
@@ -573,6 +574,62 @@ function setupSidebarDrawer() {
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") closeDrawer();
     });
+}
+
+/* ═══════════ 3D Library View Switcher Setup ═══════════ */
+function setupLibraryView() {
+    const feed = document.getElementById("feed");
+    const lib = document.getElementById("library");
+    const bA = document.getElementById("view-articles");
+    const bL = document.getElementById("view-library");
+    const drawerLibLink = document.getElementById("drawer-library-link");
+
+    if (!feed || !lib || !bA || !bL) return;
+
+    let mounted = false;
+
+    async function showView(name) {
+        const isLib = name === "library";
+        feed.hidden = isLib;
+        lib.hidden = !isLib;
+        bA.setAttribute("aria-pressed", String(!isLib));
+        bL.setAttribute("aria-pressed", String(isLib));
+
+        if (isLib) {
+            if (window.location.hash !== "#library") {
+                history.replaceState(null, null, "#library");
+            }
+            if (!mounted) {
+                mounted = true;
+                const { mountLibrary } = await import("./library.js");
+                mountLibrary(lib);
+            }
+        } else {
+            if (window.location.hash === "#library") {
+                history.replaceState(null, null, "#home");
+            }
+        }
+    }
+
+    bA.addEventListener("click", () => showView("articles"));
+    bL.addEventListener("click", () => showView("library"));
+
+    if (drawerLibLink) {
+        drawerLibLink.addEventListener("click", () => {
+            const closeBtn = document.getElementById("sidebar-close-btn");
+            if (closeBtn) closeBtn.click();
+            showView("library");
+            lib.scrollIntoView({ behavior: "smooth" });
+        });
+    }
+
+    window.showNuqthaView = showView;
+
+    // Check if URL requests library view (e.g. #library or ?view=library)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (window.location.hash === "#library" || urlParams.get("view") === "library") {
+        showView("library");
+    }
 }
 
 /* ═══════════ Real-Time Article Search Setup ═══════════ */
@@ -1258,6 +1315,9 @@ function attachBookShelfListeners() {
 }
 
 function switchToCategory(cat) {
+    if (typeof window.showNuqthaView === "function") {
+        window.showNuqthaView("articles");
+    }
     const norm = normalizeCategoryName(cat);
     const upper = norm ? norm.toUpperCase() : "ALL";
     currentCategory = upper;
