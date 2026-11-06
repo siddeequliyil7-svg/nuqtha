@@ -36,6 +36,30 @@ export async function initLibraryAdmin(root) {
       <form id="bk-form" class="bg-[#faf6f0] dark:bg-white/5 p-5 rounded-2xl border border-[#ebdccb] dark:border-white/10 space-y-4">
         <input type="hidden" name="id">
 
+        <!-- Existing Books Quick-Selector -->
+        <div class="p-3.5 rounded-2xl bg-[#b4532c]/10 dark:bg-[#b4532c]/20 border border-[#b4532c]/30 space-y-2">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <label for="bk-existing-select" class="text-xs font-bold text-[#b4532c] dark:text-[#f87171] flex items-center gap-1.5">
+              <span class="text-base">📖</span>
+              <span>നിലവിലുള്ള പുസ്തകങ്ങളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക (Import Existing Book):</span>
+            </label>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#b4532c]/15 text-[#b4532c] dark:text-[#f87171] font-bold">
+              1-Click Auto-Fill
+            </span>
+          </div>
+          <select id="bk-existing-select" class="w-full px-3 py-2 rounded-xl border border-[#b4532c]/30 bg-white dark:bg-[#12141d] text-xs font-bold text-[var(--text)] dark:text-white outline-none cursor-pointer focus:ring-1 focus:ring-[#b4532c]">
+            <option value="">-- ലോഡ് ചെയ്യുന്നു... (Loading existing books...) --</option>
+          </select>
+          <div class="flex items-center justify-between flex-wrap gap-2 pt-0.5">
+            <p class="text-[11px] text-[#8c7a6b] dark:text-slate-400">
+              നേരത്തെ ചേർത്ത പുസ്തകങ്ങൾ (ഉദാ: ഇമാമുമാരുടെ ജീവിതം) തിരഞ്ഞെടുത്താൽ വിവരങ്ങളും അധ്യായങ്ങളും സ്വയം ഫോമിൽ നിറയും.
+            </p>
+            <button type="button" id="bk-quick-add-btn" class="hidden px-3.5 py-1 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-lg shadow transition cursor-pointer">
+              + ഷെൽഫിലേക്ക് ഉടൻ ചേർക്കുക (Add to Shelf)
+            </button>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label class="block space-y-1 text-xs font-bold text-[#5a4b41] dark:text-slate-300">
             <span>Title (തലക്കെട്ട്) *</span>
@@ -249,9 +273,113 @@ export async function initLibraryAdmin(root) {
     };
   }
 
+  let existingBooks = [];
+
+  function populateExistingBooks(snap) {
+    const sel = $(root, "#bk-existing-select");
+    const quickAddBtn = $(root, "#bk-quick-add-btn");
+    if (!sel || !snap) return;
+
+    try {
+      const allArts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      existingBooks = [];
+
+      allArts.forEach(a => {
+        const isBook = a.isBook === true || (a.type || "").toUpperCase() === "BOOK" || (a.category || "").toLowerCase() === "premium book" || (a.category || "").toLowerCase() === "book";
+        const isChapter = a.isChapter === true || (a.type || "").toUpperCase() === "CHAPTER" || a.chapterIndex !== undefined;
+        if (isBook && !isChapter) {
+          // Find chapters for this book
+          const chapters = allArts.filter(c => {
+            if (c.id === a.id) return false;
+            if (c.bookId && String(c.bookId).trim() === String(a.id)) return true;
+            if (c.bookName && c.title && c.bookName.trim().toLowerCase() === (a.title || a.bookName || "").trim().toLowerCase()) return true;
+            return false;
+          }).sort((x, y) => (Number(x.order ?? x.chapterIndex ?? 0)) - (Number(y.order ?? y.chapterIndex ?? 0)));
+
+          existingBooks.push({
+            id: a.id,
+            title: a.title || a.bookName || "Untitled Book",
+            author: a.author || "Nuqtha Press",
+            description: a.introduction || a.excerpt || a.description || (a.content ? a.content.replace(/<[^>]*>/g, " ").slice(0, 250) : ""),
+            pages: a.pages || (chapters.length > 0 ? chapters.length * 15 : 120),
+            chapters: chapters.map((ch, idx) => ch.title || `Chapter ${idx + 1}`)
+          });
+        }
+      });
+
+      if (existingBooks.length === 0) {
+        sel.innerHTML = `<option value="">-- നിലവിൽ മറ്റ് പുസ്തകങ്ങൾ കണ്ടെത്തിയില്ല --</option>`;
+        return;
+      }
+
+      sel.innerHTML = `<option value="">-- നിലവിലുള്ള പുസ്തകം തിരഞ്ഞെടുക്കുക (${existingBooks.length} എണ്ണം ലഭ്യമാണ്) --</option>`;
+      existingBooks.forEach((b, idx) => {
+        const opt = document.createElement("option");
+        opt.value = String(idx);
+        opt.textContent = `${b.title} (${b.author}) — ${b.chapters.length} അധ്യായങ്ങൾ`;
+        sel.appendChild(opt);
+      });
+
+      sel.onchange = () => {
+        const idx = sel.value;
+        if (idx === "" || !existingBooks[idx]) {
+          if (quickAddBtn) quickAddBtn.classList.add("hidden");
+          return;
+        }
+        const b = existingBooks[idx];
+        form.id.value = "";
+        form.title.value = b.title;
+        form.author.value = b.author;
+        form.pages.value = b.pages;
+        form.description.value = b.description;
+        form.contents.value = b.chapters.join("\n");
+        form.visible.checked = true;
+        bkStatus.textContent = `✓ "${b.title}" വിവരങ്ങൾ ഫോമിൽ നിറച്ചു! താഴെ "Save book" അമർത്തിയാൽ ഇത് 3D ഷെൽഫിൽ എത്തും.`;
+        if (quickAddBtn) {
+          quickAddBtn.classList.remove("hidden");
+          quickAddBtn.onclick = () => quickAddBook(b);
+        }
+      };
+    } catch (err) {
+      console.warn("[Admin Library] Error populating existing books:", err);
+    }
+  }
+
+  async function quickAddBook(b) {
+    const currentOnShelf = books.filter(x => x.visible).length;
+    if (currentOnShelf >= MAX_BOOKS) {
+      bkStatus.textContent = `ഷെൽഫിൽ പരമാവധി ${MAX_BOOKS} പുസ്തകങ്ങൾ മാത്രമേ വെക്കാൻ കഴിയൂ. ദയവായി മറ്റൊന്ന് അൺചെക്ക് ചെയ്യുക.`;
+      return;
+    }
+    const data = {
+      title: b.title.trim(),
+      author: b.author.trim() || "Nuqtha Press",
+      pages: Number(b.pages) || 120,
+      color: "#7b2d26",
+      order: books.length + 1,
+      description: b.description.trim(),
+      contents: b.chapters,
+      visible: true
+    };
+    try {
+      bkStatus.textContent = `"${b.title}" ഷെൽഫിലേക്ക് ചേർക്കുന്നു...`;
+      await addDoc(collection(db, "books"), data);
+      bkStatus.textContent = `✓ "${b.title}" ഷെൽഫിൽ വിജയകരമായി ചേർത്തു!`;
+      form.reset();
+      form.id.value = "";
+      const quickAddBtn = $(root, "#bk-quick-add-btn");
+      if (quickAddBtn) quickAddBtn.classList.add("hidden");
+      loadBooks();
+    } catch (err) {
+      console.error(err);
+      bkStatus.textContent = "സേവ് ചെയ്യാൻ സാധിച്ചില്ല. അഡ്മിൻ ലോഗിൻ പരിശോധിക്കുക.";
+    }
+  }
+
   async function loadPapers() {
     try {
       const snap = await getDocs(query(collection(db, "articles"), limit(200)));
+      populateExistingBooks(snap);
       const ul = $(root, "#tb-list");
       ul.innerHTML = "";
       if (!snap.docs.length) {
@@ -302,3 +430,4 @@ export async function initLibraryAdmin(root) {
 
   await Promise.all([loadBooks(), loadPapers()]);
 }
+

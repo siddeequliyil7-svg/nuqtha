@@ -201,8 +201,25 @@ function renderTable(papers) {
 }
 
 export async function mountLibrary(root) {
-  root.innerHTML = `<div class="lib-case"><div class="wallbg" id="lib-shelf"><p class="lib-msg">Loading the library…</p></div></div>
-    <div class="lib-table" id="lib-table" aria-label="Table with printed articles"></div>`;
+  root.innerHTML = `<div class="max-w-md mx-auto px-4 pt-4 pb-1 flex items-center justify-between">
+    <button type="button" id="lib-back-btn" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-[#b4532c]/15 text-xs font-bold text-[#b4532c] dark:text-[#f87171] transition cursor-pointer font-english shadow-2xs">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      <span>ലേഖനങ്ങളിലേക്ക് (Back to Articles)</span>
+    </button>
+    <span class="text-[11px] font-bold text-[#8c7a6b] font-english uppercase tracking-wider">3D Library</span>
+  </div>
+  <div class="lib-case"><div class="wallbg" id="lib-shelf"><p class="lib-msg">Loading the library…</p></div></div>
+  <div class="lib-table" id="lib-table" aria-label="Table with printed articles"></div>`;
+
+  const backBtn = root.querySelector("#lib-back-btn");
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      if (typeof window.showNuqthaView === "function") {
+        window.showNuqthaView("articles");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  }
   try {
     const { books, papers } = await loadData();
     renderShelf(books); renderTable(papers);
@@ -212,3 +229,4 @@ export async function mountLibrary(root) {
     root.querySelector("button")?.addEventListener("click", () => mountLibrary(root));
   }
 }
+

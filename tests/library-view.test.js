@@ -95,3 +95,4 @@ console.log("  [OK] Admin panel correctly wires Library tab, container, and lazy
 console.log("==================================================");
 console.log("PASS: ALL 3D LIBRARY TESTS PASSED SUCCESSFULLY!");
 console.log("==================================================");
+

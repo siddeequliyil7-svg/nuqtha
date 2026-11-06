@@ -402,3 +402,4 @@ body.dark-mode .view-switch-btn[aria-pressed="true"] {
 @media (prefers-reduced-motion: reduce) {
   .book, .paper, #lib-stage::before { transition: none; }
 }
+
