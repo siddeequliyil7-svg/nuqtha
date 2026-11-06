@@ -57,7 +57,10 @@
                     <button id="header-user-btn" class="hidden items-center justify-center rounded-full transition-transform hover:scale-105 cursor-pointer" title="User Profile / പ്രൊഫൈൽ" aria-label="User Profile" aria-expanded="false" aria-haspopup="true">
                         <div id="header-user-avatar" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center text-xs sm:text-sm font-bold overflow-hidden shadow-xs ring-2 ring-black/5 dark:ring-white/10">
                             <img id="header-user-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
-                            <span id="header-user-avatar-initial">U</span>
+                            <span id="header-user-avatar-initial" class="hidden"></span>
+                            <svg id="header-user-avatar-fallback" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
                         </div>
                     </button>
 
@@ -67,7 +70,10 @@
                             <div class="flex items-center gap-2.5">
                                 <div id="dropdown-user-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
                                     <img id="dropdown-user-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
-                                    <span id="dropdown-user-avatar-initial">U</span>
+                                    <span id="dropdown-user-avatar-initial" class="hidden"></span>
+                                    <svg id="dropdown-user-avatar-fallback" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <p id="dropdown-user-name" class="text-sm font-bold text-[var(--text)] dark:text-white truncate">വായനക്കാരൻ</p>

@@ -77,23 +77,47 @@ assert.strictEqual(historyResults.some(a => a.id === "5"), false, "Dedicated boo
 
 console.log("  [OK] Category filtering keeps all relevant articles and chapters, excluding only book covers.");
 
-// ─── Test 3: Profile icon logged-out state (NO 'U' letter fallback) ───
-console.log("Test 3: Verifying profile icon and absence of 'U' letter in logged-out state...");
+// ─── Test 3: Top Navbar controls cleanup & Drawer Login/Logout ───
+console.log("Test 3: Verifying Top Navbar cleanup (search + 3-lines menu only) and Drawer Login/Logout...");
 
 const indexHtml = fs.readFileSync("nuqtha/index.html", "utf8");
 const articleHtml = fs.readFileSync("nuqtha/article.html", "utf8");
 const authUiJs = fs.readFileSync("nuqtha/js/auth-ui.js", "utf8");
 
-// Verify that initial letter 'U' is completely removed from index.html and article.html
-assert.strictEqual(
-    indexHtml.includes('<span id="header-user-avatar-initial">U</span>'),
-    false,
-    "index.html must not contain hardcoded fallback initial 'U' in header-user-avatar-initial!"
+// Top Navbar right actions: search button and hamburger 3-lines button present, profile avatar removed
+assert.ok(
+    indexHtml.includes('id="header-search-btn"'),
+    "index.html must have header-search-btn in top navbar"
+);
+assert.ok(
+    indexHtml.includes('id="sidebar-toggle-btn"'),
+    "index.html must have sidebar-toggle-btn in top navbar"
 );
 assert.strictEqual(
-    indexHtml.includes('<span id="dropdown-user-avatar-initial">U</span>'),
+    indexHtml.includes('id="header-auth-container"'),
     false,
-    "index.html must not contain hardcoded fallback initial 'U' in dropdown-user-avatar-initial!"
+    "index.html top navbar must NOT contain header-auth-container (profile icons fully removed from top navbar as requested)"
+);
+
+// Sidebar Drawer: Bottom Login / Logout section
+assert.ok(
+    indexHtml.includes('id="drawer-auth-section"'),
+    "index.html sidebar drawer must contain drawer-auth-section"
+);
+assert.ok(
+    indexHtml.includes('id="drawer-login-btn"'),
+    "index.html sidebar drawer must contain drawer-login-btn for logged-out state"
+);
+assert.ok(
+    indexHtml.includes('id="drawer-logout-btn"'),
+    "index.html sidebar drawer must contain drawer-logout-btn for logged-in state"
+);
+
+// Verify that initial letter 'U' is completely removed
+assert.strictEqual(
+    indexHtml.includes('>U<'),
+    false,
+    "index.html must not contain hardcoded fallback initial 'U'!"
 );
 assert.strictEqual(
     articleHtml.includes('<span id="header-user-avatar-initial">U</span>'),
@@ -106,24 +130,18 @@ assert.strictEqual(
     "article.html must not contain hardcoded fallback initial 'U' in dropdown-user-avatar-initial!"
 );
 
-// Verify auth-ui.js does not fall back to "U"
+// Verify auth-ui.js does not fall back to "U" and wires drawer auth buttons
 assert.strictEqual(
     authUiJs.includes('|| "U"'),
     false,
     "auth-ui.js must not contain fallback letter 'U'!"
 );
-
-// Verify subtle circular silhouette styling
 assert.ok(
-    indexHtml.includes('id="header-signin-btn" class="more-dots-btn header-profile-btn"'),
-    "header-signin-btn must use more-dots-btn and header-profile-btn circular styling"
-);
-assert.ok(
-    articleHtml.includes('id="header-signin-btn" class="more-dots-btn header-profile-btn"'),
-    "article.html header-signin-btn must use more-dots-btn and header-profile-btn circular styling"
+    authUiJs.includes('drawer-login-btn') && authUiJs.includes('drawer-logout-btn'),
+    "auth-ui.js must wire drawer-login-btn and drawer-logout-btn"
 );
 
-console.log("  [OK] Profile avatar has zero 'U' letter fallbacks and displays clean silhouette in subtle circular container.");
+console.log("  [OK] Top navbar is clean (search + 3-lines menu), user profile icons removed from top bar, and drawer login/logout implemented.");
 
 // ─── Test 4: Navbar layout & responsiveness ───
 console.log("Test 4: Verifying navbar layout & desktop/mobile alignment classes...");

@@ -443,6 +443,26 @@ export function initHeaderAuthUI(options = {}) {
         });
     }
 
+    // Drawer Auth UI (Login / Logout in Sidebar Menu)
+    const drawerLoginBtn = document.getElementById("drawer-login-btn");
+    const drawerLogoutBtn = document.getElementById("drawer-logout-btn");
+
+    if (drawerLoginBtn) {
+        drawerLoginBtn.addEventListener("click", () => {
+            const closeBtn = document.getElementById("sidebar-close-btn");
+            if (closeBtn) closeBtn.click();
+            openAuthModal("google");
+        });
+    }
+
+    if (drawerLogoutBtn) {
+        drawerLogoutBtn.addEventListener("click", async () => {
+            await signOutUser();
+            const closeBtn = document.getElementById("sidebar-close-btn");
+            if (closeBtn) closeBtn.click();
+        });
+    }
+
     // Auth State Listener
     initAuthStateListener((user) => {
         updateHeaderUserUI(user);
@@ -471,6 +491,16 @@ export function updateHeaderUserUI(user) {
     const dropFallbackSvg = document.getElementById("dropdown-user-avatar-fallback");
     const dropAdminLink = document.getElementById("dropdown-admin-link");
     const dropSavedCount = document.getElementById("dropdown-saved-count");
+
+    // Drawer Auth UI elements
+    const drawerLoginBtn = document.getElementById("drawer-login-btn");
+    const drawerUserInfo = document.getElementById("drawer-user-info");
+    const drawerUserName = document.getElementById("drawer-user-name");
+    const drawerUserIdent = document.getElementById("drawer-user-ident");
+    const drawerUserInitial = document.getElementById("drawer-user-avatar-initial");
+    const drawerUserAvatarImg = document.getElementById("drawer-user-avatar-img");
+    const drawerUserFallbackSvg = document.getElementById("drawer-user-avatar-fallback");
+    const drawerAdminLink = document.getElementById("drawer-admin-link");
 
     // Update saved articles count
     let savedCount = 0;
@@ -549,6 +579,40 @@ export function updateHeaderUserUI(user) {
             dropAdminLink.classList.toggle("flex", isAdmin);
         }
 
+        // Update Drawer Auth UI for Logged-In User
+        if (drawerLoginBtn) drawerLoginBtn.classList.add("hidden");
+        if (drawerUserInfo) {
+            drawerUserInfo.classList.remove("hidden");
+            drawerUserInfo.classList.add("block");
+        }
+        if (drawerUserName) drawerUserName.textContent = displayName;
+        if (drawerUserIdent) drawerUserIdent.textContent = user.email || user.phoneNumber || "";
+
+        if (user.avatar) {
+            if (drawerUserAvatarImg) {
+                drawerUserAvatarImg.src = user.avatar;
+                drawerUserAvatarImg.classList.remove("hidden");
+            }
+            if (drawerUserInitial) drawerUserInitial.classList.add("hidden");
+            if (drawerUserFallbackSvg) drawerUserFallbackSvg.classList.add("hidden");
+        } else if (initialLetter) {
+            if (drawerUserAvatarImg) drawerUserAvatarImg.classList.add("hidden");
+            if (drawerUserInitial) {
+                drawerUserInitial.textContent = initialLetter;
+                drawerUserInitial.classList.remove("hidden");
+            }
+            if (drawerUserFallbackSvg) drawerUserFallbackSvg.classList.add("hidden");
+        } else {
+            if (drawerUserAvatarImg) drawerUserAvatarImg.classList.add("hidden");
+            if (drawerUserInitial) drawerUserInitial.classList.add("hidden");
+            if (drawerUserFallbackSvg) drawerUserFallbackSvg.classList.remove("hidden");
+        }
+
+        if (drawerAdminLink) {
+            drawerAdminLink.classList.toggle("hidden", !isAdmin);
+            drawerAdminLink.classList.toggle("flex", isAdmin);
+        }
+
     } else {
         if (signinBtn) signinBtn.classList.remove("hidden");
         if (userBtn) {
@@ -576,6 +640,28 @@ export function updateHeaderUserUI(user) {
         }
         const userDropdown = document.getElementById("header-user-dropdown");
         if (userDropdown) userDropdown.classList.add("hidden");
+
+        // Update Drawer Auth UI for Logged-Out State
+        if (drawerLoginBtn) drawerLoginBtn.classList.remove("hidden");
+        if (drawerUserInfo) {
+            drawerUserInfo.classList.add("hidden");
+            drawerUserInfo.classList.remove("block");
+        }
+        if (drawerUserInitial) {
+            drawerUserInitial.textContent = "";
+            drawerUserInitial.classList.add("hidden");
+        }
+        if (drawerUserAvatarImg) {
+            drawerUserAvatarImg.src = "";
+            drawerUserAvatarImg.classList.add("hidden");
+        }
+        if (drawerUserFallbackSvg) {
+            drawerUserFallbackSvg.classList.remove("hidden");
+        }
+        if (drawerAdminLink) {
+            drawerAdminLink.classList.add("hidden");
+            drawerAdminLink.classList.remove("flex");
+        }
     }
 }
 
