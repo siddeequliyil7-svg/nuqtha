@@ -87,17 +87,38 @@
                      Desktop (md+): single sleek, unified horizontal row with Brand left, Nav center, Actions right. -->
                 <div class="flex flex-wrap md:flex-nowrap items-center justify-between w-full gap-y-1.5 md:gap-x-4">
                     
-                    <!-- 1. Brand Logo & Title (Left) -->
-                    <a id="home-link" href="index.html" aria-label="NUQTHA Home" class="order-1 brand-badge flex items-center gap-2 rounded-xl group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 transition-transform hover:scale-105 flex-shrink-0">
-                        <div class="brand-icon w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-xs shadow-blue-500/20 flex items-center justify-center p-1.5 flex-shrink-0 group-hover:shadow-md transition-shadow">
-                            <svg class="w-full h-full text-white" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z" />
-                            </svg>
+                    <!-- 1. Left Section: Brand Logo & Auth Button -->
+                    <div class="order-1 flex flex-col items-start gap-1 flex-shrink-0">
+                        <!-- NUQTHA Brand Logo -->
+                        <a id="home-link" href="index.html" aria-label="NUQTHA Home" class="order-1 brand-badge flex items-center gap-2 rounded-xl group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 transition-transform hover:scale-105">
+                            <div class="brand-icon w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-xs shadow-blue-500/20 flex items-center justify-center p-1.5 flex-shrink-0 group-hover:shadow-md transition-shadow">
+                                <svg class="w-full h-full text-white" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z" />
+                                </svg>
+                            </div>
+                            <span translate="no" class="notranslate brand-title text-base sm:text-lg md:text-xl font-black tracking-tight text-[var(--text)] font-english uppercase group-hover:text-[#b4532c] transition-colors">
+                                NUQTHA
+                            </span>
+                        </a>
+
+                        <!-- Small Bordered Login / Logout Button -->
+                        <div id="nav-brand-auth" class="mt-0.5">
+                            <button 
+                                id="nav-login-btn"
+                                type="button"
+                                class="text-[11px] font-medium text-[#A75D3A] dark:text-[#f87171] px-2 py-0.5 border border-[#A75D3A]/40 dark:border-[#f87171]/40 rounded hover:bg-[#FAF6F0] dark:hover:bg-white/5 transition-colors cursor-pointer font-english tracking-wide"
+                            >
+                                Login
+                            </button>
+                            <button 
+                                id="nav-logout-btn"
+                                type="button"
+                                class="hidden text-[11px] font-medium text-red-600 dark:text-red-400 px-2 py-0.5 border border-red-300 dark:border-red-900/60 rounded hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer font-english tracking-wide"
+                            >
+                                Logout
+                            </button>
                         </div>
-                        <span translate="no" class="notranslate brand-title text-base sm:text-lg md:text-xl font-black tracking-tight text-[var(--text)] font-english uppercase group-hover:text-[#b4532c] transition-colors">
-                            NUQTHA
-                        </span>
-                    </a>
+                    </div>
 
                     <!-- 2. Action Icons (Top Right Header Controls: Search + 3-Lines Menu) -->
                     <div class="order-2 md:order-3 nav-actions flex items-center justify-end gap-2 sm:gap-3 flex-shrink-0">

@@ -141,6 +141,20 @@ assert.ok(
     "auth-ui.js must wire drawer-login-btn and drawer-logout-btn"
 );
 
+// Top Navbar Left Section: Small Bordered Login / Logout under brand logo
+assert.ok(
+    indexHtml.includes('id="nav-login-btn"'),
+    "index.html must have nav-login-btn under brand logo"
+);
+assert.ok(
+    indexHtml.includes('id="nav-logout-btn"'),
+    "index.html must have nav-logout-btn under brand logo"
+);
+assert.ok(
+    authUiJs.includes('nav-login-btn') && authUiJs.includes('nav-logout-btn'),
+    "auth-ui.js must wire nav-login-btn and nav-logout-btn"
+);
+
 console.log("  [OK] Top navbar is clean (search + 3-lines menu), user profile icons removed from top bar, and drawer login/logout implemented.");
 
 // ─── Test 4: Navbar layout & responsiveness ───
