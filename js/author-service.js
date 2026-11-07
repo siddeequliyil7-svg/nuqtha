@@ -10,7 +10,7 @@ export const PRIMARY_AUTHORS = [
         role: "FOUNDING EDITOR · സ്ഥാപക പത്രാധിപർ",
         slug: "സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ",
         bio: "NUQTHA സ്ഥാപക പത്രാധിപർ, ചരിത്ര-സാഹിത്യ ഗവേഷകൻ, എഴുത്തുകാരൻ.",
-        photoUrl: "/assets/aistudio/image_83264d65.png"
+        photoUrl: ""
     },
     {
         name: "സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി",

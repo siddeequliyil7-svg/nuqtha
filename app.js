@@ -23,8 +23,8 @@ export const FALLBACK_ARTICLES = [
         excerpt: "വിശ്വാസവും അവിശ്വാസവും തമ്മിൽ ഏറ്റുമുട്ടിയ ചരിത്രപ്രസിദ്ധമായ ബദ്ർ യുദ്ധത്തിന്റെ പശ്ചാത്തലവും ഖുർആനിക ദർശനങ്ങളും.",
         placement: "HERO",
         priority: 1,
-        imageUrl: "/assets/aistudio/image_83264d65.png",
-        thumbnailUrl: "/assets/aistudio/image_83264d65.png",
+        imageUrl: "",
+        thumbnailUrl: "",
         date: "2026-11-01",
         createdAt: 1762000000000,
         type: "ARTICLE"
@@ -38,8 +38,8 @@ export const FALLBACK_ARTICLES = [
         excerpt: "ചരിത്രത്തിലെ വഴിത്തിരിവായ പോരാട്ടത്തിൽ നിന്നും ആധുനിക സമൂഹത്തിന് ഉൾക്കൊള്ളാനുള്ള വലിയ ജീവിത പാഠങ്ങൾ.",
         placement: "CAROUSEL",
         priority: 2,
-        imageUrl: "/assets/aistudio/image_3553ba43.png",
-        thumbnailUrl: "/assets/aistudio/image_3553ba43.png",
+        imageUrl: "",
+        thumbnailUrl: "",
         date: "2026-11-02",
         createdAt: 1762000000000,
         type: "ARTICLE"
@@ -53,8 +53,8 @@ export const FALLBACK_ARTICLES = [
         excerpt: "ചരിത്രത്തിലെ വിസ്മയകരമായ ഒരു ചരിത്ര മുഹൂർത്തത്തെക്കുറിച്ചുള്ള ആഴത്തിലുള്ള പഠനവും വിശകലനവും.",
         placement: "CAROUSEL",
         priority: 3,
-        imageUrl: "/assets/aistudio/image_d07d13cc.png",
-        thumbnailUrl: "/assets/aistudio/image_d07d13cc.png",
+        imageUrl: "",
+        thumbnailUrl: "",
         date: "2026-11-03",
         createdAt: 1762000000000,
         type: "ARTICLE"
@@ -68,8 +68,8 @@ export const FALLBACK_ARTICLES = [
         excerpt: "അച്ചടക്കത്തിന്റെയും ഐക്യത്തിന്റെയും അനിവാര്യത പഠിപ്പിച്ച ഉഹ്ദ് യുദ്ധത്തിന്റെ ചരിത്രാന്വേഷണം.",
         placement: "AUTO",
         priority: 4,
-        imageUrl: "/assets/aistudio/image_1c91277b.png",
-        thumbnailUrl: "/assets/aistudio/image_1c91277b.png",
+        imageUrl: "",
+        thumbnailUrl: "",
         date: "2026-11-04",
         createdAt: 1762000000000,
         type: "ARTICLE"
@@ -83,8 +83,8 @@ export const FALLBACK_ARTICLES = [
         excerpt: "ഇന്ത്യയിലെ ആത്മീയ വിപ്ലവത്തിന് അടിത്തറയിട്ട ഖാജ മുഈനുദ്ദീൻ ചിശ്തി (റ) യുടെ ജീവചരിത്രവും ദർശനവും.",
         placement: "AUTO",
         priority: 5,
-        imageUrl: "/assets/aistudio/image_ffa13b8e.png",
-        thumbnailUrl: "/assets/aistudio/image_ffa13b8e.png",
+        imageUrl: "",
+        thumbnailUrl: "",
         date: "2026-11-05",
         createdAt: 1762000000000,
         type: "ARTICLE"
@@ -100,8 +100,8 @@ export const FALLBACK_ARTICLES = [
         type: "BOOK",
         isBook: true,
         priority: 1,
-        imageUrl: "/assets/aistudio/image_4ad0cfe2.png",
-        thumbnailUrl: "/assets/aistudio/image_4ad0cfe2.png",
+        imageUrl: "",
+        thumbnailUrl: "",
         date: "2026-11-01",
         createdAt: 1762000000000
     },
@@ -116,8 +116,8 @@ export const FALLBACK_ARTICLES = [
         type: "BOOK",
         isBook: true,
         priority: 2,
-        imageUrl: "/assets/aistudio/image_232f874f.png",
-        thumbnailUrl: "/assets/aistudio/image_232f874f.png",
+        imageUrl: "",
+        thumbnailUrl: "",
         date: "2026-11-02",
         createdAt: 1762000000000
     },
@@ -132,8 +132,8 @@ export const FALLBACK_ARTICLES = [
         type: "BOOK",
         isBook: true,
         priority: 3,
-        imageUrl: "/assets/aistudio/image_5f7341fd.png",
-        thumbnailUrl: "/assets/aistudio/image_5f7341fd.png",
+        imageUrl: "",
+        thumbnailUrl: "",
         date: "2026-11-03",
         createdAt: 1762000000000
     },
@@ -148,14 +148,14 @@ export const FALLBACK_ARTICLES = [
         type: "BOOK",
         isBook: true,
         priority: 4,
-        imageUrl: "/assets/aistudio/image_ac0f3969.png",
-        thumbnailUrl: "/assets/aistudio/image_ac0f3969.png",
+        imageUrl: "",
+        thumbnailUrl: "",
         date: "2026-11-04",
         createdAt: 1762000000000
     }
 ];
 
-const CACHE_KEY = 'nuqtha_cached_articles_v5';
+const CACHE_KEY = 'nuqtha_cached_articles_v7';
 
 function safeCacheArticles(articles) {
     if (!Array.isArray(articles) || articles.length === 0) return;
@@ -192,16 +192,18 @@ try {
     // Purge outdated or corrupted cache keys
     sessionStorage.removeItem('nuqtha_cached_articles');
     localStorage.removeItem('nuqtha_cached_articles');
+    sessionStorage.removeItem('nuqtha_cached_articles_v5');
+    localStorage.removeItem('nuqtha_cached_articles_v5');
     sessionStorage.removeItem('nuqtha_cached_authors');
 
     const cachedArts = sessionStorage.getItem(CACHE_KEY) || localStorage.getItem(CACHE_KEY);
     if (cachedArts) {
         const parsed = JSON.parse(cachedArts);
         if (Array.isArray(parsed) && parsed.length > 0) {
-            // Verify cache contains valid cover images and no obsolete authors
-            const hasImages = parsed.some(a => a.imageUrl || a.thumbnailUrl);
+            // Verify cache contains NO aistudio images and no obsolete authors
+            const hasNoAiStudio = !parsed.some(a => (a.imageUrl || "").includes("aistudio") || (a.thumbnailUrl || "").includes("aistudio"));
             const hasNoOldAuthor = !parsed.some(a => (a.author || "").includes("അബൂബക്കർ"));
-            if (hasImages && hasNoOldAuthor) {
+            if (hasNoAiStudio && hasNoOldAuthor) {
                 allArticles = parsed;
             }
         }
@@ -841,9 +843,12 @@ export async function initAppData(database = db) {
         const cached = sessionStorage.getItem(CACHE_KEY) || localStorage.getItem(CACHE_KEY);
         if (cached) {
             const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0 && parsed.some(a => a.imageUrl || a.thumbnailUrl)) {
-                allArticles = parsed;
-                renderFeed();
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                const hasNoAiStudio = !parsed.some(a => (a.imageUrl || "").includes("aistudio") || (a.thumbnailUrl || "").includes("aistudio"));
+                if (hasNoAiStudio) {
+                    allArticles = parsed;
+                    renderFeed();
+                }
             }
         }
     } catch (_) {}
@@ -900,13 +905,13 @@ export async function initAppData(database = db) {
             allArticles = sortArticles(combined);
             safeCacheArticles(allArticles);
             renderFeed();
-        } else if (allArticles.length === 0 || !allArticles.some(a => a.imageUrl || a.thumbnailUrl)) {
+        } else if (allArticles.length === 0) {
             allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
             safeCacheArticles(allArticles);
             renderFeed();
         }
     } catch (_) {
-        if (allArticles.length === 0 || !allArticles.some(a => a.imageUrl || a.thumbnailUrl)) {
+        if (allArticles.length === 0) {
             allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
             safeCacheArticles(allArticles);
         }
