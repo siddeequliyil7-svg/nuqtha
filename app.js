@@ -4,7 +4,7 @@ import { safeInit } from "./js/ui-safe.js";
  * Realtime Firestore → Category-Sectioned Feed, Latest-First
  * Protected by Strict Schema Validator & Safe Fallbacks
  */
-import { db, collection, onSnapshot, doc, getDoc, fetchWithRetry, getFirebaseApiKey } from "./firebase-config.js";
+import { db, collection, onSnapshot, doc, getDoc, getDocs, fetchWithRetry, getFirebaseApiKey } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, getStoryUrl } from "./schema-validator.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
@@ -141,7 +141,7 @@ function initApp() {
     setupLibraryView();
     setupGlobalCategoryBadges();
     checkUrlCategory();
-    listenForArticles();
+    initAppData(db);
 }
 
 if (document.readyState === "loading") {
@@ -249,15 +249,16 @@ function initDynamicMoreMenu() {
             const parsed = JSON.parse(cached);
             if (Array.isArray(parsed) && parsed.length > 0) {
                 renderDynamicMoreMenu(parsed);
+                return;
             }
         }
     } catch (e) {}
 
-    // 2. Realtime listener from Firestore
+    // 2. Fetch once from Firestore
     try {
         const menuDocRef = doc(db, "settings", "more_menu");
-        onSnapshot(menuDocRef, (snap) => {
-            if (snap.exists()) {
+        getDoc(menuDocRef).then(snap => {
+            if (snap && snap.exists()) {
                 const data = snap.data();
                 if (Array.isArray(data.items) && data.items.length > 0) {
                     try {
@@ -268,40 +269,8 @@ function initDynamicMoreMenu() {
                 }
             }
             renderDynamicMoreMenu(DEFAULT_FRONT_MORE_MENU);
-        }, async (err) => {
-            console.warn("[MoreMenu] Snapshot listener error, trying REST fallback:", err);
-            try {
-                const apiKey = db.app.options?.apiKey || getFirebaseApiKey();
-                const projectId = db.app.options?.projectId || "nuqtha-c0900";
-                const restUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/settings/more_menu?key=${encodeURIComponent(apiKey)}`;
-                const res = await fetchWithRetry(restUrl, {}, 2, 250);
-                if (res && res.ok) {
-                    const json = await res.json();
-                    if (json && json.fields && json.fields.items && json.fields.items.arrayValue) {
-                        const items = (json.fields.items.arrayValue.values || []).map(val => {
-                            const m = val.mapValue?.fields || {};
-                            return {
-                                id: m.id?.stringValue || "",
-                                label: m.label?.stringValue || "",
-                                url: m.url?.stringValue || "",
-                                icon: m.icon?.stringValue || "🔗",
-                                order: Number(m.order?.integerValue || m.order?.stringValue || 0),
-                                targetBlank: Boolean(m.targetBlank?.booleanValue),
-                                isActive: m.isActive?.booleanValue !== false
-                            };
-                        });
-                        if (items.length > 0) {
-                            try {
-                                sessionStorage.setItem("nuqtha_more_menu", JSON.stringify(items));
-                            } catch (_) {}
-                            renderDynamicMoreMenu(items);
-                            return;
-                        }
-                    }
-                }
-            } catch (rErr) {
-                console.warn("[MoreMenu] REST fallback error:", rErr);
-            }
+        }).catch(err => {
+            console.warn("[MoreMenu] Firestore doc fetch error:", err?.message || err);
             renderDynamicMoreMenu(DEFAULT_FRONT_MORE_MENU);
         });
     } catch (err) {
@@ -584,7 +553,7 @@ function setupLibraryView() {
     const bL = document.getElementById("view-library");
     const drawerLibLink = document.getElementById("drawer-library-link");
 
-    if (!feed || !lib || !bA || !bL) return;
+    if (!feed || !lib) return;
 
     let mounted = false;
 
@@ -592,8 +561,8 @@ function setupLibraryView() {
         const isLib = name === "library";
         feed.hidden = isLib;
         lib.hidden = !isLib;
-        bA.setAttribute("aria-pressed", String(!isLib));
-        bL.setAttribute("aria-pressed", String(isLib));
+        if (bA) bA.setAttribute("aria-pressed", String(!isLib));
+        if (bL) bL.setAttribute("aria-pressed", String(isLib));
 
         if (isLib) {
             if (window.location.hash !== "#library") {
@@ -611,8 +580,8 @@ function setupLibraryView() {
         }
     }
 
-    bA.addEventListener("click", () => showView("articles"));
-    bL.addEventListener("click", () => showView("library"));
+    if (bA) bA.addEventListener("click", () => showView("articles"));
+    if (bL) bL.addEventListener("click", () => showView("library"));
 
     if (drawerLibLink) {
         drawerLibLink.addEventListener("click", () => {
@@ -695,36 +664,39 @@ function escapeHtml(str) {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-/* ═══════════ Shared Firestore Article & Book Listener ═══════════ */
-function listenForArticles() {
-    const articlesRef = collection(db, "articles");
-    const booksRef = collection(db, "books");
-    let hasServerSnapshot = false;
-    let restFetchPromise = null;
-    let rawArticlesList = [];
-    let rawBooksList = [];
+/* ═══════════ App Data Loader (Single Fetch & Cached - Fixes 429) ═══════════ */
+let isAppDataLoading = false;
+export async function initAppData(database = db) {
+    if (isAppDataLoading) return;
 
-    function combineAndRenderFeed() {
-        const combined = [...rawArticlesList];
-        rawBooksList.forEach(bk => {
-            const exists = combined.some(a => a.id === bk.id || (a.slug && a.slug === bk.slug && a.type === "BOOK"));
-            if (!exists) combined.push(bk);
-        });
-
-        if (combined.length > 0) {
-            allArticles = sortArticles(combined);
-            safeCacheArticles(allArticles);
-            renderFeed();
-        } else if (!hasServerSnapshot) {
-            allArticles = [];
-            renderFeed();
+    // 1. Instant cache paint
+    try {
+        const cached = sessionStorage.getItem("nuqtha_cached_articles");
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                allArticles = parsed;
+                renderFeed();
+            }
         }
-    }
+    } catch (_) {}
 
-    onSnapshot(articlesRef, snapshot => {
-        console.log(`[NUQTHA Feed] Firestore 'articles' received ${snapshot.docs.length} docs`);
-        rawArticlesList = [];
-        snapshot.docs.forEach(articleDoc => {
+    isAppDataLoading = true;
+    try {
+        console.log("[NUQTHA App] Fetching articles and books once from Firestore...");
+        const [articlesSnapshot, booksSnapshot] = await Promise.all([
+            getDocs(collection(database, "articles")),
+            getDocs(collection(database, "books")).catch(err => {
+                console.warn("[NUQTHA App] Books fetch warning:", err?.message || err);
+                return { docs: [], size: 0 };
+            })
+        ]);
+
+        console.log(`Loaded ${articlesSnapshot.size || articlesSnapshot.docs?.length || 0} articles.`);
+        console.log(`Loaded ${booksSnapshot.size || booksSnapshot.docs?.length || 0} books.`);
+
+        const rawArticlesList = [];
+        articlesSnapshot.docs.forEach(articleDoc => {
             const article = articleDoc.data();
             const normalized = normalizeArticleDoc({
                 ...article,
@@ -737,17 +709,8 @@ function listenForArticles() {
             rawArticlesList.push(normalized);
         });
 
-        hasServerSnapshot = !snapshot.metadata.fromCache;
-        combineAndRenderFeed();
-    }, error => {
-        console.warn("Firestore articles listener warning:", error.code || "", error.message);
-        loadArticlesFromRest();
-    });
-
-    onSnapshot(booksRef, snapshot => {
-        console.log(`[NUQTHA Feed] Firestore 'books' received ${snapshot.docs.length} docs`);
-        rawBooksList = [];
-        snapshot.docs.forEach(bDoc => {
+        const rawBooksList = [];
+        booksSnapshot.docs.forEach(bDoc => {
             const bData = bDoc.data();
             const norm = normalizeArticleDoc({
                 ...bData,
@@ -760,101 +723,31 @@ function listenForArticles() {
             norm.isChapter = false;
             rawBooksList.push(norm);
         });
-        combineAndRenderFeed();
-    }, () => {});
 
-    loadArticlesFromRest();
+        const combined = [...rawArticlesList];
+        rawBooksList.forEach(bk => {
+            const exists = combined.some(a => a.id === bk.id || (a.slug && a.slug === bk.slug && (a.type === "BOOK" || a.type === "free" || a.type === "premium")));
+            if (!exists) combined.push(bk);
+        });
 
-    async function loadArticlesFromRest() {
-        if (restFetchPromise) return restFetchPromise;
-
-        restFetchPromise = (async () => {
-            try {
-                const apiKey = db.app.options?.apiKey || getFirebaseApiKey();
-                const projectId = db.app.options?.projectId || "nuqtha-c0900";
-                if (!apiKey || !projectId) {
-                    throw new Error("Firebase project ID or API key is missing.");
-                }
-
-                const homeFields = [
-                    "title", "slug", "bookSlug", "bookId", "bookName", "isBook", "type",
-                    "category", "author", "priority", "date", "createdAt", "thumbnailUrl",
-                    "imageUrl", "order", "excerpt", "hasCustomExcerpt", "storedExcerpt",
-                    "isPremium", "price", "placement", "transcription"
-                ];
-                const maskParams = homeFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
-
-                async function fetchColRest(colName) {
-                    const documents = [];
-                    let nextPageToken = "";
-                    do {
-                        const params = new URLSearchParams({ pageSize: "300", key: apiKey });
-                        if (nextPageToken) params.set("pageToken", nextPageToken);
-                        const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/${colName}?${params}&${maskParams}`;
-                        const response = await fetchWithRetry(url, {}, 3, 300);
-                        if (!response.ok) break;
-                        const page = await response.json();
-                        documents.push(...(page.documents || []));
-                        nextPageToken = page.nextPageToken || "";
-                    } while (nextPageToken);
-                    return documents;
-                }
-
-                const [articleDocs, bookDocs] = await Promise.all([
-                    fetchColRest("articles"),
-                    fetchColRest("books").catch(() => [])
-                ]);
-
-                const restArticles = articleDocs.map(document => {
-                    const id = document.name.split("/").pop();
-                    const fields = decodeFirestoreFields(document.fields || {});
-                    return normalizeArticleDoc({
-                        ...fields,
-                        createdAt: fields.createdAt || document.createTime,
-                        updatedAt: fields.updatedAt || document.updateTime
-                    }, id);
-                });
-
-                const restBooks = bookDocs.map(document => {
-                    const id = document.name.split("/").pop();
-                    const fields = decodeFirestoreFields(document.fields || {});
-                    const norm = normalizeArticleDoc({
-                        ...fields,
-                        createdAt: fields.createdAt || document.createTime,
-                        updatedAt: fields.updatedAt || document.updateTime
-                    }, id);
-                    norm.type = "BOOK";
-                    norm.isBook = true;
-                    norm.isChapter = false;
-                    return norm;
-                });
-
-                const combined = [...restArticles];
-                restBooks.forEach(bk => {
-                    const exists = combined.some(a => a.id === bk.id || (a.slug && a.slug === bk.slug && a.type === "BOOK"));
-                    if (!exists) combined.push(bk);
-                });
-
-                if (combined.length > 0) {
-                    allArticles = sortArticles(combined);
-                    safeCacheArticles(allArticles);
-                    renderFeed();
-                } else if (!hasServerSnapshot && allArticles.length === 0) {
-                    renderFeed();
-                }
-            } catch (error) {
-                console.error("Firestore REST article fetch failed:", error);
-                if (!hasServerSnapshot && allArticles.length === 0) {
-                    renderEmpty("ലേഖനങ്ങൾ Firestore-ൽ നിന്ന് ലോഡ് ചെയ്യാനായില്ല. നെറ്റ്‌വർക്ക്, Firebase project ID, Firestore Rules എന്നിവ പരിശോധിക്കുക.");
-                }
-            } finally {
-                restFetchPromise = null;
-            }
-        })();
-
-        return restFetchPromise;
+        if (combined.length > 0) {
+            allArticles = sortArticles(combined);
+            safeCacheArticles(allArticles);
+            renderFeed();
+        } else if (allArticles.length === 0) {
+            renderFeed();
+        }
+    } catch (error) {
+        console.error("Firestore fetch error (Check quota/rate limit):", error);
+        if (allArticles.length === 0) {
+            renderEmpty("ലേഖനങ്ങൾ Firestore-ൽ നിന്ന് ലോഡ് ചെയ്യാനായില്ല.");
+        }
+    } finally {
+        isAppDataLoading = false;
     }
 }
+window.initAppData = initAppData;
+export const listenForArticles = initAppData;
 
 function decodeFirestoreFields(fields) {
     return Object.fromEntries(

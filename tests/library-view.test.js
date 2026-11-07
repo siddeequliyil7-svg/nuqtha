@@ -56,16 +56,14 @@ assert.ok(adminLibJs.includes('showOnTable:'), "admin-library.js must toggle sho
 console.log("  [OK] admin-library.js contains all required management forms, limits, and Firestore actions.");
 
 // ─── Test 4: Verify index.html view switcher and container ───
-console.log("Test 4: Verifying index.html view switcher and library container...");
+console.log("Test 4: Verifying index.html drawer link and library container...");
 const indexHtml = fs.readFileSync("nuqtha/index.html", "utf8");
 
-assert.ok(indexHtml.includes('id="view-switch"'), "index.html must contain view-switch container");
-assert.ok(indexHtml.includes('id="view-articles"'), "index.html must contain view-articles button");
-assert.ok(indexHtml.includes('id="view-library"'), "index.html must contain view-library button");
 assert.ok(indexHtml.includes('id="library"') && indexHtml.includes('hidden'), "index.html must contain section#library with hidden attribute");
 assert.ok(indexHtml.includes('id="drawer-library-link"'), "index.html drawer must contain drawer-library-link");
+assert.ok(!indexHtml.includes('id="view-switch"'), "index.html must not contain the top view-switch toggle (moved to 3-lines drawer)");
 
-console.log("  [OK] index.html correctly integrates view switcher, #library section, and drawer shortcut.");
+console.log("  [OK] index.html correctly integrates #library section and drawer shortcut without navbar toggle clutter.");
 
 // ─── Test 5: Verify app.js dynamic lazy loading wiring ───
 console.log("Test 5: Verifying app.js dynamic import and view switching...");
