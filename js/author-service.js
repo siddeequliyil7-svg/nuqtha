@@ -142,31 +142,9 @@ async function fetchAuthorsNetwork(db) {
                 docs.push({ id: d.id, ...d.data() });
             });
         } catch (e) {
-            // SDK error or timeout, proceed to REST
+            // SDK error or quota limit - use seeded primary authors immediately
+            console.warn("[AuthorService] Firestore SDK author fetch error:", e?.message || e);
         }
-    }
-
-    // 2. REST fallback
-    if (docs.length === 0) {
-        try {
-            const apiKey = getFirebaseApiKey();
-            const res = await fetchWithRetry(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/authors?key=${encodeURIComponent(apiKey)}`, {}, 3, 300);
-            if (res && res.ok) {
-                const json = await res.json();
-                if (json && json.documents) {
-                    json.documents.forEach(docItem => {
-                        const docId = decodeURIComponent(docItem.name.split("/").pop());
-                        const data = { id: docId };
-                        if (docItem.fields) {
-                            for (const [k, v] of Object.entries(docItem.fields)) {
-                                if (v.stringValue !== undefined) data[k] = v.stringValue;
-                            }
-                        }
-                        docs.push(data);
-                    });
-                }
-            }
-        } catch (e) {}
     }
 
     // Merge loaded documents

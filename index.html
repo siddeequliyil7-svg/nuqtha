@@ -32,13 +32,12 @@
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="./tailwind.css">
 
-    <!-- Hides the hero BEFORE first paint for returning visitors (no flash).
-         Also skipped for links with a #hash. Add ?hero=1 to the URL to force it. -->
+    <!-- Hides the hero BEFORE first paint for silky smooth instant loading (no 1-second delay).
+         Add ?hero=1 to URL if intro animation is specifically desired. -->
     <script>
         try {
             var forced = /[?&]hero=1/.test(location.search);
-            var seen = sessionStorage.getItem("nuqtha:hero-seen") === "1";
-            if (!forced && (seen || location.hash)) {
+            if (!forced) {
                 document.documentElement.classList.add("hero-seen");
             }
         } catch (e) {}

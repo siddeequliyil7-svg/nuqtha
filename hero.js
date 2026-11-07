@@ -28,7 +28,19 @@ function initHero() {
   const hero = document.getElementById("hero");
   const target = document.getElementById("home") || document.getElementById("feed");
   if (!hero || !target) return;
-  if (document.documentElement.classList.contains("hero-seen")) return;
+
+  const forced = /[?&]hero=1/.test(window.location.search);
+  if (!forced) {
+    document.documentElement.classList.add("hero-seen");
+    hero.style.display = "none";
+    markSeen();
+    return;
+  }
+
+  if (document.documentElement.classList.contains("hero-seen")) {
+    hero.style.display = "none";
+    return;
+  }
 
   const typedEl = hero.querySelector("[data-hero-typed]");
   const tagline = hero.querySelector("[data-hero-tagline]");
