@@ -1,7 +1,7 @@
 // library.js (loaded lazily: only when the visitor opens the Library view)
-import { db, collection, getDocs, query, where } from "./firebase-config.js";
+import { db, collection, getDocs, getDocsFromCache, query, where } from "./firebase-config.js";
 import { getStoryUrl } from "./schema-validator.js";
-import { FALLBACK_ARTICLES } from "./app.js";
+import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
 
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
@@ -34,21 +34,46 @@ const safeColor = (c, i) => (/^#[0-9a-f]{6}$/i.test(c || "") ? c : COLORS[i % CO
 async function loadData() {
   try {
     const c = JSON.parse(sessionStorage.getItem(CACHE_KEY));
-    if (c && Date.now() - c.t < CACHE_MS && Array.isArray(c.d?.books) && c.d.books.length > 0) return c.d;
-  } catch {}
+    if (c && Date.now() - c.t < CACHE_MS && Array.isArray(c.d?.books) && Array.isArray(c.d?.papers)) return c.d;
+  } catch (error) {
+    console.warn("[Library] Could not restore the session cache.", error);
+  }
 
   let books = [];
   let papers = [];
 
-  try {
-    const [bs, as] = await Promise.all([
-      getDocs(query(collection(db, "books"), where("visible", "==", true))).catch(() => ({ docs: [] })),
-      getDocs(query(collection(db, "articles"), where("showOnTable", "==", true))).catch(() => ({ docs: [] })),
-    ]);
-    books = bs.docs.map((d) => ({ id: d.id, ...d.data() }))
+  async function getCollectionDocs(ref, name) {
+    try {
+      return await getDocs(ref);
+    } catch (error) {
+      console.warn(`[Library] ${name} request failed; checking Firestore's local cache.`, error);
+      try {
+        return await getDocsFromCache(ref);
+      } catch (cacheError) {
+        console.warn(`[Library] ${name} is unavailable in the local cache.`, cacheError);
+        return { docs: [] };
+      }
+    }
+  }
+
+  const [bookSnapshot, articleSnapshot] = await Promise.all([
+    getCollectionDocs(query(collection(db, "books"), where("visible", "==", true)), "books"),
+    getCollectionDocs(query(collection(db, "articles"), where("showOnTable", "==", true)), "articles")
+  ]);
+  books = bookSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, MAX_BOOKS)
-      .map((b) => ({ id: b.id, title: b.title, author: b.author, pages: b.pages, color: b.color, description: b.description, contents: b.contents || [] }));
-    papers = as.docs.slice(0, MAX_PAPERS).map((d) => {
+      .map((b) => ({
+        id: b.id,
+        title: b.title,
+        author: b.author,
+        pages: b.pages,
+        color: b.color,
+        description: b.description,
+        imageUrl: b.imageUrl || b.coverImage || b.thumbnailUrl || "",
+        slug: b.slug,
+        contents: b.contents || b.chapters?.map(chapter => chapter.title || chapter) || []
+      }));
+  papers = articleSnapshot.docs.slice(0, MAX_PAPERS).map((d) => {
       const a = d.data();
       return {
         id: d.id,
@@ -59,28 +84,27 @@ async function loadData() {
         slug: a.slug,
         bookSlug: a.bookSlug,
         isChapter: a.isChapter,
-        excerpt: a.excerpt || String(a.body || a.content || "").replace(/<[^>]*>/g, " ").slice(0, 220)
+        excerpt: a.excerpt || a.description || String(a.body || a.content || "").replace(/<[^>]*>/g, " ").slice(0, 220)
       };
     });
-  } catch (err) {
-    console.warn("[Library] Firestore query error, falling back to cached books:", err?.message || err);
-  }
 
   // Fallback to FALLBACK_ARTICLES if Firestore quota is exhausted (429) or offline
   if (books.length === 0) {
-    books = FALLBACK_ARTICLES.filter(a => a.type === "BOOK" || a.isBook).map((b, i) => ({
+    books = FALLBACK_BOOKS.map((b, i) => ({
       id: b.id,
       title: b.title,
       author: b.author,
       pages: 180 + (i * 25),
       color: COLORS[i % COLORS.length],
       description: b.excerpt,
-      contents: (b.chapters || []).map(c => c.title)
+      imageUrl: b.imageUrl || b.coverImage || b.thumbnailUrl || "",
+      slug: b.slug,
+      contents: (b.chapters || b.contents || []).map(c => typeof c === "string" ? c : c.title)
     }));
   }
 
   if (papers.length === 0) {
-    papers = FALLBACK_ARTICLES.filter(a => a.type === "ARTICLE" || !a.isBook).map(a => ({
+    papers = FALLBACK_ARTICLE_ITEMS.map(a => ({
       id: a.id,
       title: a.title,
       author: a.author,
@@ -88,8 +112,8 @@ async function loadData() {
       readTime: "5 min",
       slug: a.slug,
       bookSlug: a.bookSlug || "",
-      isChapter: false,
-      excerpt: a.excerpt
+      isChapter: a.isChapter === true,
+      excerpt: a.excerpt || a.description || String(a.content || "").replace(/<[^>]*>/g, " ").slice(0, 220)
     }));
   }
 
@@ -266,4 +290,3 @@ export async function mountLibrary(root) {
     root.querySelector("button")?.addEventListener("click", () => mountLibrary(root));
   }
 }
-

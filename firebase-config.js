@@ -7,6 +7,7 @@ import {
   setLogLevel,
   collection,
   getDocs,
+  getDocsFromCache,
   getDoc,
   addDoc,
   setDoc,
@@ -67,14 +68,8 @@ try {
     })
   });
 } catch (e) {
-  try {
-    firestoreDb = initializeFirestore(app, {
-      experimentalForceLongPolling: true,
-      experimentalAutoDetectLongPolling: false
-    });
-  } catch (_) {
-    firestoreDb = getFirestore(app);
-  }
+  console.warn("[Firebase] Persistent Firestore cache could not be initialized; using the existing Firestore instance.", e);
+  firestoreDb = getFirestore(app);
 }
 export const db = firestoreDb;
 
@@ -135,6 +130,7 @@ export {
   app,
   collection,
   getDocs,
+  getDocsFromCache,
   getDoc,
   addDoc,
   setDoc,

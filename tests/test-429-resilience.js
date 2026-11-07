@@ -31,8 +31,13 @@ console.log("  [OK] article.html implements 0ms local pool search, 429 circuit b
 
 // 3. Verify library.js
 const libraryJs = fs.readFileSync('nuqtha/library.js', 'utf8');
-if (!libraryJs.includes('FALLBACK_ARTICLES')) {
-  console.error("FAIL: library.js is missing FALLBACK_ARTICLES");
+const fallbackData = fs.readFileSync('nuqtha/fallback-data.js', 'utf8');
+if (!fallbackData.includes('FALLBACK_ARTICLES') || !fallbackData.includes('FALLBACK_BOOKS')) {
+  console.error("FAIL: fallback-data.js is missing article or book fallback collections");
+  process.exit(1);
+}
+if (!libraryJs.includes('getDocsFromCache') || !libraryJs.includes('FALLBACK_BOOKS')) {
+  console.error("FAIL: library.js is missing offline cache recovery or fallback books");
   process.exit(1);
 }
 console.log("  [OK] library.js is resilient to 429 quota exhaustion and has fallback books.");

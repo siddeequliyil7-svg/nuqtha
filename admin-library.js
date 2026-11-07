@@ -1,9 +1,32 @@
 // admin-library.js : self-contained "Library" panel for your admin page.
 // Usage: import { initLibraryAdmin } from "./admin-library.js"; initLibraryAdmin(document.getElementById("library-admin"));
-import { db, collection, getDocs, addDoc, setDoc, updateDoc, deleteDoc, doc, query, limit } from "./firebase-config.js";
+import { db, collection, getDocs, getDocsFromCache, addDoc, setDoc, updateDoc, deleteDoc, doc } from "./firebase-config.js";
+import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
 const $ = (r, s) => r.querySelector(s);
+const normalizedTitle = (value) => String(value || "").normalize("NFC").trim().toLowerCase();
+
+function countWithFallback(records, fallbackRecords) {
+  const ids = new Set(records.map((record) => String(record.id || "")));
+  const slugs = new Set(records.map((record) => String(record.slug || "")));
+  const titles = new Set(records.map((record) => normalizedTitle(record.title)));
+  const missing = fallbackRecords.filter((record) =>
+    !ids.has(String(record.id || "")) &&
+    (!record.slug || !slugs.has(String(record.slug))) &&
+    !titles.has(normalizedTitle(record.title))
+  );
+  return records.length + missing.length;
+}
+
+async function getCollectionSnapshot(ref, name) {
+  try {
+    return await getDocs(ref);
+  } catch (error) {
+    console.warn(`[Admin Library] ${name} request failed; checking Firestore's local cache.`, error);
+    return getDocsFromCache(ref);
+  }
+}
 
 export async function initLibraryAdmin(root) {
   if (!root) return;
@@ -36,6 +59,7 @@ export async function initLibraryAdmin(root) {
         <h3 class="text-base font-bold text-[#1e1b18] dark:text-white flex items-center gap-2">
           <span>📚</span>
           <span>Library books (max ${MAX_BOOKS} on the shelf)</span>
+          <span id="lib-book-total" class="text-xs font-english text-[#8c7a6b]">0 total</span>
         </h3>
         <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-english">
           Shelf limit: ${MAX_BOOKS}
@@ -159,6 +183,7 @@ export async function initLibraryAdmin(root) {
         <h3 class="text-base font-bold text-[#1e1b18] dark:text-white flex items-center gap-2">
           <span>📰</span>
           <span>Papers on the table (max ${MAX_PAPERS})</span>
+          <span id="lib-article-total" class="text-xs font-english text-[#8c7a6b]">0 total</span>
         </h3>
         <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 font-english">
           Table limit: ${MAX_PAPERS}
@@ -177,11 +202,19 @@ export async function initLibraryAdmin(root) {
 
   const form = $(root, "#bk-form"), bkStatus = $(root, "#bk-status"), tbStatus = $(root, "#tb-status");
   let books = [];
+  let booksLoaded = false;
+  let articleRecords = null;
+  let articleLoadPromise = null;
+  let papersLoaded = false;
 
-  async function loadBooks() {
+  async function loadBooks(force = false) {
+    if (booksLoaded && !force) return;
     try {
-      const snap = await getDocs(collection(db, "books"));
+      const snap = await getCollectionSnapshot(collection(db, "books"), "books");
       books = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      booksLoaded = true;
+      const total = $(root, "#lib-book-total");
+      if (total) total.textContent = `${countWithFallback(books, FALLBACK_BOOKS)} total`;
       const ul = $(root, "#bk-list");
       ul.innerHTML = "";
       if (!books.length) {
@@ -234,7 +267,7 @@ export async function initLibraryAdmin(root) {
           if (confirm(`Delete “${b.title}”?`)) {
             try {
               await deleteDoc(doc(db, "books", b.id));
-              loadBooks();
+              loadBooks(true);
             } catch (err) {
               console.error(err);
               bkStatus.textContent = "Could not delete book.";
@@ -248,9 +281,26 @@ export async function initLibraryAdmin(root) {
       });
     } catch (err) {
       console.error(err);
+      const total = $(root, "#lib-book-total");
+      if (total) total.textContent = `${countWithFallback([], FALLBACK_BOOKS)} total (fallback)`;
       const ul = $(root, "#bk-list");
       ul.innerHTML = '<li class="p-4 text-center text-red-600">Error loading books. Check Firestore rules.</li>';
     }
+  }
+
+  async function loadArticleRecords() {
+    if (articleRecords) return articleRecords;
+    if (!articleLoadPromise) {
+      articleLoadPromise = getCollectionSnapshot(collection(db, "articles"), "articles")
+        .then((snap) => {
+          articleRecords = snap.docs.map((articleDoc) => ({ id: articleDoc.id, ...articleDoc.data() }));
+          return articleRecords;
+        })
+        .finally(() => {
+          articleLoadPromise = null;
+        });
+    }
+    return articleLoadPromise;
   }
 
   form.addEventListener("submit", async (e) => {
@@ -281,7 +331,7 @@ export async function initLibraryAdmin(root) {
       bkStatus.textContent = "Saved.";
       form.reset();
       form.id.value = "";
-      loadBooks();
+      loadBooks(true);
     } catch (err) {
       console.error(err);
       bkStatus.textContent = "Couldn’t save. Are you signed in as admin?";
@@ -305,9 +355,8 @@ export async function initLibraryAdmin(root) {
     return checked ? checked.value : "book";
   }
 
-  function parseExistingItems(snap) {
-    if (!snap || !snap.docs) return;
-    const allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  function parseExistingItems(allDocs) {
+    if (!Array.isArray(allDocs)) return;
 
     // 1. Parse Books
     existingBooks = [];
@@ -375,8 +424,8 @@ export async function initLibraryAdmin(root) {
       sel.innerHTML = `<option value="">-- ലേഖനങ്ങൾ Firestore-ൽ നിന്ന് ലോഡ് ചെയ്യുന്നു... (Fetching articles...) --</option>`;
     }
     try {
-      const snap = await getDocs(query(collection(db, "articles"), limit(300)));
-      parseExistingItems(snap);
+      const records = await loadArticleRecords();
+      parseExistingItems(records);
       renderImportDropdown();
     } catch (err) {
       console.error("[Admin Library] Error fetching articles collection:", err);
@@ -479,15 +528,6 @@ export async function initLibraryAdmin(root) {
     });
   });
 
-  function populateExistingBooks(snap) {
-    try {
-      parseExistingItems(snap);
-      renderImportDropdown();
-    } catch (err) {
-      console.warn("[Admin Library] Error populating existing books:", err);
-    }
-  }
-
   async function quickAddBook(b) {
     const currentOnShelf = books.filter(x => x.visible).length;
     if (currentOnShelf >= MAX_BOOKS) {
@@ -512,25 +552,30 @@ export async function initLibraryAdmin(root) {
       form.id.value = "";
       const quickAddBtn = $(root, "#bk-quick-add-btn");
       if (quickAddBtn) quickAddBtn.classList.add("hidden");
-      loadBooks();
+      loadBooks(true);
     } catch (err) {
       console.error(err);
       bkStatus.textContent = "സേവ് ചെയ്യാൻ സാധിച്ചില്ല. അഡ്മിൻ ലോഗിൻ പരിശോധിക്കുക.";
     }
   }
 
-  async function loadPapers() {
+  async function loadPapers(force = false) {
+    if (papersLoaded && !force) return;
     try {
-      const snap = await getDocs(query(collection(db, "articles"), limit(200)));
-      populateExistingBooks(snap);
+      const records = await loadArticleRecords();
+      parseExistingItems(records);
+      renderImportDropdown();
+      papersLoaded = true;
+      const total = $(root, "#lib-article-total");
+      if (total) total.textContent = `${countWithFallback(records, FALLBACK_ARTICLE_ITEMS)} total`;
       const ul = $(root, "#tb-list");
       ul.innerHTML = "";
-      if (!snap.docs.length) {
+      if (!records.length) {
         ul.innerHTML = '<li class="p-4 text-center text-[#8c7a6b]">No articles found.</li>';
         return;
       }
-      snap.docs.forEach((d) => {
-        const a = d.data(), li = document.createElement("li"), cb = document.createElement("input");
+      records.forEach((a) => {
+        const li = document.createElement("li"), cb = document.createElement("input");
         li.className = "p-3 flex items-center justify-between gap-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition";
         cb.type = "checkbox";
         cb.className = "w-4 h-4 text-[#b4532c] rounded focus:ring-0 cursor-pointer flex-shrink-0";
@@ -545,7 +590,8 @@ export async function initLibraryAdmin(root) {
           }
           try {
             tbStatus.textContent = "Updating table...";
-            await updateDoc(doc(db, "articles", d.id), { showOnTable: cb.checked });
+            await updateDoc(doc(db, "articles", a.id), { showOnTable: cb.checked });
+            a.showOnTable = cb.checked;
             tbStatus.textContent = "Saved.";
           } catch (err) {
             console.error(err);
@@ -558,7 +604,7 @@ export async function initLibraryAdmin(root) {
         label.className = "flex items-center gap-3 cursor-pointer flex-1 min-w-0 font-medium text-[var(--text)] dark:text-white";
         const titleSpan = document.createElement("span");
         titleSpan.className = "truncate";
-        titleSpan.textContent = a.title || d.id;
+        titleSpan.textContent = a.title || a.id;
         label.append(cb, titleSpan);
 
         li.appendChild(label);
@@ -566,6 +612,8 @@ export async function initLibraryAdmin(root) {
       });
     } catch (err) {
       console.error(err);
+      const total = $(root, "#lib-article-total");
+      if (total) total.textContent = `${countWithFallback([], FALLBACK_ARTICLE_ITEMS)} total (fallback)`;
       const ul = $(root, "#tb-list");
       ul.innerHTML = '<li class="p-4 text-center text-red-600">Error loading articles. Check Firestore rules.</li>';
     }
@@ -574,4 +622,3 @@ export async function initLibraryAdmin(root) {
   root._refreshLibraryData = () => Promise.all([loadBooks(), loadPapers()]);
   await root._refreshLibraryData();
 }
-

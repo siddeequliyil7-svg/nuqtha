@@ -1,201 +1,26 @@
+import { safeInit } from "./js/ui-safe.js";
+import { FALLBACK_ARTICLES, FALLBACK_BOOKS } from './fallback-data.js';
+export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
 /**
  * NUQTHA — Frosted Glass Feed Engine
  * Realtime Firestore → Category-Sectioned Feed, Latest-First
  * Protected by Strict Schema Validator & Safe Fallbacks
  */
-<<<<<<< HEAD
-import { db, collection, onSnapshot } from "./firebase-config.js";
-import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
-import { getBookChapters } from "./book-data.js";
-import { getThemeSafeTextColor, initializeThemeToggle } from "./theme.js";
-=======
-import { db, collection, onSnapshot, doc, getDoc, getDocs, fetchWithRetry, getFirebaseApiKey } from "./firebase-config.js";
-import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, getStoryUrl } from "./schema-validator.js";
+import { db, collection, doc, getDoc, getDocs, getDocsFromCache } from "./firebase-config.js";
+import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl } from "./schema-validator.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 
 /* ═══════════ Pre-bundled Fallback Data for 100% Uptime & Smooth Load ═══════════ */
-export const FALLBACK_ARTICLES = [
-    {
-        id: "badr-preaching",
-        title: "ബദ്ർ; ചരിത്രവും ഖുർആനിന്റെ പ്രവചനവും",
-        slug: "badr-charithravum-khuraaninte-pravachanavum",
-        category: "HISTORY",
-        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
-        excerpt: "വിശ്വാസവും അവിശ്വാസവും തമ്മിൽ ഏറ്റുമുട്ടിയ ചരിത്രപ്രസിദ്ധമായ ബദ്ർ യുദ്ധത്തിന്റെ പശ്ചാത്തലവും ഖുർആനിക ദർശനങ്ങളും.",
-        content: "സത്യവും അസത്യവും തമ്മിൽ ഏറ്റുമുട്ടിയ ചരിത്രപ്രസിദ്ധമായ ബദ്ർ യുദ്ധത്തിന്റെ പശ്ചാത്തലവും ഖുർആനിക ദർശനങ്ങളും സമഗ്രമായി പ്രതിപാദിക്കുന്ന പഠനം.\n\nഹിജ്റ രണ്ടാം വർഷം റമദാൻ 17-നാണ് ഇസ്ലാമിക ചരിത്രത്തിലെ ആദ്യത്തെ നിർണ്ണായക പോരാട്ടം അരങ്ങേറുന്നത്. എണ്ണത്തിലും ആയുധബലത്തിലും വളരെ മുന്നിലായിരുന്ന ഖുറൈശി സൈന്യത്തിനെതിരെ, വിശ്വാസദാർഢ്യം കൊണ്ട് മാത്രം പൊരുതിയ മുന്നൂറ്റിപ്പതിമൂന്ന് സ്വഹാബികളുടെ വിജയഗാഥയാണിത്.\n\nവിശുദ്ധ ഖുർആൻ ഈ ദിവസത്തെ 'യൗമുൽ ഫുർഖാൻ' അഥവാ സത്യവും അസത്യവും വേർതിരിഞ്ഞ ദിവസം എന്നാണ് വിശേഷിപ്പിച്ചത്. ചരിത്രപരമായ സംഭവവികാസങ്ങളെയും വിശുദ്ധ ഖുർആനിലെ അനുബന്ധ വചനങ്ങളെയും ആഴത്തിൽ വിശകലനം ചെയ്യുന്നതാണ് ഈ പ്രബന്ധം.",
-        placement: "HERO",
-        priority: 1,
-        imageUrl: "",
-        thumbnailUrl: "",
-        date: "2026-11-01",
-        createdAt: 1762000000000,
-        type: "ARTICLE"
-    },
-    {
-        id: "badr-lessons",
-        title: "ബദ്ർ; ലക്ഷ്യവും പാഠങ്ങളും",
-        slug: "badr-lakshyavum-paadhangngalum",
-        category: "HISTORY",
-        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
-        excerpt: "ചരിത്രത്തിലെ വഴിത്തിരിവായ പോരാട്ടത്തിൽ നിന്നും ആധുനിക സമൂഹത്തിന് ഉൾക്കൊള്ളാനുള്ള വലിയ ജീവിത പാഠങ്ങൾ.",
-        content: "ചരിത്രത്തിലെ വഴിത്തിരിവായ ബദ്ർ പോരാട്ടത്തിൽ നിന്നും ആധുനിക സമൂഹത്തിന് ഉൾക്കൊള്ളാനുള്ള വലിയ ജീവിത പാഠങ്ങൾ ഈ ലേഖനത്തിൽ പരിശോധിക്കുന്നു.\n\nപ്രവാചകൻ മുഹമ്മദ് നബി (സ) യുടെ നേതൃത്വപാടവവും അനുചരന്മാരുടെ നിരുപാധികമായ സമർപ്പണവും ഏത് പ്രതിസന്ധി ഘട്ടത്തിലും വിജയം വരിക്കാൻ സമൂഹത്തെ പ്രാപ്തമാക്കും എന്നതിന്റെ ഉത്തമ ദൃഷ്ടാന്തമാണ് ബദ്ർ.\n\nഐക്യവും അച്ചടക്കവും ദൈവത്തിലുള്ള സമ്പൂർണ്ണ സമർപ്പണവുമാണ് വിജയത്തിന്റെ അടിസ്ഥാന ഘടകങ്ങൾ. ഭൗതികമായ എണ്ണപ്പെരുപ്പത്തിനപ്പുറം ആദർശപരമായ അടിത്തറയാണ് ഒരു പ്രസ്ഥാനത്തിന്റെ യഥാർത്ഥ കരുത്ത് എന്ന് ബദ്ർ നമ്മെ നിരന്തരം ഓർമ്മിപ്പിക്കുന്നു.",
-        placement: "CAROUSEL",
-        priority: 2,
-        imageUrl: "",
-        thumbnailUrl: "",
-        date: "2026-11-02",
-        createdAt: 1762000000000,
-        type: "ARTICLE"
-    },
-    {
-        id: "woman-king",
-        title: "ഈ സ്ത്രീയിൽ രാജാവ് പിറക്കും",
-        slug: "ee-sthreeyil-raajaav-pirakkum",
-        category: "STUDY",
-        author: "സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി",
-        excerpt: "ചരിത്രത്തിലെ വിസ്മയകരമായ ഒരു ചരിത്ര മുഹൂർത്തത്തെക്കുറിച്ചുള്ള ആഴത്തിലുള്ള പഠനവും വിശകലനവും.",
-        content: "ചരിത്രത്തിലെ വിസ്മയകരമായ ഒരു ചരിത്ര മുഹൂർത്തത്തെക്കുറിച്ചുള്ള ആഴത്തിലുള്ള പഠനവും വിശകലനവുമാണിത്.\n\nഇസ്ലാമിക ചരിത്രത്തിൽ സ്ത്രീകളുടെ പങ്ക് കേവലം ഗാർഹിക ജീവിതത്തിൽ മാത്രം ഒതുങ്ങിനിൽക്കുന്ന ഒന്നായിരുന്നില്ല. ജ്ഞാനരംഗത്തും രാഷ്ട്രീയ സാംസ്കാരിക മണ്ഡലങ്ങളിലും ധീരമായ നേതൃത്വം നൽകിയ പ്രമുഖ വനിതകളുടെ ചരിത്രം ഇന്നും അത്ഭുതത്തോടെയാണ് നാം വായിക്കുന്നത്.\n\nത്യാഗവും വിവേകവും കൊണ്ട് ചരിത്രഗതിയെ മാറ്റിമറിച്ച അത്തരം മഹത് വ്യക്തിത്വങ്ങളുടെ ജീവിതത്തിലൂടെയുള്ള ഒരു യാത്രയാണ് ഈ പഠനം.",
-        placement: "CAROUSEL",
-        priority: 3,
-        imageUrl: "",
-        thumbnailUrl: "",
-        date: "2026-11-03",
-        createdAt: 1762000000000,
-        type: "ARTICLE"
-    },
-    {
-        id: "uhud-lessons",
-        title: "ഉഹ്ദ് യുദ്ധം ; ലക്ഷ്യങ്ങളും പാഠങ്ങളും",
-        slug: "uhud-yuddham-lakshyavum-paadhangngalum",
-        category: "HISTORY",
-        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
-        excerpt: "അച്ചടക്കത്തിന്റെയും ഐക്യത്തിന്റെയും അനിവാര്യത പഠിപ്പിച്ച ഉഹ്ദ് യുദ്ധത്തിന്റെ ചരിത്രാന്വേഷണം.",
-        content: "അച്ചടക്കത്തിന്റെയും അനുസരണയുടെയും അനിവാര്യത വിശ്വാസി സമൂഹത്തിന് പഠിപ്പിച്ചുകൊടുത്ത വലിയ പാഠശാലയാണ് ഉഹ്ദ് യുദ്ധം.\n\nനേതൃത്വത്തിന്റെ നിർദ്ദേശങ്ങൾ അണുവിട വ്യതിചലിക്കാതെ പാലിക്കേണ്ടതിന്റെ ആവശ്യകതയാണ് ഉഹ്ദിൽ ഉണ്ടായ താൽക്കാലിക തിരിച്ചടി നമ്മെ പഠിപ്പിക്കുന്നത്. ഭൗതിക നേട്ടങ്ങളേക്കാൾ ലക്ഷ്യബോധത്തിന് മുൻഗണന നൽകണമെന്ന് ഈ ചരിത്ര സംഭവം ബോധ്യപ്പെടുത്തുന്നു.\n\nപരാജയങ്ങളിൽ പതറാതെ വീണ്ടും ഒത്തുചേർന്ന് മുന്നോട്ട് പോകാനുള്ള മനക്കരുത്ത് നൽകിയ ഉഹ്ദിന്റെ പാഠങ്ങൾ കാലാതീതമാണ്.",
-        placement: "AUTO",
-        priority: 4,
-        imageUrl: "",
-        thumbnailUrl: "",
-        date: "2026-11-04",
-        createdAt: 1762000000000,
-        type: "ARTICLE"
-    },
-    {
-        id: "khwaja-thangal",
-        title: "ഖാജ തങ്ങളും ചിശ്തി ത്വരീഖത്തും",
-        slug: "khaaja-thangngalum-chishthi-thvareekhaththum",
-        category: "STUDY",
-        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
-        excerpt: "ഇന്ത്യയിലെ ആത്മീയ വിപ്ലവത്തിന് അടിത്തറയിട്ട ഖാജ മുഈനുദ്ദീൻ ചിശ്തി (റ) യുടെ ജീവചരിത്രവും ദർശനവും.",
-        content: "ഇന്ത്യൻ ഉപഭൂഖണ്ഡത്തിൽ ആത്മീയ സംസ്കാരത്തിന്റെ ദിവ്യവെളിച്ചം പരത്തിയ സുൽത്താനുൽ ഹിന്ദ് ഖാജ മുഈനുദ്ദീൻ ചിശ്തി (റ) യുടെ ജീവിതവും ചിശ്തി ത്വരീഖത്തിന്റെ സന്ദേശങ്ങളും പ്രതിപാദിക്കുന്ന പ്രബന്ധം.\n\nസ്നേഹവും കാരുണ്യവും മാനവികതയുമായിരുന്നു ഖാജ തങ്ങളുടെ പ്രധാന പ്രബോധന ആയുധങ്ങൾ. ജാതിമത ഭേദമന്യേ സർവ്വ ജനങ്ങളെയും ആലിംഗനം ചെയ്ത ആ വിശുദ്ധ ജീവിതം ഇന്ത്യയുടെ സാംസ്കാരിക ഭൂപടത്തിൽ മായാത്ത മുദ്ര പതിപ്പിച്ചു.",
-        placement: "AUTO",
-        priority: 5,
-        imageUrl: "",
-        thumbnailUrl: "",
-        date: "2026-11-05",
-        createdAt: 1762000000000,
-        type: "ARTICLE"
-    },
-    {
-        id: "imamumaarude-jeevitham",
-        title: "ഇമാമുമാരുടെ ജീവിതം",
-        slug: "imamumaarude-jeevitham",
-        bookSlug: "imamumaarude-jeevitham",
-        category: "BOOKS",
-        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
-        excerpt: "ഇസ്ലാമിക ലോകത്തെ മഹാന്മാരായ നാല് ഇമാമുമാരുടെയും പ്രമുഖ പണ്ഡിതന്മാരുടെയും ജീവിത സമർപ്പണം.",
-        content: "ഇസ്ലാമിക ലോകത്തെ മഹാന്മാരായ നാല് മദ്ഹബുകളുടെ ഇമാമുമാരായ ഇമാം അബൂഹനീഫ (റ), ഇമാം മാലിക് (റ), ഇമാം ശാഫിഈ (റ), ഇമാം അഹ്മദ് ബിൻ ഹൻബൽ (റ) എന്നിവരുടെ ജീവിതം, പാണ്ഡിത്യം, കർമ്മശാസ്ത്ര സംഭാവനകൾ എന്നിവ സവിസ്തരം പ്രതിപാദിക്കുന്ന പുസ്തകം.",
-        type: "BOOK",
-        isBook: true,
-        priority: 1,
-        imageUrl: "",
-        thumbnailUrl: "",
-        chapters: [
-            { id: "imam-abu-hanifa", title: "ഇമാം അബൂഹനീഫ (റ) - ജ്ഞാന സൂര്യൻ", order: 1, slug: "imam-abu-hanifa" },
-            { id: "imam-malik", title: "ഇമാം മാലിക് (റ) - മദീനയുടെ പണ്ഡിതൻ", order: 2, slug: "imam-malik" },
-            { id: "imam-shafi", title: "ഇമാം ശാഫിഈ (റ) - അഹ്‌ലുസ്സുന്നയുടെ സംരക്ഷകൻ", order: 3, slug: "imam-shafi" },
-            { id: "imam-ahmed", title: "ഇമാം അഹ്മദ് ബിൻ ഹൻബൽ (റ) - സഹനത്തിന്റെ മാതൃക", order: 4, slug: "imam-ahmed" }
-        ],
-        date: "2026-11-01",
-        createdAt: 1762000000000
-    },
-    {
-        id: "abbaasiyya-khilaaphathth",
-        title: "അബ്ബാസിയ്യ ഖിലാഫത്ത്",
-        slug: "abbaasiyya-khilaaphathth",
-        bookSlug: "abbaasiyya-khilaaphathth",
-        category: "BOOKS",
-        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
-        excerpt: "ഇസ്ലാമിക സുവർണ്ണ കാലഘട്ടത്തിന്റെ ജ്ഞാന വിപ്ലവവും ഭരണ ചരിത്രവും സമഗ്രമായി പ്രതിപാദിക്കുന്ന പുസ്തകം.",
-        content: "ബഗ്ദാദ് ആസ്ഥാനമായി ലോകത്തിന്റെ വൈജ്ഞാനിക സാംസ്കാരിക തലസ്ഥാനമായി മാറിയ അബ്ബാസിയ്യ സാമ്രാജ്യത്തിന്റെ സമഗ്ര ചരിത്ര രേഖ.\n\nബൈതുൽ ഹിക്മ ഉൾപ്പെടെയുള്ള വൈജ്ഞാനിക സ്ഥാപനങ്ങളും ശാസ്ത്ര-തത്വചിന്താ മേഖലകളിലെ സുവർണ്ണ നേട്ടങ്ങളും ഈ കൃതി അനാവരണം ചെയ്യുന്നു.",
-        type: "BOOK",
-        isBook: true,
-        priority: 2,
-        imageUrl: "",
-        thumbnailUrl: "",
-        chapters: [
-            { id: "abbasiyya-genesis", title: "അബ്ബാസിയ്യ ഖിലാഫത്തിന്റെ ഉദയം", order: 1, slug: "abbasiyya-genesis" },
-            { id: "golden-age-baghdad", title: "ബഗ്ദാദിലെ സുവർണ്ണ യുഗം", order: 2, slug: "golden-age-baghdad" },
-            { id: "baytul-hikmah", title: "ബൈതുൽ ഹിക്മയും ജ്ഞാന വിപ്ലവവും", order: 3, slug: "baytul-hikmah" }
-        ],
-        date: "2026-11-02",
-        createdAt: 1762000000000
-    },
-    {
-        id: "umaviyya-khilaaphathth",
-        title: "ഉമവിയ്യ ഖിലാഫത്ത്",
-        slug: "umaviyya-khilaaphathth",
-        bookSlug: "umaviyya-khilaaphathth",
-        category: "BOOKS",
-        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
-        excerpt: "ദമാസ്കസ് ആസ്ഥാനമായി ഭരണം നടത്തിയ ഉമവിയ്യ രാജവംശത്തിന്റെ ഉദയവും അസ്തമയവും.",
-        content: "ദമാസ്കസ് കേന്ദ്രമാക്കി മൂന്ന് ഭൂഖണ്ഡങ്ങളിലേക്ക് ഇസ്ലാമിക ഭരണകൂടത്തിന്റെ അതിരുകൾ വികസിപ്പിച്ച ഉമവിയ്യ ഖിലാഫത്തിന്റെ ഉദയവും വളർച്ചയും അസ്തമയവും വിവരിക്കുന്ന ഗ്രന്ഥം.",
-        type: "BOOK",
-        isBook: true,
-        priority: 3,
-        imageUrl: "",
-        thumbnailUrl: "",
-        chapters: [
-            { id: "umaviyya-foundation", title: "ഉമവിയ്യ ഭരണത്തിന്റെ സ്ഥാപനം", order: 1, slug: "umaviyya-foundation" },
-            { id: "damascus-era", title: "ദമാസ്കസിലെ സാംസ്കാരിക മുന്നേറ്റം", order: 2, slug: "damascus-era" }
-        ],
-        date: "2026-11-03",
-        createdAt: 1762000000000
-    },
-    {
-        id: "badr-charitham",
-        title: "ബദ്ർ ചരിത്രം",
-        slug: "badr-charitham",
-        bookSlug: "badr-charitham",
-        category: "BOOKS",
-        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
-        excerpt: "സത്യവും അസത്യവും വേർതിരിച്ച ചരിത്രപ്രസിദ്ധമായ ബദ്ർ യുദ്ധത്തിന്റെ സമഗ്ര ചരിത്ര പുസ്തകം.",
-        content: "ബദ്ർ യുദ്ധത്തിന്റെ പശ്ചാത്തലവും യുദ്ധതന്ത്രങ്ങളും വിശദമായി അപഗ്രഥിക്കുന്ന ആധികാരിക ചരിത്ര ഗ്രന്ഥം.",
-        type: "BOOK",
-        isBook: true,
-        priority: 4,
-        imageUrl: "",
-        thumbnailUrl: "",
-        chapters: [
-            { id: "badr-background", title: "യുദ്ധത്തിലേക്ക് നയിച്ച സാഹചര്യങ്ങൾ", order: 1, slug: "badr-background" },
-            { id: "badr-battlefield", title: "ബദ്റിന്റെ രണാങ്കണത്തിൽ", order: 2, slug: "badr-battlefield" },
-            { id: "badr-aftermath", title: "വിജയവും പുതിയ പ്രഭാതവും", order: 3, slug: "badr-aftermath" }
-        ],
-        date: "2026-11-04",
-        createdAt: 1762000000000
-    }
-];
-
 const CACHE_KEY = 'nuqtha_cached_articles_v7';
 
 function safeCacheArticles(articles) {
     if (!Array.isArray(articles) || articles.length === 0) return;
     try {
-        const lightweight = articles.slice(0, 30).map(a => {
+        const lightweight = articles.map(a => {
             const copy = { ...a };
             delete copy.content;
             delete copy.transcription;
@@ -223,8 +48,6 @@ function safeCacheArticles(articles) {
 }
 
 let allArticles = [];
-<<<<<<< HEAD
-=======
 try {
     // Purge outdated or corrupted cache keys
     sessionStorage.removeItem('nuqtha_cached_articles');
@@ -265,7 +88,6 @@ getAuthorsMap(db).then(map => {
         renderFeed();
     }
 }).catch(() => {});
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 let currentCategory = "ALL";
 
 // Ordered list of categories shown on HOME
@@ -336,17 +158,16 @@ export function sanitizeMalayalamText(str) {
 
 let currentSearchQuery = "";
 
-document.addEventListener("DOMContentLoaded", () => {
+function initApp() {
     setupThemeToggle();
+    initHeaderAuthUI();
     setupCategoryNav();
+    setupArticlesDropdown();
+    setupBooksNavLink();
     setupMoreDropdown();
     setupHomeLink();
     setupSidebarDrawer();
     setupSearch();
-<<<<<<< HEAD
-    listenForArticles();
-});
-=======
     setupLibraryView();
     setupGlobalCategoryBadges();
     checkUrlCategory();
@@ -486,9 +307,7 @@ function initDynamicMoreMenu() {
         renderDynamicMoreMenu(DEFAULT_FRONT_MORE_MENU);
     }
 }
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 
-/* ═══════════ More Categories Dropdown Setup ═══════════ */
 function setupMoreDropdown() {
     const moreBtn = document.getElementById("more-categories-btn");
     const dropdown = document.getElementById("more-categories-dropdown");
@@ -496,31 +315,43 @@ function setupMoreDropdown() {
 
     if (!moreBtn || !dropdown) return;
 
+    // Load and listen to dynamic links from Firestore
+    initDynamicMoreMenu();
+
     moreBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
+        // Close articles dropdown if open
+        const artDropdown = document.getElementById("articles-dropdown-menu");
+        if (artDropdown && !artDropdown.classList.contains("hidden")) {
+            artDropdown.classList.add("hidden");
+            const artArrow = document.getElementById("articles-arrow");
+            if (artArrow) artArrow.style.transform = "rotate(0deg)";
+        }
+
         const isHidden = dropdown.classList.contains("hidden");
         dropdown.classList.toggle("hidden", !isHidden);
         if (arrow) arrow.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)";
+        moreBtn.setAttribute("aria-expanded", isHidden ? "true" : "false");
     });
 
     document.addEventListener("click", (e) => {
         if (!moreBtn.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.classList.add("hidden");
             if (arrow) arrow.style.transform = "rotate(0deg)";
+            moreBtn.setAttribute("aria-expanded", "false");
         }
     });
 
-    document.querySelectorAll(".more-dropdown-item").forEach(item => {
-        item.addEventListener("click", (e) => {
+    dropdown.addEventListener("click", (e) => {
+        const item = e.target.closest("[data-category]");
+        if (item) {
             e.preventDefault();
             const cat = item.dataset.category;
             if (cat) {
                 switchToCategory(cat);
                 dropdown.classList.add("hidden");
                 if (arrow) arrow.style.transform = "rotate(0deg)";
-<<<<<<< HEAD
-=======
                 moreBtn.setAttribute("aria-expanded", "false");
             }
         }
@@ -666,54 +497,19 @@ function setupThemeToggle() {
             } else {
                 if (sunIcon) sunIcon.classList.add("hidden");
                 if (moonIcon) moonIcon.classList.remove("hidden");
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             }
         });
-    });
+    }
 }
 
-/* ═══════════ Dynamic Top Horizontal Scrolling Category Navigation Bar ═══════════ */
-function renderCategoryNavBar() {
-    const nav = document.getElementById("category-nav");
-    if (!nav) return;
+/* ═══════════ Category Tab Switching ═══════════ */
+// Ensure canonical & OG URL reflect current active domain
+updatePageMeta();
 
-    // Discover all unique categories across standalone regular articles (excluding books/chapters)
-    const regularArticles = allArticles.filter(a => !isBookEntity(a));
-    const discovered = new Set();
-    regularArticles.forEach(a => {
-        const cat = (a.category || "").toUpperCase().trim();
-        if (cat && cat !== "BOOKS" && cat !== "BOOK" && cat !== "PREMIUM BOOK") {
-            discovered.add(cat);
-        }
-    });
-
-    // Preset order + any new categories added dynamically from admin!
-    const ordered = [...CATEGORY_ORDER.filter(c => discovered.has(c)), ...[...discovered].filter(c => !CATEGORY_ORDER.includes(c))];
-
-    if (ordered.length === 0) {
-        ordered.push("HISTORY", "STUDY", "STORY");
-    }
-
-    let html = `
-        <a href="#" data-category="ALL" class="nav-category-link px-3.5 py-1.5 rounded-full border text-xs font-bold transition uppercase tracking-wider shrink-0 ${currentCategory === 'ALL' ? 'bg-[#1e1b18] text-white dark:bg-white dark:text-[#12141d] border-transparent shadow-xs' : 'bg-white/70 dark:bg-white/5 border-[#ebdccb] dark:border-white/10 text-[#4a3c33] dark:text-[#cbbba9] hover:border-[#b4532c]/50'}">ALL</a>
-    `;
-
-    ordered.forEach(cat => {
-        const isActive = currentCategory === cat;
-        html += `
-            <a href="#" data-category="${escapeHtml(cat)}" class="nav-category-link px-3.5 py-1.5 rounded-full border text-xs font-bold transition uppercase tracking-wider shrink-0 ${isActive ? 'bg-[#b4532c] text-white border-[#b4532c] shadow-xs' : 'bg-white/70 dark:bg-white/5 border-[#ebdccb] dark:border-white/10 text-[#4a3c33] dark:text-[#cbbba9] hover:border-[#b4532c]/50 hover:text-[#b4532c]'}">${escapeHtml(cat)}</a>
-        `;
-    });
-
-    // Dedicated Books tab
-    const isBooksActive = currentCategory === "BOOKS";
-    html += `
-        <a href="#" data-category="BOOKS" class="nav-category-link px-3.5 py-1.5 rounded-full border text-xs font-bold transition uppercase tracking-wider shrink-0 ${isBooksActive ? 'bg-[#b4532c] text-white border-[#b4532c] shadow-xs' : 'bg-white/70 dark:bg-white/5 border-[#ebdccb] dark:border-white/10 text-[#4a3c33] dark:text-[#cbbba9] hover:border-[#b4532c]/50 hover:text-[#b4532c]'}">BOOKS 📚</a>
-    `;
-
-    nav.innerHTML = html;
-
-    nav.querySelectorAll(".nav-category-link").forEach(link => {
+function setupCategoryNav() {
+    const links = document.querySelectorAll("#category-nav .nav-category-link:not(#more-categories-btn)");
+    links.forEach(link => {
+        if (!link) return;
         link.addEventListener("click", (e) => {
             e.preventDefault();
             const cat = link.dataset.category;
@@ -722,99 +518,19 @@ function renderCategoryNavBar() {
     });
 }
 
-/* ─── Helper: Identify Book Entities (Covers and Chapters) ─── */
-function isBookEntity(article) {
-    if (!article) return false;
-    if (article.type === "BOOK") return true;
-    if (article.bookName && article.bookName.trim()) return true;
-    if (article.playlistName && article.playlistName.trim()) return true;
-    return false;
-}
-
-function updateMoreCategoriesMenu() {
-    const dropdown = document.getElementById("more-categories-dropdown");
-    if (!dropdown) return;
-
-    const baseCats = new Set(["HISTORY", "STUDY", "STORY"]);
-    const extraCats = new Set();
-
-    allArticles.forEach(a => {
-        if (isBookEntity(a)) return; // Exclude books & chapters from categories dropdown
-        const cat = (a.category || "").toUpperCase();
-        if (cat && !baseCats.has(cat) && cat !== "BOOKS" && cat !== "BOOK" && cat !== "PREMIUM BOOK") {
-            extraCats.add(cat);
-        }
-    });
-
-    let html = ``;
-    if (extraCats.size > 0) {
-        extraCats.forEach(cat => {
-            html += `
-                <a href="#" data-category="${escapeHtml(cat)}" class="more-dropdown-item flex items-center gap-2 px-3.5 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
-                    <span>📌</span>
-                    <span>${escapeHtml(cat)}</span>
-                </a>
-            `;
-        });
-    } else {
-        html += `
-            <a href="#" data-category="GENERAL" class="more-dropdown-item flex items-center gap-2 px-3.5 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
-                <span>📌</span>
-                <span>GENERAL</span>
-            </a>
-        `;
-    }
-
-    html += `
-        <a href="#" data-category="ALL" class="more-dropdown-item flex items-center gap-2 px-3.5 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] transition border-t border-[#ebdccb]/60 dark:border-white/10 uppercase font-english">
-            <span>🏠</span>
-            <span>ALL ARTICLES</span>
-        </a>
-    `;
-
-    dropdown.innerHTML = html;
-
-    dropdown.querySelectorAll(".more-dropdown-item").forEach(item => {
-        item.addEventListener("click", (e) => {
-            e.preventDefault();
-            const cat = item.dataset.category;
-            if (cat) {
-                switchToCategory(cat);
-                dropdown.classList.add("hidden");
-                const arrow = document.getElementById("more-arrow");
-                if (arrow) arrow.style.transform = "rotate(0deg)";
-            }
-        });
-    });
-}
-
-/* ═══════════ Light / Dark Mode Toggle ═══════════ */
-function setupThemeToggle() {
-    const themeBtn = document.getElementById("theme-toggle-btn");
-    const sunIcon = document.getElementById("sun-icon");
-    const moonIcon = document.getElementById("moon-icon");
-    initializeThemeToggle(themeBtn, sunIcon, moonIcon);
-}
-
-/* ═══════════ Category Tab Switching ═══════════ */
-function setupCategoryNav() {
-    const links = document.querySelectorAll("#category-nav .nav-category-link");
-    links.forEach(link => {
-        link.addEventListener("click", (e) => {
-            e.preventDefault();
-            switchToCategory(link.dataset.category);
-        });
-    });
-}
-
 function setupHomeLink() {
-    const homeLink = document.getElementById("home-link");
-    if (!homeLink) return;
-
-    homeLink.addEventListener("click", event => {
-        event.preventDefault();
-        switchToCategory("ALL");
-        document.getElementById("home")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const homeLinks = document.querySelectorAll("#home-link, .brand-badge, .drawer-home-link");
+    homeLinks.forEach(link => {
+        link.addEventListener("click", event => {
+            event.preventDefault();
+            clearSearch(false);
+            document.getElementById("articles-dropdown-menu")?.classList.add("hidden");
+            document.getElementById("more-categories-dropdown")?.classList.add("hidden");
+            document.getElementById("sidebar-drawer")?.classList.remove("drawer-open");
+            document.getElementById("sidebar-backdrop")?.classList.remove("backdrop-active");
+            switchToCategory("ALL");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
     });
 }
 
@@ -842,6 +558,7 @@ function setupSidebarDrawer() {
     if (backdrop) backdrop.addEventListener("click", closeDrawer);
 
     document.querySelectorAll(".drawer-nav-item").forEach(item => {
+        if (!item) return;
         item.addEventListener("click", (e) => {
             const cat = item.dataset.category;
             if (cat) {
@@ -861,8 +578,6 @@ function setupSidebarDrawer() {
 function setupLibraryView() {
     const feed = document.getElementById("feed");
     const lib = document.getElementById("library");
-    const bA = document.getElementById("view-articles");
-    const bL = document.getElementById("view-library");
     const drawerLibLink = document.getElementById("drawer-library-link");
 
     if (!feed || !lib) return;
@@ -873,8 +588,6 @@ function setupLibraryView() {
         const isLib = name === "library";
         feed.hidden = isLib;
         lib.hidden = !isLib;
-        if (bA) bA.setAttribute("aria-pressed", String(!isLib));
-        if (bL) bL.setAttribute("aria-pressed", String(isLib));
 
         if (isLib) {
             if (window.location.hash !== "#library") {
@@ -891,9 +604,6 @@ function setupLibraryView() {
             }
         }
     }
-
-    if (bA) bA.addEventListener("click", () => showView("articles"));
-    if (bL) bL.addEventListener("click", () => showView("library"));
 
     if (drawerLibLink) {
         drawerLibLink.addEventListener("click", () => {
@@ -976,158 +686,132 @@ function escapeHtml(str) {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-/* ═══════════ App Data Loader (Single Fetch & Cached - Fixes 429) ═══════════ */
-let isAppDataLoading = false;
-export async function initAppData(database = db) {
-    if (isAppDataLoading) return;
+/* ═══════════ App Data Loader (single request per collection) ═══════════ */
+let appDataPromise;
 
-    // 1. Instant cache paint
+async function getCollectionSnapshotWithCache(collectionRef, name) {
     try {
-        const cached = sessionStorage.getItem(CACHE_KEY) || localStorage.getItem(CACHE_KEY);
-        if (cached) {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                const hasNoAiStudio = !parsed.some(a => (a.imageUrl || "").includes("aistudio") || (a.thumbnailUrl || "").includes("aistudio"));
-                if (hasNoAiStudio) {
-                    allArticles = parsed;
-                    renderFeed();
+        return await getDocs(collectionRef);
+    } catch (error) {
+        console.warn(`[NUQTHA App] ${name} request failed; checking Firestore's local cache.`, error);
+        try {
+            return await getDocsFromCache(collectionRef);
+        } catch (cacheError) {
+            console.warn(`[NUQTHA App] ${name} is unavailable in the local cache.`, cacheError);
+            return { docs: [] };
+        }
+    }
+}
+
+function restoreFallbackFields(article, fallbacksById) {
+    const fallback = fallbacksById.get(article.id) || fallbacksById.get(article.slug);
+    if (!fallback) return article;
+    const isMissing = value => value == null || String(value).trim() === "";
+    return {
+        ...fallback,
+        ...article,
+        title: isMissing(article.title) || /^untitled(?: article| book)?$/i.test(article.title) ? fallback.title : article.title,
+        author: isMissing(article.author) || /^(?:nuqtha|nuqtha press|nuqtha author)$/i.test(article.author) ? fallback.author : article.author,
+        excerpt: isMissing(article.excerpt) ? fallback.excerpt : article.excerpt,
+        content: isMissing(article.content) ? fallback.content : article.content,
+        imageUrl: isMissing(article.imageUrl) ? (fallback.imageUrl || fallback.thumbnailUrl || "") : article.imageUrl,
+        thumbnailUrl: isMissing(article.thumbnailUrl) ? (fallback.thumbnailUrl || fallback.imageUrl || "") : article.thumbnailUrl,
+        ogImage: isMissing(article.ogImage) ? (fallback.ogImage || "") : article.ogImage,
+        slug: isMissing(article.slug) ? fallback.slug : article.slug,
+        bookSlug: isMissing(article.bookSlug) ? fallback.bookSlug : article.bookSlug,
+        volume: isMissing(article.volume) ? fallback.volume : article.volume,
+        issue: isMissing(article.issue) ? fallback.issue : article.issue,
+        date: isMissing(article.date) ? fallback.date : article.date,
+        chapters: Array.isArray(article.chapters) && article.chapters.length ? article.chapters : fallback.chapters
+    };
+}
+
+export function initAppData(database = db) {
+    if (appDataPromise) return appDataPromise;
+
+    appDataPromise = (async () => {
+        try {
+            const cached = sessionStorage.getItem(CACHE_KEY) || localStorage.getItem(CACHE_KEY);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    const hasNoAiStudio = !parsed.some(a => (a.imageUrl || "").includes("aistudio") || (a.thumbnailUrl || "").includes("aistudio"));
+                    if (hasNoAiStudio) {
+                        allArticles = parsed;
+                        renderFeed();
+                    }
                 }
             }
+        } catch (error) {
+            console.warn("[NUQTHA App] Could not restore the article cache.", error);
         }
-    } catch (_) {}
 
-    isAppDataLoading = true;
-    try {
         const [articlesSnapshot, booksSnapshot] = await Promise.all([
-            getDocs(collection(database, "articles")).catch(() => ({ docs: [], size: 0 })),
-            getDocs(collection(database, "books")).catch(() => ({ docs: [], size: 0 }))
+            getCollectionSnapshotWithCache(collection(database, "articles"), "articles"),
+            getCollectionSnapshotWithCache(collection(database, "books"), "books")
         ]);
+        const fallbacksById = new Map();
+        FALLBACK_ARTICLES.forEach(article => {
+            if (article.id) fallbacksById.set(article.id, article);
+            if (article.slug) fallbacksById.set(article.slug, article);
+        });
 
-        const artCount = articlesSnapshot?.size || articlesSnapshot?.docs?.length || 0;
-        const bkCount = booksSnapshot?.size || booksSnapshot?.docs?.length || 0;
-        if (artCount > 0 || bkCount > 0) {
-            console.log(`[NUQTHA App] Received ${artCount} articles and ${bkCount} books from Firestore.`);
-        }
-
-        const rawArticlesList = [];
-        articlesSnapshot.docs.forEach(articleDoc => {
+        const rawArticlesList = articlesSnapshot.docs.map(articleDoc => {
             const article = articleDoc.data();
-            const normalized = normalizeArticleDoc({
+            return restoreFallbackFields(normalizeArticleDoc({
                 ...article,
                 title: sanitizeMalayalamText(article.title),
                 author: sanitizeMalayalamText(article.author),
                 excerpt: sanitizeMalayalamText(article.excerpt),
                 content: sanitizeMalayalamText(article.content),
                 playlistName: sanitizeMalayalamText(article.playlistName)
-            }, articleDoc.id);
-            rawArticlesList.push(normalized);
+            }, articleDoc.id), fallbacksById);
         });
 
-<<<<<<< HEAD
-        hasServerSnapshot = !snapshot.metadata.fromCache;
-        allArticles = snapshot.metadata.fromCache
-            ? mergeArticles(snapshotArticles, restArticles)
-            : sortArticles(snapshotArticles);
+        const rawBooksList = booksSnapshot.docs.map(bookDoc => {
+            const bookData = bookDoc.data();
+            const book = normalizeArticleDoc({
+                ...bookData,
+                title: sanitizeMalayalamText(bookData.title),
+                author: sanitizeMalayalamText(bookData.author),
+                excerpt: sanitizeMalayalamText(bookData.excerpt)
+            }, bookDoc.id);
+            book.type = "BOOK";
+            book.isBook = true;
+            book.isChapter = false;
+            return restoreFallbackFields(book, fallbacksById);
+        });
+
+        const fallbackItems = [
+            ...FALLBACK_ARTICLES.filter(article => !FALLBACK_BOOKS.includes(article)),
+            ...FALLBACK_BOOKS
+        ];
+        const combined = fallbackItems.map(article => normalizeArticleDoc(article, article.id));
+        rawArticlesList.forEach(article => {
+            const existingIndex = combined.findIndex(item => item.id === article.id || (article.slug && item.slug === article.slug));
+            if (existingIndex < 0) combined.push(article);
+            else combined[existingIndex] = { ...combined[existingIndex], ...article };
+        });
+        rawBooksList.forEach(book => {
+            const exists = combined.some(article =>
+                article.id === book.id ||
+                (book.slug && article.slug === book.slug && (article.type === "BOOK" || article.type === "free" || article.type === "premium"))
+            );
+            if (!exists) combined.push(book);
+        });
+
+        allArticles = sortArticles(combined);
+        safeCacheArticles(allArticles);
         renderFeed();
-    }, error => {
-        console.error("Firestore articles listener failed:", error);
-        loadArticlesFromRest();
+    })().catch(error => {
+        console.error("[NUQTHA App] Could not load articles and books.", error);
+        if (allArticles.length === 0) {
+            allArticles = FALLBACK_ARTICLES.map(article => normalizeArticleDoc(article, article.id));
+        }
+        renderFeed();
     });
 
-    loadArticlesFromRest();
-
-    async function loadArticlesFromRest() {
-        if (restFetchPromise) return restFetchPromise;
-
-        restFetchPromise = (async () => {
-            try {
-                const { apiKey, projectId } = db.app.options;
-                if (!apiKey || !projectId) {
-                    throw new Error("Firebase project ID or API key is missing.");
-                }
-
-                const documents = [];
-                let nextPageToken = "";
-                do {
-                    const params = new URLSearchParams({ pageSize: "300", key: apiKey });
-                    if (nextPageToken) params.set("pageToken", nextPageToken);
-                    const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/articles?${params}`;
-                    const response = await fetch(url);
-                    if (!response.ok) {
-                        throw new Error(`Firestore REST request failed (${response.status}): ${await response.text()}`);
-                    }
-
-                    const page = await response.json();
-                    documents.push(...(page.documents || []));
-                    nextPageToken = page.nextPageToken || "";
-                } while (nextPageToken);
-
-                restArticles = documents.map(document => {
-                    const id = document.name.split("/").pop();
-                    const fields = decodeFirestoreFields(document.fields || {});
-                    return normalizeArticleDoc({
-                        ...fields,
-                        createdAt: fields.createdAt || document.createTime,
-                        updatedAt: fields.updatedAt || document.updateTime
-                    }, id);
-                });
-
-                if (!hasServerSnapshot) {
-                    allArticles = sortArticles(restArticles);
-                    renderFeed();
-                }
-            } catch (error) {
-                console.error("Firestore REST article fetch failed:", error);
-                if (!hasServerSnapshot && allArticles.length === 0) {
-                    renderEmpty("ലേഖനങ്ങൾ Firestore-ൽ നിന്ന് ലോഡ് ചെയ്യാനായില്ല. നെറ്റ്‌വർക്ക്, Firebase project ID, Firestore Rules എന്നിവ പരിശോധിക്കുക.");
-                }
-            } finally {
-                restFetchPromise = null;
-            }
-        })();
-
-        return restFetchPromise;
-=======
-        const rawBooksList = [];
-        booksSnapshot.docs.forEach(bDoc => {
-            const bData = bDoc.data();
-            const norm = normalizeArticleDoc({
-                ...bData,
-                title: sanitizeMalayalamText(bData.title),
-                author: sanitizeMalayalamText(bData.author),
-                excerpt: sanitizeMalayalamText(bData.excerpt)
-            }, bDoc.id);
-            norm.type = "BOOK";
-            norm.isBook = true;
-            norm.isChapter = false;
-            rawBooksList.push(norm);
-        });
-
-        const combined = [...rawArticlesList];
-        rawBooksList.forEach(bk => {
-            const exists = combined.some(a => a.id === bk.id || (a.slug && a.slug === bk.slug && (a.type === "BOOK" || a.type === "free" || a.type === "premium")));
-            if (!exists) combined.push(bk);
-        });
-
-        if (combined.length > 0) {
-            allArticles = sortArticles(combined);
-            safeCacheArticles(allArticles);
-            renderFeed();
-        } else if (allArticles.length === 0) {
-            allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
-            safeCacheArticles(allArticles);
-            renderFeed();
-        }
-    } catch (_) {
-        if (allArticles.length === 0) {
-            allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
-            safeCacheArticles(allArticles);
-        }
-        renderFeed();
-    } finally {
-        isAppDataLoading = false;
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
-    }
+    return appDataPromise;
 }
 window.initAppData = initAppData;
 export const listenForArticles = initAppData;
@@ -1180,7 +864,6 @@ function sortArticles(articles) {
 
 /* ═══════════ Render Feed ═══════════ */
 function renderFeed() {
-    renderCategoryNavBar();
     const container = document.getElementById("feed-container");
     if (!container) return;
 
@@ -1192,6 +875,8 @@ function renderFeed() {
         renderHomeFeed(container);
     } else if (currentCategory === "BOOKS" || currentCategory === "BOOK") {
         renderBooksCategoryFeed(container);
+    } else if (currentCategory === "SAVED") {
+        renderSavedFeed(container);
     } else {
         renderCategoryFeed(container, currentCategory);
     }
@@ -1201,10 +886,67 @@ function renderFeed() {
     setupCarousel();
 }
 
+/* ═══════════ Saved Articles Library Feed ═══════════ */
+function renderSavedFeed(container) {
+    let savedIds = [];
+    try {
+        savedIds = JSON.parse(localStorage.getItem("nuqtha_saved_books") || "[]");
+    } catch (_) {}
+
+    const matched = allArticles.filter(art => savedIds.includes(art.id));
+
+    let html = `
+        <div class="mb-6 flex items-center justify-between pb-3 border-b border-[#ebdccb] dark:border-white/10">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-black font-['Anek_Malayalam'] text-[#1e1b18] dark:text-white">സേവ് ചെയ്ത ലേഖനങ്ങൾ (Saved Articles)</h2>
+                <p class="text-xs text-[#8c7a6b] dark:text-slate-400 font-english">${matched.length} saved in your library</p>
+            </div>
+            <button type="button" id="back-from-saved-btn" class="px-3.5 py-1.5 rounded-full bg-black/5 dark:bg-white/10 text-xs font-bold font-english uppercase tracking-wider text-[#5a4b41] dark:text-slate-300 hover:bg-[#b4532c] hover:text-white transition cursor-pointer">
+                &larr; All Articles
+            </button>
+        </div>
+    `;
+
+    if (matched.length === 0) {
+        html += `
+        <div class="text-center py-16 px-4 space-y-4 max-w-md mx-auto">
+            <div class="w-16 h-16 mx-auto rounded-3xl bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 flex items-center justify-center text-3xl shadow-xs">
+                🔖
+            </div>
+            <h3 class="text-lg sm:text-xl font-bold font-['Anek_Malayalam'] text-[#1e1b18] dark:text-white">സേവ് ചെയ്ത ലേഖനങ്ങളില്ല</h3>
+            <p class="text-xs text-[#8c7a6b] dark:text-slate-400 font-['Anek_Malayalam'] leading-relaxed">
+                നിങ്ങൾ ഇതുവരെ ലേഖനങ്ങളൊന്നും സേവ് ചെയ്തിട്ടില്ല. ലേഖന പേജിലെ സേവ് (Save) ബട്ടൺ ക്ലിക്ക് ചെയ്ത് ഇവിടെ സൂക്ഷിക്കാം.
+            </p>
+            <div class="pt-2">
+                <button type="button" id="browse-articles-empty-btn" class="px-5 py-2.5 rounded-2xl bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold font-english uppercase tracking-wider transition shadow cursor-pointer">
+                    Browse All Articles
+                </button>
+            </div>
+        </div>
+        `;
+    } else {
+        html += buildFeaturedCard(matched[0]);
+        if (matched.length > 1) {
+            html += `<div class="category-cards-list space-y-3 mt-4">`;
+            matched.slice(1).forEach(art => {
+                html += buildCompactRecentCard(art);
+            });
+            html += `</div>`;
+        }
+    }
+
+    container.innerHTML = html;
+    const backBtn = document.getElementById("back-from-saved-btn");
+    if (backBtn) backBtn.addEventListener("click", () => switchToCategory("ALL"));
+    const emptyBtn = document.getElementById("browse-articles-empty-btn");
+    if (emptyBtn) emptyBtn.addEventListener("click", () => switchToCategory("ALL"));
+}
+
 /* ═══════════ Search Feed: Displays matching articles ═══════════ */
 function renderSearchFeed(container, query) {
     const lower = query.toLowerCase();
     const matched = allArticles.filter(art => {
+        if (isBookEntity(art)) return false;
         const title = (art.title || "").toLowerCase();
         const author = (art.author || "").toLowerCase();
         const excerpt = (art.excerpt || "").toLowerCase();
@@ -1266,14 +1008,11 @@ function renderHomeFeed(container) {
     const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapterEntity(a));
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
-<<<<<<< HEAD
-=======
         if (allArticles.length === 0) {
             allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
             renderHomeFeed(container);
             return;
         }
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
         renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
         return;
     }
@@ -1307,7 +1046,7 @@ function renderHomeFeed(container) {
     } else if (autoArticles.length > 0) {
         heroArticle = autoArticles[0];
         usedIds.add(heroArticle.id);
-    } else {
+    } else if (regularArticles.length > 0) {
         heroArticle = regularArticles[0];
         usedIds.add(heroArticle.id);
     }
@@ -1317,8 +1056,8 @@ function renderHomeFeed(container) {
     const carouselPool = [
         ...explicitCarousel,
         heroArticle,
-        ...explicitHero.filter(a => a.id !== heroArticle.id),
-        ...autoArticles.filter(a => a.id !== heroArticle.id)
+        ...explicitHero.filter(a => a.id !== heroArticle?.id),
+        ...autoArticles.filter(a => a.id !== heroArticle?.id)
     ].filter(Boolean);
 
     // Deduplicate
@@ -1334,25 +1073,30 @@ function renderHomeFeed(container) {
 
     let html = '';
 
-    // ════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════
     // 1. TOP HORIZONTAL SCROLLING CAROUSEL (AS SEEN IN PICTURE)
-    // ════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════
     if (swipeArticles.length > 0) {
         html += buildCarouselSection(swipeArticles);
     }
 
-    // 2. HERO FEATURED MAIN CARD REMOVED AS REQUESTED
+    // ═══════════════════════════════════════════════════════════
+    // 2. HERO FEATURED MAIN CARD (DIRECTLY BELOW CAROUSEL)
+    // ═══════════════════════════════════════════════════════════
+    if (heroArticle) {
+        html += buildFeaturedCard(heroArticle);
+    }
 
-    // ════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════
     // 3. DEDICATED BOOK SECTION
-    // ════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════
     if (bookCovers.length > 0) {
         html += buildBookShowcaseSection(bookCovers, allArticles);
     }
 
-    // ════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════
     // 4. CATEGORY FEEDS
-    // ════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════
     const existingCats = new Set(regularArticles.map(a => (a.category || "").toUpperCase().trim()).filter(Boolean));
     const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c) && c !== "BOOKS" && c !== "BOOK" && c !== "PREMIUM BOOK")];
 
@@ -1367,7 +1111,7 @@ function renderHomeFeed(container) {
         const catName = categoryLabel(cat);
 
         html += `
-        <section class="category-section-block category-section-${cat.toLowerCase().replace(/[^a-z0-9-]/g, "-")} mt-7 sm:mt-9 p-4 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}">
+        <section class="category-section-block category-section-${cat.toLowerCase()} mt-7 sm:mt-9 p-4 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}">
             ${buildCategorySectionHeader(cat, hasMore, false, theme)}
             
             <!-- Category Featured Card -->
@@ -1384,10 +1128,10 @@ function renderHomeFeed(container) {
 
             ${hasMore ? `
             <div class="flex justify-end pt-3">
-                <button class="show-more-pill" data-category="${escapeHtml(cat)}" title="${escapeHtml(catName)} വിഭാഗത്തിലെ കൂടുതൽ ലേഖനങ്ങൾ കാണുക" style="border-color: ${theme.color}40; color: ${theme.color};">
+                <a href="${categoryUrl(cat)}" class="show-more-pill" data-category="${cat}" title="${catName} വിഭാഗത്തിലെ കൂടുതൽ ലേഖനങ്ങൾ കാണുക" style="border-color: ${theme.color}40; color: ${theme.color};">
                     <span class="font-english">VIEW ALL ${catName}</span>
                     <span class="text-xs">&rarr;</span>
-                </button>
+                </a>
             </div>
             ` : ''}
         </section>
@@ -1413,7 +1157,34 @@ function renderCategoryFeed(container, category) {
     });
 
     if (filtered.length === 0) {
-        renderEmpty(`${category} വിഭാഗത്തിൽ ലേഖനങ്ങൾ ഇപ്പോൾ ലഭ്യമല്ല.`);
+        if (allArticles.length === 0) return; // Keep skeleton while articles load
+        let emptyHtml = `
+        <div class="category-filter-banner flex items-center justify-between p-3.5 mb-5 rounded-2xl bg-white/60 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-[#8c7a6b] dark:text-[#94a3b8]">വിഭാഗം:</span>
+                <span class="category-glass-badge">
+                    <span class="font-english text-xs font-black tracking-widest uppercase">${categoryLabel(category)}</span>
+                </span>
+            </div>
+            <button class="show-all-home-btn text-xs font-bold text-[#b4532c] hover:text-[#923e1b] dark:text-[#f87171] dark:hover:text-white transition flex items-center gap-1 font-english">
+                <span>&larr; ALL ARTICLES</span>
+            </button>
+        </div>
+        <div class="article-glass-card p-10 sm:p-14 text-center cursor-default space-y-4">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+            </div>
+            <h3 class="text-base sm:text-lg font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">ഈ വിഭാഗത്തിൽ ലേഖനങ്ങളില്ല</h3>
+            <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8] max-w-sm mx-auto font-['Noto_Sans_Malayalam']">തിരഞ്ഞെടുത്ത വിഭാഗത്തിൽ പുതിയ ലേഖനങ്ങൾ ഉടൻ പ്രസിദ്ധീകരിക്കും.</p>
+            <button class="show-all-home-btn mt-2 px-5 py-2.5 rounded-full bg-[#b4532c] text-white text-xs font-bold hover:bg-[#923e1b] transition shadow-md font-english">
+                &larr; ALL ARTICLES
+            </button>
+        </div>
+        `;
+        container.innerHTML = emptyHtml;
+        container.querySelectorAll(".show-all-home-btn").forEach(btn => {
+            btn.addEventListener("click", () => switchToCategory("ALL"));
+        });
         return;
     }
 
@@ -1423,7 +1194,7 @@ function renderCategoryFeed(container, category) {
         <div class="flex items-center gap-2">
             <span class="text-xs font-bold text-[#8c7a6b] dark:text-[#94a3b8]">വിഭാഗം:</span>
             <span class="category-glass-badge">
-                <span class="font-english text-xs font-black tracking-widest uppercase">${escapeHtml(categoryLabel(category))}</span>
+                <span class="font-english text-xs font-black tracking-widest uppercase">${categoryLabel(category)}</span>
             </span>
             <span class="text-xs text-[#8c7a6b] dark:text-[#94a3b8]">(${filtered.length} ലേഖനങ്ങൾ)</span>
         </div>
@@ -1456,22 +1227,18 @@ function renderCategoryFeed(container, category) {
 /* ─── Category Section Header: glass badge + show-more pill ─── */
 function buildCategorySectionHeader(cat, hasMore, isFilteredView = false, theme = null) {
     const label = cat === "ALL" ? "പുതിയ ലേഖനങ്ങൾ" : categoryLabel(cat);
-    const safeLabel = escapeHtml(label);
     const t = theme || getCategoryTheme(cat);
     const showMoreBtn = (hasMore && !isFilteredView)
-        ? `<button class="show-more-pill" data-category="${escapeHtml(cat)}" title="${safeLabel} വിഭാഗത്തിലെ എല്ലാ ലേഖനങ്ങളും കാണുക" style="border-color: ${t.color}40; color: ${t.color};">
+        ? `<a href="${categoryUrl(cat)}" class="show-more-pill" data-category="${cat}" title="${label} വിഭാഗത്തിലെ എല്ലാ ലേഖനങ്ങളും കാണുക" style="border-color: ${t.color}40; color: ${t.color};">
             <span class="font-english">SHOW MORE</span>
             <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
             <span class="text-xs">&rsaquo;</span>
-           </button>`
+           </a>`
         : ``;
 
     return `
     <div class="category-section-header flex items-center justify-between mb-2">
-        <div class="category-glass-badge border ${t.badgeBorder}">
-            <span class="w-2 h-2 rounded-full inline-block flex-shrink-0" style="background-color: ${t.color};"></span>
-            <span class="font-english text-xs font-black tracking-wider uppercase ${t.badgeText}">${safeLabel}</span>
-        </div>
+        ${categoryTag(cat, { variant: 'section-header', theme: t, displayText: label })}
         ${showMoreBtn}
     </div>`;
 }
@@ -1485,6 +1252,30 @@ function attachShowMoreListeners() {
             switchToCategory(cat);
         });
     });
+    attachBookShelfListeners();
+}
+
+function attachBookShelfListeners() {
+    const loadMoreBtn = document.getElementById("shelf-load-more-btn");
+    if (!loadMoreBtn) return;
+
+    loadMoreBtn.onclick = function() {
+        const grid = document.getElementById("shelf-books-grid");
+        if (!grid) return;
+
+        const hiddenCards = grid.querySelectorAll(".premium-book-card-wrap.hidden");
+        const toShow = Math.min(4, hiddenCards.length);
+        for (let i = 0; i < toShow; i++) {
+            hiddenCards[i].classList.remove("hidden");
+        }
+
+        const remaining = grid.querySelectorAll(".premium-book-card-wrap.hidden");
+        if (remaining.length === 0) {
+            const container = loadMoreBtn.parentElement;
+            if (container) container.classList.add("hidden");
+            loadMoreBtn.style.display = "none";
+        }
+    };
 }
 
 function switchToCategory(cat) {
@@ -1495,9 +1286,6 @@ function switchToCategory(cat) {
     const upper = norm ? norm.toUpperCase() : "ALL";
     currentCategory = upper;
     clearSearch(false);
-<<<<<<< HEAD
-    renderCategoryNavBar();
-=======
 
     // Update active state on nav links
     const articlesBtn = document.getElementById("articles-dropdown-btn");
@@ -1534,21 +1322,12 @@ function switchToCategory(cat) {
         }
     }
 
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
     renderFeed();
     // Scroll to top of feed
     const feedEl = document.getElementById("feed-container");
     if (feedEl) feedEl.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-<<<<<<< HEAD
-/* ═══════════ Format Markdown/Rich Text (Bold, Highlight, Subheadings, Inline Images, Highlight Cards) ═══════════ */
-function formatRichContent(rawText, contentStyle) {
-    if (!rawText) return "";
-    return rawText
-        .split("\n\n")
-        .filter(p => p.trim())
-=======
 window.switchToCategory = switchToCategory;
 window.filterBySavedArticles = function() {
     switchToCategory("SAVED");
@@ -1599,14 +1378,13 @@ function formatRichContent(rawText, contentStyle = "") {
         });
 
     return paragraphs
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
         .map(paragraph => {
             const p = paragraph.trim();
 
             // Dedicated Highlight Card Callout: :::highlight ... ::: or > [!NOTE]
             if (p.startsWith(":::highlight") && p.endsWith(":::")) {
                 const inner = p.replace(/^:::highlight\s*/, "").replace(/\s*:::$/, "").trim();
-                const formattedInner = escapeHtml(inner)
+                const formattedInner = inner
                     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
                     .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
                 return `<div class="highlight-glass-card"><p>${formattedInner}</p></div>`;
@@ -1614,12 +1392,6 @@ function formatRichContent(rawText, contentStyle = "") {
 
             // Subheadings: H2 (## ) and H3 (### )
             if (p.startsWith("## ")) {
-<<<<<<< HEAD
-                return `<h2 class="article-h2">${escapeHtml(p.replace("## ", ""))}</h2>`;
-            }
-            if (p.startsWith("### ")) {
-                return `<h3 class="article-h3">${escapeHtml(p.replace("### ", ""))}</h3>`;
-=======
                 return `<h2 class="article-h2 text-xl font-bold mt-6 mb-2 text-[var(--text)] dark:text-white">${p.replace("## ", "")}</h2>`;
             }
             if (p.startsWith("### ")) {
@@ -1632,7 +1404,6 @@ function formatRichContent(rawText, contentStyle = "") {
                     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>')
                     .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
                 return `<blockquote class="editorial-quote"><p>${quoteText}</p></blockquote>`;
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             }
 
             // Inline Image with Layout/Size: ![caption|size](url) or ![caption](url)
@@ -1640,38 +1411,20 @@ function formatRichContent(rawText, contentStyle = "") {
             if (imgMatch) {
                 const caption = imgMatch[1] || "";
                 const url = imgMatch[3];
-<<<<<<< HEAD
-                if (!/^https?:\/\//i.test(url) && !/^data:image\/(jpeg|png|webp);base64,/i.test(url)) return "";
-                const sizeClass = size === "small" ? "img-small" : size === "medium" ? "img-medium" : "img-full";
-                return `
-                    <div class="article-img-wrap ${sizeClass}">
-                        <img src="${escapeHtml(url)}" alt="${escapeHtml(caption)}">
-                        ${caption && caption !== "ചിത്രം" ? `<div class="article-img-caption">${escapeHtml(caption)}</div>` : ''}
-                    </div>
-=======
                 return `
                     <figure class="article-image-wrap my-6">
                         <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block" loading="lazy">
                         ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
                     </figure>
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                 `;
             }
 
             // Parse bold (**text**) and highlight (==text==)
-<<<<<<< HEAD
-            let formatted = escapeHtml(p)
-                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18] dark:text-white">$1</strong>')
-                .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
-
-            return `<p class="text-base sm:text-lg leading-relaxed mb-4" ${contentStyle}>${formatted}</p>`;
-=======
             let formatted = p
                 .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[var(--text)] dark:text-white">$1</strong>')
                 .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
 
             return `<p class="reading-p" ${contentStyle || ""}>${formatted}</p>`;
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
         })
         .join("");
 }
@@ -1747,26 +1500,28 @@ function getCategoryTheme(cat) {
 
 /* ═══════════ Category Featured Card (Larger & More Prominent) ═══════════ */
 function buildCategoryFeaturedCard(art, theme = null) {
+    if (!art) return "";
     const t = theme || getCategoryTheme(art.category);
-    const dateStr = escapeHtml(art.date || formatDate(art.createdAt));
-    const cleanTitle = escapeHtml(stripMarkdown(art.title));
+    const dateStr = art.date || formatDate(art.createdAt);
+    const cleanTitle = stripMarkdown(art.title);
     const rawPreview = art.excerpt || (art.content ? art.content.substring(0, 160) : "");
-    const cleanPreview = escapeHtml(stripMarkdown(rawPreview));
+    const cleanPreview = stripMarkdown(rawPreview);
     const preview = cleanPreview.substring(0, 150) + (cleanPreview.length > 150 ? "…" : "");
-    const titleStyle = art.titleColor ? `style="color: ${getThemeSafeTextColor(art.titleColor)};"` : '';
-    const contentStyle = art.contentColor ? `style="color: ${getThemeSafeTextColor(art.contentColor)};"` : '';
+    const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
+    const contentStyle = art.contentColor ? `style="color: ${art.contentColor};"` : '';
 
-    const authorName = escapeHtml(art.author || "NUQTHA");
-    const authorInitial = escapeHtml((art.author || "NUQTHA").trim().charAt(0) || "N");
-    const categoryMalayalam = escapeHtml(categoryLabel(art.category));
+    const authorName = art.author || "NUQTHA";
+    const authorInitial = authorName.trim().charAt(0) || "N";
+    const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
+    const categoryMalayalam = categoryLabel(art.category);
 
     return `
-    <article class="category-featured-card group cursor-pointer hover:shadow-xl transition-all duration-300 ${t.cardBorder}" data-id="${escapeHtml(art.id)}">
-        <a href="article.html?id=${encodeURIComponent(art.id)}" class="block">
+    <article class="category-featured-card group cursor-pointer hover:shadow-xl transition-all duration-300 ${t.cardBorder}" data-id="${art.id}">
+        <div class="block stretched-card-wrap">
             <!-- Large Prominent Cover Image -->
             <div class="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden bg-gradient-to-br ${t.accentGrad}">
-                ${art.imageUrl ? `
-                    <img src="${escapeHtml(art.imageUrl)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
+                    <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
                 ` : `
                     <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90">
                         <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
@@ -1778,10 +1533,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
                 <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
                 <!-- Floating Category Badge -->
                 <div class="absolute top-3 left-3 sm:top-4 sm:left-4 z-10">
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-black/60 backdrop-blur-md text-white border border-white/20 shadow-sm font-english">
-                        <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${t.color};"></span>
-                        FEATURED · ${categoryMalayalam}
-                    </span>
+                    ${categoryTag(art.category, { variant: 'category-featured-badge', theme: t })}
                 </div>
                 <!-- Floating Date -->
                 <div class="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
@@ -1794,7 +1546,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
             <!-- Content Area with Bolder Typography -->
             <div class="p-4 sm:p-6 space-y-2.5 sm:space-y-3">
                 <h3 class="text-xl sm:text-2xl md:text-[1.65rem] font-black text-[#1e1b18] dark:text-white leading-snug tracking-tight group-hover:text-[${t.color}] transition-colors" ${titleStyle}>
-                    ${cleanTitle}
+                    <a href="${getStoryUrl(art)}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                 </h3>
 
                 ${preview ? `
@@ -1806,14 +1558,14 @@ function buildCategoryFeaturedCard(art, theme = null) {
                 <!-- Author & CTA Row -->
                 <div class="flex items-center justify-between pt-3 border-t border-[#ebdccb]/60 dark:border-white/10 gap-2 flex-wrap">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center flex-shrink-0">
-                            ${authorInitial}
+                        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy">` : authorInitial}
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
                                 ${authorName}
                             </span>
-                            ${art.transcription ? `<span class="text-[10px] sm:text-[11px] font-semibold text-[#8c7a6b] dark:text-[#cbd5e1] font-['Noto_Sans_Malayalam']">📝 ${escapeHtml(art.transcription)}</span>` : ''}
+                            ${art.transcription ? `<span class="text-[10px] sm:text-[11px] font-semibold text-[#8c7a6b] dark:text-[#cbd5e1] font-['Noto_Sans_Malayalam']">📝 ${art.transcription}</span>` : ''}
                         </div>
                     </div>
 
@@ -1823,35 +1575,36 @@ function buildCategoryFeaturedCard(art, theme = null) {
                     </div>
                 </div>
             </div>
-        </a>
+        </div>
     </article>
     `;
 }
 
 /* ═══════════ 1. Featured Article Card (Reference Design) ═══════════ */
 function buildFeaturedCard(art) {
-    const dateStr = escapeHtml(art.date || formatDate(art.createdAt));
+    if (!art) return "";
+    const dateStr = art.date || formatDate(art.createdAt);
     const words = (art.content || "").length;
     const readMin = Math.max(1, Math.round(words / 400));
-    const cleanTitle = escapeHtml(stripMarkdown(art.title));
+    const cleanTitle = stripMarkdown(art.title);
     const rawPreview = art.excerpt || (art.content ? art.content.substring(0, 160) : "");
-    const cleanPreview = escapeHtml(stripMarkdown(rawPreview));
+    const cleanPreview = stripMarkdown(rawPreview);
     const preview = cleanPreview.substring(0, 160) + (cleanPreview.length > 160 ? "…" : "");
-    const titleStyle = art.titleColor ? `style="color: ${getThemeSafeTextColor(art.titleColor)};"` : '';
-    const contentStyle = art.contentColor ? `style="color: ${getThemeSafeTextColor(art.contentColor)};"` : '';
+    const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
+    const contentStyle = art.contentColor ? `style="color: ${art.contentColor};"` : '';
 
-    const authorName = escapeHtml(art.author || "NUQTHA");
-    const authorInitial = escapeHtml((art.author || "NUQTHA").trim().charAt(0) || "N");
-
-    const categoryMalayalam = escapeHtml(categoryLabel(art.category));
+    const authorName = art.author || "NUQTHA";
+    const authorInitial = authorName.trim().charAt(0) || "N";
+    const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
+    const categoryMalayalam = categoryLabel(art.category);
 
     return `
-    <article class="featured-article-card group cursor-pointer hover:shadow-2xl transition-all duration-300" data-id="${escapeHtml(art.id)}">
-        <a href="article.html?id=${encodeURIComponent(art.id)}" class="block">
+    <article class="featured-article-card group cursor-pointer hover:shadow-2xl transition-all duration-300" data-id="${art.id}">
+        <div class="block stretched-card-wrap">
             <!-- Large Top Cover Image Container -->
             <div class="featured-cover-container relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#b8542c] via-[#aa4923] to-[#803113]">
-                ${art.imageUrl ? `
-                    <img src="${escapeHtml(art.imageUrl)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
+                    <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
                 ` : `
                     <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90">
                         <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
@@ -1866,9 +1619,7 @@ function buildFeaturedCard(art) {
             <div class="featured-card-body p-6 sm:p-8 space-y-4">
                 <!-- Category Pill & Date / Read Time Row -->
                 <div class="flex items-center justify-between gap-3 flex-wrap">
-                    <span class="featured-category-pill">
-                        ${categoryMalayalam}
-                    </span>
+                    ${categoryTag(art.category, { variant: 'featured-pill' })}
                     <span class="text-xs text-[#8c7a6b] dark:text-[#a0aec0] font-medium font-['Noto_Sans_Malayalam']">
                         ${dateStr}
                     </span>
@@ -1876,7 +1627,7 @@ function buildFeaturedCard(art) {
 
                 <!-- Bold Title -->
                 <h2 class="featured-title text-2xl sm:text-3xl font-black leading-snug tracking-tight hover:text-[#b4532c] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
-                    ${cleanTitle}
+                    <a href="${getStoryUrl(art)}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                 </h2>
 
                 <!-- Excerpt text -->
@@ -1887,14 +1638,14 @@ function buildFeaturedCard(art) {
                 <!-- Bottom Row: Author profile & Sleek 'വായിക്കുക →' Button -->
                 <div class="featured-bottom-row flex items-center justify-between pt-4 border-t border-[#ebdccb]/60 dark:border-white/10 gap-3">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center">
-                            ${authorInitial}
+                        <div class="w-8 h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center overflow-hidden flex-shrink-0">
+                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy">` : authorInitial}
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
                                 ${authorName}
                             </span>
-                            ${art.transcription ? `<span class="text-[11px] font-semibold text-[#8c7a6b] dark:text-[#cbd5e1] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${escapeHtml(art.transcription)}</span>` : ''}
+                            ${art.transcription ? `<span class="text-[11px] font-semibold text-[#8c7a6b] dark:text-[#cbd5e1] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${art.transcription}</span>` : ''}
                         </div>
                     </div>
 
@@ -1904,30 +1655,33 @@ function buildFeaturedCard(art) {
                     </div>
                 </div>
             </div>
-        </a>
+        </div>
     </article>
     `;
 }
 
 /* ═══════════ 2. Compact Horizontal Recent Article Card ═══════════ */
 function buildCompactRecentCard(art, theme = null) {
-    const dateStr = escapeHtml(art.date || formatDate(art.createdAt));
+    if (!art) return "";
+    const dateStr = art.date || formatDate(art.createdAt);
     const words = (art.content || "").length;
     const readMin = Math.max(1, Math.round(words / 400));
-    const cleanTitle = escapeHtml(stripMarkdown(art.title));
-    const titleStyle = art.titleColor ? `style="color: ${getThemeSafeTextColor(art.titleColor)};"` : '';
+    const cleanTitle = stripMarkdown(art.title);
+    const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
 
-    const categoryMalayalam = escapeHtml(categoryLabel(art.category));
-    const authorName = escapeHtml(art.author || "NUQTHA");
-    const t = theme || getCategoryTheme(art.category);
+    const categoryMalayalam = categoryLabel(art?.category);
+    const authorName = (art && art.author) || "NUQTHA";
+    const authorInitial = authorName.trim().charAt(0) || "N";
+    const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
+    const t = theme || getCategoryTheme(art?.category);
 
     return `
-    <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300 ${t.cardBorder}" data-id="${escapeHtml(art.id)}">
-        <a href="article.html?id=${encodeURIComponent(art.id)}" class="flex items-center p-3 sm:p-4 gap-3.5 sm:gap-4 w-full">
+    <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300 ${t.cardBorder}" data-id="${art.id}">
+        <div class="flex items-center p-3 sm:p-4 gap-3.5 sm:gap-4 w-full stretched-card-wrap">
             <!-- Left Thumbnail -->
             <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${t.accentGrad}">
-                ${art.imageUrl ? `
-                    <img src="${escapeHtml(art.imageUrl)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
+                ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
+                    <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
                 ` : `
                     <div class="w-full h-full flex items-center justify-center text-white/70 text-[10px]">
                         ചിത്രം
@@ -1937,21 +1691,22 @@ function buildCompactRecentCard(art, theme = null) {
 
             <!-- Right Details -->
             <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-                <span class="text-[11px] font-bold ${t.badgeText} uppercase font-['Noto_Sans_Malayalam'] tracking-wide">
-                    [${categoryMalayalam}]
-                </span>
+                ${categoryTag(art.category, { variant: 'bracket', theme: t })}
 
                 <h4 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[${t.color}] transition-colors" ${titleStyle || 'style="color: #1e1b18;"'}>
-                    ${cleanTitle}
+                    <a href="${getStoryUrl(art)}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                 </h4>
 
                 <div class="flex items-center gap-1.5 text-[11px] sm:text-xs flex-wrap font-['Noto_Sans_Malayalam']">
+                    <div class="w-5 h-5 rounded-full overflow-hidden bg-[#ebdccb]/80 dark:bg-white/10 flex items-center justify-center text-[9px] font-bold text-[#7a4124] dark:text-[#f8fafc] flex-shrink-0">
+                        ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy">` : authorInitial}
+                    </div>
                     <span class="font-bold text-[#1e1b18] dark:text-white">${authorName}</span>
-                    ${art.transcription ? `<span class="text-[#8c7a6b] dark:text-[#a0aec0]">(📝 ${escapeHtml(art.transcription)})</span>` : ''}
+                    ${art.transcription ? `<span class="text-[#8c7a6b] dark:text-[#a0aec0]">(📝 ${art.transcription})</span>` : ''}
                     <span class="text-[#8c7a6b] dark:text-[#a0aec0]">• ${dateStr}</span>
                 </div>
             </div>
-        </a>
+        </div>
     </article>
     `;
 }
@@ -1981,7 +1736,7 @@ function buildBannerCarousel(articles) {
         return '<div class="banner-slide' + activeClass + '" data-index="' + i + '" data-id="' + art.id + '">' +
             '<div class="banner-slide-bg" style="' + bgStyle + '"></div>' +
             '<div class="banner-slide-overlay"></div>' +
-            '<a href="article.html?id=' + art.id + '" class="banner-slide-content" draggable="false">' +
+            '<a href="' + getStoryUrl(art) + '" class="banner-slide-content" draggable="false">' +
                 '<span class="banner-cat-pill">' + catLabel + '</span>' +
                 '<h2 class="banner-slide-title">' + cleanTitle + '</h2>' +
                 (excerpt ? '<p class="banner-slide-excerpt">' + excerpt + '</p>' : '') +
@@ -2034,32 +1789,27 @@ function buildCarouselSection(articles) {
 }
 
 function buildCarouselCard(art) {
+    if (!art) return "";
     const dateStr = art.date || formatDate(art.createdAt);
     const titleStyle = art.titleColor ? 'style="color: ' + art.titleColor + ';"' : '';
     const catLabel = categoryLabel(art.category);
     const cleanTitle = stripMarkdown(art.title);
     const authorName = art.author || "NUQTHA";
 
-<<<<<<< HEAD
-    const imgHtml = art.imageUrl
-        ? '<img src="' + art.imageUrl + '" alt="' + cleanTitle + '" class="carousel-card-img" loading="lazy">'
-        : '<div class="carousel-card-img-placeholder"><svg width="28" height="28" fill="none" stroke="rgba(255,255,255,0.45)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
-=======
     const cardImg = art.thumbnailUrl || art.ogImage || art.imageUrl || art.coverImage;
     const imgHtml = cardImg
         ? '<img src="' + cardImg + '" alt="' + cleanTitle + '" class="carousel-card-img" loading="lazy" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"><div class="carousel-card-img-placeholder" style="display:none; background: linear-gradient(135deg, #2a201c, #4a3328); align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;"><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>'
         : '<div class="carousel-card-img-placeholder" style="background: linear-gradient(135deg, #2a201c, #4a3328); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;"><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 
-    return '<a href="article.html?id=' + art.id + '" class="carousel-card" data-id="' + art.id + '">' +
+    return '<div class="carousel-card cursor-pointer stretched-card-wrap" data-id="' + art.id + '">' +
         imgHtml +
         '<div class="carousel-card-body">' +
-            '<span class="carousel-card-cat">' + catLabel + '</span>' +
-            '<h4 class="carousel-card-title" ' + titleStyle + '>' + cleanTitle + '</h4>' +
+            categoryTag(art.category, { variant: 'carousel' }) +
+            '<h4 class="carousel-card-title" ' + titleStyle + '><a href="' + getStoryUrl(art) + '" class="stretched-card-link text-inherit">' + cleanTitle + '</a></h4>' +
             '<p class="carousel-card-meta font-bold text-[#1e1b18] dark:text-white">' + authorName + '</p>' +
             '<p class="carousel-card-meta">' + dateStr + '</p>' +
         '</div>' +
-    '</a>';
+    '</div>';
 }
 
 /* ═══════════ Auto-Play Banner Setup (called after renderFeed) ═══════════ */
@@ -2171,21 +1921,23 @@ function setupBannerCarousel() {
     });
 
     // Pause on hover / touch
-    banner.addEventListener('mouseenter', stopAutoPlay);
-    banner.addEventListener('mouseleave', startAutoPlay);
-    banner.addEventListener('touchstart', stopAutoPlay, { passive: true });
-    banner.addEventListener('touchend', () => setTimeout(startAutoPlay, 1200), { passive: true });
+    if (banner) {
+        banner.addEventListener('mouseenter', stopAutoPlay);
+        banner.addEventListener('mouseleave', startAutoPlay);
+        banner.addEventListener('touchstart', stopAutoPlay, { passive: true });
+        banner.addEventListener('touchend', () => setTimeout(startAutoPlay, 1200), { passive: true });
 
-    // Touch / swipe support
-    let touchStartX = 0;
-    banner.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
-    banner.addEventListener('touchend', e => {
-        const dx = e.changedTouches[0].clientX - touchStartX;
-        if (Math.abs(dx) > 48) {
-            if (dx < 0) goNext(); else goPrev();
-            startAutoPlay();
-        }
-    }, { passive: true });
+        // Touch / swipe support
+        let touchStartX = 0;
+        banner.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+        banner.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            if (Math.abs(dx) > 48) {
+                if (dx < 0) goNext(); else goPrev();
+                startAutoPlay();
+            }
+        }, { passive: true });
+    }
 
     // Start auto-play
     startAutoPlay();
@@ -2248,9 +2000,9 @@ function setupCarousel() {
         );
     }
 
-    if (prevBtn) prevBtn.addEventListener('click', () => track.scrollBy({ left: -getCardStride() * 2, behavior: 'smooth' }));
-    if (nextBtn) nextBtn.addEventListener('click', () => track.scrollBy({ left: getCardStride() * 2, behavior: 'smooth' }));
-    track.addEventListener('scroll', updateDots, { passive: true });
+    if (prevBtn) prevBtn.addEventListener('click', () => track && track.scrollBy({ left: -getCardStride() * 2, behavior: 'smooth' }));
+    if (nextBtn) nextBtn.addEventListener('click', () => track && track.scrollBy({ left: getCardStride() * 2, behavior: 'smooth' }));
+    if (track) track.addEventListener('scroll', updateDots, { passive: true });
 
     // Auto-scroll every 3 seconds (3000ms) with smooth step
     let autoScrollInterval = null;
@@ -2279,10 +2031,12 @@ function setupCarousel() {
     }
 
     // Pause on hover & touch
-    track.addEventListener('mouseenter', stopAutoScroll);
-    track.addEventListener('mouseleave', startAutoScroll);
-    track.addEventListener('touchstart', stopAutoScroll, { passive: true });
-    track.addEventListener('touchend', () => setTimeout(startAutoScroll, 1500), { passive: true });
+    if (track) {
+        track.addEventListener('mouseenter', stopAutoScroll);
+        track.addEventListener('mouseleave', startAutoScroll);
+        track.addEventListener('touchstart', stopAutoScroll, { passive: true });
+        track.addEventListener('touchend', () => setTimeout(startAutoScroll, 1500), { passive: true });
+    }
 
     // Desktop Mouse Drag to Scroll with Click Protection
     let isDown = false;
@@ -2332,19 +2086,19 @@ function buildBookWidget(seriesName, articles) {
     const totalCount = articles.length;
 
     const itemsHtml = articles.map((art, idx) => {
-        const titleStyle = art.titleColor ? `style="color: ${getThemeSafeTextColor(art.titleColor)};"` : '';
-        const dateStr = escapeHtml(art.date || formatDate(art.createdAt));
+        const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
+        const dateStr = art.date || formatDate(art.createdAt);
         return `
-        <a href="article.html?id=${encodeURIComponent(art.id)}" class="playlist-item-row group/row" data-id="${escapeHtml(art.id)}">
+        <div class="playlist-item-row group/row cursor-pointer stretched-card-wrap" data-id="${art.id}">
             <div class="playlist-index-badge">
                 <span>0${idx + 1}</span>
             </div>
             <div class="playlist-item-info min-w-0 flex-1">
                 <h5 class="playlist-item-title line-clamp-1 group-hover/row:text-[#b4532c] dark:group-hover/row:text-[#f87171] transition-colors" ${titleStyle}>
-                    ${escapeHtml(art.title)}
+                    <a href="${getStoryUrl(art)}" class="stretched-card-link text-inherit">${art.title}</a>
                 </h5>
                 <div class="flex items-center gap-2 text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
-                    <span>${escapeHtml(categoryLabel(art.category))}</span>
+                    ${categoryTag(art.category, { className: 'hover:underline font-bold text-[#b4532c] dark:text-[#f87171]' })}
                     <span>•</span>
                     <span>${dateStr}</span>
                 </div>
@@ -2352,12 +2106,12 @@ function buildBookWidget(seriesName, articles) {
             <div class="playlist-play-icon text-[#b4532c] dark:text-[#f87171] opacity-70 group-hover/row:opacity-100 group-hover/row:translate-x-1 transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
             </div>
-        </a>
+        </div>
         `;
     }).join('');
 
     return `
-    <div class="playlist-glass-card mt-7 mb-3 overflow-hidden" data-playlist="${escapeHtml(seriesName)}">
+    <div class="playlist-glass-card mt-7 mb-3 overflow-hidden" data-playlist="${seriesName}">
         <div class="playlist-header flex items-center justify-between p-4 sm:p-5 border-b border-[#ebdccb]/60 dark:border-white/10">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-2xl bg-blue-600/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0 font-black">
@@ -2366,7 +2120,7 @@ function buildBookWidget(seriesName, articles) {
                 <div>
                     <span class="text-[10px] font-black tracking-widest uppercase font-english text-blue-600 dark:text-blue-400">SERIES / COLLECTION</span>
                     <h3 class="text-base sm:text-lg font-black text-[#1e1b18] dark:text-[#f8fafc] font-['Manjari',sans-serif] leading-tight">
-                                ${escapeHtml(seriesName)}
+                        ${seriesName}
                     </h3>
                 </div>
             </div>
@@ -2383,18 +2137,17 @@ function buildBookWidget(seriesName, articles) {
 
 /* ═══════════ Book / Edition Collection Card (Risala Update Style) ═══════════ */
 function buildBookCard(book, articles) {
-    const cleanTitle = escapeHtml(stripMarkdown(book.title));
+    if (!book) return "";
+    const cleanTitle = stripMarkdown(book.title);
     const count = articles.length;
-    const dateStr = escapeHtml(book.date || formatDate(book.createdAt));
-    const safeId = escapeHtml(book.id);
-    const safeImageUrl = escapeHtml(book.imageUrl || "");
+    const dateStr = book.date || formatDate(book.createdAt);
 
     return `
-    <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${safeId}">
+    <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${book.id}">
         <!-- Cover Image Container (Vertical Magazine Style) -->
         <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
             ${book.imageUrl ? `
-                <img src="${safeImageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                <img src="${book.imageUrl}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
             ` : `
                 <div class="w-full h-full flex items-center justify-center text-white/50 text-xl font-bold">📘</div>
             `}
@@ -2415,7 +2168,7 @@ function buildBookCard(book, articles) {
 
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
 function attachCardListeners() {
-    document.querySelectorAll(".featured-article-card, .category-featured-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card").forEach(card => {
+    document.querySelectorAll(".featured-article-card, .category-featured-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card, .premium-book-card").forEach(card => {
         card.addEventListener("click", function (e) {
             // Direct navigation to article.html
             const id = this.dataset.id;
@@ -2425,7 +2178,7 @@ function attachCardListeners() {
                     // Open Book index page/modal
                     openBookIndex(art);
                 } else {
-                    window.location.href = `article.html?id=${id}`;
+                    window.location.href = getStoryUrl(art || { id });
                 }
             }
         });
@@ -2433,9 +2186,16 @@ function attachCardListeners() {
 }
 
 function openBookIndex(book) {
-    // We can use the existing full screen reader to show a "Book Index"
-    // Or just redirect to article.html which will handle showing the index if it's a BOOK type
-    window.location.href = `article.html?id=${encodeURIComponent(book.id)}`;
+    if (book && book.id) {
+        try {
+            sessionStorage.setItem(`nuqtha_book_${book.id}`, JSON.stringify(book));
+            if (Array.isArray(allArticles)) {
+                const bookChapters = filterAndSortChapters(book, allArticles);
+                sessionStorage.setItem(`nuqtha_book_articles_${book.id}`, JSON.stringify(bookChapters));
+            }
+        } catch (e) {}
+    }
+    window.location.href = getStoryUrl(book);
 }
 
 /* ═══════════ Empty State ═══════════ */
@@ -2447,7 +2207,7 @@ function renderEmpty(message) {
         <div class="w-14 h-14 rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center mx-auto mb-5">
             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
         </div>
-        <p class="text-lg font-bold text-[#4a3b32] mb-2">${escapeHtml(message)}</p>
+        <p class="text-lg font-bold text-[#4a3b32] mb-2">${message}</p>
     </div>`;
 }
 
@@ -2463,13 +2223,23 @@ window.openFullScreenReader = function(id) {
     const readerTitleEl = document.getElementById("reader-title");
     readerTitleEl.textContent = art.title;
     if (art.titleColor) {
-        readerTitleEl.style.color = getThemeSafeTextColor(art.titleColor);
+        readerTitleEl.style.color = art.titleColor;
     } else {
         readerTitleEl.style.color = '';
     }
 
-    document.getElementById("reader-category").textContent = categoryLabel(art.category);
-    document.getElementById("reader-author").textContent = art.author || "NUQTHA";
+    const catEl = document.getElementById("reader-category");
+    if (catEl) {
+        catEl.textContent = categoryLabel(art.category);
+        catEl.href = categoryUrl(art.category);
+        catEl.onclick = (e) => {
+            e.preventDefault();
+            closeReaderView();
+            switchToCategory((art.category || 'GENERAL').toUpperCase());
+        };
+    }
+    const authorEl = document.getElementById("reader-author");
+    if (authorEl) authorEl.textContent = art.author || "NUQTHA";
 
     const transContainer = document.getElementById("reader-transcription-container");
     const transEl = document.getElementById("reader-transcription");
@@ -2482,12 +2252,15 @@ window.openFullScreenReader = function(id) {
         }
     }
 
-    document.getElementById("reader-date").textContent = art.date || formatDate(art.createdAt);
+    const dateEl = document.getElementById("reader-date");
+    if (dateEl) dateEl.textContent = art.date || formatDate(art.createdAt);
 
-    const contentColorStyle = art.contentColor ? `style="color: ${getThemeSafeTextColor(art.contentColor)};"` : 'style="color: var(--text);"';
+    const contentStyle = art.contentColor ? `style="color: ${art.contentColor};"` : '';
+    const contentColorStyle = contentStyle;
 
-    document.getElementById("reader-content").innerHTML = formatRichContent(art.content || art.excerpt || "", contentColorStyle);
-    overlay.classList.remove("hidden");
+    const contentEl = document.getElementById("reader-content");
+    if (contentEl) contentEl.innerHTML = formatRichContent(art.content || art.excerpt || "", contentColorStyle);
+    if (overlay) overlay.classList.remove("hidden");
     document.body.style.overflow = "hidden";
 };
 
@@ -2535,11 +2308,7 @@ window.shareArticle = function(platform) {
                 setTimeout(() => { label.textContent = 'Copy Link'; }, 2000);
             }
         }).catch(() => {
-            const label = document.getElementById('share-copy-label');
-            if (label) {
-                label.textContent = 'Copy failed';
-                setTimeout(() => { label.textContent = 'Copy Link'; }, 2500);
-            }
+            console.info('Article Link:', url);
         });
     }
 };
@@ -2556,9 +2325,6 @@ function formatDate(ts) {
 
 /* ═══════════ HELPER: COUNT ARTICLES BELONGING TO A BOOK ═══════════ */
 function getBookArticleCount(book, articles) {
-<<<<<<< HEAD
-    return getBookChapters(book, articles).length;
-=======
     if (typeof countBookChapters === 'function') {
         return countBookChapters(book, articles);
     }
@@ -2573,47 +2339,32 @@ function getBookArticleCount(book, articles) {
         if (bTitle && a.bookName && a.bookName === bTitle) return true;
         return false;
     }).length;
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 }
 
-/* ═══════════ 1. HOME PAGE BOOK SHOWCASE / CAROUSEL SECTION (COMPACT IN MIDDLE) ═══════════ */
+/* ═══════════ 1. HOME PAGE BOOK SHOWCASE / PREMIUM BOOK SHELF ═══════════ */
 function buildBookShowcaseSection(bookCovers, allArticles) {
-    if (!bookCovers || bookCovers.length === 0) return '';
-
-    return `
-    <section class="category-section-block book-showcase-section mt-6 sm:mt-8 p-3.5 sm:p-5 rounded-2xl border border-[#ebdccb] dark:border-white/10 bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md shadow-xs">
-        <div class="category-section-header flex items-center justify-between mb-3.5">
-            <div class="flex items-center gap-2">
-                <div class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5">
-                    <span class="w-2 h-2 rounded-full inline-block flex-shrink-0 bg-[#b4532c]"></span>
-                    <span class="font-english text-[11px] sm:text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]">BOOKS & EDITIONS</span>
-                    <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-white">പുസ്തകങ്ങൾ</span>
+    if (!bookCovers || bookCovers.length === 0) {
+        return `
+        <section class="premium-books-section mt-6 sm:mt-8 p-4 sm:p-6" aria-label="Books and Editions">
+            <div class="category-section-header flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <a href="${categoryUrl('BOOKS')}" class="category-glass-badge cursor-pointer" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)" aria-label="എല്ലാ പുസ്തകങ്ങളും കാണുക">
+                        <span class="w-2 h-2 rounded-full inline-block flex-shrink-0" style="background-color: var(--terracotta);"></span>
+                        <span class="font-english text-[11px] sm:text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]" translate="no">BOOKS & EDITIONS</span>
+                        <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-white">പുസ്തകങ്ങൾ</span>
+                    </a>
                 </div>
             </div>
-            <button class="show-more-pill" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക" style="border-color: #b4532c40; color: #b4532c;">
-                <span class="font-english text-[11px] sm:text-xs">SHOW MORE</span>
-                <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
-                <span class="text-xs">&rsaquo;</span>
-            </button>
-        </div>
+            <div class="py-10 px-4 text-center text-sm font-['Noto_Sans_Malayalam'] text-[#8c7a6b] dark:text-[#94a3b8] space-y-3">
+                <p>പുസ്തകങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല.</p>
+                <button type="button" onclick="window.location.reload()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-warm)] text-xs font-bold text-[var(--terracotta)] hover:bg-black/5 dark:hover:bg-white/5 transition">
+                    <span>വീണ്ടും ശ്രമിക്കുക (Retry)</span>
+                </button>
+            </div>
+        </section>
+        `;
+    }
 
-<<<<<<< HEAD
-        <!-- Horizontal Swipe Showcase (Compact sizing for future additions) -->
-        <div class="flex gap-3 sm:gap-4 overflow-x-auto pb-2 pt-1 scrollbar-none snap-x snap-mandatory">
-            ${bookCovers.map(book => {
-                const cleanTitle = escapeHtml(stripMarkdown(book.title));
-                const count = getBookArticleCount(book, allArticles);
-                const safeId = escapeHtml(book.id);
-                const safeImageUrl = escapeHtml(book.imageUrl || "");
-                const safeMeta = escapeHtml(book.date || book.category || "Special Issue");
-                const safeVolume = escapeHtml(book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Volume ' + book.volume) : 'Volume 36');
-                const safeIssue = escapeHtml(book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue: ' + book.issue) : 'Issue: 27');
-                return `
-                <div class="book-glass-card w-32 sm:w-36 md:w-40 flex-shrink-0 snap-start group cursor-pointer bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col" data-id="${safeId}">
-                    <div class="aspect-[3/4] w-full bg-[#f7eedf] dark:bg-[#0c0d12] overflow-hidden relative">
-                        ${book.imageUrl ? `
-                            <img src="${safeImageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
-=======
     const booksHtml = bookCovers.map((book, idx) => {
         if (!book) return '';
         const cleanTitle = (typeof stripMarkdown === 'function' ? stripMarkdown(book.title || '') : (book.title || '')).trim() || 'Untitled Book';
@@ -2655,28 +2406,13 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
                                 <span class="text-3xl" aria-hidden="true">📚</span>
                                 <span class="font-english font-bold text-[10px] uppercase opacity-75 mt-1" translate="no">NUQTHA EDITION</span>
                             </div>
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                         ` : `
-                            <div class="w-full h-full flex flex-col items-center justify-center text-[#b4532c] dark:text-white/40 space-y-1">
-                                <span class="text-2xl">📚</span>
-                                <span class="text-[9px] font-bold font-english uppercase">Edition</span>
+                            <div class="premium-book-placeholder">
+                                <span class="text-3xl" aria-hidden="true">📚</span>
+                                <span class="font-english font-bold text-[10px] uppercase opacity-75 mt-1" translate="no">NUQTHA EDITION</span>
                             </div>
                         `}
                     </div>
-<<<<<<< HEAD
-                    <!-- Maroon Title Banner -->
-                    <div class="bg-[#b4532c] text-white py-1 px-2 text-center text-[11px] font-bold font-['Anek_Malayalam'] truncate">
-                        ${cleanTitle}
-                    </div>
-                    <!-- Details / Count -->
-                    <div class="py-1 px-1.5 text-center bg-[#fbf7ee]/40 dark:bg-white/[0.02] border-t border-[#ebdccb]/60 dark:border-white/10 space-y-0.5">
-                        <p class="text-[10px] font-bold text-[#1e1b18] dark:text-white font-english truncate">
-                            ${safeMeta}
-                        </p>
-                        <p class="text-[9px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam'] truncate">
-                            ${count} ലേഖനങ്ങൾ
-                        </p>
-=======
                 </div>
                 <div class="premium-book-info">
                     <h3 class="premium-book-title">${cleanTitle}</h3>
@@ -2690,12 +2426,45 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
                             ${isFree ? '₹0 • സൗജന്യം' : `₹${price} • PREMIUM`}
                         </span>
                         ${displayDate ? `<span>${displayDate}</span>` : ''}
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                     </div>
                 </div>
-                `;
-            }).join('')}
+            </a>
         </div>
+        `;
+    }).join('');
+
+    const showMoreBtnHtml = bookCovers.length > 4 ? `
+    <div class="flex justify-center mt-4 sm:mt-6">
+        <button id="shelf-load-more-btn" class="premium-books-load-more-btn" type="button" aria-controls="shelf-books-grid">
+            <span>കൂടുതൽ കാണുക</span>
+            <span class="opacity-70 font-english text-xs" translate="no">(Show more)</span>
+            <span aria-hidden="true">&darr;</span>
+        </button>
+    </div>
+    ` : '';
+
+    return `
+    <section class="premium-books-section mt-6 sm:mt-8 p-4 sm:p-6" aria-label="Books and Editions">
+        <div class="category-section-header flex items-center justify-between mb-3.5 sm:mb-5">
+            <div class="flex items-center gap-2">
+                <a href="${categoryUrl('BOOKS')}" class="category-glass-badge border-[#b4532c]/30 bg-[#b4532c]/5 cursor-pointer hover:bg-[#b4532c]/10 transition" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക (View all books)" aria-label="എല്ലാ പുസ്തകങ്ങളും കാണുക">
+                    <span class="w-2 h-2 rounded-full inline-block flex-shrink-0 bg-[#b4532c]"></span>
+                    <span class="font-english text-[11px] sm:text-xs font-black tracking-widest uppercase text-[#b4532c] dark:text-[#f87171]" translate="no">BOOKS & EDITIONS</span>
+                    <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-white">പുസ്തകങ്ങൾ</span>
+                </a>
+            </div>
+            <a href="${categoryUrl('BOOKS')}" class="show-more-pill" data-category="BOOKS" title="എല്ലാ പുസ്തകങ്ങളും കാണുക" style="border-color: #b4532c40; color: #b4532c;">
+                <span class="font-english text-[11px] sm:text-xs" translate="no">SHOW MORE</span>
+                <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
+                <span class="text-xs">&rsaquo;</span>
+            </a>
+        </div>
+
+        <div id="shelf-books-grid" class="premium-books-grid">
+            ${booksHtml}
+        </div>
+
+        ${showMoreBtnHtml}
     </section>
     `;
 }
@@ -2733,18 +2502,8 @@ function renderBooksCategoryFeed(container) {
         html += `
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
             ${bookCovers.map(book => {
-                const cleanTitle = escapeHtml(stripMarkdown(book.title));
+                const cleanTitle = stripMarkdown(book.title);
                 const count = getBookArticleCount(book, allArticles);
-<<<<<<< HEAD
-                const safeId = escapeHtml(book.id);
-                const safeImageUrl = escapeHtml(book.imageUrl || "");
-                const safeMeta = escapeHtml(book.date || book.category || "Special Issue");
-                return `
-                <div class="book-glass-card group cursor-pointer flex flex-col bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] dark:hover:border-[#f87171] shadow-2xs hover:shadow-lg transition-all duration-300" data-id="${safeId}">
-                    <div class="aspect-[3/4] w-full bg-[#f7eedf] dark:bg-[#0c0d12] overflow-hidden relative">
-                        ${book.imageUrl ? `
-                            <img src="${safeImageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
-=======
                 const isPremium = Boolean(
                     book.type === 'premium' ||
                     book.bookType === 'premium' ||
@@ -2770,7 +2529,6 @@ function renderBooksCategoryFeed(container) {
                                 <span class="text-3xl">📚</span>
                                 <span class="text-xs font-bold font-english uppercase">Book Edition</span>
                             </div>
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                         ` : `
                             <div class="w-full h-full flex flex-col items-center justify-center text-[#b4532c] dark:text-white/40 space-y-1">
                                 <span class="text-3xl">📚</span>
@@ -2791,10 +2549,10 @@ function renderBooksCategoryFeed(container) {
                     <!-- Details / Meta Underneath -->
                     <div class="py-2.5 px-2.5 text-center bg-[#fbf7ee]/40 dark:bg-white/[0.02] border-t border-[#ebdccb]/60 dark:border-white/10 space-y-1">
                         <p class="text-xs font-bold text-[#1e1b18] dark:text-white font-english tracking-wide truncate">
-                            ${safeVolume} • ${safeIssue}
+                            ${book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Volume ' + book.volume) : 'Volume 36'} • ${book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue: ' + book.issue) : 'Issue: 27'}
                         </p>
                         <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">
-                            ${escapeHtml(book.date || 'Recent Issue')}
+                            ${book.date || 'Recent Issue'}
                         </p>
                         <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
                             ${count} ലേഖനങ്ങൾ ഉൾക്കൊള്ളുന്നു

@@ -38,6 +38,8 @@ assert.ok(libJs.includes('nuqtha:library:v1'), "library.js must use cache key nu
 assert.ok(libJs.includes('navigator.deviceMemory') && libJs.includes('navigator.hardwareConcurrency'), "library.js must check deviceMemory and hardwareConcurrency for low-end device optimization");
 assert.ok(libJs.includes('esc ='), "library.js must escape all Firestore text via esc()");
 assert.ok(libJs.includes('from "./firebase-config.js"'), "library.js must import db from ./firebase-config.js");
+assert.ok(libJs.includes('FALLBACK_BOOKS') && libJs.includes('FALLBACK_ARTICLE_ITEMS'), "library.js must load book and article fallback datasets");
+assert.ok(!libJs.includes('from "./app.js"'), "library.js must not load app.js just to access fallback data");
 
 console.log("  [OK] library.js correctly implements dynamic lazy loading, 5-minute caching, and low-end hardware fallbacks.");
 
@@ -66,6 +68,7 @@ const indexHtml = fs.readFileSync("nuqtha/index.html", "utf8");
 assert.ok(indexHtml.includes('id="library"') && indexHtml.includes('hidden'), "index.html must contain section#library with hidden attribute");
 assert.ok(indexHtml.includes('id="drawer-library-link"'), "index.html drawer must contain drawer-library-link");
 assert.ok(!indexHtml.includes('id="view-switch"'), "index.html must not contain the top view-switch toggle (moved to 3-lines drawer)");
+assert.ok(!indexHtml.includes('id="view-articles"') && !indexHtml.includes('id="view-library"'), "index.html must not contain unused article/library toggle buttons");
 
 console.log("  [OK] index.html correctly integrates #library section and drawer shortcut without navbar toggle clutter.");
 
@@ -77,8 +80,8 @@ assert.ok(appJs.includes("setupLibraryView"), "app.js must define and call setup
 assert.ok(appJs.includes('import("./library.js")'), "app.js must dynamically import ./library.js only when opened");
 assert.ok(appJs.includes('feed.hidden = isLib'), "app.js must toggle feed.hidden");
 assert.ok(appJs.includes('lib.hidden = !isLib'), "app.js must toggle lib.hidden");
-assert.ok(appJs.includes('bA.setAttribute("aria-pressed"'), "app.js must update aria-pressed on view buttons");
 assert.ok(appJs.includes('window.showNuqthaView("articles")'), "app.js category switching must reset view back to articles");
+assert.ok(!appJs.includes('view-articles') && !appJs.includes('view-library'), "app.js must not wire unused navbar toggle buttons");
 
 console.log("  [OK] app.js correctly wires dynamic import and view toggling without polluting initial bundle.");
 
@@ -99,4 +102,3 @@ console.log("  [OK] Admin panel correctly wires Library tab, container, dual art
 console.log("==================================================");
 console.log("PASS: ALL 3D LIBRARY TESTS PASSED SUCCESSFULLY!");
 console.log("==================================================");
-

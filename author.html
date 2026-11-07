@@ -2,6 +2,7 @@
 <html lang="ml">
 <head>
     <meta charset="UTF-8">
+    <base href="/">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Author Profile - NUQTHA</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23b4532c'/></svg>">
@@ -11,40 +12,39 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;500;600;700;800&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="color-scheme" content="light">
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="./tailwind.css">
     <script>
-        window.tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        malayalam: ['Anek Malayalam', 'Noto Sans Malayalam', 'sans-serif'],
-                        english: ['Plus Jakarta Sans', 'sans-serif']
-                    }
+        (function() {
+            try {
+                var s = localStorage.getItem("nuqtha_theme") || localStorage.getItem("theme");
+                if (s === "dark") {
+                    document.documentElement.classList.add("dark");
+                    document.documentElement.style.colorScheme = "dark";
+                } else {
+                    document.documentElement.classList.remove("dark");
+                    document.documentElement.style.colorScheme = "light";
                 }
-            }
-        };
+            } catch (e) {}
+        })();
     </script>
+    <script type="module" src="./js/ui-safe.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-[#fbf7ee] dark:bg-[#0b0c10] text-[#1e1b18] dark:text-[#f8fafc] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col justify-between">
+<body class="bg-[var(--bg)] dark:bg-[#0b0c10] text-[var(--text)] dark:text-[#f8fafc] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col justify-between">
 
     <!-- Top Minimal Sticky Header -->
-    <header class="sticky top-0 z-40 bg-[#fbf7ee]/90 dark:bg-[#0b0c10]/90 backdrop-blur-md border-b border-[#ebdccb] dark:border-white/10">
+    <header class="sticky top-0 z-40 bg-[var(--bg)]/90 dark:bg-[#0b0c10]/90 backdrop-blur-md border-b border-[var(--border)] dark:border-white/10">
         <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
             <!-- Brand Logo returning to Home -->
-            <a href="index.html" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20" title="Return to Home Page">
+            <a href="/" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20" title="Return to Home Page">
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-sm flex items-center justify-center p-1.5 text-white flex-shrink-0 group-hover:scale-110 transition-transform">
                     <svg class="w-full h-full" viewBox="0 0 24 24" fill="currentColor"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z"/></svg>
                 </div>
-                <span translate="no" class="notranslate text-base sm:text-xl font-black uppercase font-english tracking-tight text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] transition-colors">NUQTHA</span>
+                <span class="text-base sm:text-xl font-black uppercase font-english tracking-tight text-[var(--text)] dark:text-white group-hover:text-[#b4532c] transition-colors">NUQTHA</span>
             </a>
 
-<<<<<<< HEAD
-            <div class="flex items-center gap-3">
-                <a href="index.html" class="text-xs font-bold font-english uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-[#ebdccb] dark:border-white/15 text-[#5a4b41] dark:text-[#cbd5e1] hover:bg-black/5 dark:hover:bg-white/10 transition">
-=======
             <div class="flex items-center gap-2 sm:gap-3">
                 <!-- Auth Container (Risala Update Style SIGN IN Pill or User Profile Menu) -->
                 <div id="header-auth-container" class="relative inline-block text-left">
@@ -110,7 +110,6 @@
                 </div>
 
                 <a href="/" class="text-xs font-bold font-english uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-[var(--border)] dark:border-white/15 text-[#5a4b41] dark:text-[#cbd5e1] hover:bg-black/5 dark:hover:bg-white/10 transition">
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                     &larr; Home
                 </a>
                 <!-- Theme Toggle Button -->
@@ -126,7 +125,7 @@
     <main class="w-full max-w-4xl lg:max-w-5xl mx-auto px-3.5 sm:px-6 md:px-8 py-5 sm:py-8 flex-1 space-y-6">
 
         <!-- ═══════════ AUTHOR PROFILE CARD ═══════════ -->
-        <section id="author-card-wrapper" class="p-5 sm:p-8 rounded-3xl bg-white/80 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 shadow-sm backdrop-blur-md space-y-5">
+        <section id="author-card-wrapper" class="p-5 sm:p-8 rounded-3xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 shadow-sm backdrop-blur-md space-y-5">
             <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 text-center sm:text-left">
                 <!-- Large Avatar Photo -->
                 <div class="relative">
@@ -145,7 +144,7 @@
                             <span id="author-role-badge" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-[#b4532c]/10 text-[#b4532c] dark:bg-[#b4532c]/20 dark:text-[#f87171] font-english mb-1">
                                 CONTRIBUTOR · എഴുത്തുകാരൻ
                             </span>
-                            <h1 id="author-name" class="text-2xl sm:text-3xl font-black text-[#1e1b18] dark:text-white tracking-tight font-['Anek_Malayalam']">
+                            <h1 id="author-name" class="text-2xl sm:text-3xl font-black text-[var(--text)] dark:text-white tracking-tight font-['Anek_Malayalam']">
                                 എഴുത്തുകാരൻ
                             </h1>
                         </div>
@@ -158,11 +157,11 @@
 
                     <!-- Stats Badges -->
                     <div class="flex items-center justify-center sm:justify-start gap-2.5 pt-2 flex-wrap">
-                        <div class="px-3 py-1 rounded-xl bg-black/5 dark:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white flex items-center gap-1.5 font-english">
+                        <div class="px-3 py-1 rounded-xl bg-black/5 dark:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white flex items-center gap-1.5 font-english">
                             <span>📚</span>
                             <span id="author-articles-count">0 Articles</span>
                         </div>
-                        <div class="px-3 py-1 rounded-xl bg-black/5 dark:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white flex items-center gap-1.5 font-english">
+                        <div class="px-3 py-1 rounded-xl bg-black/5 dark:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white flex items-center gap-1.5 font-english">
                             <span>🏷️</span>
                             <span id="author-categories-count">0 Categories</span>
                         </div>
@@ -172,7 +171,7 @@
         </section>
 
         <!-- ═══════════ FILTER & SEARCH TOOLBAR ═══════════ -->
-        <section class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white/60 dark:bg-white/5 border border-[#ebdccb] dark:border-white/10 backdrop-blur-md">
+        <section class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white/60 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 backdrop-blur-md">
             <!-- Category Pills Filter -->
             <div id="author-cat-filters" class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 flex-nowrap text-xs font-bold font-english">
                 <button type="button" data-filter="ALL" class="cat-pill active px-3.5 py-1.5 rounded-xl bg-[#b4532c] text-white shadow-xs">ALL</button>
@@ -183,7 +182,7 @@
 
             <!-- Search within author's articles -->
             <div class="relative flex-1 max-w-xs sm:ml-auto">
-                <input type="text" id="author-article-search" placeholder="ഈ രചനകളിൽ തിരയുക..." class="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[#ebdccb] dark:border-white/10 text-xs text-[#1e1b18] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c]">
+                <input type="text" id="author-article-search" placeholder="ഈ രചനകളിൽ തിരയുക..." class="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[var(--border)] dark:border-white/10 text-xs text-[var(--text)] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c]">
                 <svg class="w-3.5 h-3.5 text-[#8c7a6b] absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </div>
         </section>
@@ -193,7 +192,7 @@
             <div class="flex items-center justify-between">
                 <div class="category-glass-badge">
                     <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">STORIES & ARTICLES · </span>
-                    <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[#1e1b18] dark:text-[#f1f5f9]">രചനകൾ</span>
+                    <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[var(--text)] dark:text-[#f1f5f9]">രചനകൾ</span>
                     <span id="filtered-count-badge" class="ml-1 text-[11px] px-2 py-0.5 rounded-full bg-[#b4532c]/10 text-[#b4532c] dark:text-white font-bold">0</span>
                 </div>
             </div>
@@ -207,8 +206,8 @@
         </section>
 
         <!-- Back to feed CTA -->
-        <div class="pt-8 border-t border-[#ebdccb] dark:border-white/10 flex justify-center">
-            <a href="index.html" class="px-6 py-2.5 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
+        <div class="pt-8 border-t border-[var(--border)] dark:border-white/10 flex justify-center">
+            <a href="/" class="px-6 py-2.5 rounded-full bg-[#b4532c] text-white text-xs font-bold uppercase tracking-wider font-english hover:bg-[#923e1b] transition shadow-md">
                 &larr; Back to all stories
             </a>
         </div>
@@ -217,17 +216,13 @@
     <!-- Footer -->
     <footer class="bg-[#241711] text-[#cbbba9] border-t border-[#3d2c22] py-8 mt-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs font-english tracking-wider">
-            &copy; 2026 <span translate="no" class="notranslate">NUQTHA</span>. All rights reserved.
+            &copy; 2026 NUQTHA. All rights reserved.
         </div>
     </footer>
 
     <!-- Firebase Script -->
     <script type="module">
-        import { db, doc, getDoc, collection, getDocs } from "./firebase-config.js";
-<<<<<<< HEAD
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
-        import { initializeThemeToggle } from "./theme.js";
-=======
+        import { db, doc, getDoc, collection, getDocs, getDocsFromCache } from "./firebase-config.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, getStoryUrl } from "./schema-validator.js";
@@ -240,33 +235,45 @@
             getAuthorsMap, 
             findAuthorInMap 
         } from "./js/author-service.js";
-        import { FALLBACK_ARTICLES } from "./app.js";
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
+        import { FALLBACK_ARTICLES } from "./fallback-data.js";
 
         // Theme Setup
         function setupTheme() {
+            const saved = localStorage.getItem("nuqtha_theme") || localStorage.getItem("theme");
+            const isDark = saved === "dark";
+            document.documentElement.classList.toggle("dark", isDark);
+            document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+            document.body.classList.toggle("dark-mode", isDark);
+            updateThemeIcons(isDark);
+
             const btn = document.getElementById("theme-toggle-btn");
+            if (btn) {
+                btn.addEventListener("click", () => {
+                    const willBeDark = !document.documentElement.classList.contains("dark");
+                    document.documentElement.classList.toggle("dark", willBeDark);
+                    document.documentElement.style.colorScheme = willBeDark ? "dark" : "light";
+                    document.body.classList.toggle("dark-mode", willBeDark);
+                    try {
+                        localStorage.setItem("nuqtha_theme", willBeDark ? "dark" : "light");
+                        localStorage.setItem("theme", willBeDark ? "dark" : "light");
+                    } catch (err) {
+                        try {
+                            sessionStorage.setItem("nuqtha_theme", willBeDark ? "dark" : "light");
+                            sessionStorage.setItem("theme", willBeDark ? "dark" : "light");
+                        } catch (_) {}
+                    }
+                    updateThemeIcons(willBeDark);
+                });
+            }
+        }
+
+        function updateThemeIcons(isDark) {
             const sun = document.getElementById("sun-icon");
             const moon = document.getElementById("moon-icon");
-            initializeThemeToggle(btn, sun, moon);
-        }
-
-        // Slug helper
-        function slugify(text) {
-            return (text || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
-        }
-
-        function escapeHtml(value) {
-            return String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[character]);
-        }
-
-        // Extract query params or path params
-        const urlParams = new URLSearchParams(window.location.search);
-        let authorParam = urlParams.get('id') || urlParams.get('name') || urlParams.get('author') || '';
-        
-        // Also check if path has /profile/author/[id]
-        if (!authorParam && window.location.pathname.includes('/profile/author/')) {
-            authorParam = window.location.pathname.split('/profile/author/')[1].split('/')[0].split('?')[0];
+            if (sun && moon) {
+                sun.classList.toggle("hidden", !isDark);
+                moon.classList.toggle("hidden", isDark);
+            }
         }
 
         let allAuthorArticles = [];
@@ -274,28 +281,62 @@
         let searchQuery = "";
 
         async function loadAuthorProfile() {
-            if (!authorParam) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rawName = urlParams.get('name');
+            const rawId = urlParams.get('id');
+            const rawAuthor = urlParams.get('author');
+
+            const nameParam = safeDecodeParam(rawName);
+            const idParam = safeDecodeParam(rawId);
+            const authorParam = safeDecodeParam(rawAuthor);
+
+            let target = nameParam || idParam || authorParam;
+            if (!target && window.location.pathname.includes('/profile/author/')) {
+                target = safeDecodeParam(window.location.pathname.split('/profile/author/')[1].split('/')[0].split('?')[0]);
+            }
+
+            if (!target) {
                 document.getElementById('author-name').textContent = "എഴുത്തുകാരൻ (Author)";
-                document.getElementById('author-bio').textContent = "എഴുത്തുകാരന്റെ വിവരങ്ങൾ ലഭ്യമല്ല.";
+                document.getElementById('author-bio').textContent = "എഴുത്തുകാരന്റെ വിവരങ്ങൾ ലഭ്യമല്ല. ദയവായി സാധുവായ ഒരു രചയിതാവിനെ തിരഞ്ഞെടുക്കുക.";
+                const grid = document.getElementById('author-articles-grid');
+                if (grid) {
+                    grid.innerHTML = `
+                    <div class="col-span-full py-12 text-center space-y-3 bg-white/40 dark:bg-white/5 rounded-3xl p-6 border border-dashed border-[var(--border)] dark:border-white/10">
+                        <p class="text-sm font-bold text-[#5a4b41] dark:text-[#cbd5e1]">എഴുത്തുകാരന്റെ വിവരങ്ങൾ നൽകിയിട്ടില്ല.</p>
+                        <a href="/" class="inline-block px-4 py-2 rounded-full bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition">
+                            ഹോം പേജിലേക്ക് പോകുക
+                        </a>
+                    </div>`;
+                }
                 return;
             }
 
-            const targetSlug = slugify(authorParam);
-            let authorProfile = null;
-
-            // 1. Check Firestore authors collection
             try {
-                const authorRef = doc(db, "authors", targetSlug);
-                const snap = await getDoc(authorRef);
-                if (snap.exists()) {
-                    authorProfile = snap.data();
-                }
-<<<<<<< HEAD
-            } catch (e) {
-                console.warn("[author.html] Direct author doc read error:", e);
-=======
+                // 1. FAST IMMEDIATE HEADER RESOLUTION
+                const authorsMap = await getAuthorsMap(db);
+                const authorProfile = findAuthorInMap(target, authorsMap);
 
-                // 2. FETCH ARTICLES (SDK with 3.5s timeout, then REST, then sessionStorage cache)
+                const cleanTarget = target.replace(/-/g, ' ');
+                const displayName = (authorProfile && authorProfile.name) || cleanTarget;
+                const displayRole = (authorProfile && authorProfile.role) || "CONTRIBUTOR · എഴുത്തുകാരൻ";
+                const displayBio = (authorProfile && authorProfile.bio) || `${displayName} - NUQTHA-യിൽ ലേഖനങ്ങളും പഠനങ്ങളും പ്രസിദ്ധീകരിക്കുന്ന എഴുത്തുകാരൻ.`;
+                const displayPhoto = (authorProfile && authorProfile.photoUrl) || "";
+
+                document.title = `${displayName} - Author Profile | NUQTHA`;
+                document.getElementById('author-name').textContent = displayName;
+                document.getElementById('author-role-badge').textContent = displayRole;
+                document.getElementById('author-bio').textContent = displayBio;
+
+                const avatarEl = document.getElementById('author-avatar');
+                if (avatarEl) {
+                    if (displayPhoto) {
+                        avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${displayName}" class="w-full h-full object-cover rounded-3xl" />`;
+                    } else {
+                        avatarEl.textContent = displayName.trim().charAt(0).toUpperCase() || "N";
+                    }
+                }
+
+                // 2. FETCH ARTICLES (session cache, Firestore, then persistent local cache)
                 let allArticles = [];
 
                 try {
@@ -310,43 +351,16 @@
 
                 if (allArticles.length === 0) {
                     try {
-                        const sdkPromise = getDocs(collection(db, "articles"));
-                        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3500));
-                        const snap = await Promise.race([sdkPromise, timeoutPromise]);
+                        const snap = await getDocs(collection(db, "articles"));
                         allArticles = snap.docs.map(d => normalizeArticleDoc(d.data(), d.id));
-                    } catch (e) {
-                        console.warn("[author.html] SDK fetch timeout or error, trying REST:", e);
-                    }
-                }
-
-                if (allArticles.length === 0) {
-                    try {
-                        const res = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?pageSize=100&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE");
-                        if (res.ok) {
-                            const json = await res.json();
-                            if (json && json.documents) {
-                                json.documents.forEach(docItem => {
-                                    const docId = docItem.name.split("/").pop();
-                                    const data = {};
-                                    if (docItem.fields) {
-                                        for (const [k, v] of Object.entries(docItem.fields)) {
-                                            if (v.stringValue !== undefined) data[k] = v.stringValue;
-                                            else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
-                                            else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
-                                            else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
-                                            else if (v.arrayValue && v.arrayValue.values) {
-                                                data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
-                                            } else {
-                                                data[k] = null;
-                                            }
-                                        }
-                                    }
-                                    allArticles.push(normalizeArticleDoc(data, docId));
-                                });
-                            }
+                    } catch (error) {
+                        console.warn("[author.html] Firestore request failed; checking persistent local cache.", error);
+                        try {
+                            const cachedSnapshot = await getDocsFromCache(collection(db, "articles"));
+                            allArticles = cachedSnapshot.docs.map(d => normalizeArticleDoc(d.data(), d.id));
+                        } catch (cacheError) {
+                            console.warn("[author.html] Articles are unavailable in persistent local cache.", cacheError);
                         }
-                    } catch (err) {
-                        console.error("[author.html] REST fetch error:", err);
                     }
                 }
 
@@ -384,99 +398,7 @@
                 console.error("[author.html] Error in loadAuthorProfile:", err);
             } finally {
                 renderFilteredArticles();
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             }
-
-            // 2. Fetch all articles from Firestore
-            let allArticles = [];
-            try {
-                const snap = await getDocs(collection(db, "articles"));
-                snap.forEach(d => {
-                    allArticles.push(normalizeArticleDoc(d.data(), d.id));
-                });
-            } catch (e) {
-                console.warn("[author.html] Collection fetch error, fallback to REST:", e);
-            }
-
-            // Fallback REST if empty
-            if (allArticles.length === 0) {
-                try {
-                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles?pageSize=100&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e`);
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json && json.documents) {
-                            json.documents.forEach(docItem => {
-                                const docId = docItem.name.split("/").pop();
-                                const data = {};
-                                if (docItem.fields) {
-                                    for (const [k, v] of Object.entries(docItem.fields)) {
-                                        data[k] = v.stringValue !== undefined ? v.stringValue :
-                                                  v.integerValue !== undefined ? parseInt(v.integerValue, 10) :
-                                                  v.timestampValue !== undefined ? v.timestampValue : null;
-                                    }
-                                }
-                                allArticles.push(normalizeArticleDoc(data, docId));
-                            });
-                        }
-                    }
-                } catch (err) {
-                    console.error("[author.html] REST fetch error:", err);
-                }
-            }
-
-            // Filter articles belonging to this author
-            allAuthorArticles = allArticles.filter(art => {
-                const artAuthor = (art.author || "").trim();
-                const artAuthorId = (art.authorId || "").trim();
-                return slugify(artAuthor) === targetSlug || 
-                       slugify(artAuthorId) === targetSlug ||
-                       artAuthor.toLowerCase() === authorParam.toLowerCase() ||
-                       (authorProfile && authorProfile.name && artAuthor.toLowerCase() === authorProfile.name.toLowerCase());
-            });
-
-            // Sort newest first
-            allAuthorArticles.sort((a, b) => {
-                const tA = parseTimestampMillis(a.createdAt);
-                const tB = parseTimestampMillis(b.createdAt);
-                return tB - tA;
-            });
-
-            // Populate Author Profile Card
-            const displayName = (authorProfile && authorProfile.name) || 
-                                (allAuthorArticles[0] && allAuthorArticles[0].author) || 
-                                decodeURIComponent(authorParam).replace(/-/g, ' ');
-
-            const displayRole = (authorProfile && authorProfile.role) || "CONTRIBUTOR · എഴുത്തുകാരൻ";
-            const displayBio = (authorProfile && authorProfile.bio) || 
-                               `${displayName} - NUQTHA-യിൽ ലേഖനങ്ങളും പഠനങ്ങളും പ്രസിദ്ധീകരിക്കുന്ന എഴുത്തുകാരൻ.`;
-
-            document.title = `${displayName} - Author Profile | NUQTHA`;
-            document.getElementById('author-name').textContent = displayName;
-            document.getElementById('author-role-badge').textContent = displayRole;
-            document.getElementById('author-bio').textContent = displayBio;
-
-            const avatarEl = document.getElementById('author-avatar');
-            if (authorProfile && authorProfile.photoUrl) {
-                const photoUrl = authorProfile.photoUrl;
-                if (/^https?:\/\//i.test(photoUrl) || /^data:image\/(jpeg|png|webp);base64,/i.test(photoUrl)) {
-                    const image = document.createElement("img");
-                    image.src = photoUrl;
-                    image.alt = displayName;
-                    image.className = "w-full h-full object-cover rounded-3xl";
-                    avatarEl.replaceChildren(image);
-                } else {
-                    avatarEl.textContent = displayName.trim().charAt(0).toUpperCase() || "N";
-                }
-            } else {
-                avatarEl.textContent = displayName.trim().charAt(0).toUpperCase() || "N";
-            }
-
-            // Update stats
-            document.getElementById('author-articles-count').textContent = `${allAuthorArticles.length} Articles`;
-            const uniqueCats = new Set(allAuthorArticles.map(a => (a.category || "GENERAL").toUpperCase()));
-            document.getElementById('author-categories-count').textContent = `${uniqueCats.size} Categories`;
-
-            renderFilteredArticles();
         }
 
         function renderFilteredArticles() {
@@ -501,13 +423,13 @@
                 );
             }
 
-            badge.textContent = filtered.length;
+            if (badge) badge.textContent = filtered.length;
 
             if (filtered.length === 0) {
                 grid.innerHTML = `
-                <div class="col-span-full py-12 text-center space-y-3 bg-white/40 dark:bg-white/5 rounded-3xl p-6 border border-dashed border-[#ebdccb] dark:border-white/10">
+                <div class="col-span-full py-12 text-center space-y-3 bg-white/40 dark:bg-white/5 rounded-3xl p-6 border border-dashed border-[var(--border)] dark:border-white/10">
                     <p class="text-sm font-bold text-[#5a4b41] dark:text-[#cbd5e1]">ഈ വിഭാഗത്തിൽ ലേഖനങ്ങൾ കണ്ടെത്തിയില്ല.</p>
-                    <button type="button" id="reset-author-filter-btn" class="px-4 py-2 rounded-full bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition">
+                    <button type="button" id="reset-author-filter-btn" class="px-4 py-2 rounded-full bg-[#b4532c] text-white text-xs font-bold font-english hover:bg-[#923e1b] transition cursor-pointer">
                         RESET FILTERS
                     </button>
                 </div>
@@ -527,35 +449,32 @@
             }
 
             grid.innerHTML = filtered.map(art => {
-                const dateStr = escapeHtml(art.date || formatDateSafe(art.createdAt, "Recent"));
-                const cleanTitle = escapeHtml((art.title || "Untitled").replace(/<[^>]*>?/gm, ''));
-                const safeImageUrl = /^https?:\/\//i.test(art.imageUrl || "") ? escapeHtml(art.imageUrl) : "";
-                const safeCategory = escapeHtml(art.category || "GENERAL");
+                const dateStr = art.date || formatDateSafe(art.createdAt, "Recent");
+                const cleanTitle = (art.title || "Untitled").replace(/<[^>]*>?/gm, '');
+                const preview = (art.excerpt || (art.content ? art.content.substring(0, 120) : '')).replace(/<[^>]*>?/gm, '');
 
                 return `
-                <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300">
-                    <a href="article.html?id=${encodeURIComponent(art.id)}" class="flex items-center p-3.5 sm:p-4 gap-3.5 w-full">
+                <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300" onclick="if(!event.target.closest('a')) window.location.href='${getStoryUrl(art)}'">
+                    <div class="flex items-center p-3.5 sm:p-4 gap-3.5 w-full stretched-card-wrap">
                         <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#b8542c] to-[#803113]">
-                            ${safeImageUrl ? `
-                                <img src="${safeImageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
+                            ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
+                                <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
                             ` : `
                                 <div class="w-full h-full flex items-center justify-center text-white/70 text-[10px] font-english uppercase">
-                                    ${safeCategory}
+                                    ${art.category || "NUQTHA"}
                                 </div>
                             `}
                         </div>
                         <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-                            <span class="text-[10px] font-black text-[#b4532c] dark:text-[#f87171] uppercase font-english tracking-wider">
-                                [${safeCategory}]
-                            </span>
+                            ${categoryTag(art.category, { variant: 'bracket' })}
                             <h3 class="text-sm sm:text-base font-extrabold line-clamp-2 leading-snug group-hover:text-[#b4532c] transition-colors">
-                                ${cleanTitle}
+                                <a href="${getStoryUrl(art)}" class="stretched-card-link text-inherit">${cleanTitle}</a>
                             </h3>
                             <p class="text-xs text-[#7a6758] dark:text-[#94a3b8] font-english">
                                 📅 ${dateStr}
                             </p>
                         </div>
-                    </a>
+                    </div>
                 </article>
                 `;
             }).join('');
@@ -590,6 +509,7 @@
         }
 
         setupTheme();
+        initHeaderAuthUI();
         loadAuthorProfile();
     </script>
 </body>
