@@ -18,53 +18,6 @@ export const CATEGORY_LABELS = {
     "GENERAL": "GENERAL"
 };
 
-/**
- * Clean URL slug generator for Malayalam and English text.
- */
-export function slugifyText(str) {
-    if (!str) return "";
-    return String(str)
-        .normalize("NFC")
-        .replace(/\u0D23\u0D4D\u200D/g, "\u0D7A") // ൺ
-        .replace(/\u0D28\u0D4D\u200D/g, "\u0D7B") // ൻ
-        .replace(/\u0D30\u0D4D\u200D/g, "\u0D7C") // ർ
-        .replace(/\u0D32\u0D4D\u200D/g, "\u0D7D") // ൽ
-        .replace(/\u0D33\u0D4D\u200D/g, "\u0D7E") // ൾ
-        .replace(/\u0D15\u0D4D\u200D/g, "\u0D7F") // ൿ
-        .replace(/[\u200B-\u200D\uFEFF]/g, "")
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9\u0D00-\u0D7F]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-}
-
-/**
- * Builds clean SEO-friendly URLs:
- * - Standalone story: /story/:slug
- * - Book edition chapter: /story/:bookSlug/:chapterSlug
- * - Book edition overview: /book/:slug
- */
-export function getStoryUrl(item) {
-    if (!item) return "/";
-    const slug = item.slug || slugifyText(item.title) || item.id || "";
-    if (item.type === "BOOK") {
-        return `/book/${encodeURIComponent(slug)}`;
-    }
-    const bookTitle = item.bookName || item.playlistName;
-    if (bookTitle && String(bookTitle).trim()) {
-        const bookSlug = item.bookSlug || slugifyText(bookTitle);
-        if (bookSlug && slug) {
-            return `/story/${encodeURIComponent(bookSlug)}/${encodeURIComponent(slug)}`;
-        }
-    }
-    return `/story/${encodeURIComponent(slug)}`;
-}
-
-if (typeof window !== "undefined") {
-    window.slugifyText = slugifyText;
-    window.getStoryUrl = getStoryUrl;
-}
-
 const CP437_MAP = {
     0x00C7: 0x80, 0x00FC: 0x81, 0x00E9: 0x82, 0x00E2: 0x83, 0x00E4: 0x84, 0x00E0: 0x85, 0x00E5: 0x86, 0x00E7: 0x87,
     0x00EA: 0x88, 0x00EB: 0x89, 0x00E8: 0x8A, 0x00EF: 0x8B, 0x00EE: 0x8C, 0x00EC: 0x8D, 0x00C4: 0x8E, 0x00C5: 0x8F,
@@ -176,6 +129,20 @@ export function sanitizePriority(priority, defaultVal = 10) {
     if (isNaN(parsed) || parsed < 1) return defaultVal;
     if (parsed > 999) return 999;
     return parsed;
+}
+
+function sanitizeChapterReferences(references) {
+    if (!Array.isArray(references)) return [];
+    return references.slice(0, 1000).map(reference => {
+        if (typeof reference === "string") return sanitizeString(reference, 200, "");
+        if (!reference || typeof reference !== "object") return "";
+        const id = sanitizeString(reference.articleId || reference.id || reference.docId || reference.reference || "", 200, "");
+        if (!id) return "";
+        return {
+            articleId: id,
+            ...(reference.order !== undefined ? { order: sanitizePriority(reference.order, 1) } : {})
+        };
+    }).filter(Boolean);
 }
 
 /**
@@ -296,21 +263,17 @@ export function validateAndSanitizeArticleForSave(raw) {
 
     // 4. Author & Transcription
     const author = sanitizeString(raw.author, 100, "NUQTHA");
-    const authorId = sanitizeString(raw.authorId, 100, "");
+    const authorId = sanitizeString(raw.authorId || "", 100, "");
     const transcription = sanitizeString(raw.transcription, 100, "");
 
     // 5. Excerpt (default first 160 chars of content)
-    const rawExcerptVal = raw.excerpt || raw.intro || raw.introduction || raw.summary || "";
-    const hasCustomExcerpt = Boolean(rawExcerptVal && String(rawExcerptVal).trim());
-    const storedExcerpt = hasCustomExcerpt ? sanitizeString(rawExcerptVal, 1500, "") : "";
-    let excerpt = storedExcerpt;
+    let excerpt = sanitizeString(raw.excerpt, 350, "");
     if (!excerpt) {
         excerpt = content.substring(0, 160) + (content.length > 160 ? "…" : "");
     }
 
     // 6. Cover image
-    const imageUrl = sanitizeImageUrl(raw.imageUrl || raw.thumbnailUrl || "");
-    const thumbnailUrl = sanitizeImageUrl(raw.thumbnailUrl || raw.ogImage || raw.imageUrl || "");
+    const imageUrl = sanitizeImageUrl(raw.imageUrl);
 
     // 7. Colors & Font Size
     const titleColor = sanitizeColor(raw.titleColor, "#1e1b18");
@@ -320,18 +283,22 @@ export function validateAndSanitizeArticleForSave(raw) {
     // 8. Placement & Priority
     const placement = sanitizePlacement(raw.placement);
     const priority = sanitizePriority(raw.priority, 10);
+    const order = sanitizePriority(raw.order, priority);
+    const readingTime = sanitizePriority(raw.readingTime, 0);
 
     // 9. Book Name
     const bookName = sanitizeString(raw.bookName || raw.playlistName, 120, "");
-    const bookId = sanitizeString(raw.bookId, 120, "");
-    const order = (raw.order !== undefined && raw.order !== null && !isNaN(raw.order)) ? parseInt(raw.order, 10) : ((raw.priority !== undefined && !isNaN(raw.priority)) ? parseInt(raw.priority, 10) : 10);
-    const status = sanitizeString(raw.status, 50, "published");
+    const playlistName = sanitizeString(raw.playlistName || "", 120, "");
+    const bookId = sanitizeString(raw.bookId || "", 200, "");
+    const parentBookId = sanitizeString(raw.parentBookId || "", 200, "");
+    const chapters = sanitizeChapterReferences(raw.chapters);
+    const articleIds = sanitizeChapterReferences(raw.articleIds);
+    const presentationUrl = sanitizeString(raw.presentationUrl || "", 2000, "");
+    const presentationName = sanitizeString(raw.presentationName || "", 200, "");
     const volume = sanitizeString(raw.volume, 50, "");
     const issue = sanitizeString(raw.issue, 50, "");
     const leadTitle = sanitizeString(raw.leadTitle, 250, "");
     const featuredTitle = sanitizeString(raw.featuredTitle, 250, "");
-    const slug = sanitizeString(raw.slug || slugifyText(title), 200, "");
-    const bookSlug = sanitizeString(raw.bookSlug || (raw.bookName ? slugifyText(raw.bookName) : (bookName ? slugifyText(bookName) : "")), 200, "");
 
     // 10. Type (ARTICLE or BOOK)
     const type = raw.type === "BOOK" ? "BOOK" : "ARTICLE";
@@ -341,25 +308,17 @@ export function validateAndSanitizeArticleForSave(raw) {
 
     // Estimate payload size for Firestore 1MB doc ceiling
     const estimatedBytes = (title.length + content.length + imageUrl.length + excerpt.length + author.length + transcription.length) * 2;
-    if (estimatedBytes > 950000) {
+    if (estimatedBytes > 700000) {
         throw new Error("ലേഖനത്തിന്റെ ആകെ വലിപ്പം കൂടുതലാണ് (ചിത്രത്തിന്റെയോ ഉള്ളടക്കത്തിന്റെയോ വലിപ്പം കുറയ്ക്കുക).");
     }
 
-    const chapters = Array.isArray(raw.chapters) ? raw.chapters : [];
-
     return {
         title,
-        slug,
-        bookSlug,
         category,
         author,
         authorId,
         transcription,
         imageUrl,
-        thumbnailUrl,
-        ogImage: thumbnailUrl,
-        hasCustomExcerpt,
-        storedExcerpt,
         excerpt,
         content,
         titleColor,
@@ -367,11 +326,16 @@ export function validateAndSanitizeArticleForSave(raw) {
         fontSize,
         placement,
         priority,
-        bookName,
-        bookId,
         order,
-        status,
+        readingTime,
+        bookName,
+        playlistName,
+        bookId,
+        parentBookId,
         chapters,
+        articleIds,
+        presentationUrl,
+        presentationName,
         volume,
         issue,
         leadTitle,
@@ -391,8 +355,6 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         return {
             id: docId || "unknown",
             title: "തലക്കെട്ടില്ല (Untitled)",
-            slug: "",
-            bookSlug: "",
             category: "GENERAL",
             author: "NUQTHA",
             authorId: "",
@@ -405,7 +367,16 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
             fontSize: "medium",
             placement: "AUTO",
             priority: 10,
+            order: 10,
+            readingTime: 0,
             bookName: "",
+            playlistName: "",
+            bookId: "",
+            parentBookId: "",
+            chapters: [],
+            articleIds: [],
+            presentationUrl: "",
+            presentationName: "",
             type: "ARTICLE",
             date: "",
             createdAt: null
@@ -418,16 +389,10 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const author = sanitizeString(rawDoc.author, 100, "NUQTHA");
     const authorId = sanitizeString(rawDoc.authorId || "", 100, "");
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
-    const imageUrl = sanitizeImageUrl(rawDoc.imageUrl || rawDoc.thumbnailUrl || rawDoc.ogImage || "");
-    const thumbnailUrl = sanitizeImageUrl(rawDoc.thumbnailUrl || rawDoc.ogImage || rawDoc.imageUrl || "");
-    const slug = sanitizeString(rawDoc.slug || slugifyText(title), 200, "");
-    const bookSlug = sanitizeString(rawDoc.bookSlug || (rawDoc.bookName ? slugifyText(rawDoc.bookName) : (rawDoc.playlistName ? slugifyText(rawDoc.playlistName) : "")), 200, "");
+    const imageUrl = sanitizeImageUrl(rawDoc.imageUrl);
     const content = sanitizeString(rawDoc.content, 500000, "");
     
-    const rawExcerptVal = rawDoc.excerpt || rawDoc.intro || rawDoc.introduction || rawDoc.summary || "";
-    const hasCustomExcerpt = Boolean(rawExcerptVal && String(rawExcerptVal).trim());
-    const storedExcerpt = hasCustomExcerpt ? sanitizeString(rawExcerptVal, 1500, "") : "";
-    let excerpt = storedExcerpt;
+    let excerpt = sanitizeString(rawDoc.excerpt, 350, "");
     if (!excerpt && content) {
         excerpt = content.substring(0, 160) + (content.length > 160 ? "…" : "");
     }
@@ -437,21 +402,21 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const fontSize = sanitizeFontSize(rawDoc.fontSize, "medium");
     const placement = sanitizePlacement(rawDoc.placement);
     const priority = sanitizePriority(rawDoc.priority, 10);
+    const order = sanitizePriority(rawDoc.order, priority);
+    const readingTime = sanitizePriority(rawDoc.readingTime, 0);
     const bookName = sanitizeString(rawDoc.bookName || rawDoc.playlistName, 120, "");
-    const bookId = sanitizeString(rawDoc.bookId, 120, "");
-    const order = (rawDoc.order !== undefined && rawDoc.order !== null && !isNaN(rawDoc.order)) ? parseInt(rawDoc.order, 10) : ((rawDoc.priority !== undefined && !isNaN(rawDoc.priority)) ? parseInt(rawDoc.priority, 10) : 10);
-    const status = sanitizeString(rawDoc.status, 50, "published");
-    const chapters = Array.isArray(rawDoc.chapters) ? rawDoc.chapters : [];
+    const playlistName = sanitizeString(rawDoc.playlistName || "", 120, "");
+    const bookId = sanitizeString(rawDoc.bookId || "", 200, "");
+    const parentBookId = sanitizeString(rawDoc.parentBookId || "", 200, "");
+    const chapters = sanitizeChapterReferences(rawDoc.chapters);
+    const articleIds = sanitizeChapterReferences(rawDoc.articleIds);
+    const presentationUrl = sanitizeString(rawDoc.presentationUrl || "", 2000, "");
+    const presentationName = sanitizeString(rawDoc.presentationName || "", 200, "");
     const volume = sanitizeString(rawDoc.volume, 50, "");
     const issue = sanitizeString(rawDoc.issue, 50, "");
     const leadTitle = sanitizeString(rawDoc.leadTitle, 250, "");
     const featuredTitle = sanitizeString(rawDoc.featuredTitle, 250, "");
-    // Normalizing Type (ARTICLE or BOOK)
-    const rawCat = (rawDoc.category || "").toString().toLowerCase().trim();
-    const isBookCat = rawCat === "premium book" || rawCat === "book" || rawCat === "books";
-    const hasChaptersArray = chapters.length > 0;
-    const isBook = rawDoc.type === "BOOK" || (isBookCat && !bookId) || (hasChaptersArray && !bookId);
-    const type = isBook ? "BOOK" : "ARTICLE";
+    const type = rawDoc.type === "BOOK" ? "BOOK" : "ARTICLE";
 
     // Normalizing createdAt timestamp
     const createdAt = rawDoc.createdAt || rawDoc.createTime || null;
@@ -460,17 +425,10 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     return {
         id,
         title,
-        slug,
-        bookSlug,
         category,
         author,
-        authorId,
         transcription,
         imageUrl,
-        thumbnailUrl,
-        ogImage: thumbnailUrl,
-        hasCustomExcerpt,
-        storedExcerpt,
         excerpt,
         content,
         titleColor,
@@ -478,11 +436,16 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         fontSize,
         placement,
         priority,
-        bookName,
-        bookId,
         order,
-        status,
+        readingTime,
+        bookName,
+        playlistName,
+        bookId,
+        parentBookId,
         chapters,
+        articleIds,
+        presentationUrl,
+        presentationName,
         volume,
         issue,
         leadTitle,

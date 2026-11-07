@@ -1,58 +1,10 @@
-import { safeInit } from "./js/ui-safe.js";
-import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
-import { 
-    checkIsAdminUser, 
-    initAuthStateListener, 
-    signInWithGoogle, 
-    signOutUser, 
-    getCachedAuthUser, 
-    ADMIN_SESSION_KEY 
-} from "./js/auth-system.js";
-
-export function isMainBook(art) {
-    if (!art) return false;
-    // Strictly exclude any document that has a bookId referencing a book (these are chapters)
-    if (art.bookId && String(art.bookId).trim() && String(art.bookId).trim() !== String(art.id)) {
-        return false;
-    }
-    // Strictly exclude chapters or sub-items
-    if (art.type === "CHAPTER" || art.isChapter === true) {
-        return false;
-    }
-    // An article with bookId, bookName, or chapter order is a chapter/sub-item
-    if (art.type === "ARTICLE" && (art.bookId || art.bookName || art.order !== undefined || art.chapterIndex !== undefined)) {
-        return false;
-    }
-    // Main books created via Step 1 have type === "BOOK"
-    if (art.type === "BOOK") {
-        return true;
-    }
-    // Legacy support: category is premium book/book, has chapters array, and no parent book
-    if (Array.isArray(art.chapters) && !art.bookId && art.category && (art.category.toLowerCase() === "premium book" || art.category.toLowerCase() === "book")) {
-        return true;
-    }
-    return false;
-}
-window.isMainBook = isMainBook;
-
-export function isBookOrChapter(art) {
-    if (!art) return false;
-    if (art.type === "BOOK") return true;
-    if (art.bookId && String(art.bookId).trim()) return true;
-    if (art.bookName && String(art.bookName).trim()) return true;
-    if (art.playlistName && String(art.playlistName).trim()) return true;
-    if (art.category && (art.category.toLowerCase() === "premium book" || art.category.toLowerCase() === "book")) return true;
-    return false;
-}
-window.isBookOrChapter = isBookOrChapter;
-
-"use strict";
 /**
  * NUQTHA — Admin Dashboard Logic (admin.js)
  * 4-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
  * With Strict Data Validation & Schema Sanitization
  */
-import { db, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, fetchWithRetry, getFirebaseApiKey } from "./firebase-config.js";
+import { app, db, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
+import { getDownloadURL, getStorage, ref, uploadBytesResumable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import {
     validateAndSanitizeArticleForSave,
     normalizeArticleDoc,
@@ -60,42 +12,78 @@ import {
     sanitizePriority,
     sanitizeString,
     parseTimestampMillis,
-    ALLOWED_CATEGORIES,
-    slugifyText,
-    getStoryUrl
+    ALLOWED_CATEGORIES
 } from "./schema-validator.js";
+import { getBookArticleLinkFields, getBookChapters } from "./book-data.js";
+import { applySavedTheme } from "./theme.js";
+import { installGlobalErrorLogging, safeInit } from "./js/ui-safe.js";
+
+applySavedTheme();
+installGlobalErrorLogging();
 
 let editingArticleId = null; // null = create mode, string = edit mode
 let currentArticlesList = [];
-export let safeArticles = [];
-if (typeof window !== "undefined") {
-    window.safeArticles = safeArticles;
-}
 let activeTab = "create";
 let selectedBase64Image = "";
-let selectedBase64Thumbnail = "";
 let selectedBookCoverBase64 = "";
+let isBookCoverProcessing = false;
+let selectedBookCoverObjectUrl = "";
 let bmSelectedArticleImageBase64 = "";
-let bmPresentationFileBase64 = "";
+let bmPresentationFile = null;
 let bmPresentationFileName = "";
 let activeBookName = "";
 let activeBookAuthor = "";
 let activeBookCoverDoc = null;
 let activeBookChapters = [];
+let attachedArticlesPage = 1;
+let selectedAttachArticleIds = new Set();
+let articleLoadState = "loading";
 let dragSrcChapterIndex = null;
 let pendingInlineBase64 = "";
-let compactArticlesDisplayLimit = 20;
 
 const ADMIN_PASSWORD = "admin768";
 const AUTH_STORAGE_KEY = "nuqtha_admin_authenticated";
 let isDashboardInitialized = false;
+const storage = getStorage(app);
+
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[character]);
+}
+
+function safeImageSource(value) {
+    const source = String(value || "");
+    return /^https?:\/\//i.test(source) || /^data:image\/(jpeg|png|webp);base64,/i.test(source) ? escapeHtml(source) : "";
+}
+
+function setAuthorPhotoPreview(container, source, alt = "Author photo") {
+    if (!container) return;
+    const safeSource = safeImageSource(source);
+    if (!safeSource) {
+        container.textContent = "?";
+        return;
+    }
+    const image = document.createElement("img");
+    image.src = source;
+    image.alt = alt;
+    image.className = "w-full h-full object-cover rounded-2xl";
+    image.onerror = () => { container.textContent = "?"; };
+    container.replaceChildren(image);
+}
+
+function compressCanvasForFirestore(canvas, preferredQuality = 0.8, maxCharacters = 250000) {
+    const qualities = [...new Set([preferredQuality, 0.7, 0.6, 0.5].filter(quality => quality <= preferredQuality))];
+    for (const quality of qualities) {
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        if (dataUrl.length <= maxCharacters) return dataUrl;
+    }
+    return "";
+}
 
 function initAdminDashboard() {
     if (isDashboardInitialized) return;
     isDashboardInitialized = true;
 
-    // safeInit imported from ./js/ui-safe.js
-
+    safeInit("initAdminActionDelegation", initAdminActionDelegation);
     safeInit("initTabNavigation", initTabNavigation);
     safeInit("initArticleForm", initArticleForm);
     safeInit("initFormattingToolbar", initFormattingToolbar);
@@ -107,13 +95,211 @@ function initAdminDashboard() {
     safeInit("initBookManagerSuite", initBookManagerSuite);
     safeInit("listenToFirestoreArticles", listenToFirestoreArticles);
     safeInit("initAuthorManager", initAuthorManager);
-    safeInit("initMoreMenuManager", initMoreMenuManager);
+    safeInit("runAdminSelfTest", runAdminSelfTest);
+}
+
+function runAdminSelfTest() {
+    if (new URLSearchParams(window.location.search).get("selftest") !== "1") return;
+
+    const requiredIds = [
+        "add-article-form", "admin-logout-btn", "admin-global-status", "bm-active-book-select",
+        "book-meta-name", "publish-book-cover-btn", "bm-art-title", "bm-publish-article-btn",
+        "book-chapters-reorder-list", "bm-save-order-btn", "bm-articles-search", "bm-attach-selected-btn",
+        "bm-presentation-file-input", "bm-save-presentation-btn", "admin-authors-grid", "admin-author-form",
+        "admin-author-name", "admin-author-photo-file", "admin-articles-list", "admin-comments-modal"
+    ];
+    const requiredHandlers = [
+        "switchAdminTab", "startEditArticle", "deleteArticle", "manageBookFromPublished",
+        "viewArticleComments", "saveArticleLayoutQuick", "editAuthorProfile", "deleteAdminComment",
+        "handleSaveBookStep1", "addChapterToBook"
+    ];
+    const results = requiredIds.map(id => ({
+        check: `element #${id}`,
+        result: document.getElementById(id) ? "PASS" : "FAIL"
+    }));
+    results.push(...requiredHandlers.map(name => ({
+        check: `handler ${name}`,
+        result: typeof window[name] === "function" ? "PASS" : "FAIL"
+    })));
+
+    const ids = Array.from(document.querySelectorAll("[id]"), element => element.id);
+    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+    results.push({ check: "unique element IDs", result: duplicates.length === 0 ? "PASS" : `FAIL (${duplicates.length})` });
+    results.push({
+        check: "delegated action handler",
+        result: document.getElementById("admin-main-wrapper")?.dataset.actionsBound === "true" ? "PASS" : "FAIL"
+    });
+
+    console.table(results);
+    const output = document.createElement("pre");
+    output.id = "admin-selftest-results";
+    output.setAttribute("role", "status");
+    output.textContent = results.map(result => `${result.result} ${result.check}`).join("\n");
+    document.getElementById("admin-global-status")?.replaceChildren(output);
+    document.getElementById("admin-global-status")?.classList.remove("hidden");
+}
+
+function initAdminActionDelegation() {
+    const root = document.getElementById("admin-main-wrapper");
+    if (!root || root.dataset.actionsBound === "true") return;
+    root.dataset.actionsBound = "true";
+
+    root.addEventListener("click", event => {
+        const actionElement = event.target.closest("[data-action]");
+        if (!actionElement || !root.contains(actionElement)) return;
+
+        const { action } = actionElement.dataset;
+        switch (action) {
+            case "admin-tab":
+                event.preventDefault();
+                switchAdminTab(actionElement.dataset.tab);
+                break;
+            case "switch-tab":
+                event.preventDefault();
+                switchAdminTab(actionElement.dataset.switchTab);
+                break;
+            case "toggle-panel": {
+                event.preventDefault();
+                const panel = document.getElementById(actionElement.getAttribute("aria-controls"));
+                if (!panel) break;
+                const expanded = actionElement.getAttribute("aria-expanded") === "true";
+                actionElement.setAttribute("aria-expanded", String(!expanded));
+                panel.hidden = expanded;
+                break;
+            }
+            case "edit-article":
+                window.startEditArticle(actionElement.dataset.id);
+                break;
+            case "delete-article":
+                window.deleteArticle(actionElement.dataset.id);
+                break;
+            case "manage-book":
+                window.manageBookFromPublished(actionElement.dataset.name);
+                break;
+            case "view-comments":
+                window.viewArticleComments(actionElement.dataset.id, actionElement.dataset.title);
+                break;
+            case "save-layout":
+                window.saveArticleLayoutQuick(actionElement.dataset.id);
+                break;
+            case "edit-author":
+                window.editAuthorProfile(actionElement.dataset.key);
+                break;
+            case "delete-comment":
+                window.deleteAdminComment(actionElement.dataset.articleId, actionElement.dataset.commentId);
+                break;
+            case "close-comments":
+                window.closeCommentsModal();
+                break;
+            case "remove-message":
+                actionElement.parentElement.remove();
+                break;
+            case "save-book":
+                window.handleSaveBookStep1(event);
+                break;
+            case "choose-book-cover":
+                document.getElementById("book-cover-input")?.click();
+                break;
+            case "remove-book-cover":
+                window.handleRemoveBookCover(event);
+                break;
+            case "new-book":
+                resetBookManagerForm();
+                showGlobalStatus("✨ പുതിയ പുസ്തകം തയ്യാറാക്കുക: വിവരങ്ങൾ നൽകി സേവ് ചെയ്യുക.", "info");
+                break;
+            case "add-chapter":
+                window.addChapterToBook();
+                break;
+            case "save-book-order":
+                saveAndApplyChapterOrder(true);
+                break;
+            case "move-chapter":
+                moveBookChapter(Number(actionElement.dataset.index), actionElement.dataset.direction);
+                break;
+            case "detach-chapter":
+                detachBookChapter(actionElement.dataset.id, actionElement.dataset.title);
+                break;
+            case "attach-selected":
+                attachSelectedArticles();
+                break;
+            case "load-more-attached":
+                attachedArticlesPage += 1;
+                renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+                break;
+            case "retry-articles":
+                window.retryAdminArticleLoad?.();
+                break;
+            case "remove-presentation":
+                removeBookPresentation();
+                break;
+            case "save-presentation":
+                saveBookPresentation();
+                break;
+            default:
+                return;
+        }
+
+        event.stopImmediatePropagation();
+    }, true);
+
+    root.addEventListener("change", event => {
+        const checkbox = event.target.closest(".bm-article-chk");
+        if (!checkbox) return;
+        if (checkbox.checked) selectedAttachArticleIds.add(checkbox.dataset.id);
+        else selectedAttachArticleIds.delete(checkbox.dataset.id);
+    });
+    root.addEventListener("keydown", event => {
+        const actionElement = event.target.closest('[data-action="choose-book-cover"]');
+        if (!actionElement || !["Enter", " "].includes(event.key)) return;
+        event.preventDefault();
+        document.getElementById("book-cover-input")?.click();
+    });
+
+    root.addEventListener("dragstart", event => {
+        const item = event.target.closest(".chapter-reorder-item");
+        if (!item) return;
+        dragSrcChapterIndex = Number(item.dataset.index);
+        item.style.opacity = "0.4";
+        event.dataTransfer.effectAllowed = "move";
+        event.stopPropagation();
+    }, true);
+    root.addEventListener("dragover", event => {
+        const item = event.target.closest(".chapter-reorder-item");
+        if (!item) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        item.classList.add("border-indigo-500", "bg-indigo-50/30");
+        event.stopPropagation();
+    }, true);
+    root.addEventListener("dragleave", event => {
+        event.target.closest(".chapter-reorder-item")?.classList.remove("border-indigo-500", "bg-indigo-50/30");
+        if (event.target.closest(".chapter-reorder-item")) event.stopPropagation();
+    }, true);
+    root.addEventListener("drop", event => {
+        const item = event.target.closest(".chapter-reorder-item");
+        if (!item) return;
+        event.preventDefault();
+        const targetIndex = Number(item.dataset.index);
+        if (dragSrcChapterIndex === null || dragSrcChapterIndex === targetIndex) return;
+        const [moved] = activeBookChapters.splice(dragSrcChapterIndex, 1);
+        activeBookChapters.splice(targetIndex, 0, moved);
+        dragSrcChapterIndex = null;
+        renderBookChaptersReorderList(activeBookChapters);
+        saveAndApplyChapterOrder(false);
+        event.stopPropagation();
+    }, true);
+    root.addEventListener("dragend", event => {
+        const item = event.target.closest(".chapter-reorder-item");
+        if (item) item.style.opacity = "1";
+        dragSrcChapterIndex = null;
+        root.querySelectorAll(".chapter-reorder-item").forEach(row => row.classList.remove("border-indigo-500", "bg-indigo-50/30"));
+        event.stopPropagation();
+    }, true);
 }
 
 function initPlaylistPresets() {
     const playlistInput = document.getElementById("art-playlist-name");
     document.querySelectorAll(".playlist-preset-chip").forEach(chip => {
-        if (!chip) return;
         chip.addEventListener("click", () => {
             const seriesName = chip.dataset.name || chip.textContent.replace("+", "").trim();
             if (playlistInput) {
@@ -132,10 +318,6 @@ function initAdminSecurity() {
     const errorBox = document.getElementById("admin-login-error");
     const togglePwBtn = document.getElementById("toggle-pw-visibility");
     const logoutBtn = document.getElementById("admin-logout-btn");
-    const googleAdminBtn = document.getElementById("admin-google-signin-btn");
-    const unauthorizedNotice = document.getElementById("admin-unauthorized-notice");
-    const unauthorizedMsg = document.getElementById("admin-unauthorized-msg");
-    const switchBtn = document.getElementById("admin-switch-btn");
 
     function unlock() {
         if (authBarrier) authBarrier.classList.add("hidden");
@@ -143,106 +325,29 @@ function initAdminSecurity() {
         initAdminDashboard();
     }
 
-    function lock(unauthorizedUser = null) {
+    function lock() {
         if (authBarrier) authBarrier.classList.remove("hidden");
         if (mainWrapper) mainWrapper.classList.add("hidden");
-        
-        if (unauthorizedUser) {
-            if (unauthorizedNotice) unauthorizedNotice.classList.remove("hidden");
-            if (unauthorizedMsg) {
-                unauthorizedMsg.textContent = `നിങ്ങൾ വായനക്കാരനായി (${unauthorizedUser.email || unauthorizedUser.phoneNumber || unauthorizedUser.name}) ലോഗിൻ ചെയ്തിരിക്കുന്നു. ഈ പ്രസിദ്ധീകരണ പാനലിലേക്ക് പ്രവേശനാനുമതിയില്ല.`;
-            }
-        } else {
-            if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
-        }
-        
         if (passwordInput) {
             passwordInput.value = "";
+            passwordInput.focus();
         }
     }
 
-    if (switchBtn) {
-        switchBtn.addEventListener("click", () => {
-            if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
-            if (passwordInput) passwordInput.focus();
-        });
+    // Check existing session
+    if (sessionStorage.getItem(AUTH_STORAGE_KEY) === "true") {
+        unlock();
+    } else {
+        lock();
     }
 
-    function evaluateSession(user) {
-        const hasSession = sessionStorage.getItem(AUTH_STORAGE_KEY) === "true" || sessionStorage.getItem(ADMIN_SESSION_KEY) === "true";
-        if (hasSession) {
-            unlock();
-            return;
-        }
-
-        if (user) {
-            if (checkIsAdminUser(user)) {
-                try {
-                    sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
-                    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
-                } catch (_) {}
-                unlock();
-            } else {
-                // User is signed in, but NOT an admin
-                lock(user);
-            }
-        } else {
-            lock(null);
-        }
-    }
-
-    // Initial check using cached user
-    const cachedUser = getCachedAuthUser();
-    evaluateSession(cachedUser);
-
-    // Live auth listener
-    initAuthStateListener((firebaseUser) => {
-        evaluateSession(firebaseUser);
-    });
-
-    // Google Admin Sign-In
-    if (googleAdminBtn) {
-        googleAdminBtn.addEventListener("click", async () => {
-            try {
-                googleAdminBtn.disabled = true;
-                googleAdminBtn.classList.add("opacity-60");
-                if (errorBox) errorBox.classList.add("hidden");
-
-                const profile = await signInWithGoogle();
-                if (checkIsAdminUser(profile)) {
-                    sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
-                    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
-                    unlock();
-                } else {
-                    lock(profile);
-                }
-            } catch (err) {
-                console.warn("[Admin Auth] Google sign-in error:", err);
-                if (err?.code !== "auth/popup-closed-by-user") {
-                    if (errorBox) {
-                        errorBox.textContent = "Google ലോഗിൻ പരാജയപ്പെട്ടു: " + (err.message || "");
-                        errorBox.classList.remove("hidden");
-                    }
-                }
-            } finally {
-                googleAdminBtn.disabled = false;
-                googleAdminBtn.classList.remove("opacity-60");
-            }
-        });
-    }
-
-    // Password Form
     if (loginForm) {
         loginForm.addEventListener("submit", (e) => {
             e.preventDefault();
             const val = (passwordInput?.value || "").trim();
             if (val === ADMIN_PASSWORD) {
-                try {
-                    sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
-                    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
-                } catch (_) {}
+                sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
                 if (errorBox) errorBox.classList.add("hidden");
-                if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
                 unlock();
             } else {
                 if (errorBox) {
@@ -268,57 +373,21 @@ function initAdminSecurity() {
     }
 
     if (logoutBtn) {
-        logoutBtn.addEventListener("click", async () => {
+        logoutBtn.addEventListener("click", () => {
             sessionStorage.removeItem(AUTH_STORAGE_KEY);
-            sessionStorage.removeItem(ADMIN_SESSION_KEY);
-            await signOutUser();
             window.location.reload();
         });
     }
-}
-
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-        initAdminSecurity();
-    });
-} else {
-    initAdminSecurity();
 }
 
 /* ═══════════════════════════════════════════════════════════
    1. 4-FOLDER TAB NAVIGATION LOGIC
    ═══════════════════════════════════════════════════════════ */
 function initTabNavigation() {
-    const tabButtons = document.querySelectorAll(".admin-tab-btn");
-    
-    tabButtons.forEach(btn => {
-        btn.addEventListener("click", () => {
-            const tabName = btn.dataset.tab;
-            if (tabName) {
-                switchAdminTab(tabName);
-            }
-        });
-    });
-
-    // Handle jump buttons between tabs (e.g. Next / Back buttons)
-    document.querySelectorAll("[data-switch-tab]").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            e.preventDefault();
-            const targetTab = btn.dataset.switchTab;
-            if (targetTab) {
-                switchAdminTab(targetTab);
-            }
-        });
-    });
-
     // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=book)
     const hash = window.location.hash.replace("#tab=", "").trim();
-    if (["create", "book", "layout", "published", "authors", "menu"].includes(hash)) {
-        try {
-            switchAdminTab(hash);
-        } catch (err) {
-            console.warn("[AdminTab] Deferred initial tab switch:", err);
-        }
+    if (["create", "book", "layout", "authors", "published"].includes(hash)) {
+        switchAdminTab(hash);
     }
 }
 
@@ -353,12 +422,6 @@ export function switchAdminTab(tabName) {
     if (tabName === "layout") {
         renderLayoutManagerList(currentArticlesList);
     }
-
-    if (tabName === "menu") {
-        if (typeof renderAdminMenuListGlobal === "function") {
-            renderAdminMenuListGlobal();
-        }
-    }
 }
 
 // Expose switchAdminTab globally
@@ -384,54 +447,6 @@ function initArticleForm() {
             await handleFormSubmit();
         });
     }
-
-    initAdminExcerptControls();
-}
-
-function initAdminExcerptControls() {
-    const excerptInput = document.getElementById("art-excerpt");
-    if (!excerptInput) return;
-
-    excerptInput.addEventListener("input", () => {
-        updateAdminExcerptUI();
-    });
-
-    // Initial pass
-    updateAdminExcerptUI();
-}
-
-export function updateAdminExcerptUI() {
-    const excerptInput = document.getElementById("art-excerpt");
-    const countEl = document.getElementById("art-excerpt-char-count");
-    const previewContainer = document.getElementById("art-excerpt-preview-container");
-    const previewText = document.getElementById("art-excerpt-preview-text");
-    if (!excerptInput) return;
-
-    // Auto-grow with min-height 140px and vertical resize
-    excerptInput.style.height = "auto";
-    const newHeight = Math.max(140, excerptInput.scrollHeight);
-    excerptInput.style.height = `${newHeight}px`;
-
-    const val = excerptInput.value || "";
-    if (countEl) {
-        countEl.textContent = `${val.length} characters`;
-    }
-
-    const trimmed = val.trim();
-    const hasMeaningful = trimmed.replace(/[\s\p{P}\p{S}]/gu, '').length > 0;
-    if (previewContainer && previewText) {
-        if (hasMeaningful) {
-            previewText.textContent = trimmed;
-            previewContainer.classList.remove("hidden");
-        } else {
-            previewText.textContent = "";
-            previewContainer.classList.add("hidden");
-        }
-    }
-}
-
-if (typeof window !== "undefined") {
-    window.updateAdminExcerptUI = updateAdminExcerptUI;
 }
 
 async function handleFormSubmit() {
@@ -443,10 +458,8 @@ async function handleFormSubmit() {
         const rawTitle = document.getElementById("art-title")?.value || "";
         const rawCategory = document.getElementById("art-category")?.value || "HISTORY";
         const rawAuthor = document.getElementById("art-author")?.value || "";
-        const authorId = window.currentUser?.uid || localStorage.getItem("nuqtha_admin_uid") || "admin";
         const rawTranscription = document.getElementById("art-transcription")?.value || "";
         const rawExcerpt = document.getElementById("art-excerpt")?.value || "";
-        const typedExcerpt = rawExcerpt.trim();
         const rawContent = document.getElementById("art-content")?.value || "";
         const rawTitleColor = document.getElementById("art-title-color")?.value || "#1e1b18";
         const rawContentColor = document.getElementById("art-content-color")?.value || "#2b2118";
@@ -456,22 +469,15 @@ async function handleFormSubmit() {
         const rawPriority = document.getElementById("art-priority")?.value;
         const rawBookName = document.getElementById("art-playlist-name")?.value || "";
         const isBookCover = document.getElementById("art-is-book")?.checked || false;
-
-        const effectiveCover = selectedBase64Image || selectedBase64Thumbnail || "";
-        const effectiveThumb = selectedBase64Thumbnail || selectedBase64Image || "";
-        const articleSlug = slugifyText(rawTitle);
+        const existingArticle = editingArticleId ? currentArticlesList.find(article => article.id === editingArticleId) : null;
 
         // STRICT SCHEMA VALIDATION & SANITIZATION
         const sanitized = validateAndSanitizeArticleForSave({
             title: rawTitle,
-            slug: articleSlug,
             category: rawCategory,
             author: rawAuthor,
-            authorId,
             transcription: rawTranscription,
-            imageUrl: effectiveCover,
-            thumbnailUrl: effectiveThumb,
-            ogImage: effectiveThumb,
+            imageUrl: selectedBase64Image || "",
             excerpt: rawExcerpt,
             content: rawContent,
             titleColor: rawTitleColor,
@@ -480,6 +486,10 @@ async function handleFormSubmit() {
             placement: rawPlacement,
             priority: rawPriority,
             bookName: rawBookName,
+            playlistName: existingArticle?.playlistName || rawBookName,
+            bookId: existingArticle?.bookId || "",
+            parentBookId: existingArticle?.parentBookId || "",
+            order: existingArticle?.order || rawPriority,
             type: isBookCover ? "BOOK" : "ARTICLE",
             date: new Date().toLocaleDateString("en-GB")
         });
@@ -489,39 +499,26 @@ async function handleFormSubmit() {
             const articleRef = doc(db, "articles", editingArticleId);
             const updatePayload = {
                 title: sanitized.title,
-                slug: sanitized.slug || articleSlug,
                 category: sanitized.category,
                 author: sanitized.author,
-                authorId: sanitized.authorId || authorId,
-                transcription: sanitized.transcription || "",
-                hasCustomExcerpt: Boolean(typedExcerpt),
-                storedExcerpt: typedExcerpt,
-                excerpt: typedExcerpt,
+                excerpt: sanitized.excerpt,
                 content: sanitized.content,
                 titleColor: sanitized.titleColor,
                 contentColor: sanitized.contentColor,
                 fontSize: sanitized.fontSize,
                 placement: sanitized.placement,
                 priority: sanitized.priority,
+                order: sanitized.order,
                 bookName: sanitized.bookName,
-                type: sanitized.type,
-                updatedAt: serverTimestamp()
+                playlistName: sanitized.playlistName,
+                bookId: sanitized.bookId,
+                parentBookId: sanitized.parentBookId,
+                updatedAt: serverTimestamp(),
             };
 
             // Only update imageUrl if selected/changed or explicitly set
-            if (selectedBase64Image !== undefined && selectedBase64Image !== "") {
-                updatePayload.imageUrl = selectedBase64Image;
-                if (!selectedBase64Thumbnail) {
-                    updatePayload.thumbnailUrl = selectedBase64Image;
-                    updatePayload.ogImage = selectedBase64Image;
-                }
-            }
-            if (selectedBase64Thumbnail !== undefined && selectedBase64Thumbnail !== "") {
-                updatePayload.thumbnailUrl = selectedBase64Thumbnail;
-                updatePayload.ogImage = selectedBase64Thumbnail;
-                if (!selectedBase64Image && !updatePayload.imageUrl) {
-                    updatePayload.imageUrl = selectedBase64Thumbnail;
-                }
+            if (selectedBase64Image !== undefined) {
+                updatePayload.imageUrl = sanitized.imageUrl;
             }
 
             await updateDoc(articleRef, updatePayload);
@@ -532,11 +529,6 @@ async function handleFormSubmit() {
             // CREATE NEW ARTICLE IN FIRESTORE
             await addDoc(collection(db, "articles"), {
                 ...sanitized,
-                hasCustomExcerpt: Boolean(typedExcerpt),
-                storedExcerpt: typedExcerpt,
-                excerpt: typedExcerpt,
-                thumbnailUrl: effectiveThumb,
-                ogImage: effectiveThumb,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
@@ -590,17 +582,6 @@ function resetFormFields() {
     if (previewContainer) previewContainer.classList.add("hidden");
     if (placeholder) placeholder.classList.remove("hidden");
 
-    // Reset Thumbnail / OG Image
-    selectedBase64Thumbnail = "";
-    const thumbInput = document.getElementById("art-thumb-input");
-    const thumbPreview = document.getElementById("thumb-preview");
-    const thumbPreviewContainer = document.getElementById("thumb-preview-container");
-    const thumbPlaceholder = document.getElementById("thumb-placeholder");
-    if (thumbInput) thumbInput.value = "";
-    if (thumbPreview) thumbPreview.src = "";
-    if (thumbPreviewContainer) thumbPreviewContainer.classList.add("hidden");
-    if (thumbPlaceholder) thumbPlaceholder.classList.remove("hidden");
-
     // Reset Colors & Font Size
     const resetColorsBtn = document.getElementById("reset-colors-btn");
     if (resetColorsBtn) resetColorsBtn.click();
@@ -618,16 +599,6 @@ function resetFormFields() {
     if (priorityEl) priorityEl.value = "10";
     if (playlistEl) playlistEl.value = "";
     if (isBookEl) isBookEl.checked = false;
-
-    // Reset Excerpt UI
-    const excerptInput = document.getElementById("art-excerpt");
-    if (excerptInput) {
-        excerptInput.value = "";
-        excerptInput.style.height = "140px";
-    }
-    if (typeof updateAdminExcerptUI === "function") {
-        updateAdminExcerptUI();
-    }
 }
 
 function exitEditMode() {
@@ -667,12 +638,7 @@ window.startEditArticle = function (id) {
     if (catInput) catInput.value = (art.category || "HISTORY").toUpperCase();
     if (authorInput) authorInput.value = art.author || "";
     if (transcriptionInput) transcriptionInput.value = art.transcription || "";
-    if (excerptInput) {
-        excerptInput.value = art.storedExcerpt || (art.hasCustomExcerpt ? art.excerpt : "") || art.excerpt || "";
-        if (typeof updateAdminExcerptUI === "function") {
-            updateAdminExcerptUI();
-        }
-    }
+    if (excerptInput) excerptInput.value = art.excerpt || "";
     if (contentInput) contentInput.value = art.content || "";
 
     // Tab 2: Layout & Playlist
@@ -732,24 +698,6 @@ window.startEditArticle = function (id) {
         if (placeholder) placeholder.classList.remove("hidden");
     }
 
-    // Thumbnail / OG Image preview
-    const thumbPreview = document.getElementById("thumb-preview");
-    const thumbPreviewContainer = document.getElementById("thumb-preview-container");
-    const thumbPlaceholder = document.getElementById("thumb-placeholder");
-    const existingThumb = art.thumbnailUrl || art.ogImage || "";
-
-    if (existingThumb) {
-        selectedBase64Thumbnail = existingThumb;
-        if (thumbPreview) thumbPreview.src = existingThumb;
-        if (thumbPreviewContainer) thumbPreviewContainer.classList.remove("hidden");
-        if (thumbPlaceholder) thumbPlaceholder.classList.add("hidden");
-    } else {
-        selectedBase64Thumbnail = "";
-        if (thumbPreview) thumbPreview.src = "";
-        if (thumbPreviewContainer) thumbPreviewContainer.classList.add("hidden");
-        if (thumbPlaceholder) thumbPlaceholder.classList.remove("hidden");
-    }
-
     // UI Notice
     const formHeading = document.getElementById("form-heading");
     const formSubheading = document.getElementById("form-subheading");
@@ -789,25 +737,23 @@ window.deleteArticle = async function (id) {
 /* ═══════════════════════════════════════════════════════════
    3. RICH FORMATTING TOOLBAR & MARKER HIGHLIGHT
    ═══════════════════════════════════════════════════════════ */
-function bindRichTextEditorToolbar({
-    contentTextarea,
-    toolBoldBtn,
-    toolHighlightBtn,
-    toolRemoveHighlightBtn,
-    toolHighlightCardBtn,
-    toolH2Btn,
-    toolH3Btn,
-    toolInlineImgBtn,
-    inlineImgFileInput,
-    imgOptionsModal,
-    cancelImgModalBtn,
-    confirmInsertImgBtn,
-    imgModalCaption,
-    sizeRadioName
-}) {
-    if (!contentTextarea) return;
+function initFormattingToolbar() {
+    const contentTextarea = document.getElementById("art-content");
+    const toolBoldBtn = document.getElementById("tool-bold-btn");
+    const toolHighlightBtn = document.getElementById("tool-highlight-btn");
+    const toolRemoveHighlightBtn = document.getElementById("tool-remove-highlight-btn");
+    const toolHighlightCardBtn = document.getElementById("tool-highlight-card-btn");
+    const toolH2Btn = document.getElementById("tool-h2-btn");
+    const toolH3Btn = document.getElementById("tool-h3-btn");
+    const toolInlineImgBtn = document.getElementById("tool-inline-img-btn");
+    const inlineImgFileInput = document.getElementById("inline-img-file-input");
 
-    let pendingLocalBase64 = "";
+    const imgOptionsModal = document.getElementById("img-options-modal");
+    const cancelImgModalBtn = document.getElementById("cancel-img-modal-btn");
+    const confirmInsertImgBtn = document.getElementById("confirm-insert-img-btn");
+    const imgModalCaption = document.getElementById("img-modal-caption");
+
+    if (!contentTextarea) return;
 
     function wrapSelectedText(prefix, suffix, defaultPlaceholder = "ഇവിടെ ടെക്സ്റ്റ് നൽകുക") {
         const start = contentTextarea.selectionStart;
@@ -838,6 +784,7 @@ function bindRichTextEditorToolbar({
             const selected = text.substring(start, end);
 
             if (selected) {
+                // If already highlighted within selection
                 if (selected.startsWith("==") && selected.endsWith("==") && selected.length >= 4) {
                     const unwrapped = selected.substring(2, selected.length - 2);
                     contentTextarea.value = text.substring(0, start) + unwrapped + text.substring(end);
@@ -845,6 +792,8 @@ function bindRichTextEditorToolbar({
                     contentTextarea.setSelectionRange(start, start + unwrapped.length);
                     return;
                 }
+
+                // If cursor is right inside ==...==
                 const before2 = text.substring(Math.max(0, start - 2), start);
                 const after2 = text.substring(end, end + 2);
                 if (before2 === "==" && after2 === "==") {
@@ -853,6 +802,7 @@ function bindRichTextEditorToolbar({
                     contentTextarea.setSelectionRange(start - 2, start - 2 + selected.length);
                     return;
                 }
+
                 wrapSelectedText("==", "==");
             } else {
                 wrapSelectedText("==", "==", "ഹൈലൈറ്റ് വാക്ക്");
@@ -880,7 +830,7 @@ function bindRichTextEditorToolbar({
                         contentTextarea.focus();
                     }
                 } else {
-                    showGlobalStatus("മാറ്റാൻ ഹൈലൈറ്റുകളൊന്നും കണ്ടെത്തിയില്ല.", "error");
+                    showGlobalStatus("മാറ്റാൻ ഹൈലൈറ്റുകളൊന്നും കണ്ടെത്തിയില്ല.", "info");
                 }
             }
         });
@@ -894,13 +844,14 @@ function bindRichTextEditorToolbar({
             const file = e.target.files[0];
             if (!file) return;
 
-            if (!file.type.startsWith("image/")) {
-                showGlobalStatus("ദയവായി ഒരു സാധുവായ ചിത്രം (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.", "error");
+            // Strict file validation
+            if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+                showGlobalStatus("ദയവായി JPG, PNG, അല്ലെങ്കിൽ WebP ചിത്രം തിരഞ്ഞെടുക്കുക.", "error");
                 inlineImgFileInput.value = "";
                 return;
             }
-            if (file.size > 12 * 1024 * 1024) {
-                showGlobalStatus("ചിത്രത്തിന്റെ വലിപ്പം 12MB-യിൽ കുറവായിരിക്കണം.", "error");
+            if (file.size > 5 * 1024 * 1024) {
+                showGlobalStatus("ചിത്രത്തിന്റെ വലിപ്പം 5 MB-ൽ താഴെയായിരിക്കണം.", "error");
                 inlineImgFileInput.value = "";
                 return;
             }
@@ -916,7 +867,7 @@ function bindRichTextEditorToolbar({
                 };
                 img.onload = function () {
                     const canvas = document.createElement("canvas");
-                    const maxDim = 900;
+                    const maxDim = 800;
                     let width = img.width;
                     let height = img.height;
 
@@ -932,7 +883,12 @@ function bindRichTextEditorToolbar({
                     const ctx = canvas.getContext("2d");
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    pendingLocalBase64 = canvas.toDataURL("image/jpeg", 0.78);
+                    // High-efficiency JPEG compression to protect Firestore 1MB limits
+                    pendingInlineBase64 = compressCanvasForFirestore(canvas, 0.78);
+                    if (!pendingInlineBase64) {
+                        showGlobalStatus("കംപ്രസ് ചെയ്ത ചിത്രം Firestore പരിധിക്കുള്ളിൽ വരുത്താൻ കഴിഞ്ഞില്ല.", "error");
+                        return;
+                    }
                     if (imgModalCaption) imgModalCaption.value = "";
                     if (imgOptionsModal) {
                         imgOptionsModal.classList.remove("hidden");
@@ -948,67 +904,29 @@ function bindRichTextEditorToolbar({
 
     if (cancelImgModalBtn && imgOptionsModal) {
         cancelImgModalBtn.addEventListener("click", () => {
-            pendingLocalBase64 = "";
+            pendingInlineBase64 = "";
             imgOptionsModal.classList.add("hidden");
         });
     }
 
     if (confirmInsertImgBtn && imgOptionsModal) {
         confirmInsertImgBtn.addEventListener("click", () => {
-            if (!pendingLocalBase64) return;
-            const selectedSizeEl = document.querySelector(`input[name="${sizeRadioName}"]:checked`);
+            if (!pendingInlineBase64) return;
+            const selectedSizeEl = document.querySelector('input[name="img-size-option"]:checked');
             const size = selectedSizeEl ? selectedSizeEl.value : "medium";
             const caption = imgModalCaption ? (imgModalCaption.value.trim() || "ചിത്രം") : "ചിത്രം";
 
-            const insertTag = `\n\n![${caption}|${size}](${pendingLocalBase64})\n\n`;
+            const insertTag = `\n\n![${caption}|${size}](${pendingInlineBase64})\n\n`;
 
             const start = contentTextarea.selectionStart;
             const text = contentTextarea.value;
             contentTextarea.value = text.substring(0, start) + insertTag + text.substring(start);
 
-            pendingLocalBase64 = "";
+            pendingInlineBase64 = "";
             imgOptionsModal.classList.add("hidden");
             contentTextarea.focus();
         });
     }
-}
-
-function initFormattingToolbar() {
-    // 1. Article Editor Toolbar
-    bindRichTextEditorToolbar({
-        contentTextarea: document.getElementById("art-content"),
-        toolBoldBtn: document.getElementById("tool-bold-btn"),
-        toolHighlightBtn: document.getElementById("tool-highlight-btn"),
-        toolRemoveHighlightBtn: document.getElementById("tool-remove-highlight-btn"),
-        toolHighlightCardBtn: document.getElementById("tool-highlight-card-btn"),
-        toolH2Btn: document.getElementById("tool-h2-btn"),
-        toolH3Btn: document.getElementById("tool-h3-btn"),
-        toolInlineImgBtn: document.getElementById("tool-inline-img-btn"),
-        inlineImgFileInput: document.getElementById("inline-img-file-input"),
-        imgOptionsModal: document.getElementById("img-options-modal"),
-        cancelImgModalBtn: document.getElementById("cancel-img-modal-btn"),
-        confirmInsertImgBtn: document.getElementById("confirm-insert-img-btn"),
-        imgModalCaption: document.getElementById("img-modal-caption"),
-        sizeRadioName: "img-size-option"
-    });
-
-    // 2. Book Chapter Editor Toolbar
-    bindRichTextEditorToolbar({
-        contentTextarea: document.getElementById("bm-art-content"),
-        toolBoldBtn: document.getElementById("bm-tool-bold-btn"),
-        toolHighlightBtn: document.getElementById("bm-tool-highlight-btn"),
-        toolRemoveHighlightBtn: document.getElementById("bm-tool-remove-highlight-btn"),
-        toolHighlightCardBtn: document.getElementById("bm-tool-highlight-card-btn"),
-        toolH2Btn: document.getElementById("bm-tool-h2-btn"),
-        toolH3Btn: document.getElementById("bm-tool-h3-btn"),
-        toolInlineImgBtn: document.getElementById("bm-tool-inline-img-btn"),
-        inlineImgFileInput: document.getElementById("bm-inline-img-file-input"),
-        imgOptionsModal: document.getElementById("bm-img-options-modal"),
-        cancelImgModalBtn: document.getElementById("bm-cancel-img-modal-btn"),
-        confirmInsertImgBtn: document.getElementById("bm-confirm-insert-img-btn"),
-        imgModalCaption: document.getElementById("bm-img-modal-caption"),
-        sizeRadioName: "bm-img-size-option"
-    });
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1057,69 +975,21 @@ function initColorCustomizer() {
     const previewContent = document.getElementById("preview-body");
 
     fontSizeRadios.forEach(radio => {
-        if (!radio) return;
         radio.addEventListener("change", (e) => {
             const val = e.target.value;
             const labels = {
-                small: "Small (ചെറുത് - 14px)",
-                medium: "Medium (സാധാരണ - 16px)",
-                large: "Large (വലുത് - 18px)",
-                xlarge: "Extra Large (കൂടുതൽ - 21px)"
+                small: "Small (ചെറുത് - 15px)",
+                medium: "Medium (സാധാരണ - 18px)",
+                large: "Large (വലുത് - 21px)",
+                xlarge: "Extra Large (കൂടുതൽ - 24px)"
             };
             if (fontSizeLabel) fontSizeLabel.textContent = labels[val] || val;
             if (previewContent) {
-                const sizes = { small: "14px", medium: "16px", large: "18px", xlarge: "21px" };
-                previewContent.style.fontSize = sizes[val] || "16px";
+                const sizes = { small: "0.85rem", medium: "0.95rem", large: "1.1rem", xlarge: "1.25rem" };
+                previewContent.style.fontSize = sizes[val] || "0.95rem";
             }
         });
     });
-
-    // Chapter Color Customizer
-    const bmTitleColorInput = document.getElementById("bm-art-title-color");
-    const bmContentColorInput = document.getElementById("bm-art-content-color");
-    const bmTitleColorHex = document.getElementById("bm-title-color-hex");
-    const bmContentColorHex = document.getElementById("bm-content-color-hex");
-    const bmResetColorsBtn = document.getElementById("bm-reset-colors-btn");
-    const bmFontSizeRadios = document.querySelectorAll('input[name="bm-art-font-size"]');
-    const bmFontSizeLabel = document.getElementById("bm-font-size-label");
-
-    if (bmTitleColorInput) {
-        bmTitleColorInput.addEventListener("input", (e) => {
-            const val = e.target.value;
-            if (bmTitleColorHex) bmTitleColorHex.textContent = val;
-        });
-    }
-    if (bmContentColorInput) {
-        bmContentColorInput.addEventListener("input", (e) => {
-            const val = e.target.value;
-            if (bmContentColorHex) bmContentColorHex.textContent = val;
-        });
-    }
-    if (bmResetColorsBtn) {
-        bmResetColorsBtn.addEventListener("click", () => {
-            if (bmTitleColorInput) bmTitleColorInput.value = "#1e1b18";
-            if (bmTitleColorHex) bmTitleColorHex.textContent = "#1e1b18";
-            if (bmContentColorInput) bmContentColorInput.value = "#2b2118";
-            if (bmContentColorHex) bmContentColorHex.textContent = "#2b2118";
-            const defaultBmFSRadio = document.querySelector('input[name="bm-art-font-size"][value="medium"]');
-            if (defaultBmFSRadio) defaultBmFSRadio.checked = true;
-            if (bmFontSizeLabel) bmFontSizeLabel.textContent = "Medium (Standard)";
-        });
-    }
-    if (bmFontSizeRadios) {
-        bmFontSizeRadios.forEach(radio => {
-            radio.addEventListener("change", (e) => {
-                const val = e.target.value;
-                const labels = {
-                    small: "Small (ചെറുത് - 15px)",
-                    medium: "Medium (സാധാരണ - 18px)",
-                    large: "Large (വലുത് - 21px)",
-                    xlarge: "Extra Large (കൂടുതൽ - 24px)"
-                };
-                if (bmFontSizeLabel) bmFontSizeLabel.textContent = labels[val] || val;
-            });
-        });
-    }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1139,13 +1009,13 @@ function initImageUpload() {
         if (!file) return;
 
         // Strict file validation
-        if (!file.type.startsWith("image/")) {
-            showGlobalStatus("ദയവായി ഒരു സാധുവായ ഇമേജ് ഫയൽ (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.", "error");
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+            showGlobalStatus("ദയവായി JPG, PNG, അല്ലെങ്കിൽ WebP ചിത്രം തിരഞ്ഞെടുക്കുക.", "error");
             fileInput.value = "";
             return;
         }
-        if (file.size > 12 * 1024 * 1024) {
-            showGlobalStatus("ചിത്രത്തിന്റെ വലിപ്പം 12MB-യിൽ കുറവായിരിക്കണം.", "error");
+        if (file.size > 5 * 1024 * 1024) {
+            showGlobalStatus("ചിത്രത്തിന്റെ വലിപ്പം 5 MB-ൽ താഴെയായിരിക്കണം.", "error");
             fileInput.value = "";
             return;
         }
@@ -1161,7 +1031,7 @@ function initImageUpload() {
             };
             img.onload = function () {
                 const canvas = document.createElement("canvas");
-                const maxDim = 900;
+                const maxDim = 800;
                 let width = img.width;
                 let height = img.height;
 
@@ -1179,7 +1049,12 @@ function initImageUpload() {
                 ctx.drawImage(img, 0, 0, width, height);
 
                 // High-efficiency JPEG compression to protect Firestore 1MB limits
-                selectedBase64Image = canvas.toDataURL("image/jpeg", 0.78);
+                selectedBase64Image = compressCanvasForFirestore(canvas, 0.78);
+                if (!selectedBase64Image) {
+                    showGlobalStatus("കംപ്രസ് ചെയ്ത ചിത്രം Firestore പരിധിക്കുള്ളിൽ വരുത്താൻ കഴിഞ്ഞില്ല.", "error");
+                    fileInput.value = "";
+                    return;
+                }
                 if (imagePreview) imagePreview.src = selectedBase64Image;
                 if (uploadPlaceholder) uploadPlaceholder.classList.add("hidden");
                 if (imagePreviewContainer) imagePreviewContainer.classList.remove("hidden");
@@ -1199,80 +1074,6 @@ function initImageUpload() {
             if (uploadPlaceholder) uploadPlaceholder.classList.remove("hidden");
         });
     }
-
-    // Thumbnail / Social Sharing Image (og:image) Upload
-    const thumbInput = document.getElementById("art-thumb-input");
-    const thumbPlaceholder = document.getElementById("thumb-placeholder");
-    const thumbPreviewContainer = document.getElementById("thumb-preview-container");
-    const thumbPreview = document.getElementById("thumb-preview");
-    const removeThumbBtn = document.getElementById("remove-thumb-btn");
-
-    if (thumbInput) {
-        thumbInput.addEventListener("change", (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            if (!file.type.startsWith("image/")) {
-                showGlobalStatus("ദയവായി ഒരു സാധുവായ ഇമേജ് ഫയൽ (JPG, PNG, WebP) തിരഞ്ഞെടുക്കുക.", "error");
-                thumbInput.value = "";
-                return;
-            }
-            if (file.size > 12 * 1024 * 1024) {
-                showGlobalStatus("ചിത്രത്തിന്റെ വലിപ്പം 12MB-യിൽ കുറവായിരിക്കണം.", "error");
-                thumbInput.value = "";
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onerror = function() {
-                showGlobalStatus("തമ്പ്നെയിൽ ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
-            };
-            reader.onload = function (event) {
-                const img = new Image();
-                img.onerror = function() {
-                    showGlobalStatus("തമ്പ്നെയിൽ ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
-                };
-                img.onload = function () {
-                    const canvas = document.createElement("canvas");
-                    // Optimized for social sharing cards & thumbnail rendering
-                    const maxDim = 800;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height && width > maxDim) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    } else if (height > maxDim) {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    selectedBase64Thumbnail = canvas.toDataURL("image/jpeg", 0.78);
-                    if (thumbPreview) thumbPreview.src = selectedBase64Thumbnail;
-                    if (thumbPlaceholder) thumbPlaceholder.classList.add("hidden");
-                    if (thumbPreviewContainer) thumbPreviewContainer.classList.remove("hidden");
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-
-    if (removeThumbBtn) {
-        removeThumbBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            selectedBase64Thumbnail = "";
-            if (thumbInput) thumbInput.value = "";
-            if (thumbPreview) thumbPreview.src = "";
-            if (thumbPreviewContainer) thumbPreviewContainer.classList.add("hidden");
-            if (thumbPlaceholder) thumbPlaceholder.classList.remove("hidden");
-        });
-    }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1287,23 +1088,6 @@ function normalizeStringClean(s) {
         .trim()
         .toLowerCase()
         .replace(/\s+/g, ' ');
-}
-
-function matchesBookExact(art, bName, bTitle, bId) {
-    if (!art) return false;
-    if (bId && art.id === bId) return false;
-    if (art.type === "BOOK") return false;
-
-    const artBook = normalizeStringClean(art.bookName || art.playlistName);
-    const artBookId = (art.bookId || "").trim();
-
-    if (bId && artBookId && bId === artBookId) return true;
-    if (bName && artBook && bName === artBook) return true;
-    if (bTitle && artBook && bTitle === artBook) return true;
-    if (bName && artBook && bName.length >= 3 && (artBook.includes(bName) || bName.includes(artBook))) return true;
-    if (bTitle && artBook && bTitle.length >= 3 && (artBook.includes(bTitle) || bTitle.includes(artBook))) return true;
-
-    return false;
 }
 
 let isBookManagerSuiteInitialized = false;
@@ -1374,30 +1158,42 @@ function initBookCoverUploader() {
     function handleCoverFile(file) {
         clearCoverError();
         if (!file) return;
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+            showCoverError("JPG, PNG, അല്ലെങ്കിൽ WebP ചിത്രം തിരഞ്ഞെടുക്കുക.");
+            if (fileInput) fileInput.value = "";
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showCoverError("ചിത്രത്തിന്റെ വലിപ്പം 5 MB-ൽ താഴെയായിരിക്കണം.");
+            if (fileInput) fileInput.value = "";
+            return;
+        }
+        isBookCoverProcessing = true;
 
         // Instant visual feedback with ObjectURL
         try {
-            const objectUrl = URL.createObjectURL(file);
-            if (previewImg) previewImg.src = objectUrl;
+            if (selectedBookCoverObjectUrl) URL.revokeObjectURL(selectedBookCoverObjectUrl);
+            selectedBookCoverObjectUrl = URL.createObjectURL(file);
+            if (previewImg) previewImg.src = selectedBookCoverObjectUrl;
             if (placeholder) placeholder.classList.add("hidden");
             if (previewContainer) previewContainer.classList.remove("hidden");
         } catch (e) {
-            console.warn("ObjectURL fallback:", e);
+            showCoverError("ചിത്രം preview ചെയ്യാൻ കഴിഞ്ഞില്ല.");
         }
 
         const reader = new FileReader();
-        reader.onerror = (err) => {
-            console.error("FileReader error:", err);
+        reader.onerror = () => {
+            isBookCoverProcessing = false;
             showCoverError("ചിത്രം വായിക്കുന്നതിൽ തടസ്സം നേരിട്ടു.");
         };
 
         reader.onload = (event) => {
             const rawBase64 = event.target.result;
-            selectedBookCoverBase64 = rawBase64;
 
             const img = new Image();
             img.onerror = () => {
-                clearCoverError();
+                isBookCoverProcessing = false;
+                showCoverError("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.");
             };
             img.onload = () => {
                 try {
@@ -1421,15 +1217,19 @@ function initBookCoverUploader() {
                     const ctx = canvas.getContext("2d");
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    const compressed = canvas.toDataURL("image/jpeg", 0.82);
-                    if (compressed && compressed.length > 100) {
+                    const compressed = compressCanvasForFirestore(canvas, 0.8);
+                    if (!compressed) {
+                        selectedBookCoverBase64 = "";
+                        showCoverError("കംപ്രസ് ചെയ്ത ചിത്രവും വലുതാണ്. ചെറിയ ചിത്രം തിരഞ്ഞെടുക്കുക.");
+                    } else if (compressed.length > 100) {
                         selectedBookCoverBase64 = compressed;
                         if (previewImg) previewImg.src = compressed;
                     }
                 } catch (cErr) {
                     console.warn("Canvas compression fallback:", cErr);
                 }
-                clearCoverError();
+                isBookCoverProcessing = false;
+                if (selectedBookCoverBase64) clearCoverError();
             };
             img.src = rawBase64;
         };
@@ -1446,11 +1246,6 @@ function initBookCoverUploader() {
     }
 
     if (dropzone) {
-        dropzone.addEventListener("click", (e) => {
-            if (e.target !== fileInput && !e.target.closest("#remove-book-img-btn")) {
-                if (fileInput) fileInput.click();
-            }
-        });
         ["dragenter", "dragover"].forEach(evt => {
             dropzone.addEventListener(evt, (e) => {
                 e.preventDefault();
@@ -1478,6 +1273,9 @@ function initBookCoverUploader() {
     function handleRemoveBookCover(e) {
         if (e) e.stopPropagation();
         selectedBookCoverBase64 = "";
+        isBookCoverProcessing = false;
+        if (selectedBookCoverObjectUrl) URL.revokeObjectURL(selectedBookCoverObjectUrl);
+        selectedBookCoverObjectUrl = "";
         if (fileInput) fileInput.value = "";
         if (previewImg) previewImg.src = "";
         if (previewContainer) previewContainer.classList.add("hidden");
@@ -1486,14 +1284,15 @@ function initBookCoverUploader() {
     }
 
     window.handleRemoveBookCover = handleRemoveBookCover;
-    if (removeBtn) {
-        removeBtn.addEventListener("click", handleRemoveBookCover);
-    }
 }
 
 /* ═══════════ 2. BOOK SWITCHER & STEP 1 SAVING ═══════════ */
 async function handleSaveBookStep1(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (isBookCoverProcessing) {
+        showGlobalStatus("ചിത്രം തയ്യാറാകുന്നതുവരെ കാത്തിരിക്കുക.", "info");
+        return;
+    }
 
     // Clear previous inline errors
     const titleErrEl = document.getElementById("book-title-error");
@@ -1568,11 +1367,7 @@ async function handleSaveBookStep1(e) {
             bookName: name,
             author: author,
             category: tag,
-            slug: slugifyText(name),
-            bookSlug: slugifyText(name),
             imageUrl: coverImage,
-            thumbnailUrl: coverImage,
-            ogImage: coverImage,
             introduction: intro,
             excerpt: intro,
             content: intro,
@@ -1611,10 +1406,7 @@ async function handleSaveBookStep1(e) {
         activeBookName = name;
         activeBookAuthor = author;
 
-        const allBooks = currentArticlesList.filter(a => isMainBook(a));
-        updateBooksCounter(allBooks.length);
         updateActiveBookOverview(currentArticlesList);
-        renderAdminBooksTab(currentArticlesList);
         selectActiveBook(name);
 
         // Instantly reveal and scroll smoothly to Step 2
@@ -1651,12 +1443,7 @@ function initBookSwitcherAndStep1() {
         });
     }
 
-    if (newBookBtn) {
-        newBookBtn.addEventListener("click", () => {
-            resetBookManagerForm();
-            showGlobalStatus("✨ പുതിയ പുസ്തകം തയ്യാറാക്കുക: വിവരങ്ങൾ നൽകി സേവ് ചെയ്യുക.", "info");
-        });
-    }
+    if (newBookBtn) newBookBtn.dataset.action = "new-book";
 
     // Attach real-time input listener to clear error border/message on typing
     const nameInputEl = document.getElementById("book-meta-name") || document.querySelector('[name="book-meta-name"]') || document.querySelector('[data-book-title-input]');
@@ -1683,9 +1470,7 @@ function initBookSwitcherAndStep1() {
         });
     }
 
-    if (publishBtn) {
-        publishBtn.addEventListener("click", handleSaveBookStep1);
-    }
+    if (publishBtn) publishBtn.dataset.action = "save-book";
 }
 
 function resetBookManagerForm() {
@@ -1725,7 +1510,6 @@ function resetBookManagerForm() {
     if (wrapper) wrapper.classList.add("hidden");
 
     nameInput?.focus();
-    renderAdminBooksTab(currentArticlesList);
 }
 
 function selectActiveBook(bookName) {
@@ -1765,6 +1549,26 @@ function selectActiveBook(bookName) {
     if (introInput) introInput.value = bookCover?.introduction || bookCover?.excerpt || bookCover?.content || "";
     if (dateInput) dateInput.value = bookCover?.date || "";
 
+    const presentationInfo = document.getElementById("bm-presentation-file-info");
+    const presentationPlaceholder = document.getElementById("bm-presentation-placeholder");
+    const presentationName = document.getElementById("bm-presentation-file-name");
+    const presentationLink = document.getElementById("bm-presentation-link");
+    const presentationStatus = document.getElementById("bm-presentation-status");
+    if (bookCover?.presentationUrl) {
+        bmPresentationFile = null;
+        bmPresentationFileName = bookCover.presentationName || "Saved presentation";
+        if (presentationName) presentationName.textContent = bmPresentationFileName;
+        if (presentationInfo) presentationInfo.classList.remove("hidden");
+        if (presentationPlaceholder) presentationPlaceholder.classList.add("hidden");
+        if (presentationLink) presentationLink.value = bookCover.presentationUrl;
+        if (presentationStatus) presentationStatus.textContent = "Saved";
+    } else {
+        if (presentationInfo) presentationInfo.classList.add("hidden");
+        if (presentationPlaceholder) presentationPlaceholder.classList.remove("hidden");
+        if (presentationLink) presentationLink.value = "";
+        if (presentationStatus) presentationStatus.textContent = "";
+    }
+
     if (bookCover?.imageUrl && previewImg && previewContainer && placeholder) {
         previewImg.src = bookCover.imageUrl;
         previewContainer.classList.remove("hidden");
@@ -1789,47 +1593,17 @@ function selectActiveBook(bookName) {
     // Filter chapters for this book
     loadAndRenderBookChapters();
     renderBookManagerCompactArticles(currentArticlesList, activeBookName);
-    renderAdminBooksTab(currentArticlesList);
 }
 
-async function loadAndRenderBookChapters() {
-    if (!activeBookName && !activeBookCoverDoc) {
+function loadAndRenderBookChapters() {
+    if (!activeBookName) {
         activeBookChapters = [];
         renderBookChaptersReorderList([]);
         return;
     }
 
-    const bookTarget = activeBookCoverDoc || {
-        id: activeBookCoverDoc?.id || "",
-        title: activeBookName,
-        bookName: activeBookName
-    };
-
-    activeBookChapters = filterAndSortChapters(bookTarget, currentArticlesList);
-    
-    // If not found in current local list or 0 chapters, fetch asynchronously from Firestore
-    if (activeBookChapters.length === 0 && (bookTarget.id || activeBookName)) {
-        try {
-            const listEl = document.getElementById("book-chapters-reorder-list");
-            if (listEl) {
-                listEl.innerHTML = '<p class="text-xs text-center py-6 text-indigo-600 animate-pulse font-bold">അധ്യായങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>';
-            }
-            const targetId = bookTarget.id || (currentArticlesList.find(a => 
-                a.type === "BOOK" && (normalizeStringClean(a.bookName) === normalizeStringClean(activeBookName) || normalizeStringClean(a.title) === normalizeStringClean(activeBookName))
-            )?.id) || activeBookName;
-
-            const fetched = await getBookChapters(targetId, {
-                articlesPool: currentArticlesList,
-                timeoutMs: 6000
-            });
-            const chaptersArr = Array.isArray(fetched) ? fetched : (fetched?.chapters || []);
-            if (chaptersArr && chaptersArr.length > 0) {
-                activeBookChapters = chaptersArr;
-            }
-        } catch (fErr) {
-            console.warn("[Admin] Live chapters fetch fallback:", fErr);
-        }
-    }
+    const book = activeBookCoverDoc || { title: activeBookName, bookName: activeBookName };
+    activeBookChapters = getBookChapters(book, currentArticlesList);
 
     renderBookChaptersReorderList(activeBookChapters);
 }
@@ -1846,12 +1620,17 @@ function initChapterWriter() {
 
     if (fileInput) {
         function handleChapterImg(file) {
-            if (!file || !file.type.startsWith("image/")) {
-                showGlobalStatus("ദയവായി ഒരു സാധുവായ ചിത്രം തിരഞ്ഞെടുക്കുക.", "error");
+            if (!file || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+                showGlobalStatus("JPG, PNG, അല്ലെങ്കിൽ WebP ചിത്രം തിരഞ്ഞെടുക്കുക.", "error");
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                showGlobalStatus("ചിത്രത്തിന്റെ വലിപ്പം 5 MB-ൽ താഴെയായിരിക്കണം.", "error");
                 return;
             }
 
             const reader = new FileReader();
+            reader.onerror = () => showGlobalStatus("ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല.", "error");
             reader.onload = (event) => {
                 const img = new Image();
                 img.onload = () => {
@@ -1870,11 +1649,16 @@ function initChapterWriter() {
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
                     ctx.drawImage(img, 0, 0, width, height);
-                    bmSelectedArticleImageBase64 = canvas.toDataURL("image/jpeg", 0.75);
+                    bmSelectedArticleImageBase64 = compressCanvasForFirestore(canvas, 0.8);
+                    if (!bmSelectedArticleImageBase64) {
+                        showGlobalStatus("കംപ്രസ് ചെയ്ത ചിത്രം Firestore പരിധിക്കുള്ളിൽ വരുത്താൻ കഴിഞ്ഞില്ല.", "error");
+                        return;
+                    }
                     if (previewImg) previewImg.src = bmSelectedArticleImageBase64;
                     if (placeholder) placeholder.classList.add("hidden");
                     if (previewContainer) previewContainer.classList.remove("hidden");
                 };
+                img.onerror = () => showGlobalStatus("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
@@ -1923,291 +1707,43 @@ function initChapterWriter() {
         });
     }
 
-    let isSavingChapter = false;
-    let editingChapterId = null;
-
-    function showChapterInlineMsg(text, type = "error") {
-        const msgEl = document.getElementById("bm-chapter-msg");
-        if (!msgEl) return;
-        msgEl.textContent = text;
-        msgEl.classList.remove("hidden");
-        if (type === "error") {
-            msgEl.className = "p-3 rounded-xl text-xs font-bold text-center mb-3 bg-rose-50 text-rose-700 border border-rose-200 block";
-        } else {
-            msgEl.className = "p-3 rounded-xl text-xs font-bold text-center mb-3 bg-emerald-50 text-emerald-800 border border-emerald-200 block";
-        }
-    }
-
-    function clearChapterInlineMsg() {
-        const msgEl = document.getElementById("bm-chapter-msg");
-        if (msgEl) {
-            msgEl.textContent = "";
-            msgEl.className = "hidden p-3 rounded-xl text-xs font-bold text-center mb-3";
-        }
-    }
-
-    function resetChapterEditMode() {
-        editingChapterId = null;
-        const cancelBtn = document.getElementById("bm-cancel-edit-chapter-btn");
-        const publishBtn = document.getElementById("bm-publish-article-btn");
-        if (cancelBtn) cancelBtn.classList.add("hidden");
-        if (publishBtn) {
-            publishBtn.innerHTML = '<span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>';
-        }
-        const excerptInput = document.getElementById("bm-art-excerpt");
-        if (excerptInput) excerptInput.value = "";
-        const resetColorsBtn = document.getElementById("bm-reset-colors-btn");
-        if (resetColorsBtn) resetColorsBtn.click();
-    }
-
-    function startEditChapter(id) {
-        const art = (activeBookChapters && activeBookChapters.find(c => c.id === id)) ||
-                    (currentArticlesList && currentArticlesList.find(a => a.id === id));
-        if (!art) {
-            showChapterInlineMsg("അധ്യായം കണ്ടെത്താനായില്ല.", "error");
-            return;
-        }
-        editingChapterId = id;
-
-        const titleInput = document.getElementById("bm-art-title");
-        const contentInput = document.getElementById("bm-art-content");
-        const transcriptionInput = document.getElementById("bm-art-transcription");
-        const excerptInput = document.getElementById("bm-art-excerpt");
-        const previewImg = document.getElementById("bm-art-image-preview");
-        const previewContainer = document.getElementById("bm-art-image-preview-container");
-        const placeholder = document.getElementById("bm-art-image-placeholder");
-        const cancelBtn = document.getElementById("bm-cancel-edit-chapter-btn");
-        const publishBtn = document.getElementById("bm-publish-article-btn");
-
-        if (titleInput) titleInput.value = art.title || "";
-        if (contentInput) contentInput.value = art.content || "";
-        if (transcriptionInput) transcriptionInput.value = art.transcription || "";
-        if (excerptInput) excerptInput.value = art.storedExcerpt || (art.hasCustomExcerpt ? art.excerpt : "") || art.excerpt || "";
-
-        // Populate chapter colors & font size
-        const titleColorInput = document.getElementById("bm-art-title-color");
-        const contentColorInput = document.getElementById("bm-art-content-color");
-        const titleColorHex = document.getElementById("bm-title-color-hex");
-        const contentColorHex = document.getElementById("bm-content-color-hex");
-        const tColor = art.titleColor || "#1e1b18";
-        const cColor = art.contentColor || "#2b2118";
-        if (titleColorInput) titleColorInput.value = tColor;
-        if (titleColorHex) titleColorHex.textContent = tColor;
-        if (contentColorInput) contentColorInput.value = cColor;
-        if (contentColorHex) contentColorHex.textContent = cColor;
-
-        const fSize = art.fontSize || "medium";
-        const fSizeRadio = document.querySelector(`input[name="bm-art-font-size"][value="${fSize}"]`);
-        if (fSizeRadio) fSizeRadio.checked = true;
-        const fSizeLabel = document.getElementById("bm-font-size-label");
-        if (fSizeLabel) {
-            const labels = { small: "Small (ചെറുത്)", medium: "Medium (സാധാരണ)", large: "Large (വലുത്)", xlarge: "Extra Large (കൂടുതൽ)" };
-            fSizeLabel.textContent = labels[fSize] || fSize;
-        }
-
-        if (art.imageUrl && previewImg && previewContainer && placeholder) {
-            previewImg.src = art.imageUrl;
-            previewContainer.classList.remove("hidden");
-            placeholder.classList.add("hidden");
-            bmSelectedArticleImageBase64 = art.imageUrl;
-        } else if (previewContainer && placeholder) {
-            previewContainer.classList.add("hidden");
-            placeholder.classList.remove("hidden");
-            bmSelectedArticleImageBase64 = "";
-        }
-
-        if (cancelBtn) cancelBtn.classList.remove("hidden");
-        if (publishBtn) {
-            publishBtn.innerHTML = '<span>അധ്യായം അപ്‌ഡേറ്റ് ചെയ്യുക (Update Chapter)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
-        }
-
-        showChapterInlineMsg(`✏️ അധ്യായം '${art.title || ''}' എഡിറ്റ് മോഡിലാണ്. മാറ്റങ്ങൾ വരുത്തിയ ശേഷം 'Update Chapter' അമർത്തുക.`, "info");
-
-        const step2El = document.getElementById("bm-step2-wrapper") || document.getElementById("bm-art-title");
-        if (step2El) {
-            step2El.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-        if (titleInput) {
-            setTimeout(() => titleInput.focus(), 200);
-        }
-    }
-    window.startEditChapter = startEditChapter;
-
-    async function handleAddChapterToBook(e) {
-        if (e && typeof e.preventDefault === "function") e.preventDefault();
-        if (isSavingChapter) {
-            console.log("[ChapterWriter] Already processing save, skipping duplicate trigger");
-            return;
-        }
-
-        clearChapterInlineMsg();
-
-        // 1. Strict Step 1 requirement: Must have active bookId
-        let targetBookDoc = activeBookCoverDoc;
-        if (!targetBookDoc || !targetBookDoc.id) {
-            const rawTargetName = (activeBookName || document.getElementById("bm-active-book-select")?.value || document.getElementById("book-meta-name")?.value || "").trim();
-            if (rawTargetName && Array.isArray(currentArticlesList)) {
-                const cleanTarget = normalizeStringClean(rawTargetName);
-                targetBookDoc = currentArticlesList.find(a => a.type === "BOOK" && (
-                    normalizeStringClean(a.bookName) === cleanTarget ||
-                    normalizeStringClean(a.title) === cleanTarget
-                )) || null;
-                if (targetBookDoc) {
-                    activeBookCoverDoc = targetBookDoc;
-                    activeBookName = targetBookDoc.bookName || targetBookDoc.title;
-                    activeBookAuthor = targetBookDoc.author || activeBookAuthor;
-                }
+    window.addChapterToBook = async function() {
+            if (!activeBookName) {
+                showGlobalStatus("ദയവായി ആദ്യം ഘട്ടം 1-ൽ ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ സേവ് ചെയ്യുക.", "error");
+                return;
             }
-        }
 
-        const activeBookId = targetBookDoc?.id || "";
-        if (!activeBookId) {
-            showChapterInlineMsg("ആദ്യം ഘട്ടം 1 സേവ് ചെയ്യുക", "error");
-            console.error("[ChapterWriter] Active bookId missing from Step 1. Cannot add chapter without a saved book.");
-            const step1El = document.getElementById("bm-step1-section");
-            if (step1El) step1El.scrollIntoView({ behavior: "smooth", block: "start" });
-            return;
-        }
+            const title = document.getElementById("bm-art-title")?.value.trim();
+            const content = document.getElementById("bm-art-content")?.value.trim();
+            const transcription = document.getElementById("bm-art-transcription")?.value.trim() || "";
 
-        // 2. Read inputs with .trim()
-        const titleInput = document.getElementById("bm-art-title");
-        const contentInput = document.getElementById("bm-art-content");
-        const transcriptionInput = document.getElementById("bm-art-transcription");
-        const excerptInput = document.getElementById("bm-art-excerpt");
-
-        const title = (titleInput?.value || "").trim();
-        const content = (contentInput?.value || "").trim();
-        const transcription = (transcriptionInput?.value || "").trim();
-        const excerpt = (excerptInput?.value || "").trim();
-        const imageUrl = (bmSelectedArticleImageBase64 || "").trim();
-        const titleColor = document.getElementById("bm-art-title-color")?.value || "#1e1b18";
-        const contentColor = document.getElementById("bm-art-content-color")?.value || "#2b2118";
-        const fontSize = document.querySelector('input[name="bm-art-font-size"]:checked')?.value || "medium";
-
-        // Validate title
-        if (!title || title.length < 2) {
-            showChapterInlineMsg("ദയവായി അധ്യായത്തിന്റെ തലക്കെട്ട് (Chapter Title) നൽകുക (കുറഞ്ഞത് 2 അക്ഷരങ്ങൾ).", "error");
-            console.error("[ChapterWriter] Chapter title validation failed: empty or too short");
-            if (titleInput) {
-                titleInput.focus();
-                titleInput.classList.add("border-rose-500", "ring-2", "ring-rose-200");
-                titleInput.scrollIntoView({ behavior: "smooth", block: "center" });
+            if (!title || title.length < 2) {
+                showGlobalStatus("ദയവായി അധ്യായത്തിന്റെ തലക്കെട്ട് (Title) നൽകുക.", "error");
+                document.getElementById("bm-art-title")?.focus();
+                return;
             }
-            return;
-        }
-
-        // Validate content
-        if (!content || content.length < 5) {
-            showChapterInlineMsg("ദയവായി അധ്യായത്തിന്റെ പൂർണ്ണ ഉള്ളടക്കം (Chapter Content) നൽകുക (കുറഞ്ഞത് 5 അക്ഷരങ്ങൾ).", "error");
-            console.error("[ChapterWriter] Chapter content validation failed: empty or too short");
-            if (contentInput) {
-                contentInput.focus();
-                contentInput.classList.add("border-rose-500", "ring-2", "ring-rose-200");
-                contentInput.scrollIntoView({ behavior: "smooth", block: "center" });
+            if (!content || content.length < 5) {
+                showGlobalStatus("ദയവായി അധ്യായത്തിന്റെ പൂർണ്ണ ഉള്ളടക്കം (Content) നൽകുക.", "error");
+                document.getElementById("bm-art-content")?.focus();
+                return;
             }
-            return;
-        }
 
-        // 3. Disable button while saving
-        isSavingChapter = true;
-        const btn = document.getElementById("bm-publish-article-btn");
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<span class="inline-flex items-center gap-2 font-bold"><svg class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>സേവ് ചെയ്യുന്നു...</span></span>';
-        }
+            publishBtn.disabled = true;
+            publishBtn.innerHTML = "അധ്യായം ചേർക്കുന്നു...";
 
-        try {
-            // Sequential order number
-            const nextOrder = (activeBookChapters && activeBookChapters.length > 0)
-                ? Math.max(...activeBookChapters.map(c => Number(c.order !== undefined ? c.order : (c.priority || 0))), 0) + 1
-                : 1;
-
-            // Define author and authorId robustly
-            const author = (targetBookDoc.author || activeBookAuthor || "NUQTHA AUTHOR").trim();
-            const authorId = window.currentUser?.uid || localStorage.getItem("nuqtha_admin_uid") || targetBookDoc?.authorId || "admin";
-            const bookTag = document.getElementById("book-meta-tag")?.value?.trim() || targetBookDoc.category || "Chapter";
-
-            if (editingChapterId) {
-                // Update existing chapter preserving current order
-                const existingChapter = (activeBookChapters && activeBookChapters.find(c => c.id === editingChapterId)) ||
-                                        (currentArticlesList && currentArticlesList.find(a => a.id === editingChapterId));
-                const chapterOrder = existingChapter ? (existingChapter.order !== undefined ? existingChapter.order : (existingChapter.priority || 1)) : nextOrder;
-                const chapterSlug = slugifyText(title);
-                const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
-                const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
-                const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";
+            try {
+                // Next sequential priority number
+                const nextPriority = activeBookChapters.length + 1;
+                const bookTag = document.getElementById("book-meta-tag")?.value.trim() || "Chapter";
 
                 const raw = {
                     title,
-                    slug: chapterSlug,
-                    bookSlug: bookSlug,
-                    author,
-                    authorId,
+                    author: activeBookAuthor || "NUQTHA AUTHOR",
                     category: bookTag,
                     transcription,
-                    excerpt,
-                    titleColor,
-                    contentColor,
-                    fontSize,
-                    order: chapterOrder,
-                    priority: chapterOrder,
+                    ...getBookArticleLinkFields(activeBookCoverDoc, activeBookName, nextPriority),
                     content,
-                    imageUrl: chapterImg,
-                    thumbnailUrl: chapterThumb,
-                    ogImage: chapterThumb,
-                    bookId: activeBookId,
-                    bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
-                    status: "published",
-                    type: "ARTICLE",
-                    placement: "AUTO",
-                    date: new Date().toLocaleDateString("en-GB")
-                };
-
-                const sanitized = validateAndSanitizeArticleForSave(raw);
-                await updateDoc(doc(db, "articles", editingChapterId), {
-                    ...sanitized,
-                    updatedAt: serverTimestamp()
-                });
-
-                const updatedArt = { id: editingChapterId, ...sanitized };
-                const cIndex = currentArticlesList.findIndex(a => a.id === editingChapterId);
-                if (cIndex !== -1) currentArticlesList[cIndex] = updatedArt;
-
-                activeBookChapters = filterAndSortChapters(targetBookDoc, currentArticlesList);
-                renderBookChaptersReorderList(activeBookChapters);
-                updateActiveBookOverview(currentArticlesList);
-                renderBookManagerCompactArticles(currentArticlesList, activeBookName);
-
-                showChapterInlineMsg(`✨ അധ്യായം '${title}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
-                showGlobalStatus(`✨ അധ്യായം '${title}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
-            } else {
-                // Save new chapter as article in Firestore with bookId, order, status published, author from book
-                const chapterSlug = slugifyText(title);
-                const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
-                const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
-                const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";
-
-                const raw = {
-                    title,
-                    slug: chapterSlug,
-                    bookSlug: bookSlug,
-                    author,
-                    authorId,
-                    category: bookTag,
-                    transcription,
-                    excerpt,
-                    titleColor,
-                    contentColor,
-                    fontSize,
-                    order: nextOrder,
-                    priority: nextOrder,
-                    content,
-                    imageUrl: chapterImg,
-                    thumbnailUrl: chapterThumb,
-                    ogImage: chapterThumb,
-                    bookId: activeBookId,
-                    bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
-                    status: "published",
+                    imageUrl: bmSelectedArticleImageBase64,
                     type: "ARTICLE",
                     placement: "AUTO",
                     date: new Date().toLocaleDateString("en-GB")
@@ -2221,122 +1757,82 @@ function initChapterWriter() {
                     updatedAt: serverTimestamp()
                 });
 
-                console.log("[ChapterWriter] Chapter saved to Firestore with ID:", docRef.id);
-
                 const newArt = { id: docRef.id, ...sanitized };
                 currentArticlesList.unshift(newArt);
 
-                // Update book document's chapters array in Firestore
-                const existingChapters = Array.isArray(targetBookDoc.chapters) ? [...targetBookDoc.chapters] : [];
-                const chIdList = existingChapters.map(c => (typeof c === "string" ? c : c?.id));
-                if (!chIdList.includes(docRef.id)) {
-                    existingChapters.push(docRef.id);
-                    targetBookDoc.chapters = existingChapters;
-                    await updateDoc(doc(db, "articles", targetBookDoc.id), {
-                        chapters: existingChapters,
-                        updatedAt: serverTimestamp()
-                    });
-                    console.log("[ChapterWriter] Appended chapter ID to book doc chapters array:", targetBookDoc.id);
-                }
+                showGlobalStatus(`✨ അധ്യായം '${title}' (#${nextPriority}) വിജയകരമായി ചേർത്തു!`, "success");
 
-                // Immediately update in-memory chapters and render Step 3
-                activeBookChapters = filterAndSortChapters(targetBookDoc, currentArticlesList);
-                renderBookChaptersReorderList(activeBookChapters);
-                updateActiveBookOverview(currentArticlesList);
-                renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+                // Reset chapter form
+                document.getElementById("bm-art-title").value = "";
+                document.getElementById("bm-art-content").value = "";
+                document.getElementById("bm-art-transcription").value = "";
+                if (removeBtn) removeBtn.click();
 
-                showChapterInlineMsg(`✨ അധ്യായം '${title}' (#${nextOrder}) വിജയകരമായി ചേർത്തു!`, "success");
-                showGlobalStatus(`✨ അധ്യായം '${title}' (#${nextOrder}) വിജയകരമായി ചേർത്തു! ഘട്ടം 3-ലേക്ക് നീങ്ങി.`, "success");
+                // Refresh chapters list
+                loadAndRenderBookChapters();
+
+            } catch (err) {
+                console.error("Add chapter error:", err);
+                showGlobalStatus("അധ്യായം ചേർക്കാൻ കഴിഞ്ഞില്ല: " + err.message, "error");
+            } finally {
+                publishBtn.disabled = false;
+                publishBtn.innerHTML = `<span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>`;
             }
-
-            // Clear inputs
-            if (titleInput) {
-                titleInput.value = "";
-                titleInput.classList.remove("border-rose-500", "ring-2", "ring-rose-200");
-            }
-            if (contentInput) {
-                contentInput.value = "";
-                contentInput.classList.remove("border-rose-500", "ring-2", "ring-rose-200");
-            }
-            if (transcriptionInput) transcriptionInput.value = "";
-            if (excerptInput) excerptInput.value = "";
-            const bmResetColorsBtn = document.getElementById("bm-reset-colors-btn");
-            if (bmResetColorsBtn) bmResetColorsBtn.click();
-
-            if (removeBtn) removeBtn.click();
-            resetChapterEditMode();
-
-            // Smoothly scroll down to Step 3 so user immediately sees their chapter in the Reading Sequence
-            const step3El = document.getElementById("bm-step3-section") || document.getElementById("book-chapters-reorder-list")?.closest("div.bg-white");
-            if (step3El) {
-                setTimeout(() => {
-                    step3El.scrollIntoView({ behavior: "smooth", block: "start" });
-                }, 100);
-            }
-        } catch (err) {
-            console.error("[ChapterWriter] Add chapter error:", err);
-            showChapterInlineMsg("അധ്യായം ചേർക്കാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
-            showGlobalStatus("അധ്യായം ചേർക്കാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
-        } finally {
-            isSavingChapter = false;
-            if (btn) {
-                btn.disabled = false;
-                if (!editingChapterId) {
-                    btn.innerHTML = '<span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>';
-                }
-            }
-        }
-    }
-
-    window.handleAddChapterToBook = handleAddChapterToBook;
-
-    if (publishBtn) {
-        publishBtn.addEventListener("click", handleAddChapterToBook);
-    }
-
-    const cancelEditBtn = document.getElementById("bm-cancel-edit-chapter-btn");
-    if (cancelEditBtn) {
-        cancelEditBtn.addEventListener("click", () => {
-            resetChapterEditMode();
-            const titleInput = document.getElementById("bm-art-title");
-            const contentInput = document.getElementById("bm-art-content");
-            const transcriptionInput = document.getElementById("bm-art-transcription");
-            if (titleInput) titleInput.value = "";
-            if (contentInput) contentInput.value = "";
-            if (transcriptionInput) transcriptionInput.value = "";
-            const bmExcerptInput = document.getElementById("bm-art-excerpt");
-            if (bmExcerptInput) bmExcerptInput.value = "";
-            const bmResetColorsBtn = document.getElementById("bm-reset-colors-btn");
-            if (bmResetColorsBtn) bmResetColorsBtn.click();
-            if (removeBtn) removeBtn.click();
-            clearChapterInlineMsg();
-            showChapterInlineMsg("എഡിറ്റിംഗ് റദ്ദാക്കി.", "success");
-        });
-    }
-
-        // Attach input listeners to clear validation errors when user types
-    const chapterTitleInputEl = document.getElementById("bm-art-title");
-    if (chapterTitleInputEl) {
-        chapterTitleInputEl.addEventListener("input", () => {
-            chapterTitleInputEl.classList.remove("border-rose-500", "ring-2", "ring-rose-200");
-        });
-    }
-
-    const chapterContentInputEl = document.getElementById("bm-art-content");
-    if (chapterContentInputEl) {
-        chapterContentInputEl.addEventListener("input", () => {
-            chapterContentInputEl.classList.remove("border-rose-500", "ring-2", "ring-rose-200");
-        });
-    }
+        };
 }
 
 /* ═══════════ 4. STEP 3: DRAG & DROP CHAPTER REORDERING ═══════════ */
 function initChapterReordering() {
     const saveOrderBtn = document.getElementById("bm-save-order-btn");
-    if (saveOrderBtn) {
-        saveOrderBtn.addEventListener("click", () => {
-            saveAndApplyChapterOrder(true);
+    if (saveOrderBtn) saveOrderBtn.dataset.action = "save-book-order";
+}
+
+function moveBookChapter(index, direction) {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (index < 0 || targetIndex < 0 || targetIndex >= activeBookChapters.length) return;
+    [activeBookChapters[index], activeBookChapters[targetIndex]] = [activeBookChapters[targetIndex], activeBookChapters[index]];
+    renderBookChaptersReorderList(activeBookChapters);
+    saveAndApplyChapterOrder(false);
+}
+
+async function detachBookChapter(id, title) {
+    if (!confirm(`'${title}' ഈ പുസ്തകത്തിൽ നിന്ന് മാറ്റണോ (Remove from book)?`)) return;
+
+    try {
+        await updateDoc(doc(db, "articles", id), {
+            bookName: "",
+            bookId: "",
+            parentBookId: "",
+            updatedAt: serverTimestamp()
         });
+
+        const remainingChapters = (activeBookCoverDoc?.chapters || []).filter(reference => {
+            const referenceId = typeof reference === "string" ? reference.split("/").pop() : String(reference?.articleId || reference?.id || "").split("/").pop();
+            return referenceId !== id;
+        });
+        const remainingArticleIds = (activeBookCoverDoc?.articleIds || []).filter(reference => {
+            const referenceId = typeof reference === "string" ? reference.split("/").pop() : String(reference?.articleId || reference?.id || "").split("/").pop();
+            return referenceId !== id;
+        });
+        if (activeBookCoverDoc?.id && (remainingChapters.length !== (activeBookCoverDoc.chapters || []).length || remainingArticleIds.length !== (activeBookCoverDoc.articleIds || []).length)) {
+            await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+                chapters: remainingChapters,
+                articleIds: remainingArticleIds,
+                updatedAt: serverTimestamp()
+            });
+            activeBookCoverDoc.chapters = remainingChapters;
+            activeBookCoverDoc.articleIds = remainingArticleIds;
+        }
+
+        const found = currentArticlesList.find(article => article.id === id);
+        if (found) Object.assign(found, { bookName: "", bookId: "", parentBookId: "" });
+        activeBookChapters = activeBookChapters.filter(article => article.id !== id);
+        renderBookChaptersReorderList(activeBookChapters);
+        await saveAndApplyChapterOrder(false);
+        showGlobalStatus(`'${title}' പുസ്തകത്തിൽ നിന്ന് മാറ്റി.`, "info");
+    } catch (error) {
+        console.error("Detach chapter error:", error);
+        showGlobalStatus("മാറ്റാൻ കഴിഞ്ഞില്ല.", "error");
     }
 }
 
@@ -2361,213 +1857,73 @@ function renderBookChaptersReorderList(chapters) {
         return;
     }
 
-    const safeChapters = Array.isArray(chapters) ? chapters : [];
-    listEl.innerHTML = safeChapters.map((art, idx) => {
+    listEl.innerHTML = chapters.map((art, idx) => {
+        const safeId = escapeHtml(art.id);
+        const safeTitle = escapeHtml(art.title || "");
+        const safeAuthor = escapeHtml(art.author || activeBookAuthor || "NUQTHA");
+        const safeDate = escapeHtml(art.date || "Recent");
+        const safeImageUrl = escapeHtml(art.imageUrl || "");
         return `
-        <div class="chapter-reorder-item flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-2xl gap-3 transition cursor-grab shadow-2xs select-none" draggable="true" data-index="${idx}" data-id="${art.id}">
+        <div class="chapter-reorder-item flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-2xl gap-3 transition cursor-grab shadow-2xs select-none" draggable="true" data-index="${idx}" data-id="${safeId}">
             <div class="flex items-center gap-3 min-w-0">
                 <span class="text-slate-400 hover:text-slate-600 font-bold text-lg px-1 cursor-grab" title="Drag to reorder">⠿</span>
                 <span class="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800 font-bold text-xs flex items-center justify-center flex-shrink-0 font-english">
                     #${idx + 1}
                 </span>
                 ${art.imageUrl ? `
-                    <img src="${art.imageUrl}" alt="Thumb" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-200">
+                    <img src="${safeImageUrl}" alt="Thumbnail" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-200">
                 ` : `
                     <span class="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-sm flex-shrink-0 border border-amber-200/60">📄</span>
                 `}
                 <div class="min-w-0">
-                    <h5 class="text-xs font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">${art.title}</h5>
+                    <h5 class="text-xs font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">${safeTitle}</h5>
                     <p class="text-[10px] text-slate-400 font-english truncate">
-                        ${art.author || activeBookAuthor || 'NUQTHA'} • ${art.date || 'Recent'}
+                        ${safeAuthor} • ${safeDate}
                     </p>
                 </div>
             </div>
-            <div class="flex items-center gap-1.5 flex-shrink-0">
-                <button type="button" class="btn-move-up w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold transition" data-index="${idx}" title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.25; cursor:not-allowed;"' : ''}>▲</button>
-                <button type="button" class="btn-move-down w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold transition" data-index="${idx}" title="Move Down" ${idx === chapters.length - 1 ? 'disabled style="opacity:0.25; cursor:not-allowed;"' : ''}>▼</button>
-                <button type="button" class="btn-edit-chapter px-2.5 h-7 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 flex items-center justify-center text-xs font-bold transition gap-1 cursor-pointer" data-id="${art.id}" title="ഈ അധ്യായം എഡിറ്റ് ചെയ്യുക (Edit Chapter)">
-                    <span>✏️</span><span class="text-[11px] font-english hidden sm:inline">Edit</span>
-                </button>
-                <button type="button" class="btn-detach-chapter w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center text-xs font-bold transition ml-0.5 cursor-pointer" data-id="${art.id}" data-title="${(art.title || '').replace(/"/g, '&quot;')}" title="Remove from this book">✕</button>
+            <div class="flex items-center gap-1 flex-shrink-0">
+                <button type="button" data-action="move-chapter" data-direction="up" data-index="${idx}" aria-label="Move ${safeTitle} up" class="btn-move-up min-w-11 h-11 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold transition" ${idx === 0 ? 'disabled' : ''}>▲</button>
+                <button type="button" data-action="move-chapter" data-direction="down" data-index="${idx}" aria-label="Move ${safeTitle} down" class="btn-move-down min-w-11 h-11 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold transition" ${idx === chapters.length - 1 ? 'disabled' : ''}>▼</button>
+                <button type="button" data-action="detach-chapter" data-id="${safeId}" data-title="${safeTitle}" aria-label="Remove ${safeTitle} from this book" class="btn-detach-chapter min-w-11 h-11 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center text-xs font-bold transition ml-1">✕</button>
             </div>
         </div>
         `;
     }).join("");
 
-    // Bind Drag & Drop Listeners
-    const items = listEl.querySelectorAll(".chapter-reorder-item");
-    items.forEach(item => {
-        if (!item) return;
-        item.addEventListener("dragstart", (e) => {
-            dragSrcChapterIndex = parseInt(item.dataset.index, 10);
-            item.style.opacity = "0.4";
-            e.dataTransfer.effectAllowed = "move";
-        });
-
-        item.addEventListener("dragover", (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-            item.classList.add("border-indigo-500", "bg-indigo-50/30");
-        });
-
-        item.addEventListener("dragleave", () => {
-            item.classList.remove("border-indigo-500", "bg-indigo-50/30");
-        });
-
-        item.addEventListener("drop", (e) => {
-            e.preventDefault();
-            item.classList.remove("border-indigo-500", "bg-indigo-50/30");
-            const targetIndex = parseInt(item.dataset.index, 10);
-            if (dragSrcChapterIndex !== null && dragSrcChapterIndex !== targetIndex) {
-                // Move item in array
-                const moved = activeBookChapters.splice(dragSrcChapterIndex, 1)[0];
-                activeBookChapters.splice(targetIndex, 0, moved);
-                renderBookChaptersReorderList(activeBookChapters);
-                saveAndApplyChapterOrder(false);
-            }
-        });
-
-        item.addEventListener("dragend", () => {
-            item.style.opacity = "1";
-            dragSrcChapterIndex = null;
-            items.forEach(el => el.classList.remove("border-indigo-500", "bg-indigo-50/30"));
-        });
-    });
-
-    // Bind Up & Down Buttons
-    listEl.querySelectorAll(".btn-move-up").forEach(btn => {
-        if (!btn) return;
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.index, 10);
-            if (idx > 0) {
-                const temp = activeBookChapters[idx];
-                activeBookChapters[idx] = activeBookChapters[idx - 1];
-                activeBookChapters[idx - 1] = temp;
-                renderBookChaptersReorderList(activeBookChapters);
-                saveAndApplyChapterOrder(false);
-            }
-        });
-    });
-
-    listEl.querySelectorAll(".btn-move-down").forEach(btn => {
-        if (!btn) return;
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.index, 10);
-            if (idx < activeBookChapters.length - 1) {
-                const temp = activeBookChapters[idx];
-                activeBookChapters[idx] = activeBookChapters[idx + 1];
-                activeBookChapters[idx + 1] = temp;
-                renderBookChaptersReorderList(activeBookChapters);
-                saveAndApplyChapterOrder(false);
-            }
-        });
-    });
-
-    // Bind Edit Chapter Button
-    listEl.querySelectorAll(".btn-edit-chapter").forEach(btn => {
-        if (!btn) return;
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const id = btn.dataset.id;
-            if (id && typeof window.startEditChapter === "function") {
-                window.startEditChapter(id);
-            }
-        });
-    });
-
-    // Bind Detach Button
-    listEl.querySelectorAll(".btn-detach-chapter").forEach(btn => {
-        if (!btn) return;
-        btn.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            const id = btn.dataset.id;
-            const title = btn.dataset.title;
-            if (!confirm(`'${title}' ഈ പുസ്തകത്തിൽ നിന്ന് മാറ്റണോ (Remove from book)?`)) return;
-
-            try {
-                // 1. Clear bookId & bookName on chapter article in Firestore
-                await updateDoc(doc(db, "articles", id), {
-                    bookName: "",
-                    bookId: "",
-                    updatedAt: serverTimestamp()
-                });
-
-                // 2. Remove chapter ID from active book doc chapters array in Firestore
-                if (activeBookCoverDoc && activeBookCoverDoc.id) {
-                    const existingChs = Array.isArray(activeBookCoverDoc.chapters) ? [...activeBookCoverDoc.chapters] : [];
-                    const updatedChs = existingChs.filter(ch => (typeof ch === "string" ? ch : ch?.id) !== id);
-                    activeBookCoverDoc.chapters = updatedChs;
-                    await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
-                        chapters: updatedChs,
-                        updatedAt: serverTimestamp()
-                    });
-                }
-
-                // 3. Update local state
-                const found = currentArticlesList.find(a => a.id === id);
-                if (found) {
-                    found.bookName = "";
-                    found.bookId = "";
-                }
-
-                activeBookChapters = activeBookChapters.filter(a => a.id !== id);
-                renderBookChaptersReorderList(activeBookChapters);
-                saveAndApplyChapterOrder(false);
-                updateActiveBookOverview(currentArticlesList);
-                renderBookManagerCompactArticles(currentArticlesList, activeBookName);
-                showChapterInlineMsg(`'${title}' പുസ്തകത്തിൽ നിന്ന് മാറ്റി.`, "success");
-                showGlobalStatus(`'${title}' പുസ്തകത്തിൽ നിന്ന് മാറ്റി.`, "info");
-            } catch (err) {
-                console.error("[ChapterWriter] Detach chapter error:", err);
-                showChapterInlineMsg("മാറ്റാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
-                showGlobalStatus("മാറ്റാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
-            }
-        });
-    });
 }
 
 async function saveAndApplyChapterOrder(showToast = true) {
     if (!activeBookChapters || activeBookChapters.length === 0) return;
 
     try {
-        const chapterIds = [];
         for (let i = 0; i < activeBookChapters.length; i++) {
             const art = activeBookChapters[i];
             const newPriority = i + 1;
-            chapterIds.push(art.id);
             if (art.priority !== newPriority || art.order !== newPriority) {
                 art.priority = newPriority;
                 art.order = newPriority;
-                const updatePayload = {
+                await updateDoc(doc(db, "articles", art.id), {
                     priority: newPriority,
                     order: newPriority,
                     updatedAt: serverTimestamp()
-                };
-                if (activeBookCoverDoc?.id && !art.bookId) {
-                    updatePayload.bookId = activeBookCoverDoc.id;
-                    art.bookId = activeBookCoverDoc.id;
-                }
-                await updateDoc(doc(db, "articles", art.id), updatePayload);
+                });
                 const globalItem = currentArticlesList.find(a => a.id === art.id);
-                if (globalItem) {
-                    globalItem.priority = newPriority;
-                    globalItem.order = newPriority;
-                    if (updatePayload.bookId) globalItem.bookId = updatePayload.bookId;
-                }
+                if (globalItem) Object.assign(globalItem, { priority: newPriority, order: newPriority });
             }
         }
 
-        // Also update book doc with ordered chapters array
-        if (activeBookCoverDoc && activeBookCoverDoc.id) {
-            activeBookCoverDoc.chapters = chapterIds;
-            await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
-                chapters: chapterIds,
-                updatedAt: serverTimestamp()
-            });
+        if (activeBookCoverDoc?.id) {
+            const orderedReferences = activeBookChapters.map((chapter, index) => ({ articleId: chapter.id, order: index + 1 }));
+            const payload = { updatedAt: serverTimestamp() };
+            if (Array.isArray(activeBookCoverDoc.chapters)) payload.chapters = orderedReferences;
+            if (Array.isArray(activeBookCoverDoc.articleIds)) payload.articleIds = activeBookChapters.map(chapter => chapter.id);
+            if (payload.chapters || payload.articleIds) {
+                await updateDoc(doc(db, "articles", activeBookCoverDoc.id), payload);
+                if (payload.chapters) activeBookCoverDoc.chapters = payload.chapters;
+                if (payload.articleIds) activeBookCoverDoc.articleIds = payload.articleIds;
+            }
         }
-
         if (showToast) {
             showGlobalStatus("💾 വായനാ ക്രമം വിജയകരമായി സേവ് ചെയ്തു!", "success");
         }
@@ -2584,74 +1940,79 @@ function initBookAttachExistingArticles() {
 
     if (searchInput) {
         searchInput.addEventListener("input", () => {
+            attachedArticlesPage = 1;
             renderBookManagerCompactArticles(currentArticlesList, activeBookName);
         });
     }
 
+    if (attachBtn) attachBtn.dataset.action = "attach-selected";
+}
+
+async function attachSelectedArticles() {
+    const attachBtn = document.getElementById("bm-attach-selected-btn");
+    if (!activeBookName) {
+        showGlobalStatus("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.", "error");
+        return;
+    }
+
+    const selectedIds = new Set([
+        ...selectedAttachArticleIds,
+        ...Array.from(document.querySelectorAll(".bm-article-chk:checked"), checkbox => checkbox.dataset.id)
+    ]);
+    if (selectedIds.size === 0) {
+        showGlobalStatus("ദയവായി പുസ്തകത്തിലേക്ക് ചേർക്കാൻ ലേഖനങ്ങൾ തിരഞ്ഞെടുക്കുക.", "error");
+        return;
+    }
+
+    if (attachBtn) {
+        attachBtn.disabled = true;
+        attachBtn.textContent = "അറ്റാച്ച് ചെയ്യുന്നു...";
+    }
+
+    try {
+        let startPriority = activeBookChapters.length;
+        for (const id of selectedIds) {
+            if (!id) continue;
+            startPriority++;
+            const linkFields = getBookArticleLinkFields(activeBookCoverDoc, activeBookName, startPriority);
+            await updateDoc(doc(db, "articles", id), {
+                ...linkFields,
+                author: activeBookAuthor || "NUQTHA AUTHOR",
+                updatedAt: serverTimestamp()
+            });
+            const item = currentArticlesList.find(article => article.id === id);
+            if (item) Object.assign(item, linkFields, { author: activeBookAuthor || item.author });
+        }
+
+        selectedAttachArticleIds.clear();
+        showGlobalStatus(`✨ ${selectedIds.size} ലേഖനങ്ങൾ '${activeBookName}' ലേക്ക് അറ്റാച്ച് ചെയ്തു!`, "success");
+        loadAndRenderBookChapters();
+        renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+    } catch (error) {
+        console.error("Attach articles error:", error);
+        showGlobalStatus("ലേഖനങ്ങൾ അറ്റാച്ച് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
+    } finally {
         if (attachBtn) {
-        const executeAttach = async () => {
-            if (!activeBookName) {
-                showGlobalStatus("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.", "error");
-                return;
-            }
-
-            const checked = Array.from(document.querySelectorAll(".bm-article-chk:checked"));
-            if (checked.length === 0) {
-                showGlobalStatus("ദയവായി പുസ്തകത്തിലേക്ക് ചേർക്കാൻ ലേഖനങ്ങൾ തിരഞ്ഞെടുക്കുക.", "error");
-                return;
-            }
-
-            attachBtn.disabled = true;
-            attachBtn.innerHTML = "അറ്റാച്ച് ചെയ്യുന്നു...";
-
-            try {
-                let startPriority = activeBookChapters.length;
-                for (const chk of checked) {
-                    const id = chk.dataset.id;
-                    if (id) {
-                        startPriority++;
-                        await updateDoc(doc(db, "articles", id), {
-                            bookName: activeBookName,
-                            bookId: activeBookCoverDoc?.id || "",
-                            author: activeBookAuthor || "NUQTHA AUTHOR",
-                            priority: startPriority,
-                            order: startPriority,
-                            updatedAt: serverTimestamp()
-                        });
-                        const item = currentArticlesList.find(a => a.id === id);
-                        if (item) {
-                            item.bookName = activeBookName;
-                            item.author = activeBookAuthor || item.author;
-                            item.priority = startPriority;
-                            item.order = startPriority;
-                            item.bookId = activeBookCoverDoc?.id || "";
-                        }
-                    }
-                }
-
-                showGlobalStatus(`✨ ${checked.length} ലേഖനങ്ങൾ '${activeBookName}' ലേക്ക് അറ്റാച്ച് ചെയ്തു!`, "success");
-                loadAndRenderBookChapters();
-                renderBookManagerCompactArticles(currentArticlesList, activeBookName);
-            } catch (err) {
-                console.error("Attach articles error:", err);
-                showGlobalStatus("ലേഖനങ്ങൾ അറ്റാച്ച് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
-            } finally {
-                attachBtn.disabled = false;
-                attachBtn.innerHTML = "തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക";
-            }
-        };
-
-        attachBtn.addEventListener("click", executeAttach);
-        attachBtn.addEventListener("execute-attach", executeAttach);
+            attachBtn.disabled = false;
+            attachBtn.textContent = "തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക";
+        }
     }
 }
 
 function renderBookManagerCompactArticles(articles, activeBookParam) {
     const listEl = document.getElementById("bm-compact-articles-list");
-    const loadMoreBtn = document.getElementById("bm-load-more-articles-btn");
     if (!listEl) return;
 
-    const listToRender = Array.isArray(articles) ? articles : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
+    if (articleLoadState === "loading") {
+        listEl.innerHTML = `<p class="text-xs text-center py-4 text-slate-500" role="status">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>`;
+        return;
+    }
+    if (articleLoadState === "error") {
+        listEl.innerHTML = `<div class="p-4 text-center text-xs text-rose-700" role="alert">ലേഖനങ്ങൾ ലോഡ് ചെയ്യാനായില്ല.<button type="button" data-action="retry-articles" class="mt-2 min-h-11 px-4 rounded-lg border border-rose-300 font-bold">Retry</button></div>`;
+        return;
+    }
+
+    const listToRender = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
     const activeBook = activeBookParam || activeBookName || "";
     const searchTerm = (document.getElementById("bm-articles-search")?.value || "").toLowerCase().trim();
 
@@ -2668,41 +2029,35 @@ function renderBookManagerCompactArticles(articles, activeBookParam) {
 
     if (filtered.length === 0) {
         listEl.innerHTML = `<p class="text-xs text-center py-4 text-slate-400">ലേഖനങ്ങളൊന്നും കണ്ടെത്താനായില്ല.</p>`;
-        if (loadMoreBtn) loadMoreBtn.classList.add("hidden");
         return;
     }
 
-    const totalCount = filtered.length;
-    const paginated = filtered.slice(0, compactArticlesDisplayLimit);
-
-    if (loadMoreBtn) {
-        if (totalCount > compactArticlesDisplayLimit) {
-            loadMoreBtn.classList.remove("hidden");
-            loadMoreBtn.textContent = `കൂടുതൽ കാണിക്കുക (Showing ${paginated.length} of ${totalCount})`;
-        } else {
-            loadMoreBtn.classList.add("hidden");
-        }
-    }
-
-    listEl.innerHTML = paginated.map(art => {
-        const isBelong = Boolean(activeBook && normalizeStringClean(art.bookName) === normalizeStringClean(activeBook));
-        const hasOtherBook = Boolean(art.bookName && art.bookName.trim() && !isBelong);
+    const pageItems = filtered.slice(0, attachedArticlesPage * 20);
+    listEl.innerHTML = pageItems.map(art => {
+        const selectedBook = activeBookCoverDoc || { title: activeBook, bookName: activeBook };
+        const isBelong = Boolean(activeBook && getBookChapters(selectedBook, [art]).length);
+        const hasOtherBook = Boolean((art.bookName || art.bookId || art.parentBookId) && !isBelong);
+        const safeId = escapeHtml(art.id);
+        const safeTitle = escapeHtml(art.title || "");
+        const safeAuthor = escapeHtml(art.author || "NUQTHA");
+        const safeDate = escapeHtml(art.date || "Recent");
+        const safeImageUrl = escapeHtml(art.imageUrl || "");
 
         let badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500">Unassigned</span>`;
         if (isBelong) {
             badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">In this Book</span>`;
         } else if (hasOtherBook) {
-            badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">${art.bookName}</span>`;
+            badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">${escapeHtml(art.bookName)}</span>`;
         }
 
         return `
             <label class="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-200/60 hover:border-amber-300 transition cursor-pointer gap-2">
                 <div class="flex items-center gap-2.5 min-w-0">
-                    <input type="checkbox" class="bm-article-chk rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer" data-id="${art.id}" ${isBelong ? "checked" : ""}>
-                    ${art.imageUrl ? `<img src="${art.imageUrl}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">` : `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center text-xs flex-shrink-0">📄</span>`}
+                    <input type="checkbox" class="bm-article-chk rounded text-amber-600 focus:ring-amber-500 w-5 h-5 cursor-pointer" data-id="${safeId}" ${isBelong || selectedAttachArticleIds.has(art.id) ? "checked" : ""}>
+                    ${art.imageUrl ? `<img src="${safeImageUrl}" alt="" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">` : `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center text-xs flex-shrink-0">📄</span>`}
                     <div class="min-w-0">
-                        <h5 class="text-xs font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">${art.title}</h5>
-                        <p class="text-[10px] text-slate-400">${art.author || "NUQTHA"} • ${art.date || "Recent"}</p>
+                        <h5 class="text-xs font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">${safeTitle}</h5>
+                        <p class="text-[10px] text-slate-400">${safeAuthor} • ${safeDate}</p>
                     </div>
                 </div>
                 <div class="flex-shrink-0">
@@ -2710,177 +2065,170 @@ function renderBookManagerCompactArticles(articles, activeBookParam) {
                 </div>
             </label>
         `;
-    }).join("");
+    }).join("") + (filtered.length > pageItems.length ? `<button type="button" data-action="load-more-attached" class="min-h-11 w-full rounded-lg border border-slate-200 bg-white text-xs font-bold text-[#4a3c33]">Load more (${filtered.length - pageItems.length} remaining)</button>` : "");
 }
 
 /* ═══════════ 6. PRESENTATION UPLOAD ═══════════ */
 function initBookPresentationUpload() {
     const fileInput = document.getElementById("bm-presentation-file-input");
-    const dropzone = document.getElementById("bm-presentation-dropzone");
     const placeholder = document.getElementById("bm-presentation-placeholder");
-    const progressEl = document.getElementById("bm-presentation-progress");
     const fileInfo = document.getElementById("bm-presentation-file-info");
     const fileNameEl = document.getElementById("bm-presentation-file-name");
-    const removeBtn = document.getElementById("bm-remove-presentation-btn");
     const saveBtn = document.getElementById("bm-save-presentation-btn");
-    const linkInput = document.getElementById("bm-presentation-link");
+    const dropzone = document.getElementById("bm-presentation-dropzone");
+    const statusEl = document.getElementById("bm-presentation-status");
 
-    function validateAndProcessPdfFile(file) {
+    const handleFile = file => {
         if (!file) return;
-
-        // Size limit: 25MB
-        if (file.size > 25 * 1024 * 1024) {
-            showGlobalStatus("ഫയൽ വലിപ്പം 25MB-ൽ താഴെയായിരിക്കണം.", "error");
+        const extension = file.name.split(".").pop().toLowerCase();
+        const validTypes = new Set(["pdf", "ppt", "pptx", "key"]);
+        if (!validTypes.has(extension)) {
+            if (statusEl) statusEl.textContent = "PDF, PPT, PPTX, അല്ലെങ്കിൽ KEY ഫയൽ തിരഞ്ഞെടുക്കുക.";
+            return;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+            if (statusEl) statusEl.textContent = "ഫയൽ 20 MB-ൽ താഴെയായിരിക്കണം.";
             return;
         }
 
-        const validExts = [".pdf", ".ppt", ".pptx", ".key"];
-        const lowerName = file.name.toLowerCase();
-        const hasValidExt = validExts.some(ext => lowerName.endsWith(ext));
-        if (!hasValidExt && !file.type.includes("pdf") && !file.type.includes("presentation")) {
-            showGlobalStatus("സാധുവായ PDF അല്ലെങ്കിൽ Presentation ഫയൽ തിരഞ്ഞെടുക്കുക (.pdf, .ppt, .pptx).", "error");
-            return;
-        }
-
+        bmPresentationFile = file;
         bmPresentationFileName = file.name;
+        if (fileNameEl) fileNameEl.textContent = file.name;
         if (placeholder) placeholder.classList.add("hidden");
-        if (progressEl) progressEl.classList.remove("hidden");
+        if (fileInfo) fileInfo.classList.remove("hidden");
+        if (statusEl) statusEl.textContent = "Upload ready";
+    };
 
-        const reader = new FileReader();
-        reader.onerror = () => {
-            showGlobalStatus("ഫയൽ വായിക്കുന്നതിൽ തടസ്സം നേരിട്ടു.", "error");
-            if (progressEl) progressEl.classList.add("hidden");
-            if (placeholder) placeholder.classList.remove("hidden");
-        };
-        reader.onload = (event) => {
-            bmPresentationFileBase64 = event.target.result;
-            if (progressEl) progressEl.classList.add("hidden");
-            if (fileNameEl) fileNameEl.textContent = file.name;
-            if (fileInfo) fileInfo.classList.remove("hidden");
-        };
-        reader.readAsDataURL(file);
-    }
-
-    if (fileInput) {
-        fileInput.addEventListener("change", (e) => {
-            const file = e.target.files && e.target.files[0];
-            if (file) validateAndProcessPdfFile(file);
-        });
-    }
-
+    if (fileInput) fileInput.addEventListener("change", event => handleFile(event.target.files?.[0]));
     if (dropzone) {
-        dropzone.addEventListener("click", (e) => {
-            if (e.target !== fileInput && !e.target.closest("button")) {
-                if (fileInput) fileInput.click();
-            }
-        });
-        ["dragenter", "dragover"].forEach(evt => {
-            dropzone.addEventListener(evt, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropzone.classList.add("border-indigo-600", "bg-indigo-100/50");
-            });
-        });
-        ["dragleave", "drop"].forEach(evt => {
-            dropzone.addEventListener(evt, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropzone.classList.remove("border-indigo-600", "bg-indigo-100/50");
-            });
-        });
-        dropzone.addEventListener("drop", (e) => {
-            const dt = e.dataTransfer;
-            const file = dt && dt.files && dt.files[0];
-            if (file) validateAndProcessPdfFile(file);
-        });
+        ["dragenter", "dragover"].forEach(type => dropzone.addEventListener(type, event => {
+            event.preventDefault();
+            dropzone.classList.add("border-indigo-600", "bg-indigo-100/40");
+        }));
+        ["dragleave", "drop"].forEach(type => dropzone.addEventListener(type, event => {
+            event.preventDefault();
+            dropzone.classList.remove("border-indigo-600", "bg-indigo-100/40");
+        }));
+        dropzone.addEventListener("drop", event => handleFile(event.dataTransfer?.files?.[0]));
     }
 
-    function handleRemovePresentation() {
-        bmPresentationFileBase64 = "";
-        bmPresentationFileName = "";
-        if (fileInput) fileInput.value = "";
-        if (fileInfo) fileInfo.classList.add("hidden");
-        if (progressEl) progressEl.classList.add("hidden");
-        if (placeholder) placeholder.classList.remove("hidden");
-    }
+    if (saveBtn) saveBtn.dataset.action = "save-presentation";
+}
 
-    if (removeBtn) {
-        removeBtn.addEventListener("click", handleRemovePresentation);
-        removeBtn.addEventListener("execute-remove", handleRemovePresentation);
-    }
+function removeBookPresentation() {
+    const fileInput = document.getElementById("bm-presentation-file-input");
+    const fileInfo = document.getElementById("bm-presentation-file-info");
+    const placeholder = document.getElementById("bm-presentation-placeholder");
+    const statusEl = document.getElementById("bm-presentation-status");
+    const linkInput = document.getElementById("bm-presentation-link");
+    bmPresentationFile = null;
+    bmPresentationFileName = "";
+    if (fileInput) fileInput.value = "";
+    if (fileInfo) fileInfo.classList.add("hidden");
+    if (placeholder) placeholder.classList.remove("hidden");
+    if (linkInput) linkInput.value = "";
+    if (statusEl) statusEl.textContent = "";
 
-    async function handleSavePresentation() {
-        const externalLink = linkInput ? linkInput.value.trim() : "";
-        if (!activeBookName) {
-            showGlobalStatus("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.", "error");
-            return;
-        }
-        if (!bmPresentationFileBase64 && !externalLink) {
-            showGlobalStatus("ദയവായി ഒരു PDF ഫയൽ അപ്‌ലോഡ് ചെയ്യുക അല്ലെങ്കിൽ ലിങ്ക് നൽകുക.", "error");
-            return;
-        }
-
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = "സേവ് ചെയ്യുന്നു...";
-        }
-
-        try {
-            const existingBook = currentArticlesList.find(a => a.type === "BOOK" && (
-                normalizeStringClean(a.bookName) === normalizeStringClean(activeBookName) ||
-                normalizeStringClean(a.title) === normalizeStringClean(activeBookName)
-            ));
-            const payload = {
-                presentationUrl: externalLink || bmPresentationFileBase64,
-                presentationName: bmPresentationFileName || "Book Presentation",
-                updatedAt: serverTimestamp()
-            };
-
-            if (existingBook) {
-                await updateDoc(doc(db, "articles", existingBook.id), payload);
-            }
-
-            showGlobalStatus(`പ്രസന്റേഷൻ '${activeBookName}' ലേക്ക് വിജയകരമായി സേവ് ചെയ്തു! 📑`, "success");
-        } catch (err) {
-            console.error("Presentation save error:", err);
-            showGlobalStatus("പ്രസന്റേഷൻ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
-        } finally {
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = "Save Presentation to Book";
-            }
-        }
-    }
-
-    if (saveBtn) {
-        saveBtn.addEventListener("click", handleSavePresentation);
-        saveBtn.addEventListener("execute-save", handleSavePresentation);
+    const book = activeBookCoverDoc || currentArticlesList.find(article => article.type === "BOOK" && normalizeStringClean(article.bookName || article.title) === normalizeStringClean(activeBookName));
+    if (book?.id && book.presentationUrl) {
+        updateDoc(doc(db, "articles", book.id), { presentationUrl: "", presentationName: "", updatedAt: serverTimestamp() })
+            .then(() => Object.assign(book, { presentationUrl: "", presentationName: "" }))
+            .catch(error => showGlobalStatus(`ഫയൽ നീക്കം ചെയ്യാനായില്ല: ${error.message}`, "error"));
     }
 }
 
+async function saveBookPresentation() {
+    const saveBtn = document.getElementById("bm-save-presentation-btn");
+    const linkInput = document.getElementById("bm-presentation-link");
+    const progress = document.getElementById("bm-presentation-progress");
+    const progressBar = document.getElementById("bm-presentation-progress-bar");
+    const statusEl = document.getElementById("bm-presentation-status");
+    const externalLink = linkInput?.value.trim() || "";
+    if (!activeBookName) {
+        showGlobalStatus("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.", "error");
+        return;
+    }
+    if (!bmPresentationFile && !externalLink) {
+        showGlobalStatus("ഒരു PDF/Presentation ഫയൽ തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ ഒരു URL നൽകുക.", "error");
+        return;
+    }
 
-/* ═══════════ 7. ACTIVE BOOKS OVERVIEW, DEDICATED BOOKS TAB & DROPDOWN ═══════════ */
+    const book = activeBookCoverDoc || currentArticlesList.find(article => article.type === "BOOK" && normalizeStringClean(article.bookName || article.title) === normalizeStringClean(activeBookName));
+    if (!book?.id) {
+        showGlobalStatus("പുസ്തകം കണ്ടെത്താനായില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
+        return;
+    }
+
+    if (externalLink) {
+        try {
+            if (!["http:", "https:"].includes(new URL(externalLink).protocol)) throw new Error("Invalid URL");
+        } catch {
+            showGlobalStatus("സാധുവായ https:// അല്ലെങ്കിൽ http:// ലിങ്ക് നൽകുക.", "error");
+            return;
+        }
+    }
+
+    if (saveBtn) saveBtn.disabled = true;
+    if (statusEl) statusEl.textContent = bmPresentationFile ? "Uploading..." : "Saving link...";
+    if (bmPresentationFile && progress) progress.classList.remove("hidden");
+
+    try {
+        let presentationUrl = externalLink;
+        if (bmPresentationFile) {
+            const safeName = bmPresentationFile.name.replace(/[^\w.-]/g, "_");
+            const uploadRef = ref(storage, `book-presentations/${book.id}/${Date.now()}-${safeName}`);
+            const task = uploadBytesResumable(uploadRef, bmPresentationFile);
+            const snapshot = await new Promise((resolve, reject) => {
+                task.on("state_changed", uploadSnapshot => {
+                    const percent = Math.round((uploadSnapshot.bytesTransferred / uploadSnapshot.totalBytes) * 100);
+                    if (progress) progress.setAttribute("aria-valuenow", String(percent));
+                    if (progressBar) progressBar.style.width = `${percent}%`;
+                    if (statusEl) statusEl.textContent = `Uploading... ${percent}%`;
+                }, reject, () => resolve(task.snapshot));
+            });
+            presentationUrl = await getDownloadURL(snapshot.ref);
+        }
+
+        const payload = {
+            presentationUrl,
+            presentationName: bmPresentationFileName || "Book Presentation",
+            updatedAt: serverTimestamp()
+        };
+        await updateDoc(doc(db, "articles", book.id), payload);
+        Object.assign(book, payload);
+        if (statusEl) statusEl.textContent = "Upload complete";
+        showGlobalStatus(`പ്രസന്റേഷൻ '${activeBookName}' ലേക്ക് വിജയകരമായി സേവ് ചെയ്തു.`, "success");
+    } catch (error) {
+        console.error("Presentation save error:", error);
+        if (statusEl) statusEl.textContent = "Upload failed. വീണ്ടും ശ്രമിക്കുക.";
+        showGlobalStatus("പ്രസന്റേഷൻ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
+    } finally {
+        if (saveBtn) saveBtn.disabled = false;
+    }
+}
+
+/* ═══════════ 7. ACTIVE BOOKS OVERVIEW & DROPDOWN POPULATION ═══════════ */
 function updateActiveBookOverview(articles) {
     const activeSelect = document.getElementById("bm-active-book-select");
 
     // Discover all book names
     const bookMap = {};
-    const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
-    
-    pool.forEach(art => {
-        if (isMainBook(art) && (art.bookName || art.title)) {
-            const name = (art.bookName || art.title).trim();
+    articles.forEach(art => {
+        if (art.type === "BOOK" && art.title) {
+            const name = art.title.trim();
             if (!bookMap[name]) bookMap[name] = { cover: art, chapters: 0 };
         }
     });
 
-    pool.forEach(art => {
-        if (!isMainBook(art) && (art.bookName || art.bookId)) {
-            const name = (art.bookName || "").trim();
-            if (name && bookMap[name]) {
-                bookMap[name].chapters++;
-            }
+    articles.forEach(art => {
+        if (art.type !== "BOOK" && art.bookName && art.bookName.trim()) {
+            const name = art.bookName.trim();
+            if (!bookMap[name]) bookMap[name] = { cover: null, chapters: 0 };
         }
+    });
+
+    Object.entries(bookMap).forEach(([name, book]) => {
+        book.chapters = getBookChapters(book.cover || { title: name, bookName: name }, articles).length;
     });
 
     const bookNames = Object.keys(bookMap);
@@ -2896,177 +2244,6 @@ function updateActiveBookOverview(articles) {
         }
     }
 }
-
-function updateBooksCounter(count) {
-    const tabBadge = document.getElementById("tab-book-badge");
-    const bmBadge = document.getElementById("bm-books-count-badge");
-    const totalEl = document.getElementById("bm-total-books-counter");
-    if (tabBadge) tabBadge.textContent = String(count);
-    if (bmBadge) bmBadge.textContent = `${count} Books`;
-    if (totalEl) totalEl.textContent = `${count} Books`;
-}
-
-function renderAdminBooksTab(articles) {
-    const gridEl = document.getElementById("bm-published-books-grid");
-    const totalCounterEl = document.getElementById("bm-total-books-counter");
-    const badgeEl = document.getElementById("bm-books-count-badge");
-    const tabBadgeEl = document.getElementById("tab-book-badge");
-
-    const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
-    const rawBooks = pool.filter(a => isMainBook(a));
-
-    const books = [];
-    const seenIds = new Set();
-    for (const b of rawBooks) {
-        const key = b.id || b.bookName || b.title;
-        if (!seenIds.has(key)) {
-            seenIds.add(key);
-            books.push(b);
-        }
-    }
-
-    if (totalCounterEl) totalCounterEl.textContent = `${books.length} Books`;
-    if (badgeEl) badgeEl.textContent = `${books.length} Books`;
-    if (tabBadgeEl) tabBadgeEl.textContent = String(books.length);
-
-    if (!gridEl) return;
-
-    if (books.length === 0) {
-        gridEl.innerHTML = `
-            <div class="col-span-full text-center py-12 px-4 bg-amber-50/40 rounded-2xl border-2 border-dashed border-amber-200 space-y-2">
-                <span class="text-3xl">📚</span>
-                <p class="text-xs font-bold text-amber-900">പുസ്തകങ്ങൾ ഒന്നും നിലവിൽ ചേർത്തിട്ടില്ല</p>
-                <p class="text-[11px] text-amber-700">പുതിയ പുസ്തകം ചേർക്കാൻ മുകളിലെ '+ പുതിയ പുസ്തകം നിർമ്മിക്കുക' ക്ലിക്ക് ചെയ്യുക.</p>
-            </div>
-        `;
-        return;
-    }
-
-    gridEl.innerHTML = books.map(book => {
-        const bookTitle = book.bookName || book.title || "Untitled Book";
-        const chapterCount = countBookChapters(book, pool);
-        const isActive = activeBookCoverDoc && (activeBookCoverDoc.id === book.id || activeBookName === bookTitle);
-
-        return `
-            <div class="p-4 bg-white rounded-2xl border-2 ${isActive ? 'border-amber-500 bg-amber-50/20 ring-2 ring-amber-200' : 'border-[#ebdccb] hover:border-amber-300'} transition shadow-xs flex flex-col justify-between gap-3">
-                <div class="flex items-start gap-3">
-                    <div class="w-16 h-22 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-amber-600 to-amber-900 border border-amber-200 shadow-xs flex items-center justify-center text-white">
-                        ${book.imageUrl ? `<img src="${book.imageUrl}" alt="${bookTitle}" class="w-full h-full object-cover">` : `<span class="text-2xl">📚</span>`}
-                    </div>
-                    <div class="flex-1 min-w-0 space-y-1">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md font-english">
-                                ${book.category || 'Premium Book'}
-                            </span>
-                            <span class="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-english">
-                                📖 ${chapterCount} Chapters
-                            </span>
-                            ${isActive ? `<span class="text-[9px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md font-english">● ACTIVE</span>` : ''}
-                        </div>
-                        <h4 class="text-sm font-extrabold text-[#1e1b18] truncate leading-tight">${bookTitle}</h4>
-                        <p class="text-[11px] font-bold text-[#8c7a6b] truncate">✍️ ${book.author || 'Single Author'}</p>
-                        ${book.date ? `<p class="text-[10px] text-slate-400 font-english">📅 ${book.date}</p>` : ''}
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between pt-2.5 border-t border-[#f0e6d6] gap-2 flex-wrap">
-                    <a href="${getStoryUrl(book)}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline font-english">
-                        <span>👁️ Live</span>
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                    </a>
-
-                    <div class="flex items-center gap-1.5">
-                        <button type="button" onclick="window.manageBookById('${book.id}')" title="അധ്യായങ്ങൾ മാനേജ് ചെയ്യുക & പുനഃക്രമീകരിക്കുക" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs font-english cursor-pointer">
-                            <span>📖 Chapters</span>
-                        </button>
-                        <button type="button" onclick="window.editBookMetadataById('${book.id}')" title="പുസ്തക വിവരങ്ങൾ എഡിറ്റ് ചെയ്യുക" class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
-                            <span>✏️ Edit</span>
-                        </button>
-                        <button type="button" onclick="window.deleteBookById('${book.id}', '${bookTitle.replace(/'/g, "\\'")}')" title="ഈ പുസ്തകം ഒഴിവാക്കുക" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition font-english cursor-pointer">
-                            <span>✕</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join("");
-}
-window.renderAdminBooksTab = renderAdminBooksTab;
-
-window.manageBookById = function(bookId) {
-    const book = currentArticlesList.find(a => a.id === bookId);
-    if (!book) return;
-    const name = book.bookName || book.title;
-    selectActiveBook(name);
-    renderAdminBooksTab(currentArticlesList);
-    const step3 = document.getElementById("bm-step3-section") || document.getElementById("bm-step2-3-wrapper");
-    if (step3) {
-        step3.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    showGlobalStatus(`📖 '${name}' തുറന്നു. അധ്യായങ്ങൾ താഴെ ക്രമീകരിക്കാം.`, "info");
-};
-
-window.editBookMetadataById = function(bookId) {
-    const book = currentArticlesList.find(a => a.id === bookId);
-    if (!book) return;
-    const name = book.bookName || book.title;
-    selectActiveBook(name);
-    renderAdminBooksTab(currentArticlesList);
-    const step1 = document.getElementById("bm-step1-section");
-    if (step1) {
-        step1.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    const nameInput = document.getElementById("book-meta-name");
-    if (nameInput) {
-        nameInput.focus();
-        nameInput.classList.add("ring-2", "ring-blue-300");
-        setTimeout(() => nameInput.classList.remove("ring-2", "ring-blue-300"), 1500);
-    }
-    showGlobalStatus(`✏️ '${name}' വിവരങ്ങൾ എഡിറ്റ് ചെയ്യുക.`, "info");
-};
-
-window.deleteBookById = async function(bookId, bookTitle) {
-    if (!bookId) return;
-    const cleanTitle = bookTitle || "ഈ പുസ്തകം";
-    if (!confirm(`'${cleanTitle}' എന്ന പുസ്തകം പൂർണ്ണമായി നീക്കം ചെയ്യണോ (Delete Book)?`)) return;
-
-    try {
-        await deleteDoc(doc(db, "articles", bookId));
-
-        // Unlink chapters belonging to this book
-        const linkedChapters = currentArticlesList.filter(a => a.bookId === bookId || (cleanTitle && a.bookName === cleanTitle));
-        for (const ch of linkedChapters) {
-            try {
-                await updateDoc(doc(db, "articles", ch.id), {
-                    bookId: "",
-                    bookName: "",
-                    updatedAt: serverTimestamp()
-                });
-                ch.bookId = "";
-                ch.bookName = "";
-            } catch (chErr) {
-                console.warn("[BookManager] Unlink error:", ch.id, chErr);
-            }
-        }
-
-        currentArticlesList = currentArticlesList.filter(a => a.id !== bookId);
-
-        if (activeBookCoverDoc?.id === bookId || activeBookName === cleanTitle) {
-            resetBookManagerForm();
-        }
-
-        const allBooks = currentArticlesList.filter(a => isMainBook(a));
-        updateBooksCounter(allBooks.length);
-        updateActiveBookOverview(currentArticlesList);
-        renderAdminBooksTab(currentArticlesList);
-        renderBookManagerCompactArticles(currentArticlesList, activeBookName);
-
-        showGlobalStatus(`📚 '${cleanTitle}' വിജയകരമായി നീക്കം ചെയ്തു.`, "success");
-    } catch (err) {
-        console.error("[BookManager] Delete book error:", err);
-        showGlobalStatus("പുസ്തകം നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
-    }
-};
 
 window.setPlaylistInput = function(name) {
     selectActiveBook(name);
@@ -3087,6 +2264,7 @@ function listenToFirestoreArticles() {
 
     function processArticlesData(rawItems) {
         if (!Array.isArray(rawItems)) return;
+        articleLoadState = "loaded";
 
         const items = rawItems.map(d => normalizeArticleDoc(d, d?.id));
 
@@ -3102,41 +2280,11 @@ function listenToFirestoreArticles() {
         if (items.length === 0 && currentArticlesList.length > 0) return;
 
         currentArticlesList = items;
-
-        // Persist to session cache for seamless offline fallback
-        try {
-            sessionStorage.setItem("nuqtha_cached_articles", JSON.stringify(items));
-        } catch (e) {}
-
-        const standardArticles = items.filter(a => !isBookOrChapter(a));
-        const allBooks = items.filter(a => isMainBook(a));
-
-        safeArticles = Array.isArray(standardArticles) ? standardArticles : [];
-        if (typeof window !== "undefined") {
-            window.safeArticles = safeArticles;
-        }
-
-        updateArticleCounters(standardArticles.length);
-        updateBooksCounter(allBooks.length);
-
-        renderAdminPublishedList(standardArticles);
+        updateArticleCounters(items.length);
+        renderAdminPublishedList(items);
         updateActiveBookOverview(items);
-        renderAdminBooksTab(items);
         renderBookManagerCompactArticles(items, activeBookName);
         renderLayoutManagerList(items);
-    }
-
-    // 1. Instant offline cache fallback
-    try {
-        const cached = sessionStorage.getItem("nuqtha_cached_articles");
-        if (cached) {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                processArticlesData(parsed);
-            }
-        }
-    } catch (e) {
-        console.warn("[NUQTHA ADMIN] Error reading cached articles:", e);
     }
 
     function decodeFirestoreValue(value) {
@@ -3151,11 +2299,11 @@ function listenToFirestoreArticles() {
         if ("bytesValue" in value) return value.bytesValue;
         if ("geoPointValue" in value) return value.geoPointValue;
         if ("arrayValue" in value) {
-            return (value.arrayValue?.values || []).map(decodeFirestoreValue);
+            return (value.arrayValue.values || []).map(decodeFirestoreValue);
         }
         if ("mapValue" in value) {
             return Object.fromEntries(
-                Object.entries(value.mapValue?.fields || {})
+                Object.entries(value.mapValue.fields || {})
                     .map(([key, fieldValue]) => [key, decodeFirestoreValue(fieldValue)])
             );
         }
@@ -3163,44 +2311,20 @@ function listenToFirestoreArticles() {
     }
 
     function decodeFirestoreFields(fields) {
-        if (!fields || typeof fields !== "object") return {};
         return Object.fromEntries(
             Object.entries(fields).map(([key, value]) => [key, decodeFirestoreValue(value)])
         );
     }
 
     function reportLoadError(error) {
+        articleLoadState = "error";
         console.error("[NUQTHA ADMIN] Unable to load articles from Firestore:", error);
-
-        // If we already have articles in memory or cache, don't overwrite UI with error banner
-        try {
-            if (currentArticlesList.length === 0) {
-                const cached = sessionStorage.getItem("nuqtha_cached_articles");
-                if (cached) {
-                    const parsed = JSON.parse(cached);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        processArticlesData(parsed);
-                        showGlobalStatus("ഓഫ്‌ലൈൻ കാഷെയിൽ നിന്നുള്ള ലേഖനങ്ങൾ ലോഡ് ചെയ്തു. നെറ്റ്‌വർക്ക് പരിശോധിക്കുക.", "info");
-                        return;
-                    }
-                }
-            }
-        } catch (e) {}
-
+        const compactList = document.getElementById("bm-compact-articles-list");
+        if (compactList) {
+            compactList.innerHTML = `<div class="p-4 text-center text-xs text-rose-700" role="alert">ലേഖനങ്ങൾ ലോഡ് ചെയ്യാനായില്ല.<button type="button" data-action="retry-articles" class="mt-2 min-h-11 px-4 rounded-lg border border-rose-300 font-bold">Retry</button></div>`;
+        }
         if (currentArticlesList.length === 0 && listContainer) {
-            listContainer.innerHTML = `
-                <div class="text-center py-12 px-6 bg-amber-50/70 dark:bg-white/5 rounded-3xl border border-amber-200 dark:border-white/10 space-y-3">
-                    <div class="w-12 h-12 mx-auto rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center text-xl">⚠️</div>
-                    <h4 class="text-sm font-bold text-[#1e1b18] dark:text-[#f8fafc]">ലേഖനങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു</h4>
-                    <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8] max-w-md mx-auto">നെറ്റ്‌വർക്ക് കണക്ഷൻ അല്ലെങ്കിൽ ഫയർസ്റ്റോർ താൽക്കാലികമായി ലഭ്യമല്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.</p>
-                    <div class="pt-2">
-                        <button type="button" onclick="window.retryFirestoreAdminFetch()" class="px-5 py-2.5 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer font-english inline-flex items-center gap-1.5">
-                            <span>🔄</span>
-                            <span>വീണ്ടും ശ്രമിക്കുക (Retry Now)</span>
-                        </button>
-                    </div>
-                </div>
-            `;
+            listContainer.innerHTML = '<p class="text-xs text-rose-500 font-semibold p-4 text-center">ലേഖനങ്ങൾ Firestore-ൽ നിന്ന് ലോഡ് ചെയ്യാനായില്ല. നെറ്റ്‌വർക്ക്, Firebase project ID, Firestore Rules എന്നിവ പരിശോധിക്കുക.</p>';
         }
     }
 
@@ -3236,8 +2360,7 @@ function listenToFirestoreArticles() {
 
         restReadPromise = (async () => {
             try {
-                const apiKey = db.app.options?.apiKey || getFirebaseApiKey();
-                const projectId = db.app.options?.projectId || "nuqtha-c0900";
+                const { apiKey, projectId } = db.app.options;
                 if (!apiKey || !projectId) {
                     throw new Error("Firebase project ID or API key is missing.");
                 }
@@ -3248,29 +2371,26 @@ function listenToFirestoreArticles() {
                     const params = new URLSearchParams({ pageSize: "300", key: apiKey });
                     if (nextPageToken) params.set("pageToken", nextPageToken);
                     const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/articles?${params}`;
-                    const response = await fetchWithRetry(url, {}, 3, 300);
-                    if (!response || !response.ok) {
-                        const status = response ? response.status : "network error";
-                        throw new Error(`Firestore REST request failed (${status})`);
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Firestore REST request failed (${response.status}): ${await response.text()}`);
                     }
 
                     const page = await response.json();
-                    if (page && Array.isArray(page.documents)) {
-                        documents.push(...page.documents);
-                    }
-                    nextPageToken = page?.nextPageToken || "";
+                    documents.push(...(page.documents || []));
+                    nextPageToken = page.nextPageToken || "";
                 } while (nextPageToken);
 
                 const restArticles = documents.map(document => {
-                    const id = document.name ? document.name.split("/").pop() : "";
-                    if (!id) return null;
+                    const id = document.name?.split("/").pop();
+                    if (!id) throw new Error("Firestore returned an article without a document ID.");
                     const fields = decodeFirestoreFields(document.fields || {});
                     return normalizeArticleDoc({
                         ...fields,
                         createdAt: fields.createdAt || document.createTime,
                         updatedAt: fields.updatedAt || document.updateTime
                     }, id);
-                }).filter(Boolean);
+                });
 
                 if (restArticles.length > 0 || currentArticlesList.length === 0) {
                     processArticlesData(restArticles);
@@ -3285,42 +2405,28 @@ function listenToFirestoreArticles() {
         return restReadPromise;
     }
 
-    window.retryFirestoreAdminFetch = function() {
-        if (listContainer) {
-            listContainer.innerHTML = '<p class="text-xs text-slate-400 p-4 text-center">ലേഖനങ്ങൾ വീണ്ടും ലോഡ് ചെയ്യുന്നു...</p>';
-        }
-        fetchAdminViaRest();
-    };
-
+    window.retryAdminArticleLoad = fetchAdminViaRest;
     fetchAdminViaRest();
 }
 
 function updateArticleCounters(count) {
     const countBadge = document.getElementById("article-count");
     const tabBadge = document.getElementById("tab-published-badge");
-    if (countBadge) countBadge.textContent = String(count);
-    if (tabBadge) tabBadge.textContent = String(count);
+    if (countBadge) countBadge.textContent = count;
+    if (tabBadge) tabBadge.textContent = count;
 }
 
-export function renderAdminPublishedList(items) {
+function renderAdminPublishedList(items) {
     const listContainer = document.getElementById("admin-articles-list");
     if (!listContainer) return;
 
-    // Strictly filter out any books and book chapters
-    const sourceList = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
-    const articles = sourceList.filter(a => !isBookOrChapter(a));
-    safeArticles = Array.isArray(articles) ? articles : [];
-    if (typeof window !== "undefined") {
-        window.safeArticles = safeArticles;
-    }
-
-    if (safeArticles.length === 0) {
+    if (items.length === 0) {
         listContainer.innerHTML = `
             <div class="text-center py-12 px-4 bg-white/60 dark:bg-white/5 rounded-3xl border border-[#ebdccb] dark:border-white/10 space-y-3">
                 <div class="w-12 h-12 mx-auto rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center text-xl">📄</div>
                 <h4 class="text-sm font-bold text-[#1e1b18] dark:text-[#f8fafc]">ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല</h4>
-                <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8]">ആദ്യത്തെ ലേഖനം പ്രസിദ്ധീകരിക്കാൻ 'പുതിയ ലേഖനം' ടാബ് തുറക്കുക. (പുസ്തകങ്ങൾ കാണാൻ 'Books' ടാബ് സന്ദർശിക്കുക).</p>
-                <button type="button" onclick="window.switchAdminTab('create')" class="px-4 py-2 bg-[#b4532c] text-white text-xs font-bold rounded-xl shadow-sm hover:bg-[#923e1b] transition cursor-pointer">
+                <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8]">ആദ്യത്തെ ലേഖനം പ്രസിദ്ധീകരിക്കാൻ 'പുതിയ ലേഖനം' ടാബ് തുറക്കുക.</p>
+                <button type="button" data-action="switch-tab" data-switch-tab="create" class="px-4 py-2 bg-[#b4532c] text-white text-xs font-bold rounded-xl shadow-sm hover:bg-[#923e1b] transition">
                     + പുതിയ ലേഖനം എഴുതുക
                 </button>
             </div>
@@ -3328,53 +2434,76 @@ export function renderAdminPublishedList(items) {
         return;
     }
 
-    listContainer.innerHTML = safeArticles.map(data => {
-        const titleCol = data.titleColor || "#1e1b18";
+    listContainer.innerHTML = items.map(data => {
+        const safeId = escapeHtml(data.id);
+        const safeTitle = escapeHtml(data.title || "");
+        const safeAuthor = escapeHtml(data.author || "NUQTHA");
+        const safeCategory = escapeHtml(data.category || "General");
+        const safeDate = escapeHtml(data.date || "");
+        const safeBookName = escapeHtml(data.bookName || data.title || "");
+        const safeTranscription = escapeHtml(data.transcription || "");
+        const safeImageUrl = escapeHtml(data.imageUrl || "");
         const placementLabel = data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
         const priorityBadge = (data.priority !== undefined && data.priority !== null) ? `P${data.priority}` : '';
+        const playlistBadge = data.playlistName ? `📚 ${escapeHtml(data.playlistName)}` : '';
+        const isBook = data.type === 'BOOK';
 
         return `
             <div class="p-4 bg-white/90 dark:bg-[#12141d]/90 rounded-2xl border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/60 dark:hover:border-white/20 transition shadow-sm space-y-3">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-[10px] font-black text-[#b4532c] dark:text-[#f87171] uppercase font-english bg-[#b4532c]/10 px-2 py-0.5 rounded-md">
-                            ${data.category || 'General'}
+                            ${safeCategory}
                         </span>
                         <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#fbf7ee] dark:bg-white/10 border border-[#ebdccb] dark:border-white/10 text-[#4a3c33] dark:text-[#cbd5e1] font-english">
                             ${placementLabel}
                         </span>
                         ${priorityBadge ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-400/30 text-amber-800 dark:text-amber-300 font-mono">${priorityBadge}</span>` : ''}
+                        ${isBook ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-english">📘 BOOK COVER</span>` : ''}
+                        ${data.bookName ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-english">📖 ${escapeHtml(data.bookName)}</span>` : ''}
                     </div>
-                    <span class="text-[10px] text-slate-400 font-english">${data.date || ''}</span>
+                    <span class="text-[10px] text-slate-400 font-english">${safeDate}</span>
                 </div>
 
                 <div class="flex items-center gap-3">
-                    ${(data.thumbnailUrl || data.ogImage || data.imageUrl) ? `
+                    ${data.imageUrl ? `
                         <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border border-[#ebdccb]">
-                            <img src="${data.thumbnailUrl || data.ogImage || data.imageUrl}" alt="Thumb" class="w-full h-full object-cover">
+                            <img src="${safeImageUrl}" alt="Cover" class="w-full h-full object-cover">
                         </div>
                     ` : ''}
                     <div class="flex-1 min-w-0">
-                        <h4 class="text-sm font-extrabold line-clamp-2 leading-snug" style="color: ${titleCol};">${data.title}</h4>
-                        <p class="text-[11px] font-bold text-[#1e1b18] dark:text-white mt-1"><span class="text-[#1e1b18] dark:text-white font-bold">${data.author || 'NUQTHA'}</span> ${data.transcription ? `<span class="text-[#8c7a6b] dark:text-[#94a3b8] font-semibold ml-2">(📝 കേട്ടെഴുത്ത്: ${data.transcription})</span>` : ''}</p>
+                        <h4 class="admin-article-title text-sm font-extrabold line-clamp-2 leading-snug">${safeTitle}</h4>
+                        <p class="text-[11px] font-bold text-[#1e1b18] dark:text-white mt-1"><span class="text-[#1e1b18] dark:text-white font-bold">${safeAuthor}</span> ${safeTranscription ? `<span class="text-[#8c7a6b] dark:text-[#94a3b8] font-semibold ml-2">(📝 കേട്ടെഴുത്ത്: ${safeTranscription})</span>` : ''}</p>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between pt-2.5 border-t border-[#ebdccb]/60 dark:border-white/10">
-                    <a href="${getStoryUrl(data)}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#b4532c] hover:underline font-english">
+                ${playlistBadge ? `
+                    <div class="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-900 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/40 px-2.5 py-1 rounded-lg">
+                        <span>${playlistBadge}</span>
+                    </div>
+                ` : ''}
+
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-[#ebdccb]/60 dark:border-white/10">
+                    <a href="article.html?id=${encodeURIComponent(data.id)}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-[#b4532c] hover:underline font-english">
                         <span>Live Preview</span>
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     </a>
 
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="window.viewArticleComments('${data.id}', '${(data.title || '').replace(/'/g, "\\'")}')" title="ലേഖന അഭിപ്രായങ്ങളും ഇമെയിലുകളും കാണുക" class="inline-flex items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/20 border border-blue-200 px-3 py-1 rounded-xl transition font-english cursor-pointer">
+                    <div class="admin-article-actions flex flex-wrap items-center justify-end gap-2">
+                        <button type="button" data-action="view-comments" data-id="${safeId}" data-title="${safeTitle}" title="ലേഖന അഭിപ്രായങ്ങളും ഇമെയിലുകളും കാണുക" class="inline-flex items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/20 border border-blue-200 px-3 py-1 rounded-xl transition font-english">
                             <span>💬 Comments</span>
                         </button>
-                        <button type="button" data-action="edit-article" data-id="${data.id}" onclick="window.startEditArticle('${data.id}')" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english cursor-pointer">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                            <span>Edit</span>
-                        </button>
-                        <button type="button" data-action="delete-article" data-id="${data.id}" onclick="window.deleteArticle('${data.id}')" title="ലേഖനം ഒഴിവാക്കുക" class="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 border border-rose-200 px-3 py-1 rounded-xl transition font-english cursor-pointer">
+                        ${isBook ? `
+                            <button type="button" data-action="manage-book" data-name="${safeBookName}" title="പുസ്തകം മാനേജ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english">
+                                <span>📚 Manage</span>
+                            </button>
+                        ` : `
+                            <button type="button" data-action="edit-article" data-id="${safeId}" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                <span>Edit</span>
+                            </button>
+                        `}
+                        <button type="button" data-action="delete-article" data-id="${safeId}" title="ലേഖനം ഒഴിവാക്കുക" class="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 border border-rose-200 px-3 py-1 rounded-xl transition font-english">
                             <span>✕ Delete</span>
                         </button>
                     </div>
@@ -3383,10 +2512,9 @@ export function renderAdminPublishedList(items) {
         `;
     }).join("");
 }
-window.renderAdminPublishedList = renderAdminPublishedList;
 
 /* ═══════════════════════════════════════════════════════════
-   8. TAB 4 SEARCH & FILTER IN ARTICLES LIST
+   8. TAB 3 SEARCH & FILTER IN ARTICLES LIST
    ═══════════════════════════════════════════════════════════ */
 function initPublishedSearchFilter() {
     const searchInput = document.getElementById("search-published-input");
@@ -3396,23 +2524,17 @@ function initPublishedSearchFilter() {
         const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
         const cat = categoryFilter ? categoryFilter.value : "ALL";
 
-        const standardArticles = currentArticlesList.filter(art => !isBookOrChapter(art));
-
-        const filtered = standardArticles.filter(art => {
+        const filtered = currentArticlesList.filter(art => {
+            if (art.bookName || art.type === "BOOK") return false;
             const matchesQuery = !query || 
                 (art.title && art.title.toLowerCase().includes(query)) ||
                 (art.author && art.author.toLowerCase().includes(query)) ||
-                (art.transcription && art.transcription.toLowerCase().includes(query));
+                (art.playlistName && art.playlistName.toLowerCase().includes(query));
 
-            const matchesCategory = cat === "ALL" || (art.category && art.category.toUpperCase() === cat);
+            const matchesCategory = cat === "ALL" || (art.category || "").toUpperCase() === cat;
 
             return matchesQuery && matchesCategory;
         });
-
-        safeArticles = Array.isArray(filtered) ? filtered : [];
-        if (typeof window !== "undefined") {
-            window.safeArticles = safeArticles;
-        }
 
         renderAdminPublishedList(filtered);
     }
@@ -3420,7 +2542,6 @@ function initPublishedSearchFilter() {
     if (searchInput) searchInput.addEventListener("input", applyFilter);
     if (categoryFilter) categoryFilter.addEventListener("change", applyFilter);
 }
-
 
 /* ═══════════════════════════════════════════════════════════
    9. GLOBAL NOTIFICATION SYSTEM
@@ -3444,11 +2565,12 @@ function showGlobalStatus(message, type = "success") {
         <div class="p-3.5 rounded-2xl border ${bgClass} text-xs font-bold flex items-center justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-200">
             <div class="flex items-center gap-2">
                 <span>${icon}</span>
-                <span>${message}</span>
+                <span data-status-message></span>
             </div>
-            <button type="button" onclick="this.parentElement.remove()" class="text-xs opacity-60 hover:opacity-100">✕</button>
+            <button type="button" data-action="remove-message" class="text-xs opacity-60 hover:opacity-100" aria-label="Dismiss message">✕</button>
         </div>
     `;
+    container.querySelector("[data-status-message]").textContent = String(message ?? "");
     container.classList.remove("hidden");
 
     setTimeout(() => {
@@ -3490,7 +2612,6 @@ function initLayoutManagerControls() {
 }
 
 export function renderLayoutManagerList(items) {
-    const safeItems = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
     const container = document.getElementById("layout-manager-list");
     if (!container) return;
 
@@ -3504,34 +2625,41 @@ export function renderLayoutManagerList(items) {
         return;
     }
 
-    container.innerHTML = safeItems.map(art => {
+    container.innerHTML = items.map(art => {
         const currentPlacement = art.placement || "AUTO";
         const currentPriority = (art.priority !== undefined && art.priority !== null) ? art.priority : 10;
         const currentPlaylist = art.playlistName || "";
+        const safeId = escapeHtml(art.id);
+        const safeCategory = escapeHtml(art.category || "General");
+        const safeDate = escapeHtml(art.date || "");
+        const safeBookName = escapeHtml(art.bookName || "");
+        const safeTitle = escapeHtml(art.title || "");
+        const safeAuthor = escapeHtml(art.author || "Author");
+        const safeImageUrl = escapeHtml(art.imageUrl || "");
 
         return `
-            <div class="p-4 sm:p-5 bg-white rounded-2xl border border-[#ebdccb] hover:border-amber-400 transition shadow-sm space-y-3" id="layout-card-${art.id}">
+            <div class="p-4 sm:p-5 bg-white rounded-2xl border border-[#ebdccb] hover:border-amber-400 transition shadow-sm space-y-3" id="layout-card-${safeId}">
                 <div class="flex items-start justify-between gap-3 flex-wrap">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-[10px] font-black uppercase font-english bg-[#b4532c]/10 text-[#b4532c] px-2.5 py-0.5 rounded-md">
-                            ${art.category || 'General'}
+                            ${safeCategory}
                         </span>
-                        <span class="text-[10px] text-[#8c7a6b] font-english">${art.date || ''}</span>
-                        ${art.bookName ? `<span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-md">📚 ${art.bookName}</span>` : ''}
+                        <span class="text-[10px] text-[#8c7a6b] font-english">${safeDate}</span>
+                        ${art.bookName ? `<span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-md">📚 ${safeBookName}</span>` : ''}
                         ${art.type === 'BOOK' ? `<span class="text-[10px] font-bold text-blue-800 bg-blue-100 px-2.5 py-0.5 rounded-md">📘 COVER</span>` : ''}
                     </div>
-                    <span class="text-[10px] font-mono text-slate-400">ID: ${art.id.substring(0, 8)}…</span>
+                    <span class="text-[10px] font-mono text-slate-400">ID: ${safeId.substring(0, 8)}…</span>
                 </div>
 
                 <div class="flex items-center gap-3">
                     ${art.imageUrl ? `
                         <div class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border border-[#ebdccb]">
-                            <img src="${art.imageUrl}" alt="" class="w-full h-full object-cover">
+                            <img src="${safeImageUrl}" alt="" class="w-full h-full object-cover">
                         </div>
                     ` : ''}
                     <div class="flex-1 min-w-0">
-                        <h4 class="text-sm font-extrabold text-[#1e1b18] truncate leading-tight">${art.title}</h4>
-                        <p class="text-[11px] font-bold text-[#1e1b18] dark:text-white mt-0.5">${art.author || 'Author'}</p>
+                        <h4 class="text-sm font-extrabold text-[#1e1b18] truncate leading-tight">${safeTitle}</h4>
+                        <p class="text-[11px] font-bold text-[#1e1b18] dark:text-white mt-0.5">${safeAuthor}</p>
                     </div>
                 </div>
 
@@ -3539,7 +2667,7 @@ export function renderLayoutManagerList(items) {
                 <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-2 border-t border-[#f0e6d6] items-center">
                     <div class="sm:col-span-5">
                         <label class="block text-[10px] font-bold uppercase text-[#4a3c33] font-english mb-1">സ്ഥാനം (Placement)</label>
-                        <select id="placement-select-${art.id}" class="w-full text-xs font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#1e1b18]">
+                        <select id="placement-select-${safeId}" class="w-full text-xs font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#1e1b18]">
                             <option value="AUTO" ${currentPlacement === 'AUTO' ? 'selected' : ''}>⚡ Automatic</option>
                             <option value="CAROUSEL" ${currentPlacement === 'CAROUSEL' ? 'selected' : ''}>🎠 Carousel</option>
                             <option value="FEED" ${currentPlacement === 'FEED' ? 'selected' : ''}>📰 Feed</option>
@@ -3548,11 +2676,11 @@ export function renderLayoutManagerList(items) {
 
                     <div class="sm:col-span-4">
                         <label class="block text-[10px] font-bold uppercase text-[#4a3c33] font-english mb-1">മുൻഗണന (Priority)</label>
-                        <input type="number" id="priority-input-${art.id}" min="1" max="999" value="${currentPriority}" class="w-full text-xs font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#b4532c]">
+                        <input type="number" id="priority-input-${safeId}" min="1" max="999" value="${currentPriority}" class="w-full text-xs font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#b4532c]">
                     </div>
 
                     <div class="sm:col-span-3 pt-4 sm:pt-4">
-                        <button type="button" onclick="window.saveArticleLayoutQuick('${art.id}')" id="save-layout-btn-${art.id}" class="w-full px-3 py-2.5 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-xl transition shadow-sm font-english flex items-center justify-center gap-1.5">
+                        <button type="button" data-action="save-layout" data-id="${escapeHtml(art.id)}" id="save-layout-btn-${escapeHtml(art.id)}" class="w-full px-3 py-2.5 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-xl transition shadow-sm font-english flex items-center justify-center gap-1.5">
                             <span>Save</span>
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         </button>
@@ -3610,23 +2738,6 @@ function slugifyAuthor(name) {
     return (name || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
 }
 
-export const PRIMARY_AUTHORS = [
-    {
-        name: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
-        role: "CHIEF EDITOR · മുഖ്യ പത്രാധിപർ",
-        slug: slugifyAuthor("സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ"),
-        bio: "NUQTHA മുഖ്യ പത്രാധിപർ, ചരിത്ര-സാഹിത്യ ഗവേഷകൻ",
-        photoUrl: ""
-    },
-    {
-        name: "സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി",
-        role: "AUTHOR · എഴുത്തുകാരൻ",
-        slug: slugifyAuthor("സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി"),
-        bio: "ഇസ്ലാമിക ചരിത്ര പണ്ഡിതൻ, പ്രഭാഷകൻ, NUQTHA കോളമിസ്റ്റ്",
-        photoUrl: ""
-    }
-];
-
 function initAuthorManager() {
     const authorForm = document.getElementById("admin-author-form");
     const photoFileInput = document.getElementById("admin-author-photo-file");
@@ -3638,15 +2749,33 @@ function initAuthorManager() {
         photoFileInput.addEventListener("change", (e) => {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
+            if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+                showGlobalStatus("5 MB-ൽ താഴെയുള്ള JPG, PNG, അല്ലെങ്കിൽ WebP ചിത്രം തിരഞ്ഞെടുക്കുക.", "error");
+                photoFileInput.value = "";
+                return;
+            }
 
             const reader = new FileReader();
             reader.onload = (evt) => {
-                authorPhotoBase64 = evt.target.result;
-                if (photoUrlInput) photoUrlInput.value = authorPhotoBase64;
-                if (photoPreview) {
-                    photoPreview.innerHTML = `<img src="${authorPhotoBase64}" class="w-full h-full object-cover rounded-2xl" />`;
-                }
+                const image = new Image();
+                image.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    const scale = Math.min(1, 800 / image.width);
+                    canvas.width = Math.round(image.width * scale);
+                    canvas.height = Math.round(image.height * scale);
+                    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+                    authorPhotoBase64 = compressCanvasForFirestore(canvas, 0.8);
+                    if (!authorPhotoBase64) {
+                        showGlobalStatus("കംപ്രസ് ചെയ്ത ചിത്രം Firestore പരിധിക്കുള്ളിൽ വരുത്താൻ കഴിഞ്ഞില്ല.", "error");
+                        return;
+                    }
+                    if (photoUrlInput) photoUrlInput.value = authorPhotoBase64;
+                    setAuthorPhotoPreview(photoPreview, authorPhotoBase64);
+                };
+                image.onerror = () => showGlobalStatus("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
+                image.src = evt.target.result;
             };
+            reader.onerror = () => showGlobalStatus("ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല.", "error");
             reader.readAsDataURL(file);
         });
     }
@@ -3654,9 +2783,7 @@ function initAuthorManager() {
     if (photoUrlInput) {
         photoUrlInput.addEventListener("input", (e) => {
             const val = e.target.value.trim();
-            if (val && photoPreview) {
-                photoPreview.innerHTML = `<img src="${val}" class="w-full h-full object-cover rounded-2xl" onerror="this.onerror=null;this.parentElement.textContent='?'" />`;
-            }
+            if (val) setAuthorPhotoPreview(photoPreview, val);
         });
     }
 
@@ -3669,17 +2796,11 @@ function initAuthorManager() {
     if (authorForm) {
         authorForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const nameEl = document.getElementById("admin-author-name");
-            const roleEl = document.getElementById("admin-author-role");
-            const photoEl = document.getElementById("admin-author-photo");
-            const bioEl = document.getElementById("admin-author-bio");
-            const editSlugEl = document.getElementById("author-edit-slug");
-
-            const name = nameEl ? nameEl.value.trim() : "";
-            const role = (roleEl ? roleEl.value.trim() : "") || "CONTRIBUTOR";
-            const photoUrl = (photoEl ? photoEl.value.trim() : "") || authorPhotoBase64;
-            const bio = bioEl ? bioEl.value.trim() : "";
-            const editSlug = editSlugEl ? editSlugEl.value.trim() : "";
+            const name = document.getElementById("admin-author-name").value.trim();
+            const role = document.getElementById("admin-author-role").value.trim() || "CONTRIBUTOR";
+            const photoUrl = document.getElementById("admin-author-photo").value.trim() || authorPhotoBase64;
+            const bio = document.getElementById("admin-author-bio").value.trim();
+            const editSlug = document.getElementById("author-edit-slug").value.trim();
 
             if (!name) {
                 showGlobalStatus("എഴുത്തുകാരന്റെ പേര് നൽകേണ്ടതുണ്ട്.", "error");
@@ -3690,10 +2811,8 @@ function initAuthorManager() {
             const submitBtn = document.getElementById("admin-author-submit-btn");
             const toast = document.getElementById("admin-author-save-toast");
 
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.classList.add("opacity-60");
-            }
+            submitBtn.disabled = true;
+            submitBtn.classList.add("opacity-60");
 
             const payload = {
                 name,
@@ -3713,12 +2832,10 @@ function initAuthorManager() {
                 resetAuthorForm();
             } catch (err) {
                 console.error("[admin.js] Author save error:", err);
-                showGlobalStatus("പ്രൊഫൈൽ സേവ് ചെയ്യുമ്പോൾ തടസ്സം നേരിട്ടു: " + err.message, "error");
+                showGlobalStatus("പ്രൊഫൈൽ സേവ് ചെയ്യുമ്പോൾ തടസ്സം നേരിട്ടു.", "error");
             } finally {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.classList.remove("opacity-60");
-                }
+                submitBtn.disabled = false;
+                submitBtn.classList.remove("opacity-60");
             }
         });
     }
@@ -3772,7 +2889,7 @@ function renderAdminAuthorsTab() {
 
     if (!grid) return;
 
-    // Combine primary authors + managed authors + unique authors found in published articles
+    // Combine managed authors with any unique authors found in published articles
     const articleAuthorsMap = {};
     currentArticlesList.forEach(art => {
         const aName = (art.author || "").trim();
@@ -3783,15 +2900,7 @@ function renderAdminAuthorsTab() {
         }
     });
 
-    const safeManaged = Array.isArray(managedAuthorsList) ? managedAuthorsList : [];
-    const safePrimary = Array.isArray(PRIMARY_AUTHORS) ? PRIMARY_AUTHORS : [];
-
-    // Ensure PRIMARY_AUTHORS are always included
-    const allKeys = new Set([
-        ...safePrimary.map(a => a.slug),
-        ...safeManaged.map(a => a.id || a.slug),
-        ...Object.keys(articleAuthorsMap)
-    ]);
+    const allKeys = new Set([...managedAuthorsList.map(a => a.id || a.slug), ...Object.keys(articleAuthorsMap)]);
     const count = allKeys.size;
     if (badge) badge.textContent = count;
     if (tabBadge) tabBadge.textContent = count;
@@ -3806,35 +2915,34 @@ function renderAdminAuthorsTab() {
     }
 
     grid.innerHTML = Array.from(allKeys).map(key => {
-        const managed = managedAuthorsList.find(a => (a.id || a.slug) === key) ||
-                        PRIMARY_AUTHORS.find(a => a.slug === key);
+        const managed = managedAuthorsList.find(a => (a.id || a.slug) === key);
         const artInfo = articleAuthorsMap[key];
         const name = (managed && managed.name) || (artInfo && artInfo.name) || key;
         const role = (managed && managed.role) || "Contributor";
         const photo = (managed && managed.photoUrl) || "";
         const bio = (managed && managed.bio) || "NUQTHA രചയിതാവ്";
         const articleCount = (artInfo && artInfo.count) || 0;
-        const initial = name.trim().charAt(0).toUpperCase() || "A";
-        const isPrimary = PRIMARY_AUTHORS.some(p => p.slug === key);
+        const safeName = escapeHtml(name);
+        const safeRole = escapeHtml(role);
+        const safeBio = escapeHtml(bio);
+        const safePhoto = safeImageSource(photo);
+        const initial = escapeHtml(name.trim().charAt(0).toUpperCase() || "A");
 
         return `
-        <div class="p-4 rounded-2xl border ${isPrimary ? 'border-[#b4532c]/50 bg-[#fffbf7]' : 'border-[#ebdccb] bg-[#fbf7ee]/40'} space-y-3 flex flex-col justify-between shadow-xs hover:border-[#b4532c] transition">
+        <div class="p-4 rounded-2xl border border-[#ebdccb] bg-[#fbf7ee]/40 space-y-3 flex flex-col justify-between">
             <div class="flex items-start gap-3">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-base flex-shrink-0 overflow-hidden border border-white shadow-xs">
-                    ${photo ? `<img src="${photo}" alt="${name}" class="w-full h-full object-cover" />` : initial}
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-base flex-shrink-0 overflow-hidden border border-white">
+                    ${safePhoto ? `<img src="${safePhoto}" alt="${safeName}" class="w-full h-full object-cover" />` : initial}
                 </div>
                 <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        <h4 class="text-xs sm:text-sm font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">
-                            ${name}
-                        </h4>
-                        ${isPrimary ? `<span class="text-[9px] font-black uppercase text-[#b4532c] bg-[#b4532c]/10 px-1.5 py-0.2 rounded font-english">PRIMARY</span>` : ''}
-                    </div>
+                    <h4 class="text-xs sm:text-sm font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">
+                        ${safeName}
+                    </h4>
                     <p class="text-[10px] text-[#b4532c] font-black uppercase font-english">
-                        ${role}
+                        ${safeRole}
                     </p>
                     <p class="text-[11px] text-[#7a6758] line-clamp-2 mt-1">
-                        ${bio}
+                        ${safeBio}
                     </p>
                 </div>
             </div>
@@ -3844,10 +2952,10 @@ function renderAdminAuthorsTab() {
                     📚 ${articleCount} Articles
                 </span>
                 <div class="flex items-center gap-1.5">
-                    <button type="button" onclick="editAuthorProfile('${key}')" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold transition text-[10px] cursor-pointer">
+                    <button type="button" data-action="edit-author" data-key="${escapeHtml(key)}" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold transition text-[10px]">
                         ✏️ Edit
                     </button>
-                    <a href="author.html?id=${encodeURIComponent(key)}&name=${encodeURIComponent(name)}" target="_blank" class="px-2.5 py-1 rounded-lg bg-[#b4532c]/10 hover:bg-[#b4532c]/20 text-[#b4532c] font-bold transition text-[10px]">
+                    <a href="/profile/author/${encodeURIComponent(key)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-[#b4532c]/10 hover:bg-[#b4532c]/20 text-[#b4532c] font-bold transition text-[10px]">
                         👁️ View
                     </a>
                 </div>
@@ -3858,10 +2966,10 @@ function renderAdminAuthorsTab() {
 }
 
 window.editAuthorProfile = function(key) {
-    const managed = managedAuthorsList.find(a => (a.id || a.slug) === key) ||
-                    PRIMARY_AUTHORS.find(a => a.slug === key);
-    let name = (managed && managed.name) || key;
-    if (!managed || !managed.name) {
+    const managed = managedAuthorsList.find(a => (a.id || a.slug) === key);
+    let name = key;
+    if (managed && managed.name) name = managed.name;
+    else {
         currentArticlesList.forEach(art => {
             if (slugifyAuthor(art.author) === key) name = art.author;
         });
@@ -3886,19 +2994,14 @@ window.editAuthorProfile = function(key) {
 
     if (photoPreview) {
         if (managed && managed.photoUrl) {
-            photoPreview.innerHTML = `<img src="${managed.photoUrl}" class="w-full h-full object-cover rounded-2xl" />`;
+            setAuthorPhotoPreview(photoPreview, managed.photoUrl, name);
         } else {
-            photoPreview.textContent = name.trim().charAt(0).toUpperCase() || "?";
+            photoPreview.textContent = name.charAt(0).toUpperCase() || "?";
         }
     }
 
-    const authorForm = document.getElementById("admin-author-form");
-    if (authorForm) {
-        authorForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
-
-window.resetAuthorForm = resetAuthorForm;
 
 window.renderAdminAuthorsTab = renderAdminAuthorsTab;
 
@@ -3943,10 +3046,11 @@ window.viewArticleComments = async function(articleId, articleTitle) {
         }
 
         bodyEl.innerHTML = comments.map(c => {
-            const cleanName = (c.name || "വായനക്കാരൻ").replace(/<[^>]*>?/gm, '');
-            const cleanEmail = (c.email || "ലോഗിൻ ചെയ്യാത്ത ഇമെയിൽ").replace(/<[^>]*>?/gm, '');
-            const cleanComment = (c.comment || "").replace(/<[^>]*>?/gm, '');
-            const initial = cleanName.charAt(0).toUpperCase() || "W";
+            const rawName = c.name || "വായനക്കാരൻ";
+            const cleanName = escapeHtml(rawName);
+            const cleanEmail = escapeHtml(c.email || "ലോഗിൻ ചെയ്യാത്ത ഇമെയിൽ");
+            const cleanComment = escapeHtml(c.comment || "");
+            const initial = escapeHtml(rawName.charAt(0).toUpperCase() || "W");
             let dateStr = "ഇപ്പോൾ";
             if (c.createdAt) {
                 try {
@@ -3956,11 +3060,11 @@ window.viewArticleComments = async function(articleId, articleTitle) {
             }
 
             return `
-                <div class="p-3.5 rounded-2xl bg-[#fbf7ee]/60 border border-[#ebdccb] space-y-2">
+                    <div class="p-3.5 rounded-2xl bg-[#fbf7ee]/60 border border-[#ebdccb] space-y-2">
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex items-center gap-2.5 min-w-0">
                             ${c.avatar ? `
-                                <img src="${c.avatar}" class="w-8 h-8 rounded-full object-cover border border-[#ebdccb] flex-shrink-0" alt="Avatar">
+                                <img src="${escapeHtml(c.avatar)}" class="w-8 h-8 rounded-full object-cover border border-[#ebdccb] flex-shrink-0" alt="Avatar">
                             ` : `
                                 <div class="w-8 h-8 rounded-full bg-[#b4532c] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
                                     ${initial}
@@ -3972,11 +3076,11 @@ window.viewArticleComments = async function(articleId, articleTitle) {
                                     <span class="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded font-mono font-semibold truncate max-w-xs">
                                         📧 ${cleanEmail}
                                     </span>
-                                    <span class="text-[10px] text-slate-400 font-english">${dateStr}</span>
+                                    <span class="text-[10px] text-slate-400 font-english">${escapeHtml(dateStr)}</span>
                                 </div>
                             </div>
                         </div>
-                        <button type="button" onclick="window.deleteAdminComment('${articleId}', '${c.id}')" title="അഭിപ്രായം ഡിലീറ്റ് ചെയ്യുക" class="text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 text-xs px-2.5 py-1 rounded-lg border border-rose-200 transition font-bold font-english cursor-pointer flex-shrink-0">
+                        <button type="button" data-action="delete-comment" data-article-id="${escapeHtml(articleId)}" data-comment-id="${escapeHtml(c.id)}" title="അഭിപ്രായം ഡിലീറ്റ് ചെയ്യുക" class="text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 text-xs px-2.5 py-1 rounded-lg border border-rose-200 transition font-bold font-english cursor-pointer flex-shrink-0">
                             Delete
                         </button>
                     </div>
@@ -3999,443 +3103,16 @@ window.deleteAdminComment = async function(articleId, commentId) {
     if (!confirm("ഈ അഭിപ്രായം ശാശ്വതമായി ഒഴിവാക്കണോ?")) return;
     try {
         await deleteDoc(doc(db, "articles", articleId, "comments", commentId));
-        showGlobalStatus("അഭിപ്രായം ഒഴിവാക്കി.", "error");
+        showGlobalStatus("അഭിപ്രായം ഒഴിവാക്കി.", "success");
         window.viewArticleComments(articleId, document.getElementById("modal-article-title")?.textContent || "");
     } catch (err) {
         console.error("Delete comment error:", err);
-        showGlobalStatus("ഡിലീറ്റ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു: " + err.message, "error");
+        showGlobalStatus("ഡിലീറ്റ് ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു.", "error");
     }
 };
 
-/* ═══════════ GLOBAL DELEGATED ACTION DISPATCHER (STABLE EVENT CONTAINER) ═══════════ */
-document.addEventListener("click", (e) => {
-    const actionEl = e.target.closest("[data-action]");
-    if (!actionEl) return;
-
-    const action = actionEl.dataset.action;
-    switch (action) {
-        case "toggle-collapsible": {
-            e.preventDefault();
-            const targetId = actionEl.dataset.target;
-            const targetEl = document.getElementById(targetId);
-            if (!targetEl) return;
-            const isExpanded = actionEl.getAttribute("aria-expanded") === "true";
-            actionEl.setAttribute("aria-expanded", String(!isExpanded));
-            targetEl.classList.toggle("hidden", isExpanded);
-            const icon = actionEl.querySelector(".collapsible-icon");
-            if (icon) icon.innerHTML = isExpanded ? "&darr;" : "&uarr;";
-
-            // If opening attach collapsible, lazy-render first 20 articles
-            if (!isExpanded && targetId === "bm-attach-collapsible-body") {
-                compactArticlesDisplayLimit = 20;
-                renderBookManagerCompactArticles(currentArticlesList, activeBookName);
-            }
-            break;
-        }
-        case "load-more-articles": {
-            e.preventDefault();
-            compactArticlesDisplayLimit += 20;
-            renderBookManagerCompactArticles(currentArticlesList, activeBookName);
-            break;
-        }
-        case "attach-selected-articles": {
-            e.preventDefault();
-            const btn = document.getElementById("bm-attach-selected-btn");
-            if (btn && btn.click) btn.dispatchEvent(new CustomEvent("execute-attach"));
-            break;
-        }
-        case "add-chapter-to-book": {
-            e.preventDefault();
-            if (typeof window.handleAddChapterToBook === "function") {
-                window.handleAddChapterToBook(e);
-            }
-            break;
-        }
-        case "upload-book-cover": {
-            const fileInput = document.getElementById("book-cover-input");
-            if (fileInput && e.target !== fileInput && !e.target.closest("[data-action='remove-book-cover']")) {
-                fileInput.click();
-            }
-            break;
-        }
-        case "remove-book-cover": {
-            e.stopPropagation();
-            if (typeof window.handleRemoveBookCover === "function") {
-                window.handleRemoveBookCover(e);
-            }
-            break;
-        }
-        case "replace-presentation": {
-            e.stopPropagation();
-            const pInput = document.getElementById("bm-presentation-file-input");
-            if (pInput) pInput.click();
-            break;
-        }
-        case "remove-presentation": {
-            e.stopPropagation();
-            const removeBtn = document.getElementById("bm-remove-presentation-btn");
-            if (removeBtn && removeBtn.click) removeBtn.dispatchEvent(new CustomEvent("execute-remove"));
-            break;
-        }
-        case "save-presentation": {
-            e.preventDefault();
-            const saveBtn = document.getElementById("bm-save-presentation-btn");
-            if (saveBtn && saveBtn.click) saveBtn.dispatchEvent(new CustomEvent("execute-save"));
-            break;
-        }
-        case "edit-article": {
-            e.preventDefault();
-            const id = actionEl.dataset.id;
-            if (id && typeof window.startEditArticle === "function") {
-                window.startEditArticle(id);
-            }
-            break;
-        }
-        case "manage-book": {
-            e.preventDefault();
-            const id = actionEl.dataset.id;
-            if (id && typeof window.manageBookById === "function") {
-                window.manageBookById(id);
-            }
-            break;
-        }
-        case "edit-book-meta": {
-            e.preventDefault();
-            const id = actionEl.dataset.id;
-            if (id && typeof window.editBookMetadataById === "function") {
-                window.editBookMetadataById(id);
-            }
-            break;
-        }
-        case "delete-book": {
-            e.preventDefault();
-            const id = actionEl.dataset.id;
-            const title = actionEl.dataset.title;
-            if (id && typeof window.deleteBookById === "function") {
-                window.deleteBookById(id, title);
-            }
-            break;
-        }
-        case "delete-article": {
-            e.preventDefault();
-            const id = actionEl.dataset.id;
-            if (id && typeof window.deleteArticle === "function") {
-                window.deleteArticle(id);
-            }
-            break;
-        }
-    }
-});
-
-/* ═══════════════════════════════════════════════════════════
-   7. MORE DROPDOWN MENU MANAGER SUITE
-   ═══════════════════════════════════════════════════════════ */
-
-export const DEFAULT_MORE_MENU_ITEMS = [
-    { id: "menu-authors", label: "AUTHORS (എഴുത്തുകാർ)", url: "author.html?id=സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ", icon: "✍️", order: 1, targetBlank: false, isActive: true },
-    { id: "menu-contact", label: "ABOUT & CONTACT", url: "contact.html", icon: "📬", order: 2, targetBlank: false, isActive: true },
-    { id: "menu-admin", label: "ADMIN PORTAL", url: "admin.html", icon: "⚙️", order: 3, targetBlank: false, isActive: true }
-];
-
-let adminMenuItemsList = [];
-let renderAdminMenuListGlobal = null;
-
-function escapeMenuHtml(str) {
-    if (!str) return "";
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-function initMoreMenuManager() {
-    const listContainer = document.getElementById("admin-menu-items-list");
-    const editIdInput = document.getElementById("menu-item-edit-id");
-    const labelInput = document.getElementById("menu-item-label");
-    const urlInput = document.getElementById("menu-item-url");
-    const iconInput = document.getElementById("menu-item-icon");
-    const targetBlankInput = document.getElementById("menu-item-target-blank");
-    const saveBtn = document.getElementById("btn-save-menu-item");
-    const saveLabel = document.getElementById("btn-save-menu-label");
-    const cancelBtn = document.getElementById("btn-cancel-menu-edit");
-    const restoreBtn = document.getElementById("btn-restore-default-menu");
-    const formHeading = document.getElementById("menu-form-heading");
-    const editIndicator = document.getElementById("menu-edit-indicator");
-    const badge = document.getElementById("tab-menu-badge");
-
-    if (!listContainer || !saveBtn) return;
-
-    // Quick emoji pills click handlers
-    document.querySelectorAll(".quick-emoji-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const emoji = btn.dataset.emoji;
-            if (emoji && iconInput) {
-                iconInput.value = emoji;
-                iconInput.focus();
-            }
-        });
-    });
-
-    function resetForm() {
-        if (editIdInput) editIdInput.value = "";
-        if (labelInput) labelInput.value = "";
-        if (urlInput) urlInput.value = "";
-        if (iconInput) iconInput.value = "🔗";
-        if (targetBlankInput) targetBlankInput.checked = false;
-        if (saveLabel) saveLabel.textContent = "Save Menu Link";
-        if (cancelBtn) cancelBtn.classList.add("hidden");
-        if (editIndicator) editIndicator.classList.add("hidden");
-        if (formHeading) formHeading.innerHTML = `<span>➕</span><span>പുതിയ ലിങ്ക് ചേർക്കുക (Add Menu Link)</span>`;
-    }
-
-    if (cancelBtn) {
-        cancelBtn.addEventListener("click", (e) => {
-            e.preventDefault();
-            resetForm();
-        });
-    }
-
-    function renderMenuList() {
-        if (!listContainer) return;
-        if (badge) badge.textContent = String(adminMenuItemsList.length);
-
-        if (!adminMenuItemsList || adminMenuItemsList.length === 0) {
-            listContainer.innerHTML = `
-                <div class="text-center py-8 text-xs text-[#8c7a6b] bg-[#fbf7ee] rounded-2xl border border-dashed border-[#ebdccb]">
-                    ലിങ്കുകൾ ഒന്നും ചേർത്തിട്ടില്ല. "Restore Defaults" അമർത്തുകയോ പുതിയ ലിങ്ക് ചേർക്കുകയോ ചെയ്യാം.
-                </div>
-            `;
-            return;
-        }
-
-        const sorted = [...adminMenuItemsList].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-
-        listContainer.innerHTML = sorted.map((item, index) => {
-            const isFirst = index === 0;
-            const isLast = index === sorted.length - 1;
-            const icon = item.icon || "🔗";
-            const targetBadge = item.targetBlank ? `<span class="text-[10px] bg-sky-100 text-sky-800 font-english font-bold px-1.5 py-0.5 rounded">New Tab</span>` : "";
-
-            return `
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-[#ebdccb] bg-[#fbf7ee]/40 hover:bg-white transition" data-menu-id="${item.id}">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <span class="w-7 h-7 rounded-lg bg-white border border-[#ebdccb] text-xs font-bold text-[#8c7a6b] flex items-center justify-center font-english shrink-0">${index + 1}</span>
-                        <span class="text-xl shrink-0">${icon}</span>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-extrabold text-[#1e1b18] truncate">${escapeMenuHtml(item.label || "")}</span>
-                                ${targetBadge}
-                            </div>
-                            <span class="text-[11px] text-[#8c7a6b] truncate block font-english">${escapeMenuHtml(item.url || "")}</span>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-                        <button type="button" class="btn-menu-move-up w-8 h-8 rounded-xl bg-white hover:bg-slate-100 border border-[#ebdccb] text-xs text-slate-700 font-bold transition flex items-center justify-center cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" data-id="${item.id}" ${isFirst ? "disabled" : ""} title="Move Up">↑</button>
-                        <button type="button" class="btn-menu-move-down w-8 h-8 rounded-xl bg-white hover:bg-slate-100 border border-[#ebdccb] text-xs text-slate-700 font-bold transition flex items-center justify-center cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" data-id="${item.id}" ${isLast ? "disabled" : ""} title="Move Down">↓</button>
-                        <button type="button" class="btn-menu-edit px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer font-english" data-id="${item.id}" title="Edit">
-                            <span>✏️</span>
-                            <span>Edit</span>
-                        </button>
-                        <button type="button" class="btn-menu-delete px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer font-english" data-id="${item.id}" title="Delete">
-                            <span>🗑️</span>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join("");
-
-        listContainer.querySelectorAll(".btn-menu-move-up").forEach(btn => {
-            btn.addEventListener("click", () => moveMenuItem(btn.dataset.id, -1));
-        });
-        listContainer.querySelectorAll(".btn-menu-move-down").forEach(btn => {
-            btn.addEventListener("click", () => moveMenuItem(btn.dataset.id, 1));
-        });
-        listContainer.querySelectorAll(".btn-menu-edit").forEach(btn => {
-            btn.addEventListener("click", () => editMenuItem(btn.dataset.id));
-        });
-        listContainer.querySelectorAll(".btn-menu-delete").forEach(btn => {
-            btn.addEventListener("click", () => deleteMenuItem(btn.dataset.id));
-        });
-    }
-
-    renderAdminMenuListGlobal = renderMenuList;
-
-    async function persistMenuItems(itemsToSave) {
-        try {
-            const menuDocRef = doc(db, "settings", "more_menu");
-            await setDoc(menuDocRef, {
-                items: itemsToSave,
-                updatedAt: serverTimestamp()
-            });
-            return true;
-        } catch (err) {
-            console.error("[MoreMenu] Failed to save menu to Firestore:", err);
-            showGlobalStatus("More മെനു സേവ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു: " + (err?.message || err), "error");
-            return false;
-        }
-    }
-
-    function moveMenuItem(id, direction) {
-        const sorted = [...adminMenuItemsList].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-        const idx = sorted.findIndex(i => i.id === id);
-        if (idx === -1) return;
-        const targetIdx = idx + direction;
-        if (targetIdx < 0 || targetIdx >= sorted.length) return;
-
-        const temp = sorted[idx];
-        sorted[idx] = sorted[targetIdx];
-        sorted[targetIdx] = temp;
-
-        sorted.forEach((item, i) => {
-            item.order = i + 1;
-        });
-
-        adminMenuItemsList = sorted;
-        renderMenuList();
-        persistMenuItems(adminMenuItemsList);
-    }
-
-    function editMenuItem(id) {
-        const item = adminMenuItemsList.find(i => i.id === id);
-        if (!item) return;
-
-        if (editIdInput) editIdInput.value = item.id;
-        if (labelInput) labelInput.value = item.label || "";
-        if (urlInput) urlInput.value = item.url || "";
-        if (iconInput) iconInput.value = item.icon || "🔗";
-        if (targetBlankInput) targetBlankInput.checked = Boolean(item.targetBlank);
-        if (saveLabel) saveLabel.textContent = "Update Menu Link";
-        if (cancelBtn) cancelBtn.classList.remove("hidden");
-        if (editIndicator) editIndicator.classList.remove("hidden");
-        if (formHeading) formHeading.innerHTML = `<span>✏️</span><span>ലിങ്ക് എഡിറ്റ് ചെയ്യുക (Edit Menu Link)</span>`;
-
-        labelInput?.focus();
-    }
-
-    async function deleteMenuItem(id) {
-        const item = adminMenuItemsList.find(i => i.id === id);
-        if (!item) return;
-
-        if (!confirm(`"${item.label}" എന്ന ലിങ്ക് More മെനുവിൽ നിന്നും നീക്കം ചെയ്യണോ?`)) return;
-
-        adminMenuItemsList = adminMenuItemsList.filter(i => i.id !== id);
-        adminMenuItemsList.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)).forEach((item, i) => {
-            item.order = i + 1;
-        });
-
-        renderMenuList();
-        const success = await persistMenuItems(adminMenuItemsList);
-        if (success) {
-            showGlobalStatus("ലിങ്ക് വിജയകരമായി നീക്കം ചെയ്തു.", "success");
-        }
-    }
-
-    saveBtn.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const label = (labelInput?.value || "").trim();
-        const url = (urlInput?.value || "").trim();
-        const icon = (iconInput?.value || "").trim() || "🔗";
-        const targetBlank = Boolean(targetBlankInput?.checked);
-        const editId = (editIdInput?.value || "").trim();
-
-        if (!label) {
-            alert("ദയവായി ലിങ്കിന്റെ പേര് നൽകുക.");
-            labelInput?.focus();
-            return;
-        }
-
-        if (!url) {
-            alert("ദയവായി ലിങ്കിന്റെ URL നൽകുക.");
-            urlInput?.focus();
-            return;
-        }
-
-        saveBtn.disabled = true;
-        saveBtn.classList.add("opacity-60");
-
-        try {
-            if (editId) {
-                const existing = adminMenuItemsList.find(i => i.id === editId);
-                if (existing) {
-                    existing.label = label;
-                    existing.url = url;
-                    existing.icon = icon;
-                    existing.targetBlank = targetBlank;
-                }
-            } else {
-                const newId = "menu-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6);
-                const maxOrder = adminMenuItemsList.reduce((max, i) => Math.max(max, Number(i.order) || 0), 0);
-                adminMenuItemsList.push({
-                    id: newId,
-                    label,
-                    url,
-                    icon,
-                    order: maxOrder + 1,
-                    targetBlank,
-                    isActive: true
-                });
-            }
-
-            renderMenuList();
-            const success = await persistMenuItems(adminMenuItemsList);
-            if (success) {
-                showGlobalStatus(editId ? "ലിങ്ക് വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു." : "പുതിയ ലിങ്ക് ചേർത്തു. ✨", "success");
-                resetForm();
-            }
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.classList.remove("opacity-60");
-        }
-    });
-
-    if (restoreBtn) {
-        restoreBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            if (!confirm("More മെനുവിലെ എല്ലാ ലിങ്കുകളും ഡിഫോൾട്ട് രൂപത്തിലേക്ക് പുനഃസ്ഥാപിക്കണോ?")) return;
-
-            restoreBtn.disabled = true;
-            try {
-                adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
-                renderMenuList();
-                const success = await persistMenuItems(adminMenuItemsList);
-                if (success) {
-                    showGlobalStatus("More മെനു വിജയകരമായി പുനഃസ്ഥാപിച്ചു. 🔄", "success");
-                    resetForm();
-                }
-            } finally {
-                restoreBtn.disabled = false;
-            }
-        });
-    }
-
-    // Load initial menu configuration from Firestore
-    try {
-        const menuDocRef = doc(db, "settings", "more_menu");
-        onSnapshot(menuDocRef, (snap) => {
-            if (snap.exists()) {
-                const data = snap.data();
-                if (Array.isArray(data.items) && data.items.length > 0) {
-                    adminMenuItemsList = data.items;
-                } else {
-                    adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
-                }
-            } else {
-                adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
-            }
-            renderMenuList();
-        }, (err) => {
-            console.warn("[MoreMenu] Firestore snapshot fallback:", err);
-            if (adminMenuItemsList.length === 0) {
-                adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
-                renderMenuList();
-            }
-        });
-    } catch (err) {
-        console.warn("[MoreMenu] Initialization error:", err);
-        adminMenuItemsList = JSON.parse(JSON.stringify(DEFAULT_MORE_MENU_ITEMS));
-        renderMenuList();
-    }
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAdminSecurity, { once: true });
+} else {
+    queueMicrotask(initAdminSecurity);
 }

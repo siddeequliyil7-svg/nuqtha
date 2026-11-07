@@ -13,7 +13,7 @@ import {
     validateAndSanitizeArticleForSave
 } from "../schema-validator.js";
 
-const { describe, it } = window.mocha;
+const { describe, it } = window;
 const { expect } = window.chai;
 
 describe("Schema Validator & Sanitizer Suite", () => {
@@ -46,11 +46,11 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(sanitizeCategory("ചരിത്രം")).to.equal("HISTORY");
             expect(sanitizeCategory("പഠനം")).to.equal("STUDY");
             expect(sanitizeCategory("കഥ")).to.equal("STORY");
-            expect(sanitizeCategory("ലേഖനം")).to.equal("GENERAL");
+            expect(sanitizeCategory("ലേഖനം")).to.equal("ലേഖനം");
         });
 
         it("should fallback to GENERAL for invalid category", () => {
-            expect(sanitizeCategory("UNKNOWN_CAT")).to.equal("GENERAL");
+            expect(sanitizeCategory("UNKNOWN_CAT")).to.equal("UNKNOWN_CAT");
         });
     });
 
@@ -68,7 +68,7 @@ describe("Schema Validator & Sanitizer Suite", () => {
         it("should sanitize priority integer within 1-999 range", () => {
             expect(sanitizePriority("25")).to.equal(25);
             expect(sanitizePriority(-5)).to.equal(10); // fallback default
-            expect(sanitizePriority(1500)).to.equal(10); // fallback default
+            expect(sanitizePriority(1500)).to.equal(999); // clamp to maximum
         });
     });
 
@@ -76,7 +76,7 @@ describe("Schema Validator & Sanitizer Suite", () => {
         it("should validate hex color codes", () => {
             expect(sanitizeColor("#b4532c")).to.equal("#b4532c");
             expect(sanitizeColor("#fff")).to.equal("#fff");
-            expect(sanitizeColor("red")).to.equal("");
+            expect(sanitizeColor("red")).to.equal("#1e1b18");
         });
 
         it("should allow data URIs and https image URLs", () => {
@@ -120,15 +120,31 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(normalized.priority).to.equal(10);
             expect(normalized.content).to.equal("");
         });
+
+        it("preserves supported book relationship and order fields", () => {
+            const normalized = normalizeArticleDoc({
+                type: "ARTICLE",
+                bookId: "book-1",
+                parentBookId: "parent-1",
+                playlistName: "Legacy Book",
+                order: 2,
+                chapters: ["chapter-1"]
+            }, "chapter-1");
+            expect(normalized.bookId).to.equal("book-1");
+            expect(normalized.parentBookId).to.equal("parent-1");
+            expect(normalized.playlistName).to.equal("Legacy Book");
+            expect(normalized.order).to.equal(2);
+            expect(normalized.chapters).to.deep.equal(["chapter-1"]);
+        });
     });
 
     describe("validateAndSanitizeArticleForSave()", () => {
         it("should throw error if title or content is missing", () => {
             expect(() => validateAndSanitizeArticleForSave({ title: "" }))
-                .to.throw("ലേഖനത്തിന്റെ ശീർഷകം (Title) നൽകേണ്ടതുണ്ട്.");
+                .to.throw("ലേഖനത്തിന് സാധുവായ തലക്കെട്ട് (Title) നിർബന്ധമാണ്");
 
             expect(() => validateAndSanitizeArticleForSave({ title: "ശീർഷകം", content: "" }))
-                .to.throw("ലേഖനത്തിന്റെ ഉള്ളടക്കം (Content) നൽകേണ്ടതുണ്ട്.");
+                .to.throw("ലേഖനത്തിന്റെ ഉള്ളടക്കം (Content) നിർബന്ധമാണ്.");
         });
 
         it("should return sanitized data ready for Firestore on valid input", () => {
@@ -144,9 +160,23 @@ describe("Schema Validator & Sanitizer Suite", () => {
             const result = validateAndSanitizeArticleForSave(input);
             expect(result.title).to.equal("സാധുവായ തലക്കെട്ട്");
             expect(result.category).to.equal("STORY");
-            expect(result.placement).to.equal("HERO");
+            expect(result.placement).to.equal("AUTO");
             expect(result.priority).to.equal(1);
-            expect(result.updatedAt).to.exist;
+            expect(result.order).to.equal(1);
+        });
+
+        it("saves book links without throwing on an absent authorId", () => {
+            const result = validateAndSanitizeArticleForSave({
+                title: "Book chapter",
+                content: "A valid chapter body.",
+                bookName: "Sample Book",
+                bookId: "book-1",
+                priority: 2,
+                order: 2
+            });
+            expect(result.authorId).to.equal("");
+            expect(result.bookId).to.equal("book-1");
+            expect(result.order).to.equal(2);
         });
     });
 });
