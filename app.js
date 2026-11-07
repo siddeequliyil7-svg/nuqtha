@@ -19,10 +19,12 @@ export const FALLBACK_ARTICLES = [
         title: "ബദ്ർ; ചരിത്രവും ഖുർആനിന്റെ പ്രവചനവും",
         slug: "badr-charithravum-khuraaninte-pravachanavum",
         category: "HISTORY",
-        author: "സയ്യിദ് സൽമാൻ",
+        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
         excerpt: "വിശ്വാസവും അവിശ്വാസവും തമ്മിൽ ഏറ്റുമുട്ടിയ ചരിത്രപ്രസിദ്ധമായ ബദ്ർ യുദ്ധത്തിന്റെ പശ്ചാത്തലവും ഖുർആനിക ദർശനങ്ങളും.",
         placement: "HERO",
         priority: 1,
+        imageUrl: "/assets/aistudio/image_83264d65.png",
+        thumbnailUrl: "/assets/aistudio/image_83264d65.png",
         date: "2026-11-01",
         createdAt: 1762000000000,
         type: "ARTICLE"
@@ -32,10 +34,12 @@ export const FALLBACK_ARTICLES = [
         title: "ബദ്ർ; ലക്ഷ്യവും പാഠങ്ങളും",
         slug: "badr-lakshyavum-paadhangngalum",
         category: "HISTORY",
-        author: "സയ്യിദ് സൽമാൻ",
+        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
         excerpt: "ചരിത്രത്തിലെ വഴിത്തിരിവായ പോരാട്ടത്തിൽ നിന്നും ആധുനിക സമൂഹത്തിന് ഉൾക്കൊള്ളാനുള്ള വലിയ ജീവിത പാഠങ്ങൾ.",
         placement: "CAROUSEL",
         priority: 2,
+        imageUrl: "/assets/aistudio/image_3553ba43.png",
+        thumbnailUrl: "/assets/aistudio/image_3553ba43.png",
         date: "2026-11-02",
         createdAt: 1762000000000,
         type: "ARTICLE"
@@ -45,10 +49,12 @@ export const FALLBACK_ARTICLES = [
         title: "ഈ സ്ത്രീയിൽ രാജാവ് പിറക്കും",
         slug: "ee-sthreeyil-raajaav-pirakkum",
         category: "STUDY",
-        author: "അബൂബക്കർ സിദ്ദീഖ്",
+        author: "അബൂബക്കർ സിദ്ദീഖ് ഉളിയൻ",
         excerpt: "ചരിത്രത്തിലെ വിസ്മയകരമായ ഒരു ചരിത്ര മുഹൂർത്തത്തെക്കുറിച്ചുള്ള ആഴത്തിലുള്ള പഠനവും വിശകലനവും.",
         placement: "CAROUSEL",
         priority: 3,
+        imageUrl: "/assets/aistudio/image_d07d13cc.png",
+        thumbnailUrl: "/assets/aistudio/image_d07d13cc.png",
         date: "2026-11-03",
         createdAt: 1762000000000,
         type: "ARTICLE"
@@ -58,10 +64,12 @@ export const FALLBACK_ARTICLES = [
         title: "ഉഹ്ദ് യുദ്ധം ; ലക്ഷ്യങ്ങളും പാഠങ്ങളും",
         slug: "uhud-yuddham-lakshyavum-paadhangngalum",
         category: "HISTORY",
-        author: "സയ്യിദ് സൽമാൻ",
+        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
         excerpt: "അച്ചടക്കത്തിന്റെയും ഐക്യത്തിന്റെയും അനിവാര്യത പഠിപ്പിച്ച ഉഹ്ദ് യുദ്ധത്തിന്റെ ചരിത്രാന്വേഷണം.",
         placement: "AUTO",
         priority: 4,
+        imageUrl: "/assets/aistudio/image_1c91277b.png",
+        thumbnailUrl: "/assets/aistudio/image_1c91277b.png",
         date: "2026-11-04",
         createdAt: 1762000000000,
         type: "ARTICLE"
@@ -71,10 +79,12 @@ export const FALLBACK_ARTICLES = [
         title: "ഖാജ തങ്ങളും ചിശ്തി ത്വരീഖത്തും",
         slug: "khaaja-thangngalum-chishthi-thvareekhaththum",
         category: "STUDY",
-        author: "സയ്യിദ് സൽമാൻ",
+        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
         excerpt: "ഇന്ത്യയിലെ ആത്മീയ വിപ്ലവത്തിന് അടിത്തറയിട്ട ഖാജ മുഈനുദ്ദീൻ ചിശ്തി (റ) യുടെ ജീവചരിത്രവും ദർശനവും.",
         placement: "AUTO",
         priority: 5,
+        imageUrl: "/assets/aistudio/image_ffa13b8e.png",
+        thumbnailUrl: "/assets/aistudio/image_ffa13b8e.png",
         date: "2026-11-05",
         createdAt: 1762000000000,
         type: "ARTICLE"
@@ -85,11 +95,13 @@ export const FALLBACK_ARTICLES = [
         slug: "imamumaarude-jeevitham",
         bookSlug: "imamumaarude-jeevitham",
         category: "BOOKS",
-        author: "സയ്യിദ് സൽമാൻ",
+        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
         excerpt: "ഇസ്ലാമിക ലോകത്തെ മഹാന്മാരായ നാല് ഇമാമുമാരുടെയും പ്രമുഖ പണ്ഡിതന്മാരുടെയും ജീവിത സമർപ്പണം.",
         type: "BOOK",
         isBook: true,
         priority: 1,
+        imageUrl: "/assets/aistudio/image_4ad0cfe2.png",
+        thumbnailUrl: "/assets/aistudio/image_4ad0cfe2.png",
         date: "2026-11-01",
         createdAt: 1762000000000
     },
@@ -99,11 +111,13 @@ export const FALLBACK_ARTICLES = [
         slug: "abbaasiyya-khilaaphathth",
         bookSlug: "abbaasiyya-khilaaphathth",
         category: "BOOKS",
-        author: "സയ്യിദ് സൽമാൻ",
+        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
         excerpt: "ഇസ്ലാമിക സുവർണ്ണ കാലഘട്ടത്തിന്റെ ജ്ഞാന വിപ്ലവവും ഭരണ ചരിത്രവും സമഗ്രമായി പ്രതിപാദിക്കുന്ന പുസ്തകം.",
         type: "BOOK",
         isBook: true,
         priority: 2,
+        imageUrl: "/assets/aistudio/image_232f874f.png",
+        thumbnailUrl: "/assets/aistudio/image_232f874f.png",
         date: "2026-11-02",
         createdAt: 1762000000000
     },
@@ -113,11 +127,13 @@ export const FALLBACK_ARTICLES = [
         slug: "umaviyya-khilaaphathth",
         bookSlug: "umaviyya-khilaaphathth",
         category: "BOOKS",
-        author: "സയ്യിദ് സൽമാൻ",
+        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
         excerpt: "ദമാസ്കസ് ആസ്ഥാനമായി ഭരണം നടത്തിയ ഉമവിയ്യ രാജവംശത്തിന്റെ ഉദയവും അസ്തമയവും.",
         type: "BOOK",
         isBook: true,
         priority: 3,
+        imageUrl: "/assets/aistudio/image_5f7341fd.png",
+        thumbnailUrl: "/assets/aistudio/image_5f7341fd.png",
         date: "2026-11-03",
         createdAt: 1762000000000
     },
@@ -127,11 +143,13 @@ export const FALLBACK_ARTICLES = [
         slug: "badr-charitham",
         bookSlug: "badr-charitham",
         category: "BOOKS",
-        author: "സയ്യിദ് സൽമാൻ",
+        author: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
         excerpt: "സത്യവും അസത്യവും വേർതിരിച്ച ചരിത്രപ്രസിദ്ധമായ ബദ്ർ യുദ്ധത്തിന്റെ സമഗ്ര ചരിത്ര പുസ്തകം.",
         type: "BOOK",
         isBook: true,
         priority: 4,
+        imageUrl: "/assets/aistudio/image_ac0f3969.png",
+        thumbnailUrl: "/assets/aistudio/image_ac0f3969.png",
         date: "2026-11-04",
         createdAt: 1762000000000
     }
@@ -405,12 +423,10 @@ function initDynamicMoreMenu() {
                 }
             }
             renderDynamicMoreMenu(DEFAULT_FRONT_MORE_MENU);
-        }).catch(err => {
-            console.warn("[MoreMenu] Firestore doc fetch error:", err?.message || err);
+        }).catch(() => {
             renderDynamicMoreMenu(DEFAULT_FRONT_MORE_MENU);
         });
-    } catch (err) {
-        console.warn("[MoreMenu] Firestore doc init error:", err);
+    } catch (_) {
         renderDynamicMoreMenu(DEFAULT_FRONT_MORE_MENU);
     }
 }
@@ -819,17 +835,16 @@ export async function initAppData(database = db) {
 
     isAppDataLoading = true;
     try {
-        console.log("[NUQTHA App] Fetching articles and books once from Firestore...");
         const [articlesSnapshot, booksSnapshot] = await Promise.all([
-            getDocs(collection(database, "articles")),
-            getDocs(collection(database, "books")).catch(err => {
-                console.warn("[NUQTHA App] Books fetch warning:", err?.message || err);
-                return { docs: [], size: 0 };
-            })
+            getDocs(collection(database, "articles")).catch(() => ({ docs: [], size: 0 })),
+            getDocs(collection(database, "books")).catch(() => ({ docs: [], size: 0 }))
         ]);
 
-        console.log(`Loaded ${articlesSnapshot.size || articlesSnapshot.docs?.length || 0} articles.`);
-        console.log(`Loaded ${booksSnapshot.size || booksSnapshot.docs?.length || 0} books.`);
+        const artCount = articlesSnapshot?.size || articlesSnapshot?.docs?.length || 0;
+        const bkCount = booksSnapshot?.size || booksSnapshot?.docs?.length || 0;
+        if (artCount > 0 || bkCount > 0) {
+            console.log(`[NUQTHA App] Received ${artCount} articles and ${bkCount} books from Firestore.`);
+        }
 
         const rawArticlesList = [];
         articlesSnapshot.docs.forEach(articleDoc => {
@@ -873,8 +888,7 @@ export async function initAppData(database = db) {
         } else if (allArticles.length === 0) {
             renderFeed();
         }
-    } catch (error) {
-        console.warn("[NUQTHA App] Firestore quota reached or offline, keeping fallback/cached articles:", error?.message || error);
+    } catch (_) {
         if (allArticles.length === 0) {
             allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
         }

@@ -6,6 +6,13 @@ import { collection, getDocs, fetchWithRetry, getFirebaseApiKey } from "../fireb
 
 export const PRIMARY_AUTHORS = [
     {
+        name: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
+        role: "FOUNDING EDITOR · സ്ഥാപക പത്രാധിപർ",
+        slug: "സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ",
+        bio: "NUQTHA സ്ഥാപക പത്രാധിപർ, ചരിത്ര-സാഹിത്യ ഗവേഷകൻ, എഴുത്തുകാരൻ.",
+        photoUrl: "/assets/aistudio/image_83264d65.png"
+    },
+    {
         name: "സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി",
         role: "CHIEF EDITOR · മുഖ്യ പത്രാധിപർ",
         slug: "സുലൈമാൻ-ഫൈസി-കിഴിശ്ശേരി",
@@ -13,10 +20,10 @@ export const PRIMARY_AUTHORS = [
         photoUrl: ""
     },
     {
-        name: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
-        role: "FOUNDING EDITOR · സ്ഥാപക പത്രാധിപർ",
-        slug: "സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ",
-        bio: "NUQTHA സ്ഥാപക പത്രാധിപർ, ചരിത്ര-സാഹിത്യ ഗവേഷകൻ, എഴുത്തുകാരൻ.",
+        name: "അബൂബക്കർ സിദ്ദീഖ് ഉളിയൻ",
+        role: "RESEARCHER & WRITER · ഗവേഷകൻ",
+        slug: "അബൂബക്കർ-സിദ്ദീഖ്",
+        bio: "NUQTHA ഗവേഷകൻ, ചരിത്ര-സാമൂഹിക നിരീക്ഷകൻ, എഴുത്തുകാരൻ.",
         photoUrl: ""
     }
 ];
@@ -124,11 +131,29 @@ export async function getAuthorsMap(db) {
 async function fetchAuthorsNetwork(db) {
     const authors = {};
 
-    // Seed primary authors
+    // Seed primary authors & aliases
     PRIMARY_AUTHORS.forEach(p => {
         authors[p.slug] = { ...p };
         authors[cleanMalayalamText(p.name)] = { ...p };
+        authors[slugifyAuthor(p.name)] = { ...p };
     });
+
+    const salman = PRIMARY_AUTHORS[0];
+    authors["സയ്യിദ് സൽമാൻ"] = salman;
+    authors["സയ്യിദ്-സൽമാൻ"] = salman;
+    authors["sayyid-salman"] = salman;
+    authors["sayyid salman"] = salman;
+    authors[cleanMalayalamText("സയ്യിദ് സൽമാൻ")] = salman;
+
+    const sulaaiman = PRIMARY_AUTHORS[1];
+    authors["സുലൈമാൻ ഫൈസി"] = sulaaiman;
+    authors["സുലൈമാൻ-ഫൈസി"] = sulaaiman;
+    authors[cleanMalayalamText("സുലൈമാൻ ഫൈസി")] = sulaaiman;
+
+    const siddeeq = PRIMARY_AUTHORS[2];
+    authors["അബൂബക്കർ സിദ്ദീഖ്"] = siddeeq;
+    authors["അബൂബക്കർ-സിദ്ദീഖ്"] = siddeeq;
+    authors[cleanMalayalamText("അബൂബക്കർ സിദ്ദീഖ്")] = siddeeq;
 
     let docs = [];
 
@@ -141,9 +166,8 @@ async function fetchAuthorsNetwork(db) {
             snap.forEach(d => {
                 docs.push({ id: d.id, ...d.data() });
             });
-        } catch (e) {
-            // SDK error or quota limit - use seeded primary authors immediately
-            console.warn("[AuthorService] Firestore SDK author fetch error:", e?.message || e);
+        } catch (_) {
+            // SDK offline or quota limited - fallback cleanly to seeded primary authors
         }
     }
 
