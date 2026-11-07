@@ -33,9 +33,9 @@ export function isMainBook(art) {
         return false;
     }
 
-    // Filter strictly so only items where type === 'book' / 'BOOK' or isBook === true qualify as books
+    // Filter strictly so only items where type === 'book' / 'BOOK' or isBook === true (or free/premium) qualify as books
     const artType = (art.type || "").toString().toLowerCase().trim();
-    if (artType === "book" || art.isBook === true) {
+    if (artType === "book" || art.isBook === true || artType === "free" || artType === "premium") {
         return true;
     }
     return false;
@@ -1765,8 +1765,10 @@ async function handleSaveBookStep1(e) {
         let bookSlug = cleanCustomPath(customBookSlugVal, name);
         bookSlug = bookSlug.replace(/^(?:book|story|article)\/+/gi, "").trim() || slugifyText(name);
 
+        const bookTypeSelect = document.getElementById("bookTypeInput");
         const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
-        const isPremium = isPremiumToggle ? isPremiumToggle.checked : false;
+        const bookTypeValue = (bookTypeSelect ? bookTypeSelect.value : (isPremiumToggle && isPremiumToggle.checked ? "premium" : "free")).toLowerCase();
+        const isPremium = bookTypeValue === "premium" || (isPremiumToggle ? isPremiumToggle.checked : false);
         const priceVal = parseFloat(document.getElementById("book-meta-price")?.value) || 0;
         const apkUrlVal = (document.getElementById("book-meta-apk-url")?.value || "").trim();
 
@@ -1783,11 +1785,13 @@ async function handleSaveBookStep1(e) {
             introduction: intro,
             excerpt: intro,
             content: intro,
-            type: "BOOK",
+            type: bookTypeValue, // 'free' or 'premium' (Section 2)
+            bookType: bookTypeValue,
+            accessType: bookTypeValue,
             isBook: true,
             isChapter: false,
             isPremium: isPremium,
-            price: priceVal,
+            price: isPremium ? (priceVal || 49) : 0,
             apkUrl: apkUrlVal,
             placement: "AUTO",
             priority: 1,
@@ -1817,6 +1821,24 @@ async function handleSaveBookStep1(e) {
             savedDocId = docRef.id;
             currentArticlesList.unshift({ id: savedDocId, ...payload });
             showGlobalStatus(`📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
+        }
+
+        // Also save/sync to books collection (Section 2 & 3 sync)
+        try {
+            await setDoc(doc(db, "books", savedDocId), {
+                title: name,
+                author: author,
+                type: bookTypeValue,
+                accessType: bookTypeValue,
+                isPremium: isPremium,
+                price: isPremium ? (priceVal || 49) : 0,
+                description: intro,
+                visible: true,
+                updatedAt: serverTimestamp(),
+                createdAt: serverTimestamp()
+            }, { merge: true });
+        } catch (bkErr) {
+            console.warn("[Admin] Sync book to books collection note:", bkErr);
         }
 
         // Update author & name on active book session
@@ -1895,10 +1917,60 @@ function initBookSwitcherAndStep1() {
         });
     }
 
+    // Sync Book Access Type select (#bookTypeInput) with Premium Toggle
+    const bookTypeInput = document.getElementById("bookTypeInput");
+    const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
+    if (bookTypeInput) {
+        bookTypeInput.addEventListener("change", (e) => {
+            const isPrem = e.target.value === "premium";
+            if (isPremiumToggle) {
+                isPremiumToggle.checked = isPrem;
+                if (window.toggleBookPremiumFields) window.toggleBookPremiumFields(isPrem);
+            }
+        });
+    }
+    if (isPremiumToggle) {
+        isPremiumToggle.addEventListener("change", (e) => {
+            if (bookTypeInput) {
+                bookTypeInput.value = e.target.checked ? "premium" : "free";
+            }
+        });
+    }
+
     if (publishBtn) {
         publishBtn.addEventListener("click", handleSaveBookStep1);
     }
 }
+
+// ========================================================
+// SECTION 2: ADMIN.JS - Save New Book with Type to Firebase
+// ========================================================
+export async function addNewBook(database = db) {
+  const titleEl = document.getElementById('bookTitle') || document.getElementById('book-meta-name');
+  const authorEl = document.getElementById('bookAuthor') || document.getElementById('book-meta-author');
+  const typeEl = document.getElementById('bookTypeInput');
+  const typeVal = typeEl ? typeEl.value : 'free';
+
+  const bookData = {
+    title: (titleEl?.value || "").trim(),
+    author: (authorEl?.value || "").trim() || "Nuqtha Press",
+    type: typeVal, // 'free' allengil 'premium'
+    accessType: typeVal,
+    isPremium: typeVal === "premium",
+    isBook: true,
+    createdAt: new Date()
+  };
+
+  if (!bookData.title) {
+    alert("ദയവായി പുസ്തകത്തിന്റെ പേര് നൽകുക.");
+    return;
+  }
+
+  const docRef = await addDoc(collection(database, "books"), bookData);
+  alert('Book added successfully!');
+  return docRef;
+}
+window.addNewBook = addNewBook;
 
 function resetBookManagerForm() {
     activeBookName = "";
@@ -1931,6 +2003,8 @@ function resetBookManagerForm() {
     if (tagInput) tagInput.value = "Premium Book";
     if (introInput) introInput.value = "";
     if (dateInput) dateInput.value = "";
+    const bookTypeInput = document.getElementById("bookTypeInput");
+    if (bookTypeInput) bookTypeInput.value = "free";
     const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
     if (isPremiumToggle) isPremiumToggle.checked = false;
     if (window.toggleBookPremiumFields) window.toggleBookPremiumFields(false);
@@ -2001,7 +2075,9 @@ function selectActiveBook(bookName) {
     if (introInput) introInput.value = bookCover?.introduction || bookCover?.excerpt || bookCover?.content || "";
     if (dateInput) dateInput.value = bookCover?.date || "";
 
-    const isPrem = Boolean(bookCover?.isPremium === true || (typeof bookCover?.category === "string" && bookCover.category.toLowerCase().includes("premium")));
+    const isPrem = Boolean(bookCover?.isPremium === true || bookCover?.type === "premium" || bookCover?.bookType === "premium" || (typeof bookCover?.category === "string" && bookCover.category.toLowerCase().includes("premium")));
+    const bookTypeInput = document.getElementById("bookTypeInput");
+    if (bookTypeInput) bookTypeInput.value = isPrem ? "premium" : "free";
     const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
     if (isPremiumToggle) isPremiumToggle.checked = isPrem;
     if (window.toggleBookPremiumFields) window.toggleBookPremiumFields(isPrem);
@@ -3367,6 +3443,17 @@ window.deleteBookById = async function(bookId, bookTitle) {
 
     try {
         await deleteDoc(doc(db, "articles", bookId));
+
+        // Also delete from books collection (Fix Delete Issue)
+        try {
+            await deleteDoc(doc(db, "books", bookId));
+        } catch (_) {}
+
+        // Clear local caches so deleted books don't persist
+        try {
+            sessionStorage.removeItem("nuqtha_cached_articles");
+            sessionStorage.removeItem("nuqtha:library:v1");
+        } catch (_) {}
 
         // Unlink chapters belonging to this book
         const linkedChapters = currentArticlesList.filter(a => a.bookId === bookId || (cleanTitle && a.bookName === cleanTitle));

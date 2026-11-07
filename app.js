@@ -363,7 +363,7 @@ function setupMoreDropdown() {
 function isBookEntity(article) {
     if (!article) return false;
     const artType = (article.type || "").toUpperCase();
-    if (artType === "BOOK" || article.isBook === true) return true;
+    if (artType === "BOOK" || artType === "FREE" || artType === "PREMIUM" || article.isBook === true) return true;
     if (article.bookId && String(article.bookId).trim()) return true;
     if (article.bookName && String(article.bookName).trim()) return true;
     if (article.playlistName && String(article.playlistName).trim()) return true;
@@ -1042,7 +1042,7 @@ function renderSearchFeed(container, query) {
 /* ─── HOME FEED: Scrolling Carousel + Hero Featured + Dedicated Books + Category Feeds ─── */
 function renderHomeFeed(container) {
     // Distinguish book covers from standard articles
-    const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && !isChapterEntity(a);
+    const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
     const bookCovers = allArticles.filter(isBookCoverItem);
     // Regular articles: keep only genuine standalone articles (exclude book covers AND all book chapters)
     const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapterEntity(a));
@@ -1180,7 +1180,7 @@ function renderHomeFeed(container) {
 
 function renderCategoryFeed(container, category) {
     const targetNorm = normalizeCategoryName(category).toUpperCase();
-    const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && !isChapterEntity(a);
+    const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
 
     const filtered = allArticles.filter(a => {
         if (isBookCover(a)) return false;
@@ -2541,6 +2541,9 @@ function renderBooksCategoryFeed(container) {
                 const cleanTitle = stripMarkdown(book.title);
                 const count = getBookArticleCount(book, allArticles);
                 const isPremium = Boolean(
+                    book.type === 'premium' ||
+                    book.bookType === 'premium' ||
+                    book.accessType === 'premium' ||
                     book.isPremium === true ||
                     book.category === 'Premium Book' ||
                     (typeof book.category === 'string' && book.category.toLowerCase().includes('premium'))
@@ -2553,8 +2556,8 @@ function renderBooksCategoryFeed(container) {
                 return `
                 <div class="book-glass-card group cursor-pointer flex flex-col bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] dark:hover:border-[#f87171] shadow-2xs hover:shadow-lg transition-all duration-300 relative" data-id="${book.id}">
                     <div class="aspect-[3/4] w-full bg-[#f7eedf] dark:bg-[#0c0d12] overflow-hidden relative">
-                        <span class="absolute top-2.5 right-2.5 z-10 px-2.5 py-1 rounded-full text-[10px] font-black uppercase font-english ${isFree ? 'bg-emerald-600 text-white shadow-md' : 'bg-amber-500 text-white shadow-md'}">
-                            ${isFree ? '₹0 • FREE' : `₹${price} • PREMIUM`}
+                        <span class="absolute top-2.5 right-2.5 z-10 px-2.5 py-1 rounded-full text-[10px] font-black uppercase font-english ${isFree ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-300 dark:border-green-700 shadow-md' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-md'}">
+                            ${isFree ? 'FREE' : 'PREMIUM'}
                         </span>
                         ${bookCoverImg ? `
                             <img src="${bookCoverImg}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -2580,7 +2583,7 @@ function renderBooksCategoryFeed(container) {
                         ${cleanTitle}
                     </div>
                     <!-- Details / Meta Underneath -->
-                    <div class="py-2 px-2.5 text-center bg-[#fbf7ee]/40 dark:bg-white/[0.02] border-t border-[#ebdccb]/60 dark:border-white/10 space-y-0.5">
+                    <div class="py-2.5 px-2.5 text-center bg-[#fbf7ee]/40 dark:bg-white/[0.02] border-t border-[#ebdccb]/60 dark:border-white/10 space-y-1">
                         <p class="text-xs font-bold text-[#1e1b18] dark:text-white font-english tracking-wide truncate">
                             ${book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Volume ' + book.volume) : 'Volume 36'} • ${book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue: ' + book.issue) : 'Issue: 27'}
                         </p>
@@ -2590,6 +2593,11 @@ function renderBooksCategoryFeed(container) {
                         <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
                             ${count} ലേഖനങ്ങൾ ഉൾക്കൊള്ളുന്നു
                         </p>
+                        <div class="pt-1.5">
+                            <span class="inline-block w-full text-center bg-[#A75D3A] text-white py-1 px-2.5 rounded-lg text-xs font-bold shadow-2xs hover:opacity-90 transition">
+                                ${isFree ? 'Read Free' : 'Buy Now'}
+                            </span>
+                        </div>
                     </div>
                 </div>
                 `;
@@ -2605,3 +2613,46 @@ function renderBooksCategoryFeed(container) {
         showAllBtn.addEventListener("click", () => switchToCategory("ALL"));
     }
 }
+
+// ========================================================
+// SECTION 3: APP.JS - Load Books Dynamically (Fix Delete Issue)
+// ========================================================
+export async function loadBooksToFrontend(database = db) {
+  const container = document.getElementById('booksContainer');
+  if (!container) return;
+  
+  try {
+    const querySnapshot = await getDocs(collection(database, "books"));
+    container.innerHTML = "";
+    
+    if (querySnapshot.empty) {
+      container.innerHTML = "<p class='text-gray-500 py-6 text-center text-xs'>No books found.</p>";
+      return;
+    }
+
+    querySnapshot.forEach((documentSnap) => {
+      const book = documentSnap.data();
+      const isPremium = book.type === 'premium' || book.isPremium === true;
+      const targetUrl = book.slug ? `/book/${encodeURIComponent(book.slug)}` : `/article.html?id=${encodeURIComponent(documentSnap.id)}`;
+      
+      const card = document.createElement("div");
+      card.className = "bg-white dark:bg-[#12141d] p-4 rounded-xl shadow border border-gray-100 dark:border-white/10 flex flex-col justify-between";
+      card.innerHTML = `
+        <div>
+          <span class="text-xs font-semibold px-2 py-0.5 rounded ${isPremium ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'}">
+            ${isPremium ? 'PREMIUM' : 'FREE'}
+          </span>
+          <h3 class="font-bold text-lg mt-2 text-gray-800 dark:text-white">${book.title || 'Untitled Book'}</h3>
+          <p class="text-sm text-gray-600 dark:text-slate-400">Author: ${book.author || 'Nuqtha Press'}</p>
+        </div>
+        <a href="${targetUrl}" class="mt-4 bg-[#A75D3A] text-white px-3 py-1.5 rounded text-sm hover:opacity-90 transition text-center inline-block font-semibold">
+          ${isPremium ? 'Buy Now' : 'Read Free'}
+        </a>
+      `;
+      container.appendChild(card);
+    });
+  } catch (err) {
+    console.warn("[Books] Dynamic load error:", err);
+  }
+}
+window.loadBooksToFrontend = loadBooksToFrontend;
