@@ -514,8 +514,6 @@ html.dark .header-profile-btn:hover {
     color: #ffffff;
 }
 
-<<<<<<< HEAD
-=======
 /* ═══════════ RISALA UPDATE STYLE SIGN IN PILL & USER MENU ═══════════ */
 .header-signin-pill {
     width: 32px;
@@ -594,7 +592,6 @@ body.dark-mode #header-user-btn:hover {
     border: none;
 }
 
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 .glass-dropdown-menu {
     background: rgba(255, 255, 255, 0.94);
     backdrop-filter: blur(24px) saturate(180%);
@@ -2525,8 +2522,6 @@ body.dark-mode .category-featured-card:hover {
 #mobile-sticky-continue-bar.bar-visible {
     transform: translateY(0);
 }
-<<<<<<< HEAD
-=======
 
 
 /* ═══════════ ARTICLE READING BODY TYPOGRAPHY & READING COLUMN ═══════════ */
@@ -3193,5 +3188,3 @@ html.dark .category-tag-bracket {
     z-index: 1;
     pointer-events: auto;
 }
-
->>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
