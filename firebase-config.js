@@ -1,6 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import {
   initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   getFirestore,
   setLogLevel,
   collection,
@@ -51,25 +53,46 @@ const app = initializeApp(firebaseConfig);
 setLogLevel("silent");
 
 /**
- * Initialize Firestore with experimentalForceLongPolling and experimentalAutoDetectLongPolling: false.
- * This completely avoids QUIC / HTTP/3 UDP stream failures (net::ERR_QUIC_PROTOCOL_ERROR)
- * across proxies, corporate networks, and mobile browsers.
+ * Initialize Firestore with persistent IndexedDB local cache and robust transport.
+ * Local persistence ensures that previously fetched articles, books, and settings
+ * remain available instantly in 0ms and offline even if network or Firestore Spark quota (429) fails.
  */
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  experimentalAutoDetectLongPolling: false,
-});
+let firestoreDb;
+try {
+  firestoreDb = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: false,
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+} catch (e) {
+  try {
+    firestoreDb = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      experimentalAutoDetectLongPolling: false
+    });
+  } catch (_) {
+    firestoreDb = getFirestore(app);
+  }
+}
+export const db = firestoreDb;
 
 /**
  * Fetch with automatic exponential backoff retry to withstand net::ERR_QUIC_PROTOCOL_ERROR,
- * transient network drops, and HTTP 429/5xx status codes.
- * On protocol error, the browser gracefully downgrades to TCP HTTPS on subsequent attempts.
+ * transient network drops, and HTTP 5xx status codes.
+ * NOTE: If HTTP 429 (quota exceeded) is returned, it immediately returns without retrying
+ * to prevent hammering the server or compounding quota exhaustion.
  */
-export async function fetchWithRetry(url, options = {}, retries = 3, backoff = 350) {
+export async function fetchWithRetry(url, options = {}, retries = 2, backoff = 350) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const response = await fetch(url, options);
-      if (!response.ok && (response.status === 429 || response.status >= 500) && attempt < retries) {
+      // Immediately stop on 429 quota exhaustion - never retry
+      if (!response.ok && response.status === 429) {
+        return response;
+      }
+      if (!response.ok && response.status >= 500 && attempt < retries) {
         const delay = backoff * Math.pow(2, attempt) + Math.random() * 100;
         await new Promise(res => setTimeout(res, delay));
         continue;

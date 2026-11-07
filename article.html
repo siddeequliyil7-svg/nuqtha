@@ -563,6 +563,7 @@
     <!-- Main Module Script -->
     <script type="module">
         import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "./firebase-config.js";
+        import { FALLBACK_ARTICLES } from "./app.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart } from "./schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
@@ -678,6 +679,63 @@
         // Fast In-Memory Cache
         const memoryCache = window.__NUQTHA_MEM_CACHE__ || new Map();
         window.__NUQTHA_MEM_CACHE__ = memoryCache;
+
+        // 429 Rate-Limit Circuit Breaker
+        let isFirestore429Blocked = false;
+        let firestore429CooldownUntil = 0;
+
+        function markFirestoreRateLimited() {
+            isFirestore429Blocked = true;
+            firestore429CooldownUntil = Date.now() + 60000;
+        }
+
+        function checkIsRateLimited() {
+            if (isFirestore429Blocked && Date.now() < firestore429CooldownUntil) {
+                return true;
+            }
+            isFirestore429Blocked = false;
+            return false;
+        }
+
+        // Search across all cached storage pools and fallback data
+        function searchLocalArticlesPool(identifier) {
+            if (!identifier) return null;
+            const decoded = safeDecodeParam(identifier);
+            const clean = cleanRouteSlug(decoded);
+            const targetSlug = slugifyText(decoded);
+            const rawSlug = slugifyMalayalamRaw(decoded);
+
+            const pools = [];
+            try {
+                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v7") || localStorage.getItem("nuqtha_cached_articles_v7") || sessionStorage.getItem("nuqtha_cached_articles_v6") || localStorage.getItem("nuqtha_cached_articles_v6");
+                if (s1) {
+                    const parsed = JSON.parse(s1);
+                    if (Array.isArray(parsed)) pools.push(...parsed);
+                }
+            } catch (_) {}
+            try {
+                const s2 = sessionStorage.getItem("nuqtha_all_articles") || localStorage.getItem("nuqtha_all_articles");
+                if (s2) {
+                    const parsed = JSON.parse(s2);
+                    if (Array.isArray(parsed)) pools.push(...parsed);
+                }
+            } catch (_) {}
+
+            pools.push(...FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id)));
+
+            return pools.find(a => 
+                a.id === identifier ||
+                a.id === decoded ||
+                a.id === clean ||
+                a.slug === identifier ||
+                a.slug === decoded ||
+                a.slug === clean ||
+                a.slug === targetSlug ||
+                a.slug === rawSlug ||
+                slugifyText(a.title) === targetSlug ||
+                slugifyMalayalamRaw(a.title) === rawSlug
+            ) || null;
+        }
 
         // Reading History Helpers
         function getReadArticleIds() {
@@ -850,41 +908,52 @@
                 return memoryCache.get(`doc_${id}`);
             }
 
+            const localHit = searchLocalArticlesPool(cleanId);
+            if (localHit && localHit.content) {
+                memoryCache.set(`doc_${cleanId}`, localHit);
+                memoryCache.set(`doc_${id}`, localHit);
+                return localHit;
+            }
+
             const collectionsToTry = (isBookRoute || editionParam) ? ["books", "articles"] : ["articles", "books"];
 
             for (const col of collectionsToTry) {
-                // A. Ultra-fast REST fetch direct document lookup (~80ms)
-                try {
-                    const encodedId = encodeURIComponent(cleanId);
-                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/${col}/${encodedId}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE`, { signal });
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json && json.fields) {
-                            const data = {};
-                            for (const [k, v] of Object.entries(json.fields)) {
-                                if (v.stringValue !== undefined) data[k] = v.stringValue;
-                                else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
-                                else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
-                                else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
-                                else if (v.arrayValue && v.arrayValue.values) {
-                                    data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
-                                } else {
-                                    data[k] = null;
+                // A. Ultra-fast REST fetch direct document lookup (skipped if known 429 rate limit)
+                if (!checkIsRateLimited()) {
+                    try {
+                        const encodedId = encodeURIComponent(cleanId);
+                        const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/${col}/${encodedId}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE`, { signal });
+                        if (res.status === 429) {
+                            markFirestoreRateLimited();
+                        } else if (res.ok) {
+                            const json = await res.json();
+                            if (json && json.fields) {
+                                const data = {};
+                                for (const [k, v] of Object.entries(json.fields)) {
+                                    if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                    else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                    else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                    else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                    else if (v.arrayValue && v.arrayValue.values) {
+                                        data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                    } else {
+                                        data[k] = null;
+                                    }
                                 }
+                                const normalized = normalizeArticleDoc(data, cleanId);
+                                if (col === "books") {
+                                    normalized.type = "BOOK";
+                                    normalized.isBook = true;
+                                    normalized.isChapter = false;
+                                }
+                                memoryCache.set(`doc_${cleanId}`, normalized);
+                                memoryCache.set(`doc_${id}`, normalized);
+                                return normalized;
                             }
-                            const normalized = normalizeArticleDoc(data, cleanId);
-                            if (col === "books") {
-                                normalized.type = "BOOK";
-                                normalized.isBook = true;
-                                normalized.isChapter = false;
-                            }
-                            memoryCache.set(`doc_${cleanId}`, normalized);
-                            memoryCache.set(`doc_${id}`, normalized);
-                            return normalized;
                         }
+                    } catch (err) {
+                        if (err.name === 'AbortError') throw err;
                     }
-                } catch (err) {
-                    if (err.name === 'AbortError') throw err;
                 }
 
                 // B. SDK / offline IndexedDB cache fallback
@@ -907,7 +976,7 @@
                 }
             }
 
-            return null;
+            return localHit || null;
         }
 
         // Direct Query by Custom Slug (with Document ID fallback & dual collection query)
@@ -919,6 +988,17 @@
             }
             if (memoryCache.has(`doc_${identifier}`)) {
                 return memoryCache.get(`doc_${identifier}`);
+            }
+
+            const localHit = searchLocalArticlesPool(identifier);
+            if (localHit && localHit.content) {
+                memoryCache.set(`doc_${decodedId}`, localHit);
+                memoryCache.set(`doc_${identifier}`, localHit);
+                return localHit;
+            }
+
+            if (checkIsRateLimited()) {
+                return localHit;
             }
 
             const cleanDecoded = cleanRouteSlug(decodedId);
@@ -966,6 +1046,10 @@
                             }
                         })
                     });
+                    if (qRes.status === 429) {
+                        markFirestoreRateLimited();
+                        break;
+                    }
                     if (qRes.ok) {
                         const qJson = await qRes.json();
                         const docItem = Array.isArray(qJson) ? qJson.find(item => item && item.document)?.document : null;
@@ -1026,6 +1110,10 @@
                                 }
                             })
                         });
+                        if (qRes.status === 429) {
+                            markFirestoreRateLimited();
+                            break;
+                        }
                         if (qRes.ok) {
                             const qJson = await qRes.json();
                             const docItem = Array.isArray(qJson) ? qJson.find(item => item && item.document)?.document : null;
@@ -1073,13 +1161,35 @@
                 }
             }
 
-            return null;
+            return localHit || null;
         }
 
         // 2. Fetch Lightweight Articles & Books Collections
         async function fetchLightweightArticles(signal) {
             if (memoryCache.has("lightweight_articles")) {
                 return memoryCache.get("lightweight_articles");
+            }
+
+            // Read from local storage caches first
+            const storedArticles = [];
+            try {
+                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v7") || localStorage.getItem("nuqtha_cached_articles_v7");
+                if (s1) {
+                    const parsed = JSON.parse(s1);
+                    if (Array.isArray(parsed) && parsed.length > 0) storedArticles.push(...parsed);
+                }
+            } catch (_) {}
+            try {
+                const s2 = sessionStorage.getItem("nuqtha_all_articles") || localStorage.getItem("nuqtha_all_articles");
+                if (s2) {
+                    const parsed = JSON.parse(s2);
+                    if (Array.isArray(parsed) && parsed.length > 0) storedArticles.push(...parsed);
+                }
+            } catch (_) {}
+
+            if (storedArticles.length > 0 && checkIsRateLimited()) {
+                memoryCache.set("lightweight_articles", storedArticles);
+                return storedArticles;
             }
 
             const projectedFields = [
@@ -1093,12 +1203,17 @@
             const combinedArticlesMap = new Map();
 
             async function fetchCol(colName) {
+                if (checkIsRateLimited()) return;
                 let nextPageToken = "";
                 let pageCount = 0;
                 do {
                     pageCount++;
                     const pageTokenParam = nextPageToken ? `&pageToken=${encodeURIComponent(nextPageToken)}` : "";
                     const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/${colName}?pageSize=100&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE&${maskParams}${pageTokenParam}`, { signal });
+                    if (res.status === 429) {
+                        markFirestoreRateLimited();
+                        break;
+                    }
                     if (!res.ok) break;
                     const json = await res.json();
                     if (json && json.documents && Array.isArray(json.documents)) {
@@ -1132,24 +1247,27 @@
             }
 
             try {
-                await Promise.all([
-                    fetchCol("articles"),
-                    fetchCol("books").catch(() => {})
-                ]);
+                if (!checkIsRateLimited()) {
+                    await Promise.all([
+                        fetchCol("articles"),
+                        fetchCol("books").catch(() => {})
+                    ]);
 
-                if (combinedArticlesMap.size > 0) {
-                    const list = Array.from(combinedArticlesMap.values());
-                    memoryCache.set("lightweight_articles", list);
-                    return list;
+                    if (combinedArticlesMap.size > 0) {
+                        const list = Array.from(combinedArticlesMap.values());
+                        memoryCache.set("lightweight_articles", list);
+                        return list;
+                    }
                 }
             } catch (err) {
-                console.warn("[Reader] Projected REST fetch failed, fallback to SDK getDocs:", err);
+                console.warn("[Reader] Projected REST fetch notice:", err?.message || err);
             }
 
+            // Fallback: SDK getDocs (reads from local IndexedDB cache when network fails or 429)
             try {
                 const [articlesSnap, booksSnap] = await Promise.all([
-                    getDocs(collection(db, "articles")),
-                    getDocs(collection(db, "books")).catch(() => ({ forEach: () => {} }))
+                    getDocs(collection(db, "articles")).catch(() => ({ docs: [], forEach: () => {} })),
+                    getDocs(collection(db, "books")).catch(() => ({ docs: [], forEach: () => {} }))
                 ]);
                 const articles = [];
                 articlesSnap.forEach(d => articles.push(normalizeArticleDoc(d.data(), d.id)));
@@ -1160,12 +1278,18 @@
                     norm.isChapter = false;
                     articles.push(norm);
                 });
-                memoryCache.set("lightweight_articles", articles);
-                return articles;
+                if (articles.length > 0) {
+                    memoryCache.set("lightweight_articles", articles);
+                    return articles;
+                }
             } catch (e) {
-                console.error("[Reader] Collection fetch failed:", e);
-                return [];
+                console.warn("[Reader] Collection fetch notice:", e?.message || e);
             }
+
+            // Absolute resilience: Return stored articles or pre-bundled FALLBACK_ARTICLES
+            const resilientList = storedArticles.length > 0 ? storedArticles : FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
+            memoryCache.set("lightweight_articles", resilientList);
+            return resilientList;
         }
 
         // ═══════════ MAIN LOADING ORCHESTRATOR ═══════════
@@ -1193,24 +1317,7 @@
                 } catch (e) {}
 
                 if (!cachedBook) {
-                    try {
-                        const allCachedStr = sessionStorage.getItem("nuqtha_cached_articles");
-                        if (allCachedStr) {
-                            const allCached = JSON.parse(allCachedStr);
-                            if (Array.isArray(allCached)) {
-                                const targetSlug = slugifyText(cacheKey);
-                                const found = allCached.find(a => 
-                                    a.id === cacheKey || 
-                                    a.slug === cacheKey || 
-                                    a.slug === targetSlug || 
-                                    slugifyText(a.title) === targetSlug
-                                );
-                                if (found) {
-                                    cachedBook = found;
-                                }
-                            }
-                        }
-                    } catch (_) {}
+                    cachedBook = searchLocalArticlesPool(cacheKey);
                 }
 
                 if (cachedBook) {
@@ -1229,7 +1336,8 @@
                         if (articleViewEl) articleViewEl.classList.add("hidden");
                         if (bookContainerEl) {
                             bookContainerEl.classList.remove("hidden");
-                            await renderBookIndex(cachedBook, bookContainerEl, cachedChapters || []);
+                            const bookChaps = cachedChapters || cachedBook.chapters || [];
+                            await renderBookIndex(cachedBook, bookContainerEl, bookChaps);
                         }
                         if (cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
                         initComments(cachedBook.id);
@@ -1244,8 +1352,13 @@
             }
 
             // 2. PARALLEL REVALIDATION / FRESH FETCH
+            // If already rendered from cache and Firestore is in 429 rate limit cooldown, exit early cleanly
+            if (cachedBook && checkIsRateLimited()) {
+                return;
+            }
+
             const controller = new AbortController();
-            const timeoutTimer = setTimeout(() => controller.abort(), 25000);
+            const timeoutTimer = setTimeout(() => controller.abort(), 20000);
 
             try {
                 let currentDoc = null;
@@ -1258,6 +1371,10 @@
                 ]);
                 currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
                 allArticles = allArticlesResult.status === "fulfilled" ? (allArticlesResult.value || []) : [];
+
+                if (!currentDoc) {
+                    currentDoc = cachedBook || searchLocalArticlesPool(lookupId);
+                }
 
                 // Slug and metadata matching in pool if direct ID fetch did not hit
                 if (!currentDoc && allArticles.length > 0) {
@@ -1375,9 +1492,11 @@
                 clearTimeout(timeoutTimer);
 
                 if (!currentDoc) {
-                    if (!cachedBook) {
-                        showErrorWithRetry("ഈ ലേഖനം / പുസ്തകം കണ്ടെത്താനായില്ല അല്ലെങ്കിൽ നെറ്റ്‌വർക്ക് തകരാർ സംഭവിച്ചു.");
-                    }
+                    currentDoc = cachedBook || searchLocalArticlesPool(lookupId);
+                }
+
+                if (!currentDoc) {
+                    showErrorWithRetry("ഈ ലേഖനം / പുസ്തകം കണ്ടെത്താനായില്ല അല്ലെങ്കിൽ നെറ്റ്‌വർക്ക് തകരാർ സംഭവിച്ചു.");
                     return;
                 }
 
@@ -1484,8 +1603,26 @@
 
             } catch (err) {
                 clearTimeout(timeoutTimer);
-                console.error("[Reader] Load error:", err);
-                if (!cachedBook) {
+                console.warn("[Reader] Network load notice, falling back to local pool:", err?.message || err);
+                const localDoc = cachedBook || searchLocalArticlesPool(articleId || targetIdentifier);
+                if (localDoc) {
+                    if (skeletonEl) skeletonEl.classList.add("hidden");
+                    if (errorContainerEl) {
+                        errorContainerEl.classList.add("hidden");
+                        errorContainerEl.innerHTML = "";
+                    }
+                    if ((localDoc.type || "").toUpperCase() === "BOOK" || localDoc.isBook === true) {
+                        if (articleViewEl) articleViewEl.classList.add("hidden");
+                        if (bookContainerEl) {
+                            bookContainerEl.classList.remove("hidden");
+                            await renderBookIndex(localDoc, bookContainerEl, localDoc.chapters || []);
+                        }
+                    } else {
+                        if (bookContainerEl) bookContainerEl.classList.add("hidden");
+                        if (articleViewEl) articleViewEl.classList.remove("hidden");
+                        await renderArticle(localDoc);
+                    }
+                } else {
                     showErrorWithRetry("വിവരങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു.");
                 }
             }
