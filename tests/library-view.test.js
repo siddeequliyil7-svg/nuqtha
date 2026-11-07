@@ -52,8 +52,12 @@ assert.ok(adminLibJs.includes('id="tb-list"'), "admin-library.js must contain #t
 assert.ok(adminLibJs.includes('MAX_BOOKS = 6'), "admin-library.js must validate shelf limit of 6 books");
 assert.ok(adminLibJs.includes('MAX_PAPERS = 5'), "admin-library.js must validate table limit of 5 papers");
 assert.ok(adminLibJs.includes('showOnTable:'), "admin-library.js must toggle showOnTable flag on articles");
+assert.ok(adminLibJs.includes('name="bk-import-type"'), "admin-library.js must contain toggle/radio for Import Book vs Import Article");
+assert.ok(adminLibJs.includes('value="article"'), "admin-library.js must support article import mode");
+assert.ok(adminLibJs.includes('form.title.value = item.title'), "admin-library.js must auto-fill title from selected article");
+assert.ok(adminLibJs.includes('form.author.value = item.author'), "admin-library.js must auto-fill author from selected article");
 
-console.log("  [OK] admin-library.js contains all required management forms, limits, and Firestore actions.");
+console.log("  [OK] admin-library.js contains all required management forms, limits, dual article/book import, and Firestore actions.");
 
 // ─── Test 4: Verify index.html view switcher and container ───
 console.log("Test 4: Verifying index.html drawer link and library container...");
@@ -85,10 +89,12 @@ const adminJs = fs.readFileSync("nuqtha/admin.js", "utf8");
 
 assert.ok(adminHtml.includes('data-tab="library"'), "admin.html must contain tab button for library");
 assert.ok(adminHtml.includes('id="library-admin"'), "admin.html must contain #library-admin container");
+assert.ok(adminHtml.includes('name="bk-import-type"'), "admin.html must contain radio options for Import Book vs Import Article");
+assert.ok(adminHtml.includes('id="bk-existing-select"'), "admin.html must contain bk-existing-select dropdown");
 assert.ok(adminJs.includes('import { initLibraryAdmin } from "./admin-library.js"'), "admin.js must import initLibraryAdmin");
 assert.ok(adminJs.includes('tabName === "library"'), "admin.js must handle tabName === 'library'");
 
-console.log("  [OK] Admin panel correctly wires Library tab, container, and lazy initialization.");
+console.log("  [OK] Admin panel correctly wires Library tab, container, dual article/book import UI, and lazy initialization.");
 
 console.log("==================================================");
 console.log("PASS: ALL 3D LIBRARY TESTS PASSED SUCCESSFULLY!");

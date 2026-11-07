@@ -8,7 +8,16 @@ const $ = (r, s) => r.querySelector(s);
 export async function initLibraryAdmin(root) {
   if (!root) return;
 
-  root.innerHTML = `
+  if (root.dataset.libraryInited === "true") {
+    if (typeof root._refreshLibraryData === "function") {
+      await root._refreshLibraryData();
+    }
+    return;
+  }
+  root.dataset.libraryInited = "true";
+
+  if (!root.querySelector("#bk-form")) {
+    root.innerHTML = `
   <div class="space-y-8">
     <!-- Header -->
     <div class="border-b border-[#ebdccb] dark:border-white/10 pb-4">
@@ -36,22 +45,36 @@ export async function initLibraryAdmin(root) {
       <form id="bk-form" class="bg-[#faf6f0] dark:bg-white/5 p-5 rounded-2xl border border-[#ebdccb] dark:border-white/10 space-y-4">
         <input type="hidden" name="id">
 
-        <!-- Existing Books Quick-Selector -->
-        <div class="p-3.5 rounded-2xl bg-[#b4532c]/10 dark:bg-[#b4532c]/20 border border-[#b4532c]/30 space-y-2">
+        <!-- Existing Items Quick-Selector (Books / Articles) -->
+        <div class="p-3.5 rounded-2xl bg-[#b4532c]/10 dark:bg-[#b4532c]/20 border border-[#b4532c]/30 space-y-3">
           <div class="flex items-center justify-between flex-wrap gap-2">
             <label for="bk-existing-select" class="text-xs font-bold text-[#b4532c] dark:text-[#f87171] flex items-center gap-1.5">
-              <span class="text-base">📖</span>
-              <span>നിലവിലുള്ള പുസ്തകങ്ങളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക (Import Existing Book):</span>
+              <span class="text-base" id="bk-import-icon">📖</span>
+              <span id="bk-import-label">നിലവിലുള്ള പുസ്തകങ്ങളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക (Import Existing Book):</span>
             </label>
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#b4532c]/15 text-[#b4532c] dark:text-[#f87171] font-bold">
               1-Click Auto-Fill
             </span>
           </div>
+
+          <!-- Toggle / Radio Option: Import Book vs Import Article -->
+          <div class="flex items-center gap-4 pt-0.5 pb-0.5 flex-wrap">
+            <span class="text-xs font-semibold text-[#8c7a6b] dark:text-slate-400">Import Mode:</span>
+            <label class="inline-flex items-center gap-1.5 text-xs font-bold text-[#5a4b41] dark:text-slate-300 cursor-pointer select-none">
+              <input type="radio" name="bk-import-type" value="book" checked class="text-[#b4532c] focus:ring-0 cursor-pointer">
+              <span>📚 Import Book (പുസ്തകം)</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 text-xs font-bold text-[#5a4b41] dark:text-slate-300 cursor-pointer select-none">
+              <input type="radio" name="bk-import-type" value="article" class="text-[#b4532c] focus:ring-0 cursor-pointer">
+              <span>📝 Import Article (ലേഖനം)</span>
+            </label>
+          </div>
+
           <select id="bk-existing-select" class="w-full px-3 py-2 rounded-xl border border-[#b4532c]/30 bg-white dark:bg-[#12141d] text-xs font-bold text-[var(--text)] dark:text-white outline-none cursor-pointer focus:ring-1 focus:ring-[#b4532c]">
-            <option value="">-- ലോഡ് ചെയ്യുന്നു... (Loading existing books...) --</option>
+            <option value="">-- ലോഡ് ചെയ്യുന്നു... (Loading existing items...) --</option>
           </select>
           <div class="flex items-center justify-between flex-wrap gap-2 pt-0.5">
-            <p class="text-[11px] text-[#8c7a6b] dark:text-slate-400">
+            <p id="bk-import-hint" class="text-[11px] text-[#8c7a6b] dark:text-slate-400">
               നേരത്തെ ചേർത്ത പുസ്തകങ്ങൾ (ഉദാ: ഇമാമുമാരുടെ ജീവിതം) തിരഞ്ഞെടുത്താൽ വിവരങ്ങളും അധ്യായങ്ങളും സ്വയം ഫോമിൽ നിറയും.
             </p>
             <button type="button" id="bk-quick-add-btn" class="hidden px-3.5 py-1 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-lg shadow transition cursor-pointer">
@@ -150,6 +173,7 @@ export async function initLibraryAdmin(root) {
       </div>
     </section>
   </div>`;
+  }
 
   const form = $(root, "#bk-form"), bkStatus = $(root, "#bk-status"), tbStatus = $(root, "#tb-status");
   let books = [];
@@ -274,44 +298,130 @@ export async function initLibraryAdmin(root) {
   }
 
   let existingBooks = [];
+  let existingArticles = [];
 
-  function populateExistingBooks(snap) {
+  function getImportMode() {
+    const checked = root.querySelector('input[name="bk-import-type"]:checked');
+    return checked ? checked.value : "book";
+  }
+
+  function parseExistingItems(snap) {
+    if (!snap || !snap.docs) return;
+    const allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // 1. Parse Books
+    existingBooks = [];
+    allDocs.forEach(a => {
+      const isBook = a.isBook === true || (a.type || "").toUpperCase() === "BOOK" || (a.category || "").toLowerCase() === "premium book" || (a.category || "").toLowerCase() === "book";
+      const isChapter = a.isChapter === true || (a.type || "").toUpperCase() === "CHAPTER" || a.chapterIndex !== undefined;
+      if (isBook && !isChapter) {
+        const chapters = allDocs.filter(c => {
+          if (c.id === a.id) return false;
+          if (c.bookId && String(c.bookId).trim() === String(a.id)) return true;
+          if (c.bookName && c.title && c.bookName.trim().toLowerCase() === (a.title || a.bookName || "").trim().toLowerCase()) return true;
+          return false;
+        }).sort((x, y) => (Number(x.order ?? x.chapterIndex ?? 0)) - (Number(y.order ?? y.chapterIndex ?? 0)));
+
+        existingBooks.push({
+          id: a.id,
+          title: a.title || a.bookName || "Untitled Book",
+          author: a.author || "Nuqtha Press",
+          description: a.introduction || a.excerpt || a.description || (a.content ? a.content.replace(/<[^>]*>/g, " ").slice(0, 250) : ""),
+          pages: a.pages || (chapters.length > 0 ? chapters.length * 15 : 120),
+          chapters: chapters.map((ch, idx) => ch.title || `Chapter ${idx + 1}`),
+          type: "book"
+        });
+      }
+    });
+
+    // 2. Parse Articles
+    existingArticles = allDocs.filter(a => {
+      const isBook = a.isBook === true || (a.type || "").toUpperCase() === "BOOK" || (a.category || "").toLowerCase() === "premium book" || (a.category || "").toLowerCase() === "book";
+      const isChapter = a.isChapter === true || (a.type || "").toUpperCase() === "CHAPTER" || a.chapterIndex !== undefined;
+      return !isBook && !isChapter && (a.title || "").trim().length > 0;
+    }).map(a => {
+      const cleanContent = (a.content || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+      const words = cleanContent ? cleanContent.split(/\s+/).length : 0;
+      const estPages = a.pages ? Number(a.pages) : Math.max(8, Math.ceil(words / 250) || 12);
+
+      // Extract h2 or h3 headings if any
+      const headings = [];
+      const headingRegex = /<h[23][^>]*>(.*?)<\/h[23]>/gi;
+      let match;
+      while ((match = headingRegex.exec(a.content || "")) !== null) {
+        const hText = match[1].replace(/<[^>]*>/g, "").trim();
+        if (hText && !headings.includes(hText)) headings.push(hText);
+      }
+      if (headings.length === 0 && a.title) {
+        headings.push(`1. ${a.title}`);
+      }
+
+      return {
+        id: a.id,
+        title: a.title || "Untitled Article",
+        author: a.author || "Nuqtha Author",
+        category: a.category || "General",
+        description: a.excerpt || a.description || (cleanContent.slice(0, 250) + (cleanContent.length > 250 ? "..." : "")),
+        pages: estPages,
+        chapters: headings,
+        type: "article"
+      };
+    });
+  }
+
+  async function fetchArticlesDynamically() {
+    const sel = $(root, "#bk-existing-select");
+    if (sel) {
+      sel.innerHTML = `<option value="">-- ലേഖനങ്ങൾ Firestore-ൽ നിന്ന് ലോഡ് ചെയ്യുന്നു... (Fetching articles...) --</option>`;
+    }
+    try {
+      const snap = await getDocs(query(collection(db, "articles"), limit(300)));
+      parseExistingItems(snap);
+      renderImportDropdown();
+    } catch (err) {
+      console.error("[Admin Library] Error fetching articles collection:", err);
+      if (sel) {
+        sel.innerHTML = `<option value="">-- ലേഖനങ്ങൾ ലോഡ് ചെയ്യാൻ സാധിച്ചില്ല (Error loading articles) --</option>`;
+      }
+    }
+  }
+
+  function renderImportDropdown() {
     const sel = $(root, "#bk-existing-select");
     const quickAddBtn = $(root, "#bk-quick-add-btn");
-    if (!sel || !snap) return;
+    const importIcon = $(root, "#bk-import-icon");
+    const importLabel = $(root, "#bk-import-label");
+    const importHint = $(root, "#bk-import-hint");
+    if (!sel) return;
 
-    try {
-      const allArts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      existingBooks = [];
+    if (quickAddBtn) quickAddBtn.classList.add("hidden");
 
-      allArts.forEach(a => {
-        const isBook = a.isBook === true || (a.type || "").toUpperCase() === "BOOK" || (a.category || "").toLowerCase() === "premium book" || (a.category || "").toLowerCase() === "book";
-        const isChapter = a.isChapter === true || (a.type || "").toUpperCase() === "CHAPTER" || a.chapterIndex !== undefined;
-        if (isBook && !isChapter) {
-          // Find chapters for this book
-          const chapters = allArts.filter(c => {
-            if (c.id === a.id) return false;
-            if (c.bookId && String(c.bookId).trim() === String(a.id)) return true;
-            if (c.bookName && c.title && c.bookName.trim().toLowerCase() === (a.title || a.bookName || "").trim().toLowerCase()) return true;
-            return false;
-          }).sort((x, y) => (Number(x.order ?? x.chapterIndex ?? 0)) - (Number(y.order ?? y.chapterIndex ?? 0)));
+    const mode = getImportMode();
+    if (mode === "article") {
+      if (importIcon) importIcon.textContent = "📝";
+      if (importLabel) importLabel.textContent = "നിലവിലുള്ള ലേഖനങ്ങളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക (Import Existing Article):";
+      if (importHint) importHint.textContent = "സൈറ്റിലെ ലേഖനങ്ങൾ തിരഞ്ഞെടുത്താൽ തലക്കെട്ട്, രചയിതാവ്, വിവരണം എന്നിവ സ്വയം ഫോമിൽ നിറയും.";
 
-          existingBooks.push({
-            id: a.id,
-            title: a.title || a.bookName || "Untitled Book",
-            author: a.author || "Nuqtha Press",
-            description: a.introduction || a.excerpt || a.description || (a.content ? a.content.replace(/<[^>]*>/g, " ").slice(0, 250) : ""),
-            pages: a.pages || (chapters.length > 0 ? chapters.length * 15 : 120),
-            chapters: chapters.map((ch, idx) => ch.title || `Chapter ${idx + 1}`)
-          });
-        }
+      if (existingArticles.length === 0) {
+        sel.innerHTML = `<option value="">-- ലേഖനങ്ങൾ കണ്ടെത്തിയില്ല (No articles found) --</option>`;
+        return;
+      }
+      sel.innerHTML = `<option value="">-- നിലവിലുള്ള ലേഖനം തിരഞ്ഞെടുക്കുക (${existingArticles.length} എണ്ണം ലഭ്യമാണ്) / Select an Article --</option>`;
+      existingArticles.forEach((art, idx) => {
+        const opt = document.createElement("option");
+        opt.value = String(idx);
+        opt.textContent = `${art.title} — [${art.author}] (${art.category || "Article"})`;
+        sel.appendChild(opt);
       });
+    } else {
+      if (importIcon) importIcon.textContent = "📖";
+      if (importLabel) importLabel.textContent = "നിലവിലുള്ള പുസ്തകങ്ങളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക (Import Existing Book):";
+      if (importHint) importHint.textContent = "നേരത്തെ ചേർത്ത പുസ്തകങ്ങൾ (ഉദാ: ഇമാമുമാരുടെ ജീവിതം) തിരഞ്ഞെടുത്താൽ വിവരങ്ങളും അധ്യായങ്ങളും സ്വയം ഫോമിൽ നിറയും.";
 
       if (existingBooks.length === 0) {
         sel.innerHTML = `<option value="">-- നിലവിൽ മറ്റ് പുസ്തകങ്ങൾ കണ്ടെത്തിയില്ല --</option>`;
         return;
       }
-
       sel.innerHTML = `<option value="">-- നിലവിലുള്ള പുസ്തകം തിരഞ്ഞെടുക്കുക (${existingBooks.length} എണ്ണം ലഭ്യമാണ്) --</option>`;
       existingBooks.forEach((b, idx) => {
         const opt = document.createElement("option");
@@ -319,27 +429,60 @@ export async function initLibraryAdmin(root) {
         opt.textContent = `${b.title} (${b.author}) — ${b.chapters.length} അധ്യായങ്ങൾ`;
         sel.appendChild(opt);
       });
+    }
+  }
 
-      sel.onchange = () => {
-        const idx = sel.value;
-        if (idx === "" || !existingBooks[idx]) {
-          if (quickAddBtn) quickAddBtn.classList.add("hidden");
-          return;
-        }
-        const b = existingBooks[idx];
-        form.id.value = "";
-        form.title.value = b.title;
-        form.author.value = b.author;
-        form.pages.value = b.pages;
-        form.description.value = b.description;
-        form.contents.value = b.chapters.join("\n");
-        form.visible.checked = true;
-        bkStatus.textContent = `✓ "${b.title}" വിവരങ്ങൾ ഫോമിൽ നിറച്ചു! താഴെ "Save book" അമർത്തിയാൽ ഇത് 3D ഷെൽഫിൽ എത്തും.`;
-        if (quickAddBtn) {
-          quickAddBtn.classList.remove("hidden");
-          quickAddBtn.onclick = () => quickAddBook(b);
-        }
-      };
+  // Handle Dropdown Selection & Auto-Fill Form
+  const sel = $(root, "#bk-existing-select");
+  if (sel) {
+    sel.onchange = () => {
+      const idx = sel.value;
+      const mode = getImportMode();
+      const list = mode === "article" ? existingArticles : existingBooks;
+      const quickAddBtn = $(root, "#bk-quick-add-btn");
+
+      if (idx === "" || !list[idx]) {
+        if (quickAddBtn) quickAddBtn.classList.add("hidden");
+        return;
+      }
+
+      const item = list[idx];
+      form.id.value = "";
+      form.title.value = item.title || "";
+      form.author.value = item.author || (mode === "article" ? "Nuqtha Author" : "Nuqtha Press");
+      form.pages.value = item.pages || (mode === "article" ? 12 : 120);
+      form.description.value = item.description || "";
+      form.contents.value = (item.chapters || []).join("\n");
+      form.visible.checked = true;
+
+      const typeLabelMalayalam = mode === "article" ? "ലേഖന" : "പുസ്തക";
+      bkStatus.textContent = `✓ "${item.title}" ${typeLabelMalayalam} വിവരങ്ങൾ ഫോമിൽ നിറച്ചു! താഴെ "Save book" അമർത്തിയാൽ ഇത് 3D ഷെൽഫിൽ എത്തും.`;
+
+      if (quickAddBtn) {
+        quickAddBtn.classList.remove("hidden");
+        quickAddBtn.textContent = mode === "article" ? "+ ലേഖനം ഷെൽഫിലേക്ക് ചേർക്കുക (Add Article to Shelf)" : "+ ഷെൽഫിലേക്ക് ഉടൻ ചേർക്കുക (Add to Shelf)";
+        quickAddBtn.onclick = () => quickAddBook(item);
+      }
+    };
+  }
+
+  // Handle Radio Toggle Change (Import Book vs Import Article)
+  const radioInputs = root.querySelectorAll('input[name="bk-import-type"]');
+  radioInputs.forEach(radio => {
+    radio.addEventListener("change", () => {
+      const mode = getImportMode();
+      if (mode === "article" && existingArticles.length === 0) {
+        fetchArticlesDynamically();
+      } else {
+        renderImportDropdown();
+      }
+    });
+  });
+
+  function populateExistingBooks(snap) {
+    try {
+      parseExistingItems(snap);
+      renderImportDropdown();
     } catch (err) {
       console.warn("[Admin Library] Error populating existing books:", err);
     }
@@ -428,6 +571,7 @@ export async function initLibraryAdmin(root) {
     }
   }
 
-  await Promise.all([loadBooks(), loadPapers()]);
+  root._refreshLibraryData = () => Promise.all([loadBooks(), loadPapers()]);
+  await root._refreshLibraryData();
 }
 
