@@ -2341,6 +2341,23 @@ function getBookArticleCount(book, articles) {
     }).length;
 }
 
+function buildBookCoverPlaceholder(book, index = 0, premium = false, hidden = false) {
+    const title = escapeHtml(stripMarkdown(book?.title || "Untitled Book").trim());
+    const author = escapeHtml((book?.author || book?.authorName || "NUQTHA").trim());
+    const classes = ["book-cover-placeholder", `book-cover-placeholder--${index % 4}`];
+    if (premium) classes.push("premium-book-placeholder");
+    return `
+        <div class="${classes.join(" ")}"${hidden ? ' style="display:none;"' : ""} role="img" aria-label="Book cover: ${title}">
+            <span class="book-cover-brand" translate="no">NUQTHA EDITION</span>
+            <span class="book-cover-rule" aria-hidden="true"></span>
+            <span class="book-cover-symbol" aria-hidden="true">✦</span>
+            <span class="book-cover-title">${title}</span>
+            <span class="book-cover-rule" aria-hidden="true"></span>
+            <span class="book-cover-author">${author}</span>
+        </div>
+    `;
+}
+
 /* ═══════════ 1. HOME PAGE BOOK SHOWCASE / PREMIUM BOOK SHELF ═══════════ */
 function buildBookShowcaseSection(bookCovers, allArticles) {
     if (!bookCovers || bookCovers.length === 0) {
@@ -2402,15 +2419,9 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
                         `}
                         ${bookCoverImg ? `
                             <img src="${bookCoverImg}" alt="${cleanTitle}" class="premium-book-img" width="300" height="400" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            <div class="premium-book-placeholder" style="display:none;">
-                                <span class="text-3xl" aria-hidden="true">📚</span>
-                                <span class="font-english font-bold text-[10px] uppercase opacity-75 mt-1" translate="no">NUQTHA EDITION</span>
-                            </div>
+                            ${buildBookCoverPlaceholder(book, idx, true, true)}
                         ` : `
-                            <div class="premium-book-placeholder">
-                                <span class="text-3xl" aria-hidden="true">📚</span>
-                                <span class="font-english font-bold text-[10px] uppercase opacity-75 mt-1" translate="no">NUQTHA EDITION</span>
-                            </div>
+                            ${buildBookCoverPlaceholder(book, idx, true)}
                         `}
                     </div>
                 </div>
@@ -2501,7 +2512,7 @@ function renderBooksCategoryFeed(container) {
     } else {
         html += `
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
-            ${bookCovers.map(book => {
+            ${bookCovers.map((book, index) => {
                 const cleanTitle = stripMarkdown(book.title);
                 const count = getBookArticleCount(book, allArticles);
                 const isPremium = Boolean(
@@ -2525,15 +2536,9 @@ function renderBooksCategoryFeed(container) {
                         </span>
                         ${bookCoverImg ? `
                             <img src="${bookCoverImg}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            <div class="w-full h-full flex flex-col items-center justify-center text-[#b4532c] dark:text-white/40 space-y-1" style="display:none;">
-                                <span class="text-3xl">📚</span>
-                                <span class="text-xs font-bold font-english uppercase">Book Edition</span>
-                            </div>
+                            ${buildBookCoverPlaceholder(book, index, false, true)}
                         ` : `
-                            <div class="w-full h-full flex flex-col items-center justify-center text-[#b4532c] dark:text-white/40 space-y-1">
-                                <span class="text-3xl">📚</span>
-                                <span class="text-xs font-bold font-english uppercase">Book Edition</span>
-                            </div>
+                            ${buildBookCoverPlaceholder(book, index)}
                         `}
                         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
                             <span class="text-[11px] font-bold text-white uppercase font-english tracking-wider flex items-center gap-1 bg-[#b4532c] px-3 py-1 rounded-full shadow">
