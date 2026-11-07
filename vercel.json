@@ -49,6 +49,21 @@
       "destination": "/article.html?slug=:slug&id=:slug"
     },
     {
+      "source": "/book/:bookSlug/:chapterSlug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
+        }
+      ],
+      "destination": "/api/og?bookSlug=:bookSlug&chapterSlug=:chapterSlug&slug=:chapterSlug"
+    },
+    {
+      "source": "/book/:bookSlug/:chapterSlug",
+      "destination": "/article.html?bookSlug=:bookSlug&chapterSlug=:chapterSlug&slug=:chapterSlug"
+    },
+    {
       "source": "/book/:slug",
       "has": [
         {
@@ -57,11 +72,11 @@
           "value": "(.*(facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider|bot).*)"
         }
       ],
-      "destination": "/api/og?slug=:slug&id=:slug&edition=true"
+      "destination": "/api/og?bookSlug=:slug&slug=:slug&edition=true"
     },
     {
       "source": "/book/:slug",
-      "destination": "/article.html?slug=:slug&id=:slug&edition=true"
+      "destination": "/article.html?bookSlug=:slug&slug=:slug&edition=true"
     },
     {
       "source": "/article.html",
@@ -90,10 +105,20 @@
     { "source": "/admin/", "destination": "/admin.html" },
     { "source": "/profile/author/:id", "destination": "/author.html?id=:id" },
     { "source": "/profile/author", "destination": "/author.html" },
+    { "source": "/download/nuqtha.apk", "destination": "/nuqtha.apk" },
+    { "source": "/download", "destination": "/nuqtha.apk" },
     { "source": "/author/:id", "destination": "/author.html?id=:id" },
     { "source": "/author", "destination": "/author.html" }
   ],
   "headers": [
+    {
+      "source": "/(.*)\\.apk",
+      "headers": [
+        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"nuqtha.apk\"" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [

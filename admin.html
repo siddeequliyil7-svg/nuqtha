@@ -153,6 +153,23 @@
                 <span class="truncate">പ്രസിദ്ധീകരിച്ചവ (Published)</span>
                 <span id="tab-published-badge" class="tab-badge">0</span>
             </button>
+<<<<<<< HEAD
+=======
+            <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="menu">
+                <span class="tab-icon">🧭</span>
+                <span class="truncate">More മെനു (Menu)</span>
+                <span id="tab-menu-badge" class="tab-badge">0</span>
+            </button>
+            <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="analytics">
+                <span class="tab-icon">📊</span>
+                <span class="truncate">User Activity & Analytics</span>
+                <span id="tab-analytics-badge" class="tab-badge">0</span>
+            </button>
+            <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="library">
+                <span class="tab-icon">🏛️</span>
+                <span class="truncate">ലൈബ്രറി (Library)</span>
+            </button>
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
         </nav>
 
         <!-- ═══════════ SINGLE UNIFIED FORM FOR TAB 1 & TAB 2 ═══════════ -->
@@ -193,6 +210,21 @@
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">ലേഖനത്തിന്റെ തലക്കെട്ട് (Title)</label>
                         <input id="art-title" type="text" required placeholder="ലേഖനത്തിന്റെ പേര് നൽകുക..." class="w-full text-base sm:text-lg font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 text-[#1e1b18]">
+                    </div>
+
+                    <!-- Custom Permalink (URL Slug) -->
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="customSlug" style="font-weight: bold; display: block; font-size: 13px; color: #4a3c33; margin-bottom: 6px;">Custom Permalink (URL Path / Slug):</label>
+                        <div style="display: flex; align-items: center; background: #fbf7ee; border: 1px solid #ebdccb; border-radius: 8px; padding: 6px 12px;">
+                            <span style="color: #8c7a6b; font-size: 13px; font-family: monospace; white-space: nowrap; user-select: none;">nuqtha.vercel.app/</span>
+                            <input 
+                                type="text" 
+                                id="customSlug" 
+                                placeholder="story/umaviyya-khilafath-intro" 
+                                style="border: none; background: transparent; outline: none; width: 100%; padding: 4px 6px; font-family: monospace; font-size: 13px; font-weight: 600; color: #1e1b18;"
+                            >
+                        </div>
+                        <small style="color: #777; font-size: 11px; display: block; margin-top: 4px;">100% Manually editable: type any custom path or prefix (e.g. story/my-slug, article/topic, or custom-path).</small>
                     </div>
 
                     <!-- Category, Author & Transcription Row -->
@@ -547,6 +579,23 @@
                                     <p id="book-title-error" class="hidden text-[11px] font-bold text-rose-600 mt-1"></p>
                                 </div>
 
+                                <!-- Book Permalink (URL Slug) -->
+                                <div class="form-group">
+                                    <label for="book-meta-slug" class="block text-[11px] font-bold uppercase tracking-wider text-blue-950 mb-1">
+                                        Custom Permalink (Book URL Path / Slug)
+                                    </label>
+                                    <div class="flex items-center bg-white border border-blue-200 rounded-xl px-3 py-1.5 focus-within:border-blue-600 transition">
+                                        <span class="text-xs font-mono text-blue-800 select-none whitespace-nowrap pr-1">nuqtha.vercel.app/book/</span>
+                                        <input 
+                                            type="text" 
+                                            id="book-meta-slug" 
+                                            placeholder="umaviyya-khilafath" 
+                                            class="w-full text-xs font-mono bg-transparent border-none outline-none font-bold text-slate-800 py-1"
+                                        >
+                                    </div>
+                                    <small class="block text-[10px] text-slate-500 mt-1">100% Manually editable: type any custom slug (without book/ prefix).</small>
+                                </div>
+
                                 <!-- Author & Publication Date -->
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                     <div>
@@ -569,6 +618,54 @@
                                         Publication Tag / Category (പതിപ്പ് ടാഗ്) <span class="text-rose-500">*</span>
                                     </label>
                                     <input type="text" id="book-meta-tag" name="book-meta-tag" placeholder="e.g. ചരിത്രം / പഠനം / Premium Book" value="Premium Book" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                </div>
+
+                                <!-- Book Access Type Select Input -->
+                                <div class="mb-2">
+                                    <label for="bookTypeInput" class="block text-[11px] font-bold uppercase tracking-wider text-blue-950 mb-1">
+                                        Book Access Type
+                                    </label>
+                                    <select id="bookTypeInput" class="w-full border border-gray-300 rounded-xl p-2.5 text-xs font-bold bg-white text-gray-800 focus:ring-2 focus:ring-[#A75D3A] outline-none cursor-pointer">
+                                        <option value="free">Free (Sowjanyamaayi vayikkaam)</option>
+                                        <option value="premium">Premium (Paanam nalki vangendathu)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Premium Book & Paywall Settings -->
+                                <div class="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <label for="book-meta-premium-toggle" class="text-xs font-black text-amber-950 flex items-center gap-1.5 cursor-pointer">
+                                                <span>💎 പ്രീമിയം പുസ്തകം (Premium / Paid Book)</span>
+                                            </label>
+                                            <p class="text-[10px] text-amber-800">പ്രീമിയം ആക്കിയാൽ വായനക്കാർ പണം നൽകിയോ ആപ്പ് വഴിയോ മാത്രമേ അധ്യായങ്ങൾ തുറക്കാൻ കഴിയൂ.</p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="book-meta-premium-toggle" class="sr-only peer" onchange="window.toggleBookPremiumFields && window.toggleBookPremiumFields(this.checked)">
+                                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                                        </label>
+                                    </div>
+
+                                    <!-- Collapsible Pricing and APK URL (visible when Premium is checked) -->
+                                    <div id="book-premium-extra-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-amber-200/60 hidden">
+                                        <div>
+                                            <label for="book-meta-price" class="block text-[10px] font-bold uppercase tracking-wider text-amber-950 mb-1">
+                                                വില (Book Price in ₹ INR) <span class="text-rose-500">*</span>
+                                            </label>
+                                            <div class="flex items-center bg-white border border-amber-300 rounded-xl px-3 py-1.5 focus-within:border-amber-600">
+                                                <span class="text-xs font-bold text-amber-700 pr-1">₹</span>
+                                                <input type="number" id="book-meta-price" placeholder="49" min="0" step="1" class="w-full text-xs font-bold bg-transparent outline-none text-slate-800">
+                                            </div>
+                                            <small class="text-[9px] text-amber-800">Razorpay വഴി നേരിട്ട് ഈടാക്കുന്ന തുക</small>
+                                        </div>
+                                        <div>
+                                            <label for="book-meta-apk-url" class="block text-[10px] font-bold uppercase tracking-wider text-amber-950 mb-1">
+                                                Android APK File URL
+                                            </label>
+                                            <input type="url" id="book-meta-apk-url" placeholder="https://nuqtha.com/app/nuqtha.apk" class="w-full text-xs font-medium p-2 rounded-xl border border-amber-300 bg-white outline-none focus:border-amber-600">
+                                            <small class="text-[9px] text-amber-800">ആൻഡ്രോയിഡ് ഉപയോക്താക്കൾക്ക് ഡൗൺലോഡ് ചെയ്യാനുള്ള ലിങ്ക്</small>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- ആമുഖം (Book Introduction / Foreword) -->
@@ -636,6 +733,24 @@
                                         </label>
                                         <input type="text" id="bm-art-transcription" placeholder="കേട്ടെഴുത്ത് (ഓപ്ഷണൽ)..." class="w-full text-xs font-bold p-3.5 rounded-xl border border-[#ebdccb] focus:border-emerald-600 outline-none bg-slate-50/50 focus:bg-white transition">
                                     </div>
+                                </div>
+
+                                <!-- Chapter Custom Permalink (URL Slug) -->
+                                <div class="form-group">
+                                    <label for="bm-customSlug" class="block text-xs font-bold uppercase tracking-wider text-emerald-950 font-english mb-1 flex items-center justify-between">
+                                        <span>Custom Chapter Permalink (URL Path / Slug)</span>
+                                        <span class="text-[10px] text-emerald-700 font-normal font-sans">100% Manually Editable</span>
+                                    </label>
+                                    <div class="flex items-center bg-white border border-emerald-200 rounded-xl px-3 py-1.5 focus-within:border-emerald-600 transition">
+                                        <span class="text-xs font-mono text-emerald-800 select-none whitespace-nowrap pr-1">nuqtha.vercel.app/</span>
+                                        <input 
+                                            type="text" 
+                                            id="bm-customSlug" 
+                                            placeholder="story/book-title/chapter-1" 
+                                            class="w-full text-xs font-mono bg-transparent border-none outline-none font-bold text-slate-800 py-1"
+                                        >
+                                    </div>
+                                    <small class="block text-[10px] text-slate-500 mt-1">100% Manually editable: type any custom prefix or path.</small>
                                 </div>
 
                                 <!-- Chapter Image Upload -->
@@ -926,6 +1041,449 @@
             </div>
         </div>
 
+<<<<<<< HEAD
+=======
+        <!-- ═══════════════════════════════════════════════════════════
+             TAB 6: MORE മെനു മാനേജർ (MORE DROPDOWN MENU MANAGER)
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="admin-tab-pane" data-pane="menu">
+            <div class="max-w-5xl mx-auto space-y-6">
+
+                <!-- Header Card -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-xl bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center text-base">🧭</span>
+                            <h2 class="text-xl font-extrabold text-[#1e1b18]">More മെനു മാനേജർ (More Dropdown Menu)</h2>
+                        </div>
+                        <p class="text-xs text-[#8c7a6b] mt-1">ഹോം പേജിലെ 'MORE' മെനുവിൽ കാണിക്കേണ്ട ലിങ്കുകൾ ചേർക്കുക, എഡിറ്റ് ചെയ്യുക അല്ലെങ്കിൽ ക്രമം മാറ്റുക</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="btn-restore-default-menu" class="px-4 py-2 text-xs font-bold font-english text-[#b4532c] hover:bg-[#b4532c]/10 border border-[#ebdccb] rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                            <span>🔄</span>
+                            <span>Restore Defaults</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add / Edit Menu Link Form Card -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-5">
+                    <div class="flex items-center justify-between border-b border-[#f0e6d6] pb-3">
+                        <h3 id="menu-form-heading" class="text-sm font-extrabold text-[#1e1b18] flex items-center gap-2">
+                            <span>➕</span>
+                            <span>പുതിയ ലിങ്ക് ചേർക്കുക (Add Menu Link)</span>
+                        </h3>
+                        <span id="menu-edit-indicator" class="hidden text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full">എഡിറ്റിംഗ് മോഡ്</span>
+                    </div>
+
+                    <input type="hidden" id="menu-item-edit-id" value="" />
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Label Input -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-[#5a4b41]">ലിങ്ക് പേര് (Label / Text) *</label>
+                            <input 
+                                type="text" 
+                                id="menu-item-label" 
+                                placeholder="ഉദാ: PODCAST / പോഡ്‌കാസ്റ്റ്" 
+                                class="w-full text-xs font-bold p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#1e1b18]"
+                            />
+                        </div>
+
+                        <!-- URL Input -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-[#5a4b41]">ലിങ്ക് URL (Path or Full URL) *</label>
+                            <input 
+                                type="text" 
+                                id="menu-item-url" 
+                                placeholder="ഉദാ: podcast.html അല്ലെങ്കിൽ https://..." 
+                                class="w-full text-xs font-bold p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40 text-[#1e1b18] font-english"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Icon / Emoji Selection -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-[#5a4b41]">ഐക്കൺ / ഇമോജി (Icon Emoji)</label>
+                        <div class="flex items-center gap-3">
+                            <input 
+                                type="text" 
+                                id="menu-item-icon" 
+                                placeholder="✍️" 
+                                maxlength="4"
+                                class="w-16 text-center text-lg font-bold p-2.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-[#fbf7ee]/40"
+                            />
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-[11px] text-[#8c7a6b] font-english mr-1">Quick pick:</span>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="✍️">✍️</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="📬">📬</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="⚙️">⚙️</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="📚">📚</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="🎙️">🎙️</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="🌐">🌐</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="📢">📢</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="💬">💬</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="🔍">🔍</button>
+                                <button type="button" class="quick-emoji-btn px-2.5 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" data-emoji="🔗">🔗</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target / Active Options -->
+                    <div class="flex items-center gap-6 pt-1">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="menu-item-target-blank" class="w-4 h-4 rounded text-[#b4532c] focus:ring-[#b4532c]" />
+                            <span class="text-xs font-bold text-[#5a4b41]">പുതിയ ടാബിൽ തുറക്കുക (Open in new window / tab)</span>
+                        </label>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-3 pt-2">
+                        <button type="button" id="btn-save-menu-item" class="px-6 py-2.5 rounded-xl bg-[#b4532c] text-white text-xs font-extrabold hover:bg-[#923e1b] transition shadow-xs cursor-pointer flex items-center gap-1.5 font-english">
+                            <span>💾</span>
+                            <span id="btn-save-menu-label">Save Menu Link</span>
+                        </button>
+                        <button type="button" id="btn-cancel-menu-edit" class="hidden px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer font-english">
+                            റദ്ദാക്കുക (Cancel)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Existing Menu Items List -->
+                <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-[#f0e6d6] pb-3">
+                        <h3 class="text-sm font-extrabold text-[#1e1b18] flex items-center gap-2">
+                            <span>📋</span>
+                            <span>നിലവിലുള്ള ലിങ്കുകൾ (Active Menu Items)</span>
+                        </h3>
+                        <span class="text-xs text-[#8c7a6b]">മുകളിലേക്കും താഴേക്കും മാറ്റി ക്രമം നിശ്ചയിക്കാം</span>
+                    </div>
+
+                    <div id="admin-menu-items-list" class="space-y-2.5">
+                        <div class="text-center py-8 text-xs text-[#8c7a6b]">ലിങ്കുകൾ പരിശോധിക്കുന്നു...</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TAB 7: USER ACTIVITY & ADVANCED READING ANALYTICS
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="admin-tab-pane" data-pane="analytics">
+            <div class="max-w-5xl mx-auto space-y-6">
+
+                <!-- Header Banner -->
+                <div class="bg-gradient-to-r from-[#2c1d11] via-[#43281c] to-[#1e1b18] text-white p-6 md:p-8 rounded-3xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 border border-[#ebdccb]/20">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-amber-200 text-[11px] font-bold uppercase tracking-wider font-english mb-2.5">
+                            <span>⚡ Live User Analytics</span>
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        </div>
+                        <h2 class="text-xl md:text-2xl font-black">User Activity & Advanced Reading Analytics</h2>
+                        <p class="text-xs text-amber-100/80 mt-1 max-w-xl">
+                            ലേഖനങ്ങളിലെ ലൈവ് വായനകൾ, 3-ഘട്ട എൻഗേജ്‌മെന്റ് (Page View, 5s+ Read, 80%+ Full Read), ലോഗിൻ ചെയ്ത ഗൂഗിൾ ഉപയോക്താക്കൾ എന്നിവയുടെ വിശദമായ തത്സമയ റിപ്പോർട്ട്.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="refresh-analytics-btn" class="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition flex items-center gap-1.5 font-english cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 1. Top Stat Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Total Page Views -->
+                    <div class="p-5 bg-white rounded-2xl border border-[#ebdccb] shadow-xs space-y-1">
+                        <div class="flex items-center justify-between text-[#8c7a6b]">
+                            <span class="text-xs font-bold font-english uppercase tracking-wider">Total Page Views</span>
+                            <span class="p-2 rounded-xl bg-blue-50 text-blue-600 text-base">👁️</span>
+                        </div>
+                        <div class="text-2xl md:text-3xl font-black text-[#1e1b18]" id="stat-total-views">0</div>
+                        <p class="text-[11px] text-[#8c7a6b]">ലേഖനങ്ങൾ തുറന്ന ആകെ എണ്ണം (Instant)</p>
+                    </div>
+
+                    <!-- Engaged Readers (5s+) -->
+                    <div class="p-5 bg-white rounded-2xl border border-[#ebdccb] shadow-xs space-y-1">
+                        <div class="flex items-center justify-between text-[#8c7a6b]">
+                            <span class="text-xs font-bold font-english uppercase tracking-wider">Engaged Readers (5s+)</span>
+                            <span class="p-2 rounded-xl bg-amber-50 text-amber-600 text-base">⏱️</span>
+                        </div>
+                        <div class="text-2xl md:text-3xl font-black text-amber-800" id="stat-engaged-readers">0</div>
+                        <p class="text-[11px] text-[#8c7a6b]">5 സെക്കൻഡിൽ കൂടുതൽ വായിച്ചവർ</p>
+                    </div>
+
+                    <!-- Full Reads (80%+) -->
+                    <div class="p-5 bg-white rounded-2xl border border-[#ebdccb] shadow-xs space-y-1">
+                        <div class="flex items-center justify-between text-[#8c7a6b]">
+                            <span class="text-xs font-bold font-english uppercase tracking-wider">Full Reads (80%+)</span>
+                            <span class="p-2 rounded-xl bg-emerald-50 text-emerald-600 text-base">📖</span>
+                        </div>
+                        <div class="text-2xl md:text-3xl font-black text-emerald-700" id="stat-full-reads">0</div>
+                        <p class="text-[11px] text-[#8c7a6b]">ലേഖനം പൂർണ്ണമായി സ്ക്രോൾ ചെയ്തവർ</p>
+                    </div>
+
+                    <!-- Registered Users (Google) -->
+                    <div class="p-5 bg-white rounded-2xl border border-[#ebdccb] shadow-xs space-y-1">
+                        <div class="flex items-center justify-between text-[#8c7a6b]">
+                            <span class="text-xs font-bold font-english uppercase tracking-wider">Google Users</span>
+                            <span class="p-2 rounded-xl bg-indigo-50 text-indigo-600 text-base">👤</span>
+                        </div>
+                        <div class="text-2xl md:text-3xl font-black text-indigo-700" id="stat-google-users">0</div>
+                        <p class="text-[11px] text-[#8c7a6b]">സൈൻ ഇൻ ചെയ്ത പ്രൊഫൈലുകൾ</p>
+                    </div>
+                </div>
+
+                <!-- 2. Live Reading Activity Stream -->
+                <div class="bg-white p-6 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#ebdccb]/60 pb-4">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-base font-bold text-[#1e1b18]">Live Reading Activity Log</h3>
+                                <span id="reading-activity-count" class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-english">0 Logs</span>
+                            </div>
+                            <p class="text-xs text-[#8c7a6b] mt-0.5">വായനക്കാരുടെ തത്സമയ പ്രവർത്തനങ്ങളും 3-ഘട്ട എൻഗേജ്‌മെന്റ് സ്റ്റാറ്റസും</p>
+                        </div>
+
+                        <!-- Filter by Status -->
+                        <div class="flex items-center gap-2">
+                            <label for="filter-engagement-status" class="text-xs font-bold text-[#8c7a6b] font-english">Filter:</label>
+                            <select id="filter-engagement-status" class="text-xs font-bold px-3 py-1.5 rounded-xl border border-[#ebdccb] bg-[#fbf7ee]/40 text-[#1e1b18] outline-none focus:border-[#b4532c]">
+                                <option value="all">All Engagements (എല്ലാം)</option>
+                                <option value="full_read">Full Reads (80%+)</option>
+                                <option value="engaged_read">Engaged (5s+)</option>
+                                <option value="page_view">Just Opened (Page Views)</option>
+                                <option value="google_only">Google Users Only</option>
+                                <option value="guest_only">Guest Visitors Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Live Reading Logs Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-[#ebdccb] text-[#8c7a6b] font-english uppercase tracking-wider text-[11px]">
+                                    <th class="py-3 px-3">User Identity</th>
+                                    <th class="py-3 px-3">Engagement Status</th>
+                                    <th class="py-3 px-3">Article / Story</th>
+                                    <th class="py-3 px-3 text-right">Activity Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analytics-reading-history-tbody" class="divide-y divide-[#ebdccb]/40">
+                                <tr>
+                                    <td colspan="4" class="py-8 text-center text-[#8c7a6b]">
+                                        <div class="animate-spin inline-block mr-2">⏳</div> ഡാറ്റ ലോഡ് ചെയ്യുന്നു...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 3. Registered Google Users Directory -->
+                <div class="bg-white p-6 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#ebdccb]/60 pb-4">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-base font-bold text-[#1e1b18]">Registered Google Users</h3>
+                                <span id="registered-users-count" class="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-900 font-english">0 Users</span>
+                            </div>
+                            <p class="text-xs text-[#8c7a6b] mt-0.5">Google അക്കൗണ്ട് വഴി സൈൻ ഇൻ ചെയ്ത ഉപയോക്താക്കളുടെ പട്ടിക</p>
+                        </div>
+                    </div>
+
+                    <!-- Registered Users Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-[#ebdccb] text-[#8c7a6b] font-english uppercase tracking-wider text-[11px]">
+                                    <th class="py-3 px-3">User Profile</th>
+                                    <th class="py-3 px-3">Email Address</th>
+                                    <th class="py-3 px-3">UID</th>
+                                    <th class="py-3 px-3 text-right">Last Active</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analytics-users-tbody" class="divide-y divide-[#ebdccb]/40">
+                                <tr>
+                                    <td colspan="4" class="py-8 text-center text-[#8c7a6b]">
+                                        <div class="animate-spin inline-block mr-2">⏳</div> ഡാറ്റ ലോഡ് ചെയ്യുന്നു...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TAB 8: ലൈബ്രറി (LIBRARY SHELF & PAPERS)
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="admin-tab-pane" data-pane="library">
+            <div id="library-admin" class="max-w-5xl mx-auto bg-white dark:bg-[#12141d] p-6 md:p-8 rounded-3xl border border-[#ebdccb] dark:border-white/10 shadow-sm">
+                <div class="space-y-8">
+                    <!-- Header -->
+                    <div class="border-b border-[#ebdccb] dark:border-white/10 pb-4">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-2xl">🏛️</span>
+                            <div>
+                                <h2 class="text-xl font-black text-[#1e1b18] dark:text-white font-english">Library Shelf & Table Manager</h2>
+                                <p class="text-xs text-[#8c7a6b] dark:text-slate-400">Manage 3D Books on the shelf and printed papers on the table for the Library view.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 1: Books on the Shelf -->
+                    <section class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base font-bold text-[#1e1b18] dark:text-white flex items-center gap-2">
+                                <span>📚</span>
+                                <span>Library books (max 6 on the shelf)</span>
+                            </h3>
+                            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-english">
+                                Shelf limit: 6
+                            </span>
+                        </div>
+
+                        <form id="bk-form" class="bg-[#faf6f0] dark:bg-white/5 p-5 rounded-2xl border border-[#ebdccb] dark:border-white/10 space-y-4">
+                            <input type="hidden" name="id">
+
+                            <!-- Existing Items Quick-Selector (Books / Articles) -->
+                            <div class="p-3.5 rounded-2xl bg-[#b4532c]/10 dark:bg-[#b4532c]/20 border border-[#b4532c]/30 space-y-3">
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <label for="bk-existing-select" class="text-xs font-bold text-[#b4532c] dark:text-[#f87171] flex items-center gap-1.5">
+                                        <span class="text-base" id="bk-import-icon">📖</span>
+                                        <span id="bk-import-label">നിലവിലുള്ള പുസ്തകങ്ങളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക (Import Existing Book):</span>
+                                    </label>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#b4532c]/15 text-[#b4532c] dark:text-[#f87171] font-bold">
+                                        1-Click Auto-Fill
+                                    </span>
+                                </div>
+
+                                <!-- Toggle / Radio Option: Import Book vs Import Article -->
+                                <div class="flex items-center gap-4 pt-0.5 pb-0.5 flex-wrap">
+                                    <span class="text-xs font-semibold text-[#8c7a6b] dark:text-slate-400">Import Mode:</span>
+                                    <label class="inline-flex items-center gap-1.5 text-xs font-bold text-[#5a4b41] dark:text-slate-300 cursor-pointer select-none">
+                                        <input type="radio" name="bk-import-type" value="book" checked class="text-[#b4532c] focus:ring-0 cursor-pointer">
+                                        <span>📚 Import Book (പുസ്തകം)</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-1.5 text-xs font-bold text-[#5a4b41] dark:text-slate-300 cursor-pointer select-none">
+                                        <input type="radio" name="bk-import-type" value="article" class="text-[#b4532c] focus:ring-0 cursor-pointer">
+                                        <span>📝 Import Article (ലേഖനം)</span>
+                                    </label>
+                                </div>
+
+                                <select id="bk-existing-select" class="w-full px-3 py-2 rounded-xl border border-[#b4532c]/30 bg-white dark:bg-[#12141d] text-xs font-bold text-[var(--text)] dark:text-white outline-none cursor-pointer focus:ring-1 focus:ring-[#b4532c]">
+                                    <option value="">-- ലോഡ് ചെയ്യുന്നു... (Loading existing items...) --</option>
+                                </select>
+                                <div class="flex items-center justify-between flex-wrap gap-2 pt-0.5">
+                                    <p id="bk-import-hint" class="text-[11px] text-[#8c7a6b] dark:text-slate-400">
+                                        നേരത്തെ ചേർത്ത പുസ്തകങ്ങൾ (ഉദാ: ഇമാമുമാരുടെ ജീവിതം) തിരഞ്ഞെടുത്താൽ വിവരങ്ങളും അധ്യായങ്ങളും സ്വയം ഫോമിൽ നിറയും.
+                                    </p>
+                                    <button type="button" id="bk-quick-add-btn" class="hidden px-3.5 py-1 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-lg shadow transition cursor-pointer">
+                                        + ഷെൽഫിലേക്ക് ഉടൻ ചേർക്കുക (Add to Shelf)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <label class="block space-y-1 text-xs font-bold text-[#5a4b41] dark:text-slate-300">
+                                    <span>Title (തലക്കെട്ട്) *</span>
+                                    <input name="title" required maxlength="40" placeholder="e.g. നുഖ്ത പതിപ്പ്" class="w-full px-3.5 py-2.5 rounded-xl border border-[#ebdccb] dark:border-white/10 bg-white dark:bg-[#12141d] text-xs font-semibold outline-none focus:border-[#b4532c] dark:text-white">
+                                </label>
+
+                                <label class="block space-y-1 text-xs font-bold text-[#5a4b41] dark:text-slate-300">
+                                    <span>Author (രചയിതാവ്)</span>
+                                    <input name="author" value="Nuqtha Press" maxlength="40" placeholder="Author name" class="w-full px-3.5 py-2.5 rounded-xl border border-[#ebdccb] dark:border-white/10 bg-white dark:bg-[#12141d] text-xs font-semibold outline-none focus:border-[#b4532c] dark:text-white">
+                                </label>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <label class="block space-y-1 text-xs font-bold text-[#5a4b41] dark:text-slate-300">
+                                    <span>Pages (പേജുകൾ)</span>
+                                    <input name="pages" type="number" min="1" placeholder="e.g. 180" class="w-full px-3.5 py-2.5 rounded-xl border border-[#ebdccb] dark:border-white/10 bg-white dark:bg-[#12141d] text-xs font-semibold outline-none focus:border-[#b4532c] dark:text-white">
+                                </label>
+
+                                <label class="block space-y-1 text-xs font-bold text-[#5a4b41] dark:text-slate-300">
+                                    <span>Spine colour (നിറം)</span>
+                                    <div class="flex items-center gap-2">
+                                        <input name="color" type="color" value="#7b2d26" class="w-10 h-9 p-0.5 rounded-lg border border-[#ebdccb] dark:border-white/10 cursor-pointer bg-white">
+                                        <span class="text-[11px] text-[#8c7a6b] font-mono">Hex Code</span>
+                                    </div>
+                                </label>
+
+                                <label class="block space-y-1 text-xs font-bold text-[#5a4b41] dark:text-slate-300">
+                                    <span>Order (1 = first)</span>
+                                    <input name="order" type="number" value="1" class="w-full px-3.5 py-2.5 rounded-xl border border-[#ebdccb] dark:border-white/10 bg-white dark:bg-[#12141d] text-xs font-semibold outline-none focus:border-[#b4532c] dark:text-white">
+                                </label>
+                            </div>
+
+                            <label class="block space-y-1 text-xs font-bold text-[#5a4b41] dark:text-slate-300">
+                                <span>Description (വിവരണം)</span>
+                                <textarea name="description" rows="3" maxlength="300" placeholder="A brief intro about this volume..." class="w-full px-3.5 py-2.5 rounded-xl border border-[#ebdccb] dark:border-white/10 bg-white dark:bg-[#12141d] text-xs font-semibold outline-none focus:border-[#b4532c] dark:text-white"></textarea>
+                            </label>
+
+                            <label class="block space-y-1 text-xs font-bold text-[#5a4b41] dark:text-slate-300">
+                                <span>Inside this book (one title per line)</span>
+                                <textarea name="contents" rows="3" placeholder="Chapter 1: ആമുഖം&#10;Chapter 2: ചരിത്രം" class="w-full px-3.5 py-2.5 rounded-xl border border-[#ebdccb] dark:border-white/10 bg-white dark:bg-[#12141d] text-xs font-semibold outline-none focus:border-[#b4532c] dark:text-white"></textarea>
+                            </label>
+
+                            <div class="flex items-center justify-between pt-1 flex-wrap gap-3">
+                                <label class="inline-flex items-center gap-2 text-xs font-bold text-[#5a4b41] dark:text-slate-300 cursor-pointer select-none">
+                                    <input name="visible" type="checkbox" checked class="w-4 h-4 text-[#b4532c] rounded focus:ring-0 cursor-pointer">
+                                    <span>Show on shelf (ഷെൽഫിൽ കാണിക്കുക)</span>
+                                </label>
+
+                                <div class="flex items-center gap-2">
+                                    <button type="button" id="bk-clear" class="px-4 py-2 rounded-xl border border-[#ebdccb] dark:border-white/10 text-xs font-bold text-[#5a4b41] dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer">
+                                        Clear
+                                    </button>
+                                    <button type="submit" class="px-5 py-2 rounded-xl bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold shadow transition cursor-pointer">
+                                        Save book
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p id="bk-status" role="status" class="text-xs font-bold text-[#b4532c] dark:text-amber-400 min-h-[1.2rem]"></p>
+                        </form>
+
+                        <!-- Books list -->
+                        <div class="bg-white dark:bg-[#12141d] rounded-2xl border border-[#ebdccb] dark:border-white/10 overflow-hidden">
+                            <div class="px-4 py-3 bg-[#faf6f0] dark:bg-white/5 border-b border-[#ebdccb] dark:border-white/10 text-xs font-bold text-[#5a4b41] dark:text-slate-300 font-english uppercase tracking-wider">
+                                Current Books in Database
+                            </div>
+                            <ul id="bk-list" class="divide-y divide-[#ebdccb]/60 dark:divide-white/10 text-xs"></ul>
+                        </div>
+                    </section>
+
+                    <!-- Section 2: Papers on the Table -->
+                    <section class="space-y-4 pt-4 border-t border-[#ebdccb] dark:border-white/10">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base font-bold text-[#1e1b18] dark:text-white flex items-center gap-2">
+                                <span>📰</span>
+                                <span>Papers on the table (max 5)</span>
+                            </h3>
+                            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 font-english">
+                                Table limit: 5
+                            </span>
+                        </div>
+                        <p class="text-xs text-[#8c7a6b] dark:text-slate-400">Tick the articles that should appear as printed papers on the reading table.</p>
+
+                        <p id="tb-status" role="status" class="text-xs font-bold text-[#b4532c] dark:text-amber-400 min-h-[1.2rem]"></p>
+
+                        <div class="bg-white dark:bg-[#12141d] rounded-2xl border border-[#ebdccb] dark:border-white/10 overflow-hidden max-h-96 overflow-y-auto">
+                            <ul id="tb-list" class="divide-y divide-[#ebdccb]/60 dark:divide-white/10 text-xs"></ul>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
     </main>
 
     <!-- Footer -->

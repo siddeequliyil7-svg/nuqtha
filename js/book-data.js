@@ -27,7 +27,9 @@ export function normalizeBookKey(s) {
 export function isArticleInBook(article, targetBook) {
     if (!article || !targetBook) return false;
     if (article.id && targetBook.id && article.id === targetBook.id) return false;
-    if (article.type === "BOOK") return false;
+    // Strictly exclude if this is another standalone book entity (not a chapter)
+    const aType = (article.type || "").toUpperCase();
+    if ((aType === "BOOK" || article.isBook === true) && !article.bookId && article.order === undefined && (!article.bookName || normalizeBookKey(article.bookName) === normalizeBookKey(article.title))) return false;
 
     // Check chapters array on targetBook doc if present
     if (Array.isArray(targetBook.chapters)) {
@@ -164,7 +166,7 @@ export async function getBookChapters(bookId, options = {}) {
             if (!bookDoc) {
                 const norm = normalizeBookKey(bookId);
                 bookDoc = options.articlesPool.find(a => 
-                    a.type === "BOOK" && (normalizeBookKey(a.bookName) === norm || normalizeBookKey(a.title) === norm)
+                    ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && (normalizeBookKey(a.bookName) === norm || normalizeBookKey(a.title) === norm)
                 );
             }
         }
@@ -173,16 +175,26 @@ export async function getBookChapters(bookId, options = {}) {
         if (!bookDoc || !Array.isArray(bookDoc.chapters) || bookDoc.chapters.length === 0) {
             try {
                 const apiKey = getFirebaseApiKey();
-                const bookRes = await fetchWithRetry(
-                    `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
+                // 1. Try books collection first
+                let bookRes = await fetchWithRetry(
+                    `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
                     { signal: controller.signal },
                     2,
                     250
                 );
+                // 2. Fallback to articles collection
+                if (!bookRes || !bookRes.ok) {
+                    bookRes = await fetchWithRetry(
+                        `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
+                        { signal: controller.signal },
+                        2,
+                        250
+                    );
+                }
                 if (bookRes && bookRes.ok) {
                     const bookJson = await bookRes.json();
                     const directDoc = parseFirestoreRestDoc(bookJson, bookId);
-                    bookDoc = { ...(bookDoc || {}), ...directDoc };
+                    bookDoc = { ...(bookDoc || {}), ...directDoc, isBook: true, type: "BOOK" };
                 }
             } catch (bErr) {
                 console.warn("[BookData] Direct book fetch error:", bErr);
@@ -300,7 +312,8 @@ export async function getBookChapters(bookId, options = {}) {
 
         // Include any additional articles matched by bookId or bookName not already included
         pool.forEach(art => {
-            if (art && art.id && !seenIds.has(art.id) && art.type !== "BOOK") {
+            const artType = (art?.type || "").toUpperCase();
+            if (art && art.id && !seenIds.has(art.id) && artType !== "BOOK" && art.isBook !== true) {
                 if (isArticleInBook(art, bookDoc)) {
                     seenIds.add(art.id);
                     chapters.push(art);

@@ -6,8 +6,6 @@
 import {
     initAuthStateListener,
     signInWithGoogle,
-    signInWithEmailPassword,
-    registerWithEmailPassword,
     sendPhoneOtp,
     verifyPhoneOtp,
     signOutUser,
@@ -47,16 +45,13 @@ export function ensureAuthModalDOM() {
                     <p class="text-xs text-[#8c7a6b] dark:text-slate-400 font-['Anek_Malayalam']">വായനക്കാർക്കും എഴുത്തുകാർക്കും സ്വാഗതം</p>
                 </div>
 
-                <!-- Auth Navigation Tabs (Google, Phone OTP, Email) -->
-                <div class="grid grid-cols-3 gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-2xl text-xs font-bold font-english">
+                <!-- Auth Navigation Tabs (Google, Phone OTP) -->
+                <div class="grid grid-cols-2 gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-2xl text-xs font-bold font-english">
                     <button type="button" class="auth-tab-btn py-2 rounded-xl transition active bg-white dark:bg-[#1a1e2e] shadow-xs text-[#b4532c] dark:text-amber-400" data-auth-tab="google">
                         Google
                     </button>
                     <button type="button" class="auth-tab-btn py-2 rounded-xl transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-auth-tab="phone">
                         Phone OTP
-                    </button>
-                    <button type="button" class="auth-tab-btn py-2 rounded-xl transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-auth-tab="email">
-                        Email
                     </button>
                 </div>
 
@@ -118,37 +113,6 @@ export function ensureAuthModalDOM() {
                             </button>
                         </div>
                     </div>
-                </div>
-
-                <!-- ════ TAB 3: EMAIL & PASSWORD ════ -->
-                <div id="auth-pane-email" class="auth-pane hidden space-y-3">
-                    <div class="flex items-center justify-between border-b border-[#ebdccb]/60 dark:border-white/10 pb-2">
-                        <span id="email-mode-title" class="text-xs font-bold font-english text-[#b4532c] dark:text-amber-400">SIGN IN</span>
-                        <button type="button" id="email-toggle-mode-btn" class="text-xs text-[#705e50] dark:text-slate-400 hover:text-[#b4532c] dark:hover:text-amber-400 font-bold transition">
-                            പുതിയ അക്കൗണ്ട്? രജിസ്റ്റർ ചെയ്യുക
-                        </button>
-                    </div>
-
-                    <form id="email-auth-form" class="space-y-3">
-                        <div id="email-name-field" class="hidden space-y-1">
-                            <label class="block text-[11px] font-bold text-[#5a4b41] dark:text-slate-300 font-english">FULL NAME</label>
-                            <input type="text" id="email-auth-name" placeholder="നിങ്ങളുടെ പേര്..." class="w-full px-4 py-2.5 rounded-xl border border-[#ebdccb] dark:border-white/10 bg-white dark:bg-[#1a1e2e] text-xs outline-none focus:border-[#b4532c]">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-[11px] font-bold text-[#5a4b41] dark:text-slate-300 font-english">EMAIL ADDRESS</label>
-                            <input type="email" id="email-auth-email" required placeholder="name@example.com" class="w-full px-4 py-2.5 rounded-xl border border-[#ebdccb] dark:border-white/10 bg-white dark:bg-[#1a1e2e] text-xs outline-none focus:border-[#b4532c]">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-[11px] font-bold text-[#5a4b41] dark:text-slate-300 font-english">PASSWORD</label>
-                            <div class="relative">
-                                <input type="password" id="email-auth-password" required minlength="6" placeholder="പാസ്‌വേഡ് നൽകുക..." class="w-full px-4 py-2.5 rounded-xl border border-[#ebdccb] dark:border-white/10 bg-white dark:bg-[#1a1e2e] text-xs outline-none focus:border-[#b4532c] pr-10">
-                                <button type="button" id="email-toggle-pw" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">👁️</button>
-                            </div>
-                        </div>
-                        <button type="submit" id="email-submit-btn" class="w-full py-3 rounded-2xl bg-[#1e1b18] hover:bg-black dark:bg-white dark:text-[#12151f] text-white font-bold text-xs shadow transition cursor-pointer">
-                            പ്രവേശിക്കുക (Sign In)
-                        </button>
-                    </form>
                 </div>
 
                 <!-- Invisible container for Firebase Phone reCAPTCHA -->
@@ -226,6 +190,7 @@ function showAuthModalError(msg) {
 }
 
 function switchAuthTab(tabName) {
+    if (tabName !== "phone") tabName = "google";
     const tabButtons = document.querySelectorAll(".auth-tab-btn");
     const panes = document.querySelectorAll(".auth-pane");
 
@@ -402,81 +367,6 @@ function setupAuthModalListeners() {
         });
     }
 
-    // Email/Password Toggle & Submit
-    let isRegisterMode = false;
-    const toggleModeBtn = document.getElementById("email-toggle-mode-btn");
-    const modeTitle = document.getElementById("email-mode-title");
-    const nameField = document.getElementById("email-name-field");
-    const emailForm = document.getElementById("email-auth-form");
-    const emailSubmitBtn = document.getElementById("email-submit-btn");
-    const pwInput = document.getElementById("email-auth-password");
-    const pwToggle = document.getElementById("email-toggle-pw");
-
-    if (toggleModeBtn) {
-        toggleModeBtn.addEventListener("click", () => {
-            isRegisterMode = !isRegisterMode;
-            if (isRegisterMode) {
-                if (modeTitle) modeTitle.textContent = "REGISTER";
-                if (toggleModeBtn) toggleModeBtn.textContent = "അക്കൗണ്ട് ഉണ്ടോ? ലോഗിൻ ചെയ്യുക";
-                if (nameField) nameField.classList.remove("hidden");
-                if (emailSubmitBtn) emailSubmitBtn.textContent = "അക്കൗണ്ട് സൃഷ്ടിക്കുക (Register)";
-            } else {
-                if (modeTitle) modeTitle.textContent = "SIGN IN";
-                if (toggleModeBtn) toggleModeBtn.textContent = "പുതിയ അക്കൗണ്ട്? രജിസ്റ്റർ ചെയ്യുക";
-                if (nameField) nameField.classList.add("hidden");
-                if (emailSubmitBtn) emailSubmitBtn.textContent = "പ്രവേശിക്കുക (Sign In)";
-            }
-            clearAuthModalError();
-        });
-    }
-
-    if (pwToggle && pwInput) {
-        pwToggle.addEventListener("click", () => {
-            pwInput.type = pwInput.type === "password" ? "text" : "password";
-        });
-    }
-
-    if (emailForm) {
-        emailForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const email = (document.getElementById("email-auth-email")?.value || "").trim();
-            const password = (document.getElementById("email-auth-password")?.value || "").trim();
-            const name = (document.getElementById("email-auth-name")?.value || "").trim();
-
-            if (!email || !password) return;
-
-            try {
-                if (emailSubmitBtn) {
-                    emailSubmitBtn.disabled = true;
-                    emailSubmitBtn.classList.add("opacity-60");
-                }
-                clearAuthModalError();
-
-                if (isRegisterMode) {
-                    await registerWithEmailPassword(email, password, name);
-                } else {
-                    await signInWithEmailPassword(email, password);
-                }
-                closeAuthModal();
-            } catch (err) {
-                console.warn("[Auth] Email auth error:", err);
-                let message = err.message || "പ്രവേശനം പരാജയപ്പെട്ടു";
-                if (err.code === "auth/email-already-in-use") {
-                    message = "ഈ ഇമെയിൽ വിലാസത്തിൽ ഇതിനകം അക്കൗണ്ട് ഉണ്ട്. ലോഗിൻ ചെയ്യുക.";
-                } else if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
-                    message = "തെറ്റായ ഇമെയിൽ അല്ലെങ്കിൽ പാസ്‌വേഡ്.";
-                } else if (err.code === "auth/weak-password") {
-                    message = "പാസ്‌വേഡിൽ കുറഞ്ഞത് 6 അക്ഷരങ്ങൾ വേണം.";
-                }
-                showAuthModalError(message);
-            } finally {
-                if (emailSubmitBtn) {
-                    emailSubmitBtn.disabled = false;
-                    emailSubmitBtn.classList.remove("opacity-60");
-                }
-            }
-        });
-    }
 }
 
 function startResendTimer() {
@@ -553,6 +443,42 @@ export function initHeaderAuthUI(options = {}) {
         });
     }
 
+    // Drawer Auth UI (Login / Logout in Sidebar Menu)
+    const drawerLoginBtn = document.getElementById("drawer-login-btn");
+    const drawerLogoutBtn = document.getElementById("drawer-logout-btn");
+
+    if (drawerLoginBtn) {
+        drawerLoginBtn.addEventListener("click", () => {
+            const closeBtn = document.getElementById("sidebar-close-btn");
+            if (closeBtn) closeBtn.click();
+            openAuthModal("google");
+        });
+    }
+
+    if (drawerLogoutBtn) {
+        drawerLogoutBtn.addEventListener("click", async () => {
+            await signOutUser();
+            const closeBtn = document.getElementById("sidebar-close-btn");
+            if (closeBtn) closeBtn.click();
+        });
+    }
+
+    // Navbar Brand Auth UI (Small Bordered Login / Logout under brand logo)
+    const navLoginBtn = document.getElementById("nav-login-btn");
+    const navLogoutBtn = document.getElementById("nav-logout-btn");
+
+    if (navLoginBtn) {
+        navLoginBtn.addEventListener("click", () => {
+            openAuthModal("google");
+        });
+    }
+
+    if (navLogoutBtn) {
+        navLogoutBtn.addEventListener("click", async () => {
+            await signOutUser();
+        });
+    }
+
     // Auth State Listener
     initAuthStateListener((user) => {
         updateHeaderUserUI(user);
@@ -571,14 +497,30 @@ export function updateHeaderUserUI(user) {
     const userName = document.getElementById("header-user-name");
     const userInitial = document.getElementById("header-user-avatar-initial");
     const userAvatarImg = document.getElementById("header-user-avatar-img");
+    const userFallbackSvg = document.getElementById("header-user-avatar-fallback");
 
     const dropName = document.getElementById("dropdown-user-name");
     const dropIdent = document.getElementById("dropdown-user-ident");
     const dropRole = document.getElementById("dropdown-user-role-badge");
     const dropInitial = document.getElementById("dropdown-user-avatar-initial");
     const dropAvatarImg = document.getElementById("dropdown-user-avatar-img");
+    const dropFallbackSvg = document.getElementById("dropdown-user-avatar-fallback");
     const dropAdminLink = document.getElementById("dropdown-admin-link");
     const dropSavedCount = document.getElementById("dropdown-saved-count");
+
+    // Navbar Brand Auth UI elements
+    const navLoginBtn = document.getElementById("nav-login-btn");
+    const navLogoutBtn = document.getElementById("nav-logout-btn");
+
+    // Drawer Auth UI elements
+    const drawerLoginBtn = document.getElementById("drawer-login-btn");
+    const drawerUserInfo = document.getElementById("drawer-user-info");
+    const drawerUserName = document.getElementById("drawer-user-name");
+    const drawerUserIdent = document.getElementById("drawer-user-ident");
+    const drawerUserInitial = document.getElementById("drawer-user-avatar-initial");
+    const drawerUserAvatarImg = document.getElementById("drawer-user-avatar-img");
+    const drawerUserFallbackSvg = document.getElementById("drawer-user-avatar-fallback");
+    const drawerAdminLink = document.getElementById("drawer-admin-link");
 
     // Update saved articles count
     let savedCount = 0;
@@ -600,26 +542,44 @@ export function updateHeaderUserUI(user) {
         if (dropName) dropName.textContent = displayName;
         if (dropIdent) dropIdent.textContent = user.email || user.phoneNumber || "";
 
-        const initialLetter = displayName.charAt(0).toUpperCase() || "U";
-        if (userInitial) userInitial.textContent = initialLetter;
-        if (dropInitial) dropInitial.textContent = initialLetter;
+        const initialLetter = displayName.charAt(0).toUpperCase() || "";
 
         if (user.avatar) {
             if (userAvatarImg) {
                 userAvatarImg.src = user.avatar;
                 userAvatarImg.classList.remove("hidden");
-                if (userInitial) userInitial.classList.add("hidden");
             }
+            if (userInitial) userInitial.classList.add("hidden");
+            if (userFallbackSvg) userFallbackSvg.classList.add("hidden");
+
             if (dropAvatarImg) {
                 dropAvatarImg.src = user.avatar;
                 dropAvatarImg.classList.remove("hidden");
-                if (dropInitial) dropInitial.classList.add("hidden");
             }
+            if (dropInitial) dropInitial.classList.add("hidden");
+            if (dropFallbackSvg) dropFallbackSvg.classList.add("hidden");
+        } else if (initialLetter) {
+            if (userAvatarImg) userAvatarImg.classList.add("hidden");
+            if (userInitial) {
+                userInitial.textContent = initialLetter;
+                userInitial.classList.remove("hidden");
+            }
+            if (userFallbackSvg) userFallbackSvg.classList.add("hidden");
+
+            if (dropAvatarImg) dropAvatarImg.classList.add("hidden");
+            if (dropInitial) {
+                dropInitial.textContent = initialLetter;
+                dropInitial.classList.remove("hidden");
+            }
+            if (dropFallbackSvg) dropFallbackSvg.classList.add("hidden");
         } else {
             if (userAvatarImg) userAvatarImg.classList.add("hidden");
-            if (userInitial) userInitial.classList.remove("hidden");
+            if (userInitial) userInitial.classList.add("hidden");
+            if (userFallbackSvg) userFallbackSvg.classList.remove("hidden");
+
             if (dropAvatarImg) dropAvatarImg.classList.add("hidden");
-            if (dropInitial) dropInitial.classList.remove("hidden");
+            if (dropInitial) dropInitial.classList.add("hidden");
+            if (dropFallbackSvg) dropFallbackSvg.classList.remove("hidden");
         }
 
         // Admin badge & link
@@ -639,14 +599,97 @@ export function updateHeaderUserUI(user) {
             dropAdminLink.classList.toggle("flex", isAdmin);
         }
 
+        // Update Navbar Brand Auth UI
+        if (navLoginBtn) navLoginBtn.classList.add("hidden");
+        if (navLogoutBtn) navLogoutBtn.classList.remove("hidden");
+
+        // Update Drawer Auth UI for Logged-In User
+        if (drawerLoginBtn) drawerLoginBtn.classList.add("hidden");
+        if (drawerUserInfo) {
+            drawerUserInfo.classList.remove("hidden");
+            drawerUserInfo.classList.add("block");
+        }
+        if (drawerUserName) drawerUserName.textContent = displayName;
+        if (drawerUserIdent) drawerUserIdent.textContent = user.email || user.phoneNumber || "";
+
+        if (user.avatar) {
+            if (drawerUserAvatarImg) {
+                drawerUserAvatarImg.src = user.avatar;
+                drawerUserAvatarImg.classList.remove("hidden");
+            }
+            if (drawerUserInitial) drawerUserInitial.classList.add("hidden");
+            if (drawerUserFallbackSvg) drawerUserFallbackSvg.classList.add("hidden");
+        } else if (initialLetter) {
+            if (drawerUserAvatarImg) drawerUserAvatarImg.classList.add("hidden");
+            if (drawerUserInitial) {
+                drawerUserInitial.textContent = initialLetter;
+                drawerUserInitial.classList.remove("hidden");
+            }
+            if (drawerUserFallbackSvg) drawerUserFallbackSvg.classList.add("hidden");
+        } else {
+            if (drawerUserAvatarImg) drawerUserAvatarImg.classList.add("hidden");
+            if (drawerUserInitial) drawerUserInitial.classList.add("hidden");
+            if (drawerUserFallbackSvg) drawerUserFallbackSvg.classList.remove("hidden");
+        }
+
+        if (drawerAdminLink) {
+            drawerAdminLink.classList.toggle("hidden", !isAdmin);
+            drawerAdminLink.classList.toggle("flex", isAdmin);
+        }
+
     } else {
         if (signinBtn) signinBtn.classList.remove("hidden");
         if (userBtn) {
             userBtn.classList.add("hidden");
             userBtn.classList.remove("inline-flex");
         }
+        if (userInitial) {
+            userInitial.textContent = "";
+            userInitial.classList.add("hidden");
+        }
+        if (userAvatarImg) {
+            userAvatarImg.src = "";
+            userAvatarImg.classList.add("hidden");
+        }
+        if (dropInitial) {
+            dropInitial.textContent = "";
+            dropInitial.classList.add("hidden");
+        }
+        if (dropAvatarImg) {
+            dropAvatarImg.src = "";
+            dropAvatarImg.classList.add("hidden");
+        }
+        if (dropFallbackSvg) {
+            dropFallbackSvg.classList.remove("hidden");
+        }
         const userDropdown = document.getElementById("header-user-dropdown");
         if (userDropdown) userDropdown.classList.add("hidden");
+
+        // Update Navbar Brand Auth UI
+        if (navLoginBtn) navLoginBtn.classList.remove("hidden");
+        if (navLogoutBtn) navLogoutBtn.classList.add("hidden");
+
+        // Update Drawer Auth UI for Logged-Out State
+        if (drawerLoginBtn) drawerLoginBtn.classList.remove("hidden");
+        if (drawerUserInfo) {
+            drawerUserInfo.classList.add("hidden");
+            drawerUserInfo.classList.remove("block");
+        }
+        if (drawerUserInitial) {
+            drawerUserInitial.textContent = "";
+            drawerUserInitial.classList.add("hidden");
+        }
+        if (drawerUserAvatarImg) {
+            drawerUserAvatarImg.src = "";
+            drawerUserAvatarImg.classList.add("hidden");
+        }
+        if (drawerUserFallbackSvg) {
+            drawerUserFallbackSvg.classList.remove("hidden");
+        }
+        if (drawerAdminLink) {
+            drawerAdminLink.classList.add("hidden");
+            drawerAdminLink.classList.remove("flex");
+        }
     }
 }
 

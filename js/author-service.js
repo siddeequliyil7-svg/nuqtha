@@ -6,17 +6,17 @@ import { collection, getDocs, fetchWithRetry, getFirebaseApiKey } from "../fireb
 
 export const PRIMARY_AUTHORS = [
     {
-        name: "സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി",
-        role: "CHIEF EDITOR · മുഖ്യ പത്രാധിപർ",
-        slug: "സുലൈമാൻ-ഫൈസി-കിഴിശ്ശേരി",
-        bio: "ഇസ്ലാമിക ചരിത്ര പണ്ഡിതൻ, പ്രഭാഷകൻ, NUQTHA മുഖ്യ പത്രാധിപർ.",
-        photoUrl: ""
-    },
-    {
         name: "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ",
         role: "FOUNDING EDITOR · സ്ഥാപക പത്രാധിപർ",
         slug: "സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ",
         bio: "NUQTHA സ്ഥാപക പത്രാധിപർ, ചരിത്ര-സാഹിത്യ ഗവേഷകൻ, എഴുത്തുകാരൻ.",
+        photoUrl: ""
+    },
+    {
+        name: "സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി",
+        role: "CHIEF EDITOR · മുഖ്യ പത്രാധിപർ",
+        slug: "സുലൈമാൻ-ഫൈസി-കിഴിശ്ശേരി",
+        bio: "ഇസ്ലാമിക ചരിത്ര പണ്ഡിതൻ, പ്രഭാഷകൻ, NUQTHA മുഖ്യ പത്രാധിപർ.",
         photoUrl: ""
     }
 ];
@@ -124,11 +124,24 @@ export async function getAuthorsMap(db) {
 async function fetchAuthorsNetwork(db) {
     const authors = {};
 
-    // Seed primary authors
+    // Seed primary authors & aliases
     PRIMARY_AUTHORS.forEach(p => {
         authors[p.slug] = { ...p };
         authors[cleanMalayalamText(p.name)] = { ...p };
+        authors[slugifyAuthor(p.name)] = { ...p };
     });
+
+    const salman = PRIMARY_AUTHORS[0];
+    authors["സയ്യിദ് സൽമാൻ"] = salman;
+    authors["സയ്യിദ്-സൽമാൻ"] = salman;
+    authors["sayyid-salman"] = salman;
+    authors["sayyid salman"] = salman;
+    authors[cleanMalayalamText("സയ്യിദ് സൽമാൻ")] = salman;
+
+    const sulaaiman = PRIMARY_AUTHORS[1];
+    authors["സുലൈമാൻ ഫൈസി"] = sulaaiman;
+    authors["സുലൈമാൻ-ഫൈസി"] = sulaaiman;
+    authors[cleanMalayalamText("സുലൈമാൻ ഫൈസി")] = sulaaiman;
 
     let docs = [];
 
@@ -141,32 +154,9 @@ async function fetchAuthorsNetwork(db) {
             snap.forEach(d => {
                 docs.push({ id: d.id, ...d.data() });
             });
-        } catch (e) {
-            // SDK error or timeout, proceed to REST
+        } catch (_) {
+            // SDK offline or quota limited - fallback cleanly to seeded primary authors
         }
-    }
-
-    // 2. REST fallback
-    if (docs.length === 0) {
-        try {
-            const apiKey = getFirebaseApiKey();
-            const res = await fetchWithRetry(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/authors?key=${encodeURIComponent(apiKey)}`, {}, 3, 300);
-            if (res && res.ok) {
-                const json = await res.json();
-                if (json && json.documents) {
-                    json.documents.forEach(docItem => {
-                        const docId = decodeURIComponent(docItem.name.split("/").pop());
-                        const data = { id: docId };
-                        if (docItem.fields) {
-                            for (const [k, v] of Object.entries(docItem.fields)) {
-                                if (v.stringValue !== undefined) data[k] = v.stringValue;
-                            }
-                        }
-                        docs.push(data);
-                    });
-                }
-            }
-        } catch (e) {}
     }
 
     // Merge loaded documents

@@ -33,9 +33,10 @@ export function getAbsoluteUrl(path = "") {
  * @param {string} [options.path] - Relative path or full URL
  * @param {string} [options.title] - Document / OG title
  * @param {string} [options.description] - OG description
- * @param {string} [options.imageUrl] - OG image URL
+ * @param {string} [options.imageUrl] - OG image URL or base64 data
+ * @param {string} [options.articleId] - Article / book ID for base64 social image endpoint
  */
-export function updatePageMeta({ path, title, description, imageUrl } = {}) {
+export function updatePageMeta({ path, title, description, imageUrl, articleId } = {}) {
     if (typeof document === "undefined") return;
 
     const resolvedPath = path !== undefined ? path : (window.location.pathname + window.location.search);
@@ -78,42 +79,51 @@ export function updatePageMeta({ path, title, description, imageUrl } = {}) {
     }
 
     // 5. OpenGraph Image
-    const resolvedImage = imageUrl 
-        ? (imageUrl.startsWith("http://") || imageUrl.startsWith("https://") ? imageUrl : getAbsoluteUrl(imageUrl))
-        : getAbsoluteUrl("og-cover.png");
-    if (resolvedImage) {
-        let ogImage = document.querySelector('meta[property="og:image"]');
-        if (!ogImage) {
-            ogImage = document.createElement("meta");
-            ogImage.setAttribute("property", "og:image");
-            document.head.appendChild(ogImage);
+    let resolvedImage = "";
+    if (imageUrl) {
+        if (imageUrl.startsWith("data:image/") && articleId) {
+            resolvedImage = `${getSiteOrigin()}/api/image?id=${encodeURIComponent(articleId)}`;
+        } else if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+            resolvedImage = imageUrl;
+        } else if (!imageUrl.startsWith("data:image/")) {
+            resolvedImage = getAbsoluteUrl(imageUrl);
         }
-        ogImage.setAttribute("content", resolvedImage);
-
-        let ogImageSecure = document.querySelector('meta[property="og:image:secure_url"]');
-        if (!ogImageSecure) {
-            ogImageSecure = document.createElement("meta");
-            ogImageSecure.setAttribute("property", "og:image:secure_url");
-            document.head.appendChild(ogImageSecure);
-        }
-        ogImageSecure.setAttribute("content", resolvedImage);
-
-        let twImage = document.querySelector('meta[name="twitter:image"]');
-        if (!twImage) {
-            twImage = document.createElement("meta");
-            twImage.setAttribute("name", "twitter:image");
-            document.head.appendChild(twImage);
-        }
-        twImage.setAttribute("content", resolvedImage);
-
-        let twUrl = document.querySelector('meta[name="twitter:url"]');
-        if (!twUrl) {
-            twUrl = document.createElement("meta");
-            twUrl.setAttribute("name", "twitter:url");
-            document.head.appendChild(twUrl);
-        }
-        twUrl.setAttribute("content", absoluteUrl);
     }
+    if (!resolvedImage) {
+        resolvedImage = getAbsoluteUrl("og-cover.png");
+    }
+
+    let ogImage = document.querySelector('meta[property="og:image"]');
+    if (!ogImage) {
+        ogImage = document.createElement("meta");
+        ogImage.setAttribute("property", "og:image");
+        document.head.appendChild(ogImage);
+    }
+    ogImage.setAttribute("content", resolvedImage);
+
+    let ogImageSecure = document.querySelector('meta[property="og:image:secure_url"]');
+    if (!ogImageSecure) {
+        ogImageSecure = document.createElement("meta");
+        ogImageSecure.setAttribute("property", "og:image:secure_url");
+        document.head.appendChild(ogImageSecure);
+    }
+    ogImageSecure.setAttribute("content", resolvedImage);
+
+    let twImage = document.querySelector('meta[name="twitter:image"]');
+    if (!twImage) {
+        twImage = document.createElement("meta");
+        twImage.setAttribute("name", "twitter:image");
+        document.head.appendChild(twImage);
+    }
+    twImage.setAttribute("content", resolvedImage);
+
+    let twUrl = document.querySelector('meta[name="twitter:url"]');
+    if (!twUrl) {
+        twUrl = document.createElement("meta");
+        twUrl.setAttribute("name", "twitter:url");
+        document.head.appendChild(twUrl);
+    }
+    twUrl.setAttribute("content", absoluteUrl);
 }
 
 // Expose globally for vanilla HTML scripts if needed
@@ -125,4 +135,3 @@ if (typeof window !== "undefined") {
         updatePageMeta
     };
 }
-

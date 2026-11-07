@@ -5,6 +5,7 @@
  */
 
 import { app } from "../firebase-config.js";
+import { syncUserProfileToFirestore } from "./analytics-tracker.js";
 
 // Cache for loaded Firebase Auth SDK module
 let authModulePromise = null;
@@ -13,6 +14,7 @@ let currentConfirmationResult = null;
 
 // Approved Admin Identifiers
 export const APPROVED_ADMIN_EMAILS = [
+    "sayyidsalman314@gmail.com",
     "aboobakersiddeequliyil@gmail.com",
     "admin@nuqtha.com",
     "nuqtha.editor@gmail.com"
@@ -123,6 +125,11 @@ export function safeSaveAuthUser(profile) {
             }
         } catch (_) {}
     }
+    if (typeof window !== "undefined") {
+        try {
+            window.dispatchEvent(new CustomEvent("nuqtha_auth_changed", { detail: { user: profile } }));
+        } catch (_) {}
+    }
 }
 
 /**
@@ -157,6 +164,7 @@ export function initAuthStateListener(onUserChange) {
             if (firebaseUser) {
                 const profile = mapFirebaseUser(firebaseUser);
                 safeSaveAuthUser(profile);
+                try { syncUserProfileToFirestore(profile); } catch (_) {}
                 if (onUserChange) onUserChange(profile);
             } else {
                 safeSaveAuthUser(null);
@@ -178,6 +186,7 @@ export async function signInWithGoogle() {
     const res = await signInWithPopup(auth, provider);
     const profile = mapFirebaseUser(res.user);
     safeSaveAuthUser(profile);
+    try { await syncUserProfileToFirestore(profile); } catch (_) {}
     return profile;
 }
 

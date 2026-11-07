@@ -1,3 +1,64 @@
+<<<<<<< HEAD
+=======
+import { safeInit } from "./js/ui-safe.js";
+import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
+import { initLibraryAdmin } from "./admin-library.js";
+import { 
+    checkIsAdminUser, 
+    initAuthStateListener, 
+    signInWithGoogle, 
+    signOutUser, 
+    getCachedAuthUser, 
+    ADMIN_SESSION_KEY 
+} from "./js/auth-system.js";
+
+export function isMainBook(art) {
+    if (!art) return false;
+    // Strictly exclude any document that is explicitly a chapter or sub-item
+    if (art.isChapter === true || art.type === "CHAPTER") return false;
+    if ((art.category || "").toString().toLowerCase().trim() === "chapter") return false;
+    if (art.chapterIndex !== undefined && art.chapterIndex !== null) return false;
+
+    // Strictly exclude any document that has a bookId referencing another book (these are chapters)
+    if (art.bookId && String(art.bookId).trim() && String(art.bookId).trim() !== String(art.id)) {
+        return false;
+    }
+    // If it has a parent bookName different from its own title, it is a chapter
+    const t = (art.title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    const b = (art.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    if (b && t && b !== t) {
+        return false;
+    }
+
+    // Only exclude by order if it has an associated parent book
+    if (art.order !== undefined && art.order !== null && !isNaN(art.order) && Number(art.order) > 0 && (art.bookId || (b && t && b !== t))) {
+        return false;
+    }
+
+    // Filter strictly so only items where type === 'book' / 'BOOK' or isBook === true (or free/premium) qualify as books
+    const artType = (art.type || "").toString().toLowerCase().trim();
+    if (artType === "book" || art.isBook === true || artType === "free" || artType === "premium") {
+        return true;
+    }
+    return false;
+}
+window.isMainBook = isMainBook;
+
+export function isBookOrChapter(art) {
+    if (!art) return false;
+    const artType = (art.type || "").toString().toLowerCase().trim();
+    if (artType === "book" || art.isBook === true) return true;
+    if (art.isChapter === true || artType === "chapter") return true;
+    if (art.bookId && String(art.bookId).trim()) return true;
+    const t = (art.title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    const b = (art.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+    if (b && t && b !== t) return true;
+    return false;
+}
+window.isBookOrChapter = isBookOrChapter;
+
+"use strict";
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 /**
  * NUQTHA — Admin Dashboard Logic (admin.js)
  * 4-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
@@ -12,7 +73,14 @@ import {
     sanitizePriority,
     sanitizeString,
     parseTimestampMillis,
+<<<<<<< HEAD
     ALLOWED_CATEGORIES
+=======
+    ALLOWED_CATEGORIES,
+    slugifyText,
+    transliterateMalayalam,
+    getStoryUrl
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 } from "./schema-validator.js";
 import { getBookArticleLinkFields, getBookChapters } from "./book-data.js";
 import { applySavedTheme } from "./theme.js";
@@ -20,6 +88,120 @@ import { installGlobalErrorLogging, safeInit } from "./js/ui-safe.js";
 
 applySavedTheme();
 installGlobalErrorLogging();
+
+// Helper function to sanitize slug for SEO URLs
+export function generateSlug(text) {
+    if (!text) return "";
+    const cleanText = typeof transliterateMalayalam === "function" ? transliterateMalayalam(text) : text;
+    return cleanText
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, "") // Remove special characters
+        .replace(/[\s_-]+/g, "-")  // Spaces & underscores to hyphens
+        .replace(/^-+|-+$/g, "");  // Trim start/end hyphens
+}
+
+// Clean manually editable custom path / slug (preserves slashes for custom prefixes)
+export function cleanCustomPath(text, fallbackTitle = "") {
+    let clean = (text || "").trim();
+    if (!clean && fallbackTitle) {
+        clean = "story/" + generateSlug(fallbackTitle);
+    }
+    // Remove leading and trailing slashes
+    clean = clean.replace(/^\/+|\/+$/g, "");
+    return clean
+        .toLowerCase()
+        .replace(/[^\w\s\/-]/g, "") // Allow letters, numbers, hyphens, and slashes
+        .replace(/[\s_]+/g, "-")    // Spaces to hyphens
+        .replace(/\/{2,}/g, "/");   // Collapse multiple slashes
+}
+if (typeof window !== "undefined") {
+    window.generateSlug = generateSlug;
+    window.cleanCustomPath = cleanCustomPath;
+}
+
+// Title dynamic auto-slug generator
+export function setupSlugGenerators() {
+    // 1. Article Form (art-title <-> customSlug)
+    const titleInput = document.getElementById("art-title");
+    const slugInput = document.getElementById("customSlug");
+    if (titleInput && slugInput && !slugInput.dataset.slugBound) {
+        slugInput.dataset.slugBound = "true";
+        titleInput.addEventListener("input", () => {
+            if (!slugInput.dataset.touched) {
+                slugInput.value = "story/" + generateSlug(titleInput.value);
+            }
+        });
+
+        slugInput.addEventListener("input", () => {
+            if (slugInput.value.trim() === "") {
+                delete slugInput.dataset.touched;
+            } else {
+                slugInput.dataset.touched = "true";
+                // 100% manually editable: allow typing any prefix/path with slashes preserved
+                const raw = slugInput.value;
+                slugInput.value = raw
+                    .toLowerCase()
+                    .replace(/[^\w\s\/-]/g, "")
+                    .replace(/[\s_]+/g, "-");
+            }
+        });
+    }
+
+    // 2. Book Step 1 Form (book-meta-name <-> book-meta-slug)
+    const bookTitleInput = document.getElementById("book-meta-name");
+    const bookSlugInput = document.getElementById("book-meta-slug");
+    if (bookTitleInput && bookSlugInput && !bookSlugInput.dataset.slugBound) {
+        bookSlugInput.dataset.slugBound = "true";
+        bookTitleInput.addEventListener("input", () => {
+            if (!bookSlugInput.dataset.touched) {
+                bookSlugInput.value = generateSlug(bookTitleInput.value);
+            }
+        });
+
+        bookSlugInput.addEventListener("input", () => {
+            if (bookSlugInput.value.trim() === "") {
+                delete bookSlugInput.dataset.touched;
+            } else {
+                bookSlugInput.dataset.touched = "true";
+                const raw = bookSlugInput.value;
+                bookSlugInput.value = raw
+                    .toLowerCase()
+                    .replace(/[^\w\s\/-]/g, "")
+                    .replace(/[\s_]+/g, "-");
+            }
+        });
+    }
+
+    // 3. Chapter Writer Form (bm-art-title <-> bm-customSlug)
+    const chapterTitleInput = document.getElementById("bm-art-title");
+    const chapterSlugInput = document.getElementById("bm-customSlug");
+    if (chapterTitleInput && chapterSlugInput && !chapterSlugInput.dataset.slugBound) {
+        chapterSlugInput.dataset.slugBound = "true";
+        chapterTitleInput.addEventListener("input", () => {
+            if (!chapterSlugInput.dataset.touched) {
+                const bookSlug = (activeBookCoverDoc?.slug || generateSlug(activeBookName) || "book").replace(/^(?:book|story)\//gi, "");
+                chapterSlugInput.value = `story/${bookSlug}/${generateSlug(chapterTitleInput.value)}`;
+            }
+        });
+
+        chapterSlugInput.addEventListener("input", () => {
+            if (chapterSlugInput.value.trim() === "") {
+                delete chapterSlugInput.dataset.touched;
+            } else {
+                chapterSlugInput.dataset.touched = "true";
+                const raw = chapterSlugInput.value;
+                chapterSlugInput.value = raw
+                    .toLowerCase()
+                    .replace(/[^\w\s\/-]/g, "")
+                    .replace(/[\s_]+/g, "-");
+            }
+        });
+    }
+}
+if (typeof window !== "undefined") {
+    window.setupSlugGenerators = setupSlugGenerators;
+}
 
 let editingArticleId = null; // null = create mode, string = edit mode
 let currentArticlesList = [];
@@ -93,8 +275,10 @@ function initAdminDashboard() {
     safeInit("initLayoutManagerControls", initLayoutManagerControls);
     safeInit("initPublishedSearchFilter", initPublishedSearchFilter);
     safeInit("initBookManagerSuite", initBookManagerSuite);
+    safeInit("setupSlugGenerators", setupSlugGenerators);
     safeInit("listenToFirestoreArticles", listenToFirestoreArticles);
     safeInit("initAuthorManager", initAuthorManager);
+<<<<<<< HEAD
     safeInit("runAdminSelfTest", runAdminSelfTest);
 }
 
@@ -295,6 +479,14 @@ function initAdminActionDelegation() {
         root.querySelectorAll(".chapter-reorder-item").forEach(row => row.classList.remove("border-indigo-500", "bg-indigo-50/30"));
         event.stopPropagation();
     }, true);
+=======
+    safeInit("initMoreMenuManager", initMoreMenuManager);
+    safeInit("initUserAnalyticsDashboard", initUserAnalyticsDashboard);
+    safeInit("initLibraryAdminPanel", () => {
+        const root = document.getElementById("library-admin");
+        if (root) initLibraryAdmin(root);
+    });
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 }
 
 function initPlaylistPresets() {
@@ -386,8 +578,17 @@ function initAdminSecurity() {
 function initTabNavigation() {
     // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=book)
     const hash = window.location.hash.replace("#tab=", "").trim();
+<<<<<<< HEAD
     if (["create", "book", "layout", "authors", "published"].includes(hash)) {
         switchAdminTab(hash);
+=======
+    if (["create", "book", "layout", "published", "authors", "menu", "analytics", "library"].includes(hash)) {
+        try {
+            switchAdminTab(hash);
+        } catch (err) {
+            console.warn("[AdminTab] Deferred initial tab switch:", err);
+        }
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
     }
 }
 
@@ -407,6 +608,12 @@ export function switchAdminTab(tabName) {
     // Update window hash without scrolling
     history.replaceState(null, null, `#tab=${tabName}`);
 
+    // If switching to analytics tab, refresh rendering
+    if (tabName === "analytics") {
+        if (typeof renderReadingActivityTable === "function") renderReadingActivityTable();
+        if (typeof renderRegisteredUsersTable === "function") renderRegisteredUsersTable();
+    }
+
     // If switching to book tab, refresh the active book overview and all articles
     if (tabName === "book") {
         initBookManagerSuite();
@@ -422,6 +629,23 @@ export function switchAdminTab(tabName) {
     if (tabName === "layout") {
         renderLayoutManagerList(currentArticlesList);
     }
+<<<<<<< HEAD
+=======
+
+    if (tabName === "menu") {
+        if (typeof renderAdminMenuListGlobal === "function") {
+            renderAdminMenuListGlobal();
+        }
+    }
+
+    if (tabName === "library") {
+        const root = document.getElementById("library-admin");
+        if (root && !root.dataset.loaded) {
+            root.dataset.loaded = "true";
+            initLibraryAdmin(root);
+        }
+    }
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 }
 
 // Expose switchAdminTab globally
@@ -469,7 +693,37 @@ async function handleFormSubmit() {
         const rawPriority = document.getElementById("art-priority")?.value;
         const rawBookName = document.getElementById("art-playlist-name")?.value || "";
         const isBookCover = document.getElementById("art-is-book")?.checked || false;
+<<<<<<< HEAD
         const existingArticle = editingArticleId ? currentArticlesList.find(article => article.id === editingArticleId) : null;
+=======
+
+        const effectiveCover = selectedBase64Image || selectedBase64Thumbnail || "";
+        const effectiveThumb = selectedBase64Thumbnail || selectedBase64Image || "";
+        const customSlugEl = document.getElementById("customSlug");
+        const customSlugVal = customSlugEl ? customSlugEl.value.trim() : "";
+        const articleSlug = cleanCustomPath(customSlugVal, rawTitle);
+
+        // Resolve bookId and bookSlug if an article belongs to a book
+        let resolvedBookId = "";
+        let resolvedBookSlug = "";
+        if (rawBookName && Array.isArray(currentArticlesList)) {
+            const cleanTarget = rawBookName.trim().toLowerCase();
+            const matchedBook = currentArticlesList.find(a => 
+                (a.type === "BOOK" || (a.category && (a.category.toLowerCase() === "premium book" || a.category.toLowerCase() === "book"))) &&
+                (
+                    (a.bookName && a.bookName.trim().toLowerCase() === cleanTarget) ||
+                    (a.title && a.title.trim().toLowerCase() === cleanTarget)
+                )
+            );
+            if (matchedBook) {
+                resolvedBookId = matchedBook.id || "";
+                resolvedBookSlug = matchedBook.slug || slugifyText(matchedBook.bookName || matchedBook.title);
+            }
+        }
+        if (!resolvedBookSlug && rawBookName) {
+            resolvedBookSlug = slugifyText(rawBookName);
+        }
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 
         // STRICT SCHEMA VALIDATION & SANITIZATION
         const sanitized = validateAndSanitizeArticleForSave({
@@ -486,10 +740,15 @@ async function handleFormSubmit() {
             placement: rawPlacement,
             priority: rawPriority,
             bookName: rawBookName,
+<<<<<<< HEAD
             playlistName: existingArticle?.playlistName || rawBookName,
             bookId: existingArticle?.bookId || "",
             parentBookId: existingArticle?.parentBookId || "",
             order: existingArticle?.order || rawPriority,
+=======
+            bookId: resolvedBookId,
+            bookSlug: resolvedBookSlug,
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             type: isBookCover ? "BOOK" : "ARTICLE",
             date: new Date().toLocaleDateString("en-GB")
         });
@@ -510,10 +769,17 @@ async function handleFormSubmit() {
                 priority: sanitized.priority,
                 order: sanitized.order,
                 bookName: sanitized.bookName,
+<<<<<<< HEAD
                 playlistName: sanitized.playlistName,
                 bookId: sanitized.bookId,
                 parentBookId: sanitized.parentBookId,
                 updatedAt: serverTimestamp(),
+=======
+                bookId: sanitized.bookId || resolvedBookId || "",
+                bookSlug: sanitized.bookSlug || resolvedBookSlug || "",
+                type: sanitized.type,
+                updatedAt: serverTimestamp()
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             };
 
             // Only update imageUrl if selected/changed or explicitly set
@@ -599,6 +865,26 @@ function resetFormFields() {
     if (priorityEl) priorityEl.value = "10";
     if (playlistEl) playlistEl.value = "";
     if (isBookEl) isBookEl.checked = false;
+<<<<<<< HEAD
+=======
+
+    // Reset Excerpt UI
+    const excerptInput = document.getElementById("art-excerpt");
+    if (excerptInput) {
+        excerptInput.value = "";
+        excerptInput.style.height = "140px";
+    }
+    if (typeof updateAdminExcerptUI === "function") {
+        updateAdminExcerptUI();
+    }
+
+    // Reset Custom Slug
+    const slugInput = document.getElementById("customSlug");
+    if (slugInput) {
+        slugInput.value = "";
+        delete slugInput.dataset.touched;
+    }
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 }
 
 function exitEditMode() {
@@ -635,6 +921,12 @@ window.startEditArticle = function (id) {
     const contentInput = document.getElementById("art-content");
 
     if (titleInput) titleInput.value = art.title || "";
+    const slugInput = document.getElementById("customSlug");
+    if (slugInput) {
+        slugInput.value = art.slug || (art.title ? cleanCustomPath("", art.title) : "");
+        if (art.slug) slugInput.dataset.touched = "true";
+        else delete slugInput.dataset.touched;
+    }
     if (catInput) catInput.value = (art.category || "HISTORY").toUpperCase();
     if (authorInput) authorInput.value = art.author || "";
     if (transcriptionInput) transcriptionInput.value = art.transcription || "";
@@ -1286,6 +1578,17 @@ function initBookCoverUploader() {
     window.handleRemoveBookCover = handleRemoveBookCover;
 }
 
+window.toggleBookPremiumFields = function(checked) {
+    const extraEl = document.getElementById("book-premium-extra-fields");
+    if (extraEl) {
+        if (checked) {
+            extraEl.classList.remove("hidden");
+        } else {
+            extraEl.classList.add("hidden");
+        }
+    }
+};
+
 /* ═══════════ 2. BOOK SWITCHER & STEP 1 SAVING ═══════════ */
 async function handleSaveBookStep1(e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -1343,11 +1646,13 @@ async function handleSaveBookStep1(e) {
 
     if (hasError) return;
 
-    // Check if existing in Firestore
-    const existing = currentArticlesList.find(a => a.type === "BOOK" && (
-        normalizeStringClean(a.bookName) === normalizeStringClean(name) ||
-        normalizeStringClean(a.title) === normalizeStringClean(name)
-    ));
+    // Check if existing in Firestore (prioritize currently active book if editing)
+    const existing = (activeBookCoverDoc && activeBookCoverDoc.id)
+        ? (currentArticlesList.find(a => a.id === activeBookCoverDoc.id) || activeBookCoverDoc)
+        : currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
+            normalizeStringClean(a.bookName) === normalizeStringClean(name) ||
+            normalizeStringClean(a.title) === normalizeStringClean(name)
+        ));
 
     // Provide default SVG cover if no image was uploaded
     let coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "") || "";
@@ -1362,16 +1667,40 @@ async function handleSaveBookStep1(e) {
     }
 
     try {
+        const customBookSlugEl = document.getElementById("book-meta-slug");
+        const customBookSlugVal = customBookSlugEl ? customBookSlugEl.value.trim() : "";
+        let bookSlug = cleanCustomPath(customBookSlugVal, name);
+        bookSlug = bookSlug.replace(/^(?:book|story|article)\/+/gi, "").trim() || slugifyText(name);
+
+        const bookTypeSelect = document.getElementById("bookTypeInput");
+        const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
+        const bookTypeValue = (bookTypeSelect ? bookTypeSelect.value : (isPremiumToggle && isPremiumToggle.checked ? "premium" : "free")).toLowerCase();
+        const isPremium = bookTypeValue === "premium" || (isPremiumToggle ? isPremiumToggle.checked : false);
+        const priceVal = parseFloat(document.getElementById("book-meta-price")?.value) || 0;
+        const apkUrlVal = (document.getElementById("book-meta-apk-url")?.value || "").trim();
+
         const payload = {
             title: name,
             bookName: name,
             author: author,
             category: tag,
+<<<<<<< HEAD
+=======
+            slug: bookSlug,
+            bookSlug: bookSlug,
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             imageUrl: coverImage,
             introduction: intro,
             excerpt: intro,
             content: intro,
-            type: "BOOK",
+            type: bookTypeValue, // 'free' or 'premium' (Section 2)
+            bookType: bookTypeValue,
+            accessType: bookTypeValue,
+            isBook: true,
+            isChapter: false,
+            isPremium: isPremium,
+            price: isPremium ? (priceVal || 49) : 0,
+            apkUrl: apkUrlVal,
             placement: "AUTO",
             priority: 1,
             date: dateVal,
@@ -1400,6 +1729,24 @@ async function handleSaveBookStep1(e) {
             savedDocId = docRef.id;
             currentArticlesList.unshift({ id: savedDocId, ...payload });
             showGlobalStatus(`📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
+        }
+
+        // Also save/sync to books collection (Section 2 & 3 sync)
+        try {
+            await setDoc(doc(db, "books", savedDocId), {
+                title: name,
+                author: author,
+                type: bookTypeValue,
+                accessType: bookTypeValue,
+                isPremium: isPremium,
+                price: isPremium ? (priceVal || 49) : 0,
+                description: intro,
+                visible: true,
+                updatedAt: serverTimestamp(),
+                createdAt: serverTimestamp()
+            }, { merge: true });
+        } catch (bkErr) {
+            console.warn("[Admin] Sync book to books collection note:", bkErr);
         }
 
         // Update author & name on active book session
@@ -1470,8 +1817,64 @@ function initBookSwitcherAndStep1() {
         });
     }
 
+<<<<<<< HEAD
     if (publishBtn) publishBtn.dataset.action = "save-book";
+=======
+    // Sync Book Access Type select (#bookTypeInput) with Premium Toggle
+    const bookTypeInput = document.getElementById("bookTypeInput");
+    const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
+    if (bookTypeInput) {
+        bookTypeInput.addEventListener("change", (e) => {
+            const isPrem = e.target.value === "premium";
+            if (isPremiumToggle) {
+                isPremiumToggle.checked = isPrem;
+                if (window.toggleBookPremiumFields) window.toggleBookPremiumFields(isPrem);
+            }
+        });
+    }
+    if (isPremiumToggle) {
+        isPremiumToggle.addEventListener("change", (e) => {
+            if (bookTypeInput) {
+                bookTypeInput.value = e.target.checked ? "premium" : "free";
+            }
+        });
+    }
+
+    if (publishBtn) {
+        publishBtn.addEventListener("click", handleSaveBookStep1);
+    }
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 }
+
+// ========================================================
+// SECTION 2: ADMIN.JS - Save New Book with Type to Firebase
+// ========================================================
+export async function addNewBook(database = db) {
+  const titleEl = document.getElementById('bookTitle') || document.getElementById('book-meta-name');
+  const authorEl = document.getElementById('bookAuthor') || document.getElementById('book-meta-author');
+  const typeEl = document.getElementById('bookTypeInput');
+  const typeVal = typeEl ? typeEl.value : 'free';
+
+  const bookData = {
+    title: (titleEl?.value || "").trim(),
+    author: (authorEl?.value || "").trim() || "Nuqtha Press",
+    type: typeVal, // 'free' allengil 'premium'
+    accessType: typeVal,
+    isPremium: typeVal === "premium",
+    isBook: true,
+    createdAt: new Date()
+  };
+
+  if (!bookData.title) {
+    alert("ദയവായി പുസ്തകത്തിന്റെ പേര് നൽകുക.");
+    return;
+  }
+
+  const docRef = await addDoc(collection(database, "books"), bookData);
+  alert('Book added successfully!');
+  return docRef;
+}
+window.addNewBook = addNewBook;
 
 function resetBookManagerForm() {
     activeBookName = "";
@@ -1504,7 +1907,26 @@ function resetBookManagerForm() {
     if (tagInput) tagInput.value = "Premium Book";
     if (introInput) introInput.value = "";
     if (dateInput) dateInput.value = "";
+    const bookTypeInput = document.getElementById("bookTypeInput");
+    if (bookTypeInput) bookTypeInput.value = "free";
+    const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
+    if (isPremiumToggle) isPremiumToggle.checked = false;
+    if (window.toggleBookPremiumFields) window.toggleBookPremiumFields(false);
+    const priceInput = document.getElementById("book-meta-price");
+    if (priceInput) priceInput.value = "";
+    const apkUrlInput = document.getElementById("book-meta-apk-url");
+    if (apkUrlInput) apkUrlInput.value = "";
+    const bookSlugInput = document.getElementById("book-meta-slug");
+    if (bookSlugInput) {
+        bookSlugInput.value = "";
+        delete bookSlugInput.dataset.touched;
+    }
     if (removeBtn) removeBtn.click();
+
+    const publishBtn = document.getElementById("publish-book-cover-btn");
+    if (publishBtn) {
+        publishBtn.innerHTML = `<span>സേവ് ചെയ്ത് അധ്യായങ്ങൾ ചേർക്കലിലേക്ക് കടക്കുക (Save & Continue to Step 2)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+    }
 
     const wrapper = document.getElementById("bm-step2-3-wrapper");
     if (wrapper) wrapper.classList.add("hidden");
@@ -1524,7 +1946,7 @@ function selectActiveBook(bookName) {
     }
 
     const cleanTarget = normalizeStringClean(bookName);
-    const bookCover = currentArticlesList.find(a => a.type === "BOOK" && (
+    const bookCover = currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
         normalizeStringClean(a.bookName) === cleanTarget ||
         normalizeStringClean(a.title) === cleanTarget
     ));
@@ -1544,11 +1966,19 @@ function selectActiveBook(bookName) {
     const placeholder = document.getElementById("book-upload-placeholder");
 
     if (nameInput) nameInput.value = activeBookName;
+    const bookSlugInput = document.getElementById("book-meta-slug");
+    if (bookSlugInput) {
+        const cleanSlug = (bookCover?.slug || activeBookName ? cleanCustomPath("", activeBookName) : "").replace(/^(?:book|story)\//gi, "");
+        bookSlugInput.value = cleanSlug;
+        if (cleanSlug) bookSlugInput.dataset.touched = "true";
+        else delete bookSlugInput.dataset.touched;
+    }
     if (authorInput) authorInput.value = activeBookAuthor;
     if (tagInput) tagInput.value = bookCover?.category || "Premium Book";
     if (introInput) introInput.value = bookCover?.introduction || bookCover?.excerpt || bookCover?.content || "";
     if (dateInput) dateInput.value = bookCover?.date || "";
 
+<<<<<<< HEAD
     const presentationInfo = document.getElementById("bm-presentation-file-info");
     const presentationPlaceholder = document.getElementById("bm-presentation-placeholder");
     const presentationName = document.getElementById("bm-presentation-file-name");
@@ -1568,12 +1998,30 @@ function selectActiveBook(bookName) {
         if (presentationLink) presentationLink.value = "";
         if (presentationStatus) presentationStatus.textContent = "";
     }
+=======
+    const isPrem = Boolean(bookCover?.isPremium === true || bookCover?.type === "premium" || bookCover?.bookType === "premium" || (typeof bookCover?.category === "string" && bookCover.category.toLowerCase().includes("premium")));
+    const bookTypeInput = document.getElementById("bookTypeInput");
+    if (bookTypeInput) bookTypeInput.value = isPrem ? "premium" : "free";
+    const isPremiumToggle = document.getElementById("book-meta-premium-toggle");
+    if (isPremiumToggle) isPremiumToggle.checked = isPrem;
+    if (window.toggleBookPremiumFields) window.toggleBookPremiumFields(isPrem);
+    const priceInput = document.getElementById("book-meta-price");
+    if (priceInput) priceInput.value = (bookCover?.price !== undefined && bookCover.price !== null) ? bookCover.price : "";
+    const apkUrlInput = document.getElementById("book-meta-apk-url");
+    if (apkUrlInput) apkUrlInput.value = bookCover?.apkUrl || "";
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 
     if (bookCover?.imageUrl && previewImg && previewContainer && placeholder) {
         previewImg.src = bookCover.imageUrl;
         previewContainer.classList.remove("hidden");
         placeholder.classList.add("hidden");
         selectedBookCoverBase64 = bookCover.imageUrl;
+    }
+
+    // Update Step 1 button to clarify editing active book
+    const publishBtn = document.getElementById("publish-book-cover-btn");
+    if (publishBtn) {
+        publishBtn.innerHTML = `<span>💾 '${activeBookName}' വിവരങ്ങൾ അപ്‌ഡേറ്റ് ചെയ്യുക (Update Book Details)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
     }
 
     // Activate Step 2 & 3
@@ -1707,10 +2155,158 @@ function initChapterWriter() {
         });
     }
 
+<<<<<<< HEAD
     window.addChapterToBook = async function() {
             if (!activeBookName) {
                 showGlobalStatus("ദയവായി ആദ്യം ഘട്ടം 1-ൽ ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ സേവ് ചെയ്യുക.", "error");
                 return;
+=======
+    let isSavingChapter = false;
+    let editingChapterId = null;
+
+    function showChapterInlineMsg(text, type = "error") {
+        const msgEl = document.getElementById("bm-chapter-msg");
+        if (!msgEl) return;
+        msgEl.textContent = text;
+        msgEl.classList.remove("hidden");
+        if (type === "error") {
+            msgEl.className = "p-3 rounded-xl text-xs font-bold text-center mb-3 bg-rose-50 text-rose-700 border border-rose-200 block";
+        } else {
+            msgEl.className = "p-3 rounded-xl text-xs font-bold text-center mb-3 bg-emerald-50 text-emerald-800 border border-emerald-200 block";
+        }
+    }
+
+    function clearChapterInlineMsg() {
+        const msgEl = document.getElementById("bm-chapter-msg");
+        if (msgEl) {
+            msgEl.textContent = "";
+            msgEl.className = "hidden p-3 rounded-xl text-xs font-bold text-center mb-3";
+        }
+    }
+
+    function resetChapterEditMode() {
+        editingChapterId = null;
+        const cancelBtn = document.getElementById("bm-cancel-edit-chapter-btn");
+        const publishBtn = document.getElementById("bm-publish-article-btn");
+        if (cancelBtn) cancelBtn.classList.add("hidden");
+        if (publishBtn) {
+            publishBtn.innerHTML = '<span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>';
+        }
+        const excerptInput = document.getElementById("bm-art-excerpt");
+        if (excerptInput) excerptInput.value = "";
+        const resetColorsBtn = document.getElementById("bm-reset-colors-btn");
+        if (resetColorsBtn) resetColorsBtn.click();
+        const chapterSlugInput = document.getElementById("bm-customSlug");
+        if (chapterSlugInput) {
+            chapterSlugInput.value = "";
+            delete chapterSlugInput.dataset.touched;
+        }
+    }
+
+    function startEditChapter(id) {
+        const art = (activeBookChapters && activeBookChapters.find(c => c.id === id)) ||
+                    (currentArticlesList && currentArticlesList.find(a => a.id === id));
+        if (!art) {
+            showChapterInlineMsg("അധ്യായം കണ്ടെത്താനായില്ല.", "error");
+            return;
+        }
+        editingChapterId = id;
+
+        const titleInput = document.getElementById("bm-art-title");
+        const contentInput = document.getElementById("bm-art-content");
+        const transcriptionInput = document.getElementById("bm-art-transcription");
+        const excerptInput = document.getElementById("bm-art-excerpt");
+        const previewImg = document.getElementById("bm-art-image-preview");
+        const previewContainer = document.getElementById("bm-art-image-preview-container");
+        const placeholder = document.getElementById("bm-art-image-placeholder");
+        const cancelBtn = document.getElementById("bm-cancel-edit-chapter-btn");
+        const publishBtn = document.getElementById("bm-publish-article-btn");
+
+        if (titleInput) titleInput.value = art.title || "";
+        const chapterSlugInput = document.getElementById("bm-customSlug");
+        if (chapterSlugInput) {
+            chapterSlugInput.value = art.slug || (art.title ? cleanCustomPath("", art.title) : "");
+            if (art.slug) chapterSlugInput.dataset.touched = "true";
+            else delete chapterSlugInput.dataset.touched;
+        }
+        if (contentInput) contentInput.value = art.content || "";
+        if (transcriptionInput) transcriptionInput.value = art.transcription || "";
+        if (excerptInput) excerptInput.value = art.storedExcerpt || (art.hasCustomExcerpt ? art.excerpt : "") || art.excerpt || "";
+
+        // Populate chapter colors & font size
+        const titleColorInput = document.getElementById("bm-art-title-color");
+        const contentColorInput = document.getElementById("bm-art-content-color");
+        const titleColorHex = document.getElementById("bm-title-color-hex");
+        const contentColorHex = document.getElementById("bm-content-color-hex");
+        const tColor = art.titleColor || "#1e1b18";
+        const cColor = art.contentColor || "#2b2118";
+        if (titleColorInput) titleColorInput.value = tColor;
+        if (titleColorHex) titleColorHex.textContent = tColor;
+        if (contentColorInput) contentColorInput.value = cColor;
+        if (contentColorHex) contentColorHex.textContent = cColor;
+
+        const fSize = art.fontSize || "medium";
+        const fSizeRadio = document.querySelector(`input[name="bm-art-font-size"][value="${fSize}"]`);
+        if (fSizeRadio) fSizeRadio.checked = true;
+        const fSizeLabel = document.getElementById("bm-font-size-label");
+        if (fSizeLabel) {
+            const labels = { small: "Small (ചെറുത്)", medium: "Medium (സാധാരണ)", large: "Large (വലുത്)", xlarge: "Extra Large (കൂടുതൽ)" };
+            fSizeLabel.textContent = labels[fSize] || fSize;
+        }
+
+        if (art.imageUrl && previewImg && previewContainer && placeholder) {
+            previewImg.src = art.imageUrl;
+            previewContainer.classList.remove("hidden");
+            placeholder.classList.add("hidden");
+            bmSelectedArticleImageBase64 = art.imageUrl;
+        } else if (previewContainer && placeholder) {
+            previewContainer.classList.add("hidden");
+            placeholder.classList.remove("hidden");
+            bmSelectedArticleImageBase64 = "";
+        }
+
+        if (cancelBtn) cancelBtn.classList.remove("hidden");
+        if (publishBtn) {
+            publishBtn.innerHTML = '<span>അധ്യായം അപ്‌ഡേറ്റ് ചെയ്യുക (Update Chapter)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+        }
+
+        showChapterInlineMsg(`✏️ അധ്യായം '${art.title || ''}' എഡിറ്റ് മോഡിലാണ്. മാറ്റങ്ങൾ വരുത്തിയ ശേഷം 'Update Chapter' അമർത്തുക.`, "info");
+
+        const step2El = document.getElementById("bm-step2-wrapper") || document.getElementById("bm-art-title");
+        if (step2El) {
+            step2El.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        if (titleInput) {
+            setTimeout(() => titleInput.focus(), 200);
+        }
+    }
+    window.startEditChapter = startEditChapter;
+
+    async function handleAddChapterToBook(e) {
+        if (e && typeof e.preventDefault === "function") e.preventDefault();
+        if (isSavingChapter) {
+            console.log("[ChapterWriter] Already processing save, skipping duplicate trigger");
+            return;
+        }
+
+        clearChapterInlineMsg();
+
+        // 1. Strict Step 1 requirement: Must have active bookId
+        let targetBookDoc = activeBookCoverDoc;
+        if (!targetBookDoc || !targetBookDoc.id) {
+            const rawTargetName = (activeBookName || document.getElementById("bm-active-book-select")?.value || document.getElementById("book-meta-name")?.value || "").trim();
+            if (rawTargetName && Array.isArray(currentArticlesList)) {
+                const cleanTarget = normalizeStringClean(rawTargetName);
+                targetBookDoc = currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
+                    normalizeStringClean(a.bookName) === cleanTarget ||
+                    normalizeStringClean(a.title) === cleanTarget
+                )) || null;
+                if (targetBookDoc) {
+                    activeBookCoverDoc = targetBookDoc;
+                    activeBookName = targetBookDoc.bookName || targetBookDoc.title;
+                    activeBookAuthor = targetBookDoc.author || activeBookAuthor;
+                }
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             }
 
             const title = document.getElementById("bm-art-title")?.value.trim();
@@ -1731,6 +2327,7 @@ function initChapterWriter() {
             publishBtn.disabled = true;
             publishBtn.innerHTML = "അധ്യായം ചേർക്കുന്നു...";
 
+<<<<<<< HEAD
             try {
                 // Next sequential priority number
                 const nextPriority = activeBookChapters.length + 1;
@@ -1740,11 +2337,108 @@ function initChapterWriter() {
                     title,
                     author: activeBookAuthor || "NUQTHA AUTHOR",
                     category: bookTag,
+=======
+        try {
+            // Sequential order number
+            const nextOrder = (activeBookChapters && activeBookChapters.length > 0)
+                ? Math.max(...activeBookChapters.map(c => Number(c.order !== undefined ? c.order : (c.priority || 0))), 0) + 1
+                : 1;
+
+            // Define author and authorId robustly
+            const author = (targetBookDoc.author || activeBookAuthor || "NUQTHA AUTHOR").trim();
+            const authorId = window.currentUser?.uid || localStorage.getItem("nuqtha_admin_uid") || targetBookDoc?.authorId || "admin";
+            const bookTag = document.getElementById("book-meta-tag")?.value?.trim() || targetBookDoc.category || "Chapter";
+
+            if (editingChapterId) {
+                // Update existing chapter preserving current order
+                const existingChapter = (activeBookChapters && activeBookChapters.find(c => c.id === editingChapterId)) ||
+                                        (currentArticlesList && currentArticlesList.find(a => a.id === editingChapterId));
+                const chapterOrder = existingChapter ? (existingChapter.order !== undefined ? existingChapter.order : (existingChapter.priority || 1)) : nextOrder;
+                const customChapterSlugEl = document.getElementById("bm-customSlug");
+                const customChapterSlugVal = customChapterSlugEl ? customChapterSlugEl.value.trim() : "";
+                const chapterSlug = cleanCustomPath(customChapterSlugVal, title);
+                const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
+                const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
+                const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";
+
+                const raw = {
+                    title,
+                    slug: chapterSlug,
+                    bookSlug: bookSlug,
+                    author,
+                    authorId,
+                    category: "Chapter",
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                     transcription,
                     ...getBookArticleLinkFields(activeBookCoverDoc, activeBookName, nextPriority),
                     content,
+<<<<<<< HEAD
                     imageUrl: bmSelectedArticleImageBase64,
+=======
+                    imageUrl: chapterImg,
+                    thumbnailUrl: chapterThumb,
+                    ogImage: chapterThumb,
+                    bookId: activeBookId,
+                    bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
+                    status: "published",
                     type: "ARTICLE",
+                    isBook: false,
+                    isChapter: true,
+                    placement: "AUTO",
+                    date: new Date().toLocaleDateString("en-GB")
+                };
+
+                const sanitized = validateAndSanitizeArticleForSave(raw);
+                await updateDoc(doc(db, "articles", editingChapterId), {
+                    ...sanitized,
+                    updatedAt: serverTimestamp()
+                });
+
+                const updatedArt = { id: editingChapterId, ...sanitized };
+                const cIndex = currentArticlesList.findIndex(a => a.id === editingChapterId);
+                if (cIndex !== -1) currentArticlesList[cIndex] = updatedArt;
+
+                activeBookChapters = filterAndSortChapters(targetBookDoc, currentArticlesList);
+                renderBookChaptersReorderList(activeBookChapters);
+                updateActiveBookOverview(currentArticlesList);
+                renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+
+                showChapterInlineMsg(`✨ അധ്യായം '${title}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
+                showGlobalStatus(`✨ അധ്യായം '${title}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
+            } else {
+                // Save new chapter as article in Firestore with bookId, order, status published, author from book
+                const customChapterSlugEl = document.getElementById("bm-customSlug");
+                const customChapterSlugVal = customChapterSlugEl ? customChapterSlugEl.value.trim() : "";
+                const chapterSlug = cleanCustomPath(customChapterSlugVal, title);
+                const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
+                const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
+                const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";
+
+                const raw = {
+                    title,
+                    slug: chapterSlug,
+                    bookSlug: bookSlug,
+                    author,
+                    authorId,
+                    category: "Chapter",
+                    transcription,
+                    excerpt,
+                    titleColor,
+                    contentColor,
+                    fontSize,
+                    order: nextOrder,
+                    priority: nextOrder,
+                    content,
+                    imageUrl: chapterImg,
+                    thumbnailUrl: chapterThumb,
+                    ogImage: chapterThumb,
+                    bookId: activeBookId,
+                    bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
+                    status: "published",
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
+                    type: "ARTICLE",
+                    isBook: false,
+                    isChapter: true,
                     placement: "AUTO",
                     date: new Date().toLocaleDateString("en-GB")
                 };
@@ -1762,11 +2456,27 @@ function initChapterWriter() {
 
                 showGlobalStatus(`✨ അധ്യായം '${title}' (#${nextPriority}) വിജയകരമായി ചേർത്തു!`, "success");
 
+<<<<<<< HEAD
                 // Reset chapter form
                 document.getElementById("bm-art-title").value = "";
                 document.getElementById("bm-art-content").value = "";
                 document.getElementById("bm-art-transcription").value = "";
                 if (removeBtn) removeBtn.click();
+=======
+                const bIdx = currentArticlesList.findIndex(a => a.id === targetBookDoc.id);
+                if (bIdx !== -1) {
+                    currentArticlesList[bIdx].chapters = existingChapters;
+                }
+                if (activeBookCoverDoc && activeBookCoverDoc.id === targetBookDoc.id) {
+                    activeBookCoverDoc.chapters = existingChapters;
+                }
+
+                // Immediately update in-memory chapters and render Step 3
+                activeBookChapters = filterAndSortChapters(targetBookDoc, currentArticlesList);
+                renderBookChaptersReorderList(activeBookChapters);
+                updateActiveBookOverview(currentArticlesList);
+                renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 
                 // Refresh chapters list
                 loadAndRenderBookChapters();
@@ -1993,9 +2703,85 @@ async function attachSelectedArticles() {
         showGlobalStatus("ലേഖനങ്ങൾ അറ്റാച്ച് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
     } finally {
         if (attachBtn) {
+<<<<<<< HEAD
             attachBtn.disabled = false;
             attachBtn.textContent = "തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക";
         }
+=======
+        const executeAttach = async () => {
+            if (!activeBookName) {
+                showGlobalStatus("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.", "error");
+                return;
+            }
+
+            const checked = Array.from(document.querySelectorAll(".bm-article-chk:checked"));
+            if (checked.length === 0) {
+                showGlobalStatus("ദയവായി പുസ്തകത്തിലേക്ക് ചേർക്കാൻ ലേഖനങ്ങൾ തിരഞ്ഞെടുക്കുക.", "error");
+                return;
+            }
+
+            attachBtn.disabled = true;
+            attachBtn.innerHTML = "അറ്റാച്ച് ചെയ്യുന്നു...";
+
+            try {
+                let startPriority = activeBookChapters.length;
+                for (const chk of checked) {
+                    const id = chk.dataset.id;
+                    if (id) {
+                        startPriority++;
+                        await updateDoc(doc(db, "articles", id), {
+                            bookName: activeBookName,
+                            bookId: activeBookCoverDoc?.id || "",
+                            author: activeBookAuthor || "NUQTHA AUTHOR",
+                            priority: startPriority,
+                            order: startPriority,
+                            type: "ARTICLE",
+                            isBook: false,
+                            isChapter: true,
+                            updatedAt: serverTimestamp()
+                        });
+                        const item = currentArticlesList.find(a => a.id === id);
+                        if (item) {
+                            item.bookName = activeBookName;
+                            item.author = activeBookAuthor || item.author;
+                            item.priority = startPriority;
+                            item.order = startPriority;
+                            item.bookId = activeBookCoverDoc?.id || "";
+                            item.type = "ARTICLE";
+                            item.isBook = false;
+                            item.isChapter = true;
+                        }
+                    }
+                }
+
+                if (activeBookCoverDoc && activeBookCoverDoc.id) {
+                    const existingChs = Array.isArray(activeBookCoverDoc.chapters) ? [...activeBookCoverDoc.chapters] : [];
+                    for (const chk of checked) {
+                        const id = chk.dataset.id;
+                        if (id && !existingChs.includes(id)) existingChs.push(id);
+                    }
+                    activeBookCoverDoc.chapters = existingChs;
+                    await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+                        chapters: existingChs,
+                        updatedAt: serverTimestamp()
+                    });
+                }
+
+                showGlobalStatus(`✨ ${checked.length} ലേഖനങ്ങൾ '${activeBookName}' ലേക്ക് അറ്റാച്ച് ചെയ്തു!`, "success");
+                loadAndRenderBookChapters();
+                renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+            } catch (err) {
+                console.error("Attach articles error:", err);
+                showGlobalStatus("ലേഖനങ്ങൾ അറ്റാച്ച് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
+            } finally {
+                attachBtn.disabled = false;
+                attachBtn.innerHTML = "തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക";
+            }
+        };
+
+        attachBtn.addEventListener("click", executeAttach);
+        attachBtn.addEventListener("execute-attach", executeAttach);
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
     }
 }
 
@@ -2245,6 +3031,229 @@ function updateActiveBookOverview(articles) {
     }
 }
 
+<<<<<<< HEAD
+=======
+function updateBooksCounter(count) {
+    const tabBadge = document.getElementById("tab-book-badge");
+    const bmBadge = document.getElementById("bm-books-count-badge");
+    const totalEl = document.getElementById("bm-total-books-counter");
+    if (tabBadge) tabBadge.textContent = String(count);
+    if (bmBadge) bmBadge.textContent = `${count} Books`;
+    if (totalEl) totalEl.textContent = `${count} Books`;
+}
+
+function renderAdminBooksTab(articles) {
+    const gridEl = document.getElementById("bm-published-books-grid");
+    const totalCounterEl = document.getElementById("bm-total-books-counter");
+    const badgeEl = document.getElementById("bm-books-count-badge");
+    const tabBadgeEl = document.getElementById("tab-book-badge");
+
+    const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
+    const rawBooks = pool.filter(a => {
+        if (!a) return false;
+        const artType = (a.type || "").toString().toLowerCase().trim();
+        const isBook = artType === "book" || a.isBook === true;
+        return isBook && isMainBook(a);
+    });
+
+    const books = [];
+    const seenIds = new Set();
+    for (const b of rawBooks) {
+        const key = b.id || b.bookName || b.title;
+        if (!seenIds.has(key)) {
+            seenIds.add(key);
+            books.push(b);
+        }
+    }
+
+    if (totalCounterEl) totalCounterEl.textContent = `${books.length} Books`;
+    if (badgeEl) badgeEl.textContent = `${books.length} Books`;
+    if (tabBadgeEl) tabBadgeEl.textContent = String(books.length);
+
+    if (!gridEl) return;
+
+    if (books.length === 0) {
+        gridEl.innerHTML = `
+            <div class="col-span-full text-center py-12 px-4 bg-amber-50/40 rounded-2xl border-2 border-dashed border-amber-200 space-y-2">
+                <span class="text-3xl">📚</span>
+                <p class="text-xs font-bold text-amber-900">പുസ്തകങ്ങൾ ഒന്നും നിലവിൽ ചേർത്തിട്ടില്ല</p>
+                <p class="text-[11px] text-amber-700">പുതിയ പുസ്തകം ചേർക്കാൻ മുകളിലെ '+ പുതിയ പുസ്തകം നിർമ്മിക്കുക' ക്ലിക്ക് ചെയ്യുക.</p>
+            </div>
+        `;
+        return;
+    }
+
+    gridEl.innerHTML = books.map(book => {
+        const bookTitle = book.bookName || book.title || "Untitled Book";
+        const chapterCount = countBookChapters(book, pool);
+        const isActive = activeBookCoverDoc && (activeBookCoverDoc.id === book.id || activeBookName === bookTitle);
+
+        return `
+            <div class="p-4 bg-white rounded-2xl border-2 ${isActive ? 'border-amber-500 bg-amber-50/20 ring-2 ring-amber-200' : 'border-[#ebdccb] hover:border-amber-300'} transition shadow-xs flex flex-col justify-between gap-3">
+                <div class="flex items-start gap-3">
+                    <div class="w-16 h-22 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-amber-600 to-amber-900 border border-amber-200 shadow-xs flex items-center justify-center text-white">
+                        ${book.imageUrl ? `<img src="${book.imageUrl}" alt="${bookTitle}" class="w-full h-full object-cover">` : `<span class="text-2xl">📚</span>`}
+                    </div>
+                    <div class="flex-1 min-w-0 space-y-1">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md font-english">
+                                ${book.category || 'Premium Book'}
+                            </span>
+                            <span class="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-english">
+                                📖 ${chapterCount} Chapters
+                            </span>
+                            ${isActive ? `<span class="text-[9px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md font-english">● ACTIVE</span>` : ''}
+                        </div>
+                        <h4 class="text-sm font-extrabold text-[#1e1b18] truncate leading-tight">${bookTitle}</h4>
+                        <p class="text-[11px] font-bold text-[#8c7a6b] truncate">✍️ ${book.author || 'Single Author'}</p>
+                        ${book.date ? `<p class="text-[10px] text-slate-400 font-english">📅 ${book.date}</p>` : ''}
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-2.5 border-t border-[#f0e6d6] gap-2 flex-wrap">
+                    <a href="${getStoryUrl(book)}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline font-english">
+                        <span>👁️ Live</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
+
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" onclick="window.addChapterToBookById('${book.id}')" title="ഈ പുസ്തകത്തിലേക്ക് പുതിയ അധ്യായം ചേർക്കുക" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs font-['Noto_Sans_Malayalam'] cursor-pointer">
+                            <span>➕ അധ്യായം ചേർക്കുക</span>
+                        </button>
+                        <button type="button" onclick="window.manageBookById('${book.id}')" title="അധ്യായങ്ങൾ മാനേജ് ചെയ്യുക & പുനഃക്രമീകരിക്കുക" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
+                            <span>📖 Chapters</span>
+                        </button>
+                        <button type="button" onclick="window.editBookMetadataById('${book.id}')" title="പുസ്തക വിവരങ്ങൾ എഡിറ്റ് ചെയ്യുക" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
+                            <span>✏️ Edit</span>
+                        </button>
+                        <button type="button" onclick="window.deleteBookById('${book.id}', '${bookTitle.replace(/'/g, "\\'")}')" title="ഈ പുസ്തകം ഒഴിവാക്കുക" class="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition font-english cursor-pointer">
+                            <span>✕</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+window.renderAdminBooksTab = renderAdminBooksTab;
+
+window.addChapterToBookById = function(bookId) {
+    const book = currentArticlesList.find(a => a.id === bookId);
+    if (!book) return;
+    const name = book.bookName || book.title;
+    selectActiveBook(name);
+    resetChapterEditMode();
+
+    const titleInput = document.getElementById("bm-art-title");
+    const contentInput = document.getElementById("bm-art-content");
+    const transcriptionInput = document.getElementById("bm-art-transcription");
+    const excerptInput = document.getElementById("bm-art-excerpt");
+    if (titleInput) {
+        titleInput.value = "";
+    }
+    if (contentInput) contentInput.value = "";
+    if (transcriptionInput) transcriptionInput.value = "";
+    if (excerptInput) excerptInput.value = "";
+
+    const wrapper = document.getElementById("bm-step2-3-wrapper");
+    if (wrapper) {
+        wrapper.classList.remove("hidden");
+        const step2El = document.getElementById("bm-step2-section") || document.getElementById("bm-art-title")?.closest("div.bg-white") || wrapper;
+        setTimeout(() => {
+            step2El.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (titleInput) titleInput.focus();
+        }, 100);
+    }
+    showGlobalStatus(`📖 '${name}' ലേക്ക് പുതിയ അധ്യായം ചേർക്കാൻ താഴെയുള്ള ഘട്ടം 2 ഫോം ഉപയോഗിക്കുക.`, "info");
+};
+
+window.manageBookById = function(bookId) {
+    const book = currentArticlesList.find(a => a.id === bookId);
+    if (!book) return;
+    const name = book.bookName || book.title;
+    selectActiveBook(name);
+    renderAdminBooksTab(currentArticlesList);
+    const step3 = document.getElementById("bm-step3-section") || document.getElementById("bm-step2-3-wrapper");
+    if (step3) {
+        step3.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    showGlobalStatus(`📖 '${name}' തുറന്നു. അധ്യായങ്ങൾ താഴെ ക്രമീകരിക്കാം.`, "info");
+};
+
+window.editBookMetadataById = function(bookId) {
+    const book = currentArticlesList.find(a => a.id === bookId);
+    if (!book) return;
+    const name = book.bookName || book.title;
+    selectActiveBook(name);
+    renderAdminBooksTab(currentArticlesList);
+    const step1 = document.getElementById("bm-step1-section");
+    if (step1) {
+        step1.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    const nameInput = document.getElementById("book-meta-name");
+    if (nameInput) {
+        nameInput.focus();
+        nameInput.classList.add("ring-2", "ring-blue-300");
+        setTimeout(() => nameInput.classList.remove("ring-2", "ring-blue-300"), 1500);
+    }
+    showGlobalStatus(`✏️ '${name}' വിവരങ്ങൾ എഡിറ്റ് ചെയ്യുക.`, "info");
+};
+
+window.deleteBookById = async function(bookId, bookTitle) {
+    if (!bookId) return;
+    const cleanTitle = bookTitle || "ഈ പുസ്തകം";
+    if (!confirm(`'${cleanTitle}' എന്ന പുസ്തകം പൂർണ്ണമായി നീക്കം ചെയ്യണോ (Delete Book)?`)) return;
+
+    try {
+        await deleteDoc(doc(db, "articles", bookId));
+
+        // Also delete from books collection (Fix Delete Issue)
+        try {
+            await deleteDoc(doc(db, "books", bookId));
+        } catch (_) {}
+
+        // Clear local caches so deleted books don't persist
+        try {
+            sessionStorage.removeItem("nuqtha_cached_articles");
+            sessionStorage.removeItem("nuqtha:library:v1");
+        } catch (_) {}
+
+        // Unlink chapters belonging to this book
+        const linkedChapters = currentArticlesList.filter(a => a.bookId === bookId || (cleanTitle && a.bookName === cleanTitle));
+        for (const ch of linkedChapters) {
+            try {
+                await updateDoc(doc(db, "articles", ch.id), {
+                    bookId: "",
+                    bookName: "",
+                    updatedAt: serverTimestamp()
+                });
+                ch.bookId = "";
+                ch.bookName = "";
+            } catch (chErr) {
+                console.warn("[BookManager] Unlink error:", ch.id, chErr);
+            }
+        }
+
+        currentArticlesList = currentArticlesList.filter(a => a.id !== bookId);
+
+        if (activeBookCoverDoc?.id === bookId || activeBookName === cleanTitle) {
+            resetBookManagerForm();
+        }
+
+        const allBooks = currentArticlesList.filter(a => isMainBook(a));
+        updateBooksCounter(allBooks.length);
+        updateActiveBookOverview(currentArticlesList);
+        renderAdminBooksTab(currentArticlesList);
+        renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+
+        showGlobalStatus(`📚 '${cleanTitle}' വിജയകരമായി നീക്കം ചെയ്തു.`, "success");
+    } catch (err) {
+        console.error("[BookManager] Delete book error:", err);
+        showGlobalStatus("പുസ്തകം നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
+    }
+};
+
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 window.setPlaylistInput = function(name) {
     selectActiveBook(name);
 };
@@ -2280,8 +3289,49 @@ function listenToFirestoreArticles() {
         if (items.length === 0 && currentArticlesList.length > 0) return;
 
         currentArticlesList = items;
+<<<<<<< HEAD
         updateArticleCounters(items.length);
         renderAdminPublishedList(items);
+=======
+
+        // Persist to session cache for seamless offline fallback safely without quota overflow
+        try {
+            const lightweight = items.slice(0, 30).map(a => {
+                const copy = { ...a };
+                if (copy.content && copy.content.length > 500) {
+                    copy.content = copy.excerpt || copy.content.slice(0, 300);
+                }
+                if (copy.imageUrl && copy.imageUrl.startsWith("data:") && copy.imageUrl.length > 1000) {
+                    copy.imageUrl = "";
+                }
+                if (copy.thumbnailUrl && copy.thumbnailUrl.startsWith("data:") && copy.thumbnailUrl.length > 1000) {
+                    copy.thumbnailUrl = "";
+                }
+                if (copy.ogImage && copy.ogImage.startsWith("data:") && copy.ogImage.length > 1000) {
+                    copy.ogImage = "";
+                }
+                return copy;
+            });
+            sessionStorage.setItem("nuqtha_cached_articles", JSON.stringify(lightweight));
+        } catch (e) {
+            try { sessionStorage.removeItem("nuqtha_cached_articles"); } catch (_) {}
+        }
+
+        const standardArticles = items.filter(a => !isBookOrChapter(a));
+        const allBooks = items.filter(a => isMainBook(a));
+
+        console.log(`[NUQTHA ADMIN] processArticlesData: Total ${items.length} items -> ${allBooks.length} Books, ${standardArticles.length} Standard Articles.`);
+
+        safeArticles = Array.isArray(standardArticles) ? standardArticles : [];
+        if (typeof window !== "undefined") {
+            window.safeArticles = safeArticles;
+        }
+
+        updateArticleCounters(standardArticles.length);
+        updateBooksCounter(allBooks.length);
+
+        renderAdminPublishedList(standardArticles);
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
         updateActiveBookOverview(items);
         renderBookManagerCompactArticles(items, activeBookName);
         renderLayoutManagerList(items);
@@ -2329,17 +3379,20 @@ function listenToFirestoreArticles() {
     }
 
     try {
+        console.log("[NUQTHA ADMIN] Subscribing to Firestore 'articles' collection onSnapshot...");
         onSnapshot(colRef, (snapshot) => {
+            console.log(`[NUQTHA ADMIN] onSnapshot received ${snapshot.docs.length} documents (fromCache: ${snapshot.metadata.fromCache})`);
             const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
             if (items.length > 0) processArticlesData(items);
         }, (err) => {
-            console.warn("[NUQTHA ADMIN] Realtime listener failed; trying a one-time Firestore read:", err);
+            console.error("[NUQTHA ADMIN] Realtime onSnapshot listener failed:", err.code || "", err.message, err);
             getDocs(colRef).then(snapshot => {
+                console.log(`[NUQTHA ADMIN] Fallback getDocs received ${snapshot.docs.length} documents`);
                 if (snapshot.empty) return;
                 const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
                 processArticlesData(items);
             }).catch(fallbackErr => {
-                console.warn("[NUQTHA ADMIN] One-time Firestore read failed:", fallbackErr);
+                console.error("[NUQTHA ADMIN] Fallback getDocs read failed:", fallbackErr.code || "", fallbackErr.message, fallbackErr);
             });
         });
     } catch (error) {
@@ -2347,12 +3400,13 @@ function listenToFirestoreArticles() {
     }
 
     getDocs(colRef).then(snapshot => {
+        console.log(`[NUQTHA ADMIN] Initial getDocs received ${snapshot.docs.length} documents`);
         if (!snapshot.empty) {
             const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
             processArticlesData(items);
         }
     }).catch(error => {
-        console.warn("[NUQTHA ADMIN] Initial Firestore read failed; REST fallback will be used:", error);
+        console.warn("[NUQTHA ADMIN] Initial Firestore read failed; REST fallback will be used:", error.code || "", error.message);
     });
 
     async function fetchAdminViaRest() {
@@ -2365,6 +3419,7 @@ function listenToFirestoreArticles() {
                     throw new Error("Firebase project ID or API key is missing.");
                 }
 
+<<<<<<< HEAD
                 const documents = [];
                 let nextPageToken = "";
                 do {
@@ -2384,14 +3439,45 @@ function listenToFirestoreArticles() {
                 const restArticles = documents.map(document => {
                     const id = document.name?.split("/").pop();
                     if (!id) throw new Error("Firestore returned an article without a document ID.");
+=======
+                async function fetchColRest(colName) {
+                    const docs = [];
+                    let nextPageToken = "";
+                    do {
+                        const params = new URLSearchParams({ pageSize: "300", key: apiKey });
+                        if (nextPageToken) params.set("pageToken", nextPageToken);
+                        const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/${colName}?${params}`;
+                        const response = await fetchWithRetry(url, {}, 3, 300);
+                        if (!response || !response.ok) break;
+                        const page = await response.json();
+                        if (page && Array.isArray(page.documents)) {
+                            docs.push(...page.documents);
+                        }
+                        nextPageToken = page?.nextPageToken || "";
+                    } while (nextPageToken);
+                    return docs;
+                }
+
+                const articleDocs = await fetchColRest("articles");
+
+                const combinedMap = new Map();
+                articleDocs.forEach(document => {
+                    const id = document.name ? document.name.split("/").pop() : "";
+                    if (!id) return;
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                     const fields = decodeFirestoreFields(document.fields || {});
-                    return normalizeArticleDoc({
+                    combinedMap.set(id, normalizeArticleDoc({
                         ...fields,
                         createdAt: fields.createdAt || document.createTime,
                         updatedAt: fields.updatedAt || document.updateTime
+<<<<<<< HEAD
                     }, id);
+=======
+                    }, id));
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                 });
 
+                const restArticles = Array.from(combinedMap.values());
                 if (restArticles.length > 0 || currentArticlesList.length === 0) {
                     processArticlesData(restArticles);
                 }
@@ -3115,4 +4201,305 @@ if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initAdminSecurity, { once: true });
 } else {
     queueMicrotask(initAdminSecurity);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   8. USER ACTIVITY & ADVANCED READING ANALYTICS (TAB 7)
+   ═══════════════════════════════════════════════════════════ */
+let rawReadingLogs = [];
+let rawRegisteredUsers = [];
+let activeAnalyticsFilter = "all";
+
+export function initUserAnalyticsDashboard() {
+    const readingTbody = document.getElementById("analytics-reading-history-tbody");
+    const usersTbody = document.getElementById("analytics-users-tbody");
+    const filterSelect = document.getElementById("filter-engagement-status");
+    const refreshBtn = document.getElementById("refresh-analytics-btn");
+
+    if (filterSelect) {
+        filterSelect.addEventListener("change", () => {
+            activeAnalyticsFilter = filterSelect.value;
+            renderReadingActivityTable();
+        });
+    }
+
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => {
+            refreshBtn.classList.add("opacity-50", "pointer-events-none");
+            renderReadingActivityTable();
+            renderRegisteredUsersTable();
+            setTimeout(() => refreshBtn.classList.remove("opacity-50", "pointer-events-none"), 350);
+        });
+    }
+
+    // 1. Realtime Listener on `reading_history`
+    try {
+        const historyCol = collection(db, "reading_history");
+        onSnapshot(historyCol, (snapshot) => {
+            const logs = [];
+            snapshot.forEach(docSnap => {
+                logs.push({ id: docSnap.id, ...docSnap.data() });
+            });
+
+            // Sort newest first
+            logs.sort((a, b) => {
+                const timeA = parseTimestampMillis(a.updatedAt) || parseTimestampMillis(a.createdAt) || 0;
+                const timeB = parseTimestampMillis(b.updatedAt) || parseTimestampMillis(b.createdAt) || 0;
+                return timeB - timeA;
+            });
+
+            rawReadingLogs = logs;
+            updateReadingAnalyticsCounters(logs);
+            renderReadingActivityTable();
+        }, (err) => {
+            console.warn("[Admin Analytics] reading_history listener notice:", err);
+            if (readingTbody && rawReadingLogs.length === 0) {
+                readingTbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-xs text-[#8c7a6b]">വായനകളുടെ രേഖകൾ ഇതുവരെ ലഭ്യമായിട്ടില്ല.</td></tr>`;
+            }
+        });
+    } catch (err) {
+        console.warn("[Admin Analytics] Failed to listen to reading_history:", err);
+    }
+
+    // 2. Realtime Listener on `users`
+    try {
+        const usersCol = collection(db, "users");
+        onSnapshot(usersCol, (snapshot) => {
+            const users = [];
+            snapshot.forEach(docSnap => {
+                users.push({ id: docSnap.id, ...docSnap.data() });
+            });
+
+            // Sort by latest active / login first
+            users.sort((a, b) => {
+                const timeA = parseTimestampMillis(a.lastLogin) || parseTimestampMillis(a.lastActive) || 0;
+                const timeB = parseTimestampMillis(b.lastLogin) || parseTimestampMillis(b.lastActive) || 0;
+                return timeB - timeA;
+            });
+
+            rawRegisteredUsers = users;
+            const usersCountEl = document.getElementById("stat-google-users");
+            const usersBadgeEl = document.getElementById("registered-users-count");
+            if (usersCountEl) usersCountEl.textContent = users.length;
+            if (usersBadgeEl) usersBadgeEl.textContent = `${users.length} Users`;
+            renderRegisteredUsersTable();
+        }, (err) => {
+            console.warn("[Admin Analytics] users listener notice:", err);
+            if (usersTbody && rawRegisteredUsers.length === 0) {
+                usersTbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-xs text-[#8c7a6b]">ഉപയോക്താക്കളുടെ വിവരങ്ങൾ ലഭ്യമല്ല.</td></tr>`;
+            }
+        });
+    } catch (err) {
+        console.warn("[Admin Analytics] Failed to listen to users:", err);
+    }
+}
+
+export function updateReadingAnalyticsCounters(logs) {
+    const totalViewsEl = document.getElementById("stat-total-views");
+    const engagedReadersEl = document.getElementById("stat-engaged-readers");
+    const fullReadsEl = document.getElementById("stat-full-reads");
+    const activityBadgeEl = document.getElementById("reading-activity-count");
+    const tabAnalyticsBadgeEl = document.getElementById("tab-analytics-badge");
+
+    const totalViews = logs.length;
+    const engagedCount = logs.filter(r => r.event === "engaged_read" || r.event === "full_read" || r.durationSeconds >= 5).length;
+    const fullReadsCount = logs.filter(r => r.event === "full_read" || (r.scrollPercent && r.scrollPercent >= 80)).length;
+
+    if (totalViewsEl) totalViewsEl.textContent = totalViews;
+    if (engagedReadersEl) engagedReadersEl.textContent = engagedCount;
+    if (fullReadsEl) fullReadsEl.textContent = fullReadsCount;
+    if (activityBadgeEl) activityBadgeEl.textContent = `${totalViews} Logs`;
+    if (tabAnalyticsBadgeEl) tabAnalyticsBadgeEl.textContent = totalViews;
+}
+
+export function renderReadingActivityTable() {
+    const tbody = document.getElementById("analytics-reading-history-tbody");
+    if (!tbody) return;
+
+    let filtered = rawReadingLogs;
+    if (activeAnalyticsFilter === "full_read") {
+        filtered = rawReadingLogs.filter(r => r.event === "full_read" || (r.scrollPercent && r.scrollPercent >= 80));
+    } else if (activeAnalyticsFilter === "engaged_read") {
+        filtered = rawReadingLogs.filter(r => r.event === "engaged_read" || r.durationSeconds >= 5);
+    } else if (activeAnalyticsFilter === "page_view") {
+        filtered = rawReadingLogs.filter(r => r.event === "page_view" && !r.hasEngaged && !r.hasFullRead);
+    } else if (activeAnalyticsFilter === "google_only") {
+        filtered = rawReadingLogs.filter(r => r.userType === "google" || (!r.isGuest && r.uid));
+    } else if (activeAnalyticsFilter === "guest_only") {
+        filtered = rawReadingLogs.filter(r => r.isGuest || r.userType === "guest");
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="py-10 text-center text-[#8c7a6b] font-medium">
+                    <span class="text-2xl block mb-1">🔍</span>
+                    തിരഞ്ഞെടുത്ത ഫിൽട്ടറിൽ വിവരങ്ങൾ ലഭ്യമല്ല (No activity found).
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    // Display latest 100 entries for smooth UI performance
+    const displayed = filtered.slice(0, 100);
+
+    tbody.innerHTML = displayed.map(log => {
+        const isGoogle = log.userType === "google" || (!log.isGuest && log.uid);
+        const name = log.displayName || (isGoogle ? "Google User" : "Guest Visitor");
+        const email = log.email || "";
+        const photo = log.photoURL || "";
+        const guestId = log.guestId || "";
+
+        // User Identity Cell
+        let userCell = "";
+        if (isGoogle) {
+            const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3b82f6&color=fff&size=64`;
+            userCell = `
+                <div class="flex items-center gap-2.5 py-1">
+                    <img src="${photo || fallbackAvatar}" alt="${name}" class="w-8 h-8 rounded-full object-cover border border-[#ebdccb] shadow-2xs" onerror="this.onerror=null;this.src='${fallbackAvatar}'">
+                    <div class="min-w-0">
+                        <div class="font-bold text-[#1e1b18] truncate max-w-[150px] sm:max-w-[180px]">${name}</div>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 font-english uppercase tracking-wider">Google</span>
+                            ${email ? `<span class="text-[10px] text-[#8c7a6b] truncate max-w-[120px]" title="${email}">${email}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            const shortId = guestId ? (guestId.startsWith("guest_") ? guestId.replace("guest_", "").slice(0, 8) : guestId.slice(0, 8)) : "anon";
+            userCell = `
+                <div class="flex items-center gap-2.5 py-1">
+                    <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs font-english shadow-2xs">
+                        G
+                    </div>
+                    <div class="min-w-0">
+                        <div class="font-bold text-[#4a3c33] font-english">Guest Visitor</div>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-100 text-stone-700 font-english font-mono">id: ${shortId}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Engagement Status Badge Cell
+        let statusBadge = "";
+        if (log.event === "full_read" || (log.scrollPercent && log.scrollPercent >= 80)) {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 font-english shadow-2xs">
+                    <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                    <span>Full Read (80%+)</span>
+                </span>
+            `;
+        } else if (log.event === "engaged_read" || log.durationSeconds >= 5) {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 font-english shadow-2xs">
+                    <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>Engaged (5s+)</span>
+                </span>
+            `;
+        } else {
+            statusBadge = `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200 font-english shadow-2xs">
+                    <svg class="w-3.5 h-3.5 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path></svg>
+                    <span>Just Opened</span>
+                </span>
+            `;
+        }
+
+        // Article Title & Link
+        const title = log.articleTitle || "Untitled Story";
+        const cat = log.category || "General";
+        const storyHref = log.slug ? `/story/${encodeURIComponent(log.slug)}` : (log.articleId ? `/article.html?id=${encodeURIComponent(log.articleId)}` : '#');
+
+        // Formatted Activity Time
+        const millis = parseTimestampMillis(log.updatedAt) || parseTimestampMillis(log.createdAt) || 0;
+        const formattedTime = formatAnalyticsTime(millis);
+
+        return `
+            <tr class="hover:bg-[#fbf7ee]/60 transition">
+                <td class="py-3 px-3">${userCell}</td>
+                <td class="py-3 px-3">${statusBadge}</td>
+                <td class="py-3 px-3">
+                    <div class="font-bold text-[#1e1b18] hover:text-[#b4532c] transition line-clamp-1 max-w-[260px] sm:max-w-xs">
+                        <a href="${storyHref}" target="_blank" rel="noopener noreferrer" class="hover:underline flex items-center gap-1">
+                            <span>${title}</span>
+                            <span class="text-[10px] text-[#8c7a6b] font-normal">↗</span>
+                        </a>
+                    </div>
+                    <span class="inline-block mt-0.5 text-[10px] font-bold text-[#8c7a6b] font-english uppercase tracking-wider">${cat}</span>
+                </td>
+                <td class="py-3 px-3 text-right whitespace-nowrap text-[#8c7a6b] font-english text-[11px] font-medium">
+                    ${formattedTime}
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+export function renderRegisteredUsersTable() {
+    const tbody = document.getElementById("analytics-users-tbody");
+    if (!tbody) return;
+
+    if (rawRegisteredUsers.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="py-10 text-center text-[#8c7a6b] font-medium">
+                    <span class="text-2xl block mb-1">👤</span>
+                    ഇതുവരെ ലോഗിൻ ചെയ്ത ഉപയോക്താക്കൾ ഇല്ല (No registered users yet).
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = rawRegisteredUsers.map(user => {
+        const name = user.displayName || user.name || "Google User";
+        const email = user.email || "No email";
+        const photo = user.photoURL || user.avatar || "";
+        const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4f46e5&color=fff&size=64`;
+        const uid = user.uid || user.id || "";
+        const shortUid = uid.length > 14 ? `${uid.slice(0, 10)}...${uid.slice(-4)}` : uid;
+
+        const millis = parseTimestampMillis(user.lastLogin) || parseTimestampMillis(user.lastActive) || 0;
+        const formattedTime = formatAnalyticsTime(millis);
+
+        return `
+            <tr class="hover:bg-[#fbf7ee]/60 transition">
+                <td class="py-3 px-3">
+                    <div class="flex items-center gap-2.5">
+                        <img src="${photo || fallbackAvatar}" alt="${name}" class="w-8 h-8 rounded-full object-cover border border-[#ebdccb] shadow-2xs" onerror="this.onerror=null;this.src='${fallbackAvatar}'">
+                        <div class="font-bold text-[#1e1b18]">${name}</div>
+                    </div>
+                </td>
+                <td class="py-3 px-3 font-english text-[#4a3c33] font-medium">
+                    <a href="mailto:${email}" class="hover:text-[#b4532c] hover:underline">${email}</a>
+                </td>
+                <td class="py-3 px-3 font-mono text-[10px] text-[#8c7a6b] font-english">
+                    <span class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200" title="${uid}">${shortUid}</span>
+                </td>
+                <td class="py-3 px-3 text-right whitespace-nowrap text-[#8c7a6b] font-english text-[11px] font-medium">
+                    ${formattedTime}
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+export function formatAnalyticsTime(millis) {
+    if (!millis) return "Recently";
+    const diff = Date.now() - millis;
+    if (diff < 60000) return "Just now (ഇപ്പോൾ)";
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    const date = new Date(millis);
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+if (typeof window !== "undefined") {
+    window.initUserAnalyticsDashboard = initUserAnalyticsDashboard;
+    window.renderReadingActivityTable = renderReadingActivityTable;
+    window.renderRegisteredUsersTable = renderRegisteredUsersTable;
 }

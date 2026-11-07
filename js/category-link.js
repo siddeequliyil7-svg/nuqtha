@@ -32,6 +32,12 @@ function categorySlug(raw) {
     return encodeURIComponent(norm.toLowerCase());
 }
 
+function isCurrentPageHome() {
+    if (typeof window === 'undefined' || !window.location) return false;
+    const path = (window.location.pathname || '').toLowerCase();
+    return path === '/' || path.endsWith('/index.html') || path.endsWith('/index') || path === '';
+}
+
 function getIndexBaseUrl() {
     if (typeof window !== 'undefined' && window.location) {
         if (window.location.protocol === 'file:') return 'index.html';
@@ -43,14 +49,14 @@ function getIndexBaseUrl() {
 function categoryUrl(name) {
     const norm = normalizeCategoryName(name);
     if (!norm || norm.toUpperCase() === 'ALL') {
-        return getIndexBaseUrl();
+        return isCurrentPageHome() ? '#home' : getIndexBaseUrl();
+    }
+    const slug = (norm.toUpperCase() === 'BOOKS') ? 'books' : categorySlug(norm);
+    if (!slug) return isCurrentPageHome() ? '#home' : getIndexBaseUrl();
+    if (isCurrentPageHome()) {
+        return `#${slug}`;
     }
     const base = getIndexBaseUrl();
-    if (norm.toUpperCase() === 'BOOKS') {
-        return base === '/' ? '/#books' : `${base}#books`;
-    }
-    const slug = categorySlug(norm);
-    if (!slug) return base;
     return base === '/' ? `/#${slug}` : `${base}#${slug}`;
 }
 
@@ -72,12 +78,13 @@ function getCategoryDisplayLabel(cat) {
 }
 
 function handleCategoryLinkClick(event, cat) {
-    if (!event) return;
-    event.stopPropagation();
+    if (event) {
+        if (typeof event.preventDefault === 'function') event.preventDefault();
+        if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
     const norm = normalizeCategoryName(cat);
     const upper = norm ? norm.toUpperCase() : 'ALL';
     if (typeof window !== 'undefined' && typeof window.switchToCategory === 'function') {
-        event.preventDefault();
         window.switchToCategory(upper);
         return false;
     }

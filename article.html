@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@100..800&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800;900&family=Noto+Serif+Malayalam:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<<<<<<< HEAD
     <script src="https://cdn.tailwindcss.com"></script>
     <script>window.tailwind.config = { darkMode: 'class' };</script>
     <link rel="stylesheet" href="styles.css">
@@ -18,17 +19,95 @@
             font-size: 1.22rem;
             color: #2b2118;
             font-family: 'Anek Malayalam', sans-serif;
+=======
+    
+    <!-- Razorpay Checkout Preconnect & Preload for Seamless iOS Safari Modal Checkout -->
+    <link rel="preconnect" href="https://checkout.razorpay.com">
+    <link rel="preconnect" href="https://api.razorpay.com">
+    <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
+
+    <meta name="color-scheme" content="light">
+    <link rel="stylesheet" href="./tailwind.css">
+
+    <script>
+        (function() {
+            try {
+                var s = localStorage.getItem("nuqtha_theme") || localStorage.getItem("theme");
+                if (s === "dark") {
+                    document.documentElement.classList.add("dark");
+                    document.documentElement.style.colorScheme = "dark";
+                } else {
+                    document.documentElement.classList.remove("dark");
+                    document.documentElement.style.colorScheme = "light";
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script type="module" src="site-config.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .reading-column,
+        #article-content,
+        #art-content,
+        .article-body {
+            max-width: 720px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            text-align: left !important;
+            overflow-wrap: break-word !important;
+            word-break: normal !important;
+            hyphens: auto !important;
+        }
+        .article-body p,
+        #art-content p,
+        .reading-p {
+            margin: 1.1em 0;
+            line-height: 1.9 !important;
+            font-size: var(--article-font-size, 18px);
+            color: var(--text, #1e1b18);
+            font-family: 'Anek Malayalam', sans-serif !important;
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             letter-spacing: -0.01em;
+            text-align: left !important;
         }
         .article-title-text {
             font-family: 'Anek Malayalam', sans-serif;
             line-height: 1.32;
         }
+<<<<<<< HEAD
         .dark-mode .article-body p {
             color: #ebdccb;
+=======
+        .dark-mode .article-body p,
+        html.dark .article-body p,
+        .dark-mode #art-content p,
+        html.dark #art-content p,
+        .dark-mode .reading-p,
+        html.dark .reading-p {
+            color: #e2e8f0 !important;
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
         }
         .dark-mode .article-title-text {
             color: #fbf7ee;
+        }
+
+        .article-body img,
+        #art-content img,
+        .article-image-wrap img {
+            display: block !important;
+            max-width: 100% !important;
+            height: auto !important;
+            margin: 1.75rem auto !important;
+            border-radius: 1rem !important;
+        }
+
+        @media (max-width: 640px) {
+            #standard-article-view,
+            #article-content {
+                padding-left: 16px;
+                padding-right: 16px;
+                overflow-x: hidden;
+            }
         }
 
         /* Editorial Blockquote */
@@ -105,7 +184,75 @@
                 <span translate="no" class="notranslate text-base sm:text-xl font-black uppercase font-english tracking-tight text-[#1e1b18] dark:text-white group-hover:text-[#b4532c] transition-colors">NUQTHA</span>
             </a>
 
+<<<<<<< HEAD
             <div class="flex items-center gap-3">
+=======
+            <div class="flex items-center gap-2 sm:gap-3">
+
+                <!-- Auth Container (Compact subtle circular silhouette when logged out, avatar when logged in) -->
+                <div id="header-auth-container" class="relative inline-block text-left">
+                    <button id="header-signin-btn" class="more-dots-btn header-profile-btn" title="Sign In / പ്രവേശിക്കുക" aria-label="Sign In">
+                        <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#4a3c33] dark:text-[#cbbba9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </button>
+
+                    <button id="header-user-btn" class="hidden more-dots-btn header-profile-btn cursor-pointer p-0 overflow-hidden" title="User Profile / പ്രൊഫൈൽ" aria-label="User Profile" aria-expanded="false" aria-haspopup="true">
+                        <div id="header-user-avatar" class="w-full h-full rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center text-xs font-bold overflow-hidden">
+                            <img id="header-user-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
+                            <span id="header-user-avatar-initial" class="hidden"></span>
+                            <svg id="header-user-avatar-fallback" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                    </button>
+
+                    <!-- User Profile Dropdown Menu -->
+                    <div id="header-user-dropdown" class="hidden absolute right-0 mt-2 w-64 rounded-2xl bg-white/95 dark:bg-[#12141d]/95 backdrop-blur-xl border border-[var(--border)] dark:border-white/10 shadow-2xl py-2 z-50">
+                        <div class="px-4 py-3 border-b border-[var(--border)]/60 dark:border-white/10">
+                            <div class="flex items-center gap-2.5">
+                                <div id="dropdown-user-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
+                                    <img id="dropdown-user-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
+                                    <span id="dropdown-user-avatar-initial" class="hidden"></span>
+                                    <svg id="dropdown-user-avatar-fallback" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p id="dropdown-user-name" class="text-sm font-bold text-[var(--text)] dark:text-white truncate">വായനക്കാരൻ</p>
+                                    <p id="dropdown-user-ident" class="text-[11px] text-[#8c7a6b] dark:text-slate-400 truncate"></p>
+                                    <span id="dropdown-user-role-badge" class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-english bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                        Reader
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="py-1">
+                            <button id="dropdown-saved-btn" class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition">
+                                <span class="flex items-center gap-2.5">
+                                    <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+                                    <span>സേവ് ചെയ്തവ (Saved)</span>
+                                </span>
+                                <span id="dropdown-saved-count" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold">0</span>
+                            </button>
+                            <a id="dropdown-admin-link" href="admin.html" class="hidden flex items-center justify-between px-4 py-2.5 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] transition">
+                                <span class="flex items-center gap-2.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                    <span>അഡ്മിൻ പാനൽ (Admin)</span>
+                                </span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-[#b4532c]/10 text-[#b4532c] dark:text-[#f87171] font-mono">⚡</span>
+                            </a>
+                        </div>
+                        <div class="border-t border-[var(--border)]/60 dark:border-white/10 pt-1">
+                            <button id="dropdown-signout-btn" class="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs font-bold text-red-600 dark:text-red-400 transition text-left cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                <span>ലോഗൗട്ട് (Sign Out)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                 <!-- Theme Toggle Button -->
                 <button id="theme-toggle-btn" class="more-dots-btn w-9 h-9 rounded-full flex items-center justify-center touch-target-44 cursor-pointer" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
                     <svg id="sun-icon" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,6 +354,7 @@
                 <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px]" loading="eager" decoding="async">
             </div>
 
+<<<<<<< HEAD
             <!-- Social Share Buttons -->
             <div id="art-share-bar" class="flex items-center justify-center gap-2 sm:gap-2.5 py-2 sm:py-2.5 my-1 sm:my-1.5 border-y border-[#ebdccb]/60 dark:border-white/10 flex-nowrap overflow-x-auto">
                 <span class="text-[10px] sm:text-[11px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-1 sm:mr-1.5 flex-shrink-0">SHARE:</span>
@@ -225,6 +373,41 @@
                     <span id="page-copy-label" class="sr-only">Copy Link</span>
                 </button>
                 <span id="page-copy-toast" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hidden flex-shrink-0">✓ Copied!</span>
+=======
+            <!-- Prominent Article Excerpt / Lead Intro Container -->
+            <div id="art-excerpt-container" class="hidden article-lead-excerpt">
+                <p id="art-excerpt" class="article-lead-text"></p>
+            </div>
+
+            <!-- Social Share & Reading Controls Bar -->
+            <div id="art-share-bar" class="flex items-center justify-between gap-2 sm:gap-2.5 py-2 sm:py-2.5 my-1 sm:my-1.5 border-y border-[var(--border)]/60 dark:border-white/10 flex-wrap sm:flex-nowrap">
+                <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-0.5">
+                    <span class="text-[10px] sm:text-[11px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-1 sm:mr-1.5 flex-shrink-0">SHARE:</span>
+                    <button onclick="shareArticlePage('whatsapp')" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white bg-[#25D366] hover:bg-[#20ba59] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#25D366]/25 flex-shrink-0 cursor-pointer" title="Share on WhatsApp" aria-label="Share on WhatsApp">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                    </button>
+                    <button onclick="shareArticlePage('telegram')" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white bg-[#229ED9] hover:bg-[#1e8ec3] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#229ED9]/25 flex-shrink-0 cursor-pointer" title="Share on Telegram" aria-label="Share on Telegram">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.562 8.161c-.18.717-.962 4.084-1.362 5.411-.168.56-.457.747-.736.765-.607.039-1.069-.408-1.657-.793-.921-.603-1.442-.977-2.336-1.565-1.033-.679-.363-1.053.226-1.664.154-.16 2.83-2.593 2.882-2.816.006-.028.012-.135-.051-.191-.064-.056-.157-.037-.225-.022-.097.022-1.64 1.044-4.629 3.061-.438.301-.835.449-1.191.441-.393-.008-1.15-.222-1.712-.405-.69-.225-1.238-.344-1.19-.726.025-.199.301-.403.827-.613 3.246-1.413 5.412-2.345 6.498-2.797 3.097-1.292 3.741-1.516 4.161-1.523.092-.002.298.021.432.13.113.092.144.218.159.307.015.089.034.295.019.456z"/></svg>
+                    </button>
+                    <button onclick="shareArticlePage('facebook')" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white bg-[#1877F2] hover:bg-[#166fe5] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#1877F2]/25 flex-shrink-0 cursor-pointer" title="Share on Facebook" aria-label="Share on Facebook">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    </button>
+                    <button onclick="shareArticlePage('copy')" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-[var(--border)] dark:border-white/15 hover:scale-110 active:scale-95 transition-all shadow-sm flex-shrink-0 cursor-pointer" title="Copy Article Link" aria-label="Copy Article Link">
+                        <svg id="page-copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        <svg id="page-copy-check" class="w-4 h-4 hidden text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        <span id="page-copy-label" class="sr-only">Copy Link</span>
+                    </button>
+                    <span id="page-copy-toast" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hidden flex-shrink-0">✓ Copied!</span>
+                </div>
+
+                <!-- Text Size Reading Toolbar -->
+                <div class="inline-flex items-center gap-1 sm:gap-1.5 bg-[#ebdccb]/40 dark:bg-white/10 px-2 sm:px-2.5 py-1 rounded-xl border border-[var(--border)] dark:border-white/15 text-xs select-none flex-shrink-0 ml-auto" title="Text Size / അക്ഷര വലിപ്പം">
+                    <span class="text-[10px] sm:text-[11px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-0.5">SIZE:</span>
+                    <button type="button" class="font-decrease-btn w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Decrease text size" title="Smaller (A-)">A-</button>
+                    <button type="button" class="font-reset-btn px-1.5 h-6 sm:h-7 rounded-lg flex items-center justify-center font-bold text-[11px] sm:text-xs font-english text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-white/15 transition-all font-size-indicator cursor-pointer" title="Reset default size (18px)">18px</button>
+                    <button type="button" class="font-increase-btn w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Increase text size" title="Larger (A+)">A+</button>
+                </div>
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             </div>
 
             <!-- Full Article Body -->
@@ -386,6 +569,7 @@
 
     <!-- Main Module Script -->
     <script type="module">
+<<<<<<< HEAD
         import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe } from "./schema-validator.js";
         import { decodeFirestoreFields, getBookChapters } from "./book-data.js";
@@ -393,10 +577,182 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const articleId = urlParams.get('id');
+=======
+        import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "./firebase-config.js";
+        import { FALLBACK_ARTICLES } from "./app.js";
+        import { initHeaderAuthUI } from "./js/auth-ui.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart } from "./schema-validator.js";
+        import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
+        import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
+        import { categoryUrl, categoryTag } from "./js/category-link.js";
+        import { trackReadingActivity } from "./js/analytics-tracker.js";
+        import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "./js/paywall-service.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Robust Route & Slug Sanitizer
+        function cleanRouteSlug(str) {
+            if (!str) return "";
+            let s = String(str).trim();
+            for (let i = 0; i < 4; i++) {
+                if (!s.includes("%")) break;
+                try {
+                    const decoded = decodeURIComponent(s);
+                    if (decoded === s) break;
+                    s = decoded;
+                } catch (_) {
+                    break;
+                }
+            }
+            s = s.split("?")[0].split("#")[0].trim();
+            s = s.replace(/^\/+|\/+$/g, "");
+            for (let i = 0; i < 4; i++) {
+                s = s.replace(/^(?:book|story|article)[\/\\]+/gi, "")
+                     .replace(/^2f/gi, "")
+                     .replace(/^\/+|\/+$/g, "");
+            }
+            s = s.replace(/\/(?:index(?:\.html)?)?$/gi, "");
+            return s.trim();
+        }
+
+        if (typeof window !== "undefined" && typeof cleanUrlPart === "function") {
+            window.cleanUrlPart = cleanUrlPart;
+        }
+
+        // Clean SEO Path Parsing:
+        // /story/:bookSlug/:chapterSlug OR /book/:bookSlug/:chapterSlug
+        // /story/:slug OR /article/:slug
+        // /book/:slug
+        const rawPath = window.location.pathname || "";
+        // Sanitize accidental trailing 'index.html', 'index', or trailing slashes for clean route parsing
+        const cleanPath = rawPath.replace(/\/index(?:\.html)?\/?$/i, "").replace(/\/+$/, "") || "/";
+        let pathBookSlug = "";
+        let pathChapterSlug = "";
+        let pathStorySlug = "";
+        let isBookRoute = false;
+
+        const twoPartMatch = cleanPath.match(/^\/(?:story|book)\/([^\/]+)\/([^\/]+)\/?$/i);
+        if (twoPartMatch) {
+            const seg1 = cleanRouteSlug(twoPartMatch[1]);
+            const seg2 = cleanRouteSlug(twoPartMatch[2]);
+            if (seg1.toLowerCase() === "book" || seg1.toLowerCase() === "story") {
+                // Collapsed duplicate prefix e.g. /book/book/:slug or /book/book%2F:slug
+                if (cleanPath.toLowerCase().startsWith("/book/")) {
+                    pathBookSlug = seg2;
+                    isBookRoute = true;
+                } else {
+                    pathStorySlug = seg2;
+                }
+            } else {
+                pathBookSlug = seg1;
+                pathChapterSlug = seg2;
+            }
+        } else {
+            const onePartStoryMatch = cleanPath.match(/^\/(?:story|article)\/([^\/]+)\/?$/i);
+            if (onePartStoryMatch) {
+                pathStorySlug = cleanRouteSlug(onePartStoryMatch[1]);
+            } else {
+                const bookMatch = cleanPath.match(/^\/book\/([^\/]+)\/?$/i);
+                if (bookMatch) {
+                    pathBookSlug = cleanRouteSlug(bookMatch[1]);
+                    isBookRoute = true;
+                }
+            }
+        }
+
+        // Sanitize accidental trailing 'index.html' or 'index' from paths
+        if (pathChapterSlug && (pathChapterSlug.toLowerCase() === 'index.html' || pathChapterSlug.toLowerCase() === 'index')) {
+            pathChapterSlug = "";
+            isBookRoute = true;
+        }
+        if (pathStorySlug && (pathStorySlug.toLowerCase() === 'index.html' || pathStorySlug.toLowerCase() === 'index')) {
+            pathStorySlug = "";
+        }
+
+        let articleId = urlParams.get('id');
+        if (articleId && (articleId.toLowerCase() === 'index.html' || articleId.toLowerCase() === 'index')) {
+            articleId = "";
+        }
+
+        let rawQuerySlug = urlParams.get('slug') || urlParams.get('chapterSlug') || pathChapterSlug || pathStorySlug;
+        if (rawQuerySlug && (rawQuerySlug.toLowerCase() === 'index.html' || rawQuerySlug.toLowerCase() === 'index')) {
+            rawQuerySlug = "";
+            if (pathBookSlug || urlParams.get('bookSlug')) {
+                isBookRoute = true;
+            }
+        }
+        const querySlug = cleanRouteSlug(rawQuerySlug);
+        const queryBookSlug = cleanRouteSlug(urlParams.get('bookSlug')) || pathBookSlug;
+
+        // Correctly handle editionParam (if 'true' or '1' from vercel rewrite, treat querySlug or pathBookSlug as target book)
+        const rawEdition = urlParams.get('edition') || urlParams.get('book');
+        const editionParam = (rawEdition && rawEdition !== 'true' && rawEdition !== '1')
+            ? cleanRouteSlug(rawEdition)
+            : (isBookRoute ? (pathBookSlug || querySlug) : "");
+
+        let targetIdentifier = querySlug || articleId || pathStorySlug || pathBookSlug || "";
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 
         // Fast In-Memory Cache
         const memoryCache = window.__NUQTHA_MEM_CACHE__ || new Map();
         window.__NUQTHA_MEM_CACHE__ = memoryCache;
+
+        // 429 Rate-Limit Circuit Breaker
+        let isFirestore429Blocked = false;
+        let firestore429CooldownUntil = 0;
+
+        function markFirestoreRateLimited() {
+            isFirestore429Blocked = true;
+            firestore429CooldownUntil = Date.now() + 60000;
+        }
+
+        function checkIsRateLimited() {
+            if (isFirestore429Blocked && Date.now() < firestore429CooldownUntil) {
+                return true;
+            }
+            isFirestore429Blocked = false;
+            return false;
+        }
+
+        // Search across all cached storage pools and fallback data
+        function searchLocalArticlesPool(identifier) {
+            if (!identifier) return null;
+            const decoded = safeDecodeParam(identifier);
+            const clean = cleanRouteSlug(decoded);
+            const targetSlug = slugifyText(decoded);
+            const rawSlug = slugifyMalayalamRaw(decoded);
+
+            const pools = [];
+            try {
+                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v7") || localStorage.getItem("nuqtha_cached_articles_v7") || sessionStorage.getItem("nuqtha_cached_articles_v6") || localStorage.getItem("nuqtha_cached_articles_v6");
+                if (s1) {
+                    const parsed = JSON.parse(s1);
+                    if (Array.isArray(parsed)) pools.push(...parsed);
+                }
+            } catch (_) {}
+            try {
+                const s2 = sessionStorage.getItem("nuqtha_all_articles") || localStorage.getItem("nuqtha_all_articles");
+                if (s2) {
+                    const parsed = JSON.parse(s2);
+                    if (Array.isArray(parsed)) pools.push(...parsed);
+                }
+            } catch (_) {}
+
+            pools.push(...FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id)));
+
+            return pools.find(a => 
+                a.id === identifier ||
+                a.id === decoded ||
+                a.id === clean ||
+                a.slug === identifier ||
+                a.slug === decoded ||
+                a.slug === clean ||
+                a.slug === targetSlug ||
+                a.slug === rawSlug ||
+                slugifyText(a.title) === targetSlug ||
+                slugifyMalayalamRaw(a.title) === rawSlug
+            ) || null;
+        }
 
         // Reading History Helpers
         function getReadArticleIds() {
@@ -484,18 +840,77 @@
             });
         }
 
+<<<<<<< HEAD
         function escapeHtml(value) {
             return String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[character]);
+=======
+        // Helper to determine if an entity is specifically a Book Edition Overview (NOT a chapter)
+        function isBookEditionDoc(item) {
+            if (!item) return false;
+            if (item.isChapter === true || item.type === "CHAPTER" || item.type === "chapter") return false;
+            if (item.chapterIndex !== undefined && item.chapterIndex !== null) return false;
+            if (item.bookId && String(item.bookId).trim() && String(item.bookId).trim() !== String(item.id)) return false;
+
+            const t = (item.title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+            const b = (item.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
+            if (b && t && b !== t) return false;
+
+            if (item.order !== undefined && item.order !== null && !isNaN(item.order) && Number(item.order) > 0 && (item.bookId || (b && t && b !== t))) return false;
+
+            const artType = (item.type || "").toString().toLowerCase().trim();
+            if (artType === "book" || item.isBook === true) return true;
+            if (Array.isArray(item.chapters) && item.chapters.length > 0) return true;
+            const cat = (item.category || "").toLowerCase().trim();
+            if (cat === "books" || cat === "book" || cat === "premium book") return true;
+            return false;
+        }
+
+        // Clean text matching helper for single-author book binding
+        function matchesBook(art, targetBook) {
+            if (!art || !targetBook) return false;
+            if (art.id === targetBook.id) return false;
+            if (art.type === "BOOK") return false;
+
+            const clean = (s) => (s || "")
+                .toString()
+                .normalize('NFC')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, ' ');
+
+            const bTitle = clean(targetBook.title);
+            const bName = clean(targetBook.bookName);
+            const bId = (targetBook.id || "").trim();
+
+            const aBook = clean(art.bookName || art.playlistName);
+            const aBookId = (art.bookId || "").trim();
+
+            if (bId && aBookId && bId === aBookId) return true;
+            if (bName && aBook && bName === aBook) return true;
+            if (bTitle && aBook && bTitle === aBook) return true;
+
+            if (bName && aBook && bName.length >= 3 && (aBook.includes(bName) || bName.includes(aBook))) return true;
+            if (bTitle && aBook && bTitle.length >= 3 && (aBook.includes(bTitle) || bTitle.includes(aBook))) return true;
+
+            return false;
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
         }
 
         // ═══════════ PARALLEL DATA FETCHERS WITH FIELD PROJECTION ═══════════
 
-        // 1. Fetch Target Document (Direct SDK + REST fallback with timeout)
+        // 1. Fetch Target Document (High-speed REST first with SDK offline fallback)
         async function fetchTargetDocument(id, signal) {
+            if (!id) return null;
+            const cleanId = safeDecodeParam(id);
+            if (memoryCache.has(`doc_${cleanId}`)) {
+                return memoryCache.get(`doc_${cleanId}`);
+            }
             if (memoryCache.has(`doc_${id}`)) {
                 return memoryCache.get(`doc_${id}`);
             }
 
+<<<<<<< HEAD
             try {
                 const { apiKey, projectId } = db.app.options;
                 if (!apiKey || !projectId) throw new Error("Firebase configuration is incomplete.");
@@ -507,10 +922,75 @@
                     if (json && json.fields) {
                         const data = decodeFirestoreFields(json.fields);
                         const normalized = normalizeArticleDoc(data, id);
+=======
+            const localHit = searchLocalArticlesPool(cleanId);
+            if (localHit && localHit.content) {
+                memoryCache.set(`doc_${cleanId}`, localHit);
+                memoryCache.set(`doc_${id}`, localHit);
+                return localHit;
+            }
+
+            const collectionsToTry = (isBookRoute || editionParam) ? ["books", "articles"] : ["articles", "books"];
+
+            for (const col of collectionsToTry) {
+                // A. Ultra-fast REST fetch direct document lookup (skipped if known 429 rate limit)
+                if (!checkIsRateLimited()) {
+                    try {
+                        const encodedId = encodeURIComponent(cleanId);
+                        const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/${col}/${encodedId}?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE`, { signal });
+                        if (res.status === 429) {
+                            markFirestoreRateLimited();
+                        } else if (res.ok) {
+                            const json = await res.json();
+                            if (json && json.fields) {
+                                const data = {};
+                                for (const [k, v] of Object.entries(json.fields)) {
+                                    if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                    else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                    else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                    else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                    else if (v.arrayValue && v.arrayValue.values) {
+                                        data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                    } else {
+                                        data[k] = null;
+                                    }
+                                }
+                                const normalized = normalizeArticleDoc(data, cleanId);
+                                if (col === "books") {
+                                    normalized.type = "BOOK";
+                                    normalized.isBook = true;
+                                    normalized.isChapter = false;
+                                }
+                                memoryCache.set(`doc_${cleanId}`, normalized);
+                                memoryCache.set(`doc_${id}`, normalized);
+                                return normalized;
+                            }
+                        }
+                    } catch (err) {
+                        if (err.name === 'AbortError') throw err;
+                    }
+                }
+
+                // B. SDK / offline IndexedDB cache fallback
+                try {
+                    const docRef = doc(db, col, cleanId);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                        if (col === "books") {
+                            normalized.type = "BOOK";
+                            normalized.isBook = true;
+                            normalized.isChapter = false;
+                        }
+                        memoryCache.set(`doc_${cleanId}`, normalized);
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                         memoryCache.set(`doc_${id}`, normalized);
                         return normalized;
                     }
+                } catch (err) {
+                    if (err.name === 'AbortError') throw err;
                 }
+<<<<<<< HEAD
             } catch (restError) {
                 if (signal?.aborted) throw restError;
                 console.warn("[Reader] REST direct fetch failed; trying SDK:", restError);
@@ -526,17 +1006,25 @@
             } catch (sdkError) {
                 if (signal?.aborted) throw sdkError;
                 console.warn("[Reader] Direct getDoc fallback failed:", sdkError);
+=======
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             }
 
-            return null;
+            return localHit || null;
         }
 
-        // 2. Fetch Lightweight Articles Collection (Projected Fields Only - ~95% smaller payload)
-        async function fetchLightweightArticles(signal) {
-            if (memoryCache.has("lightweight_articles")) {
-                return memoryCache.get("lightweight_articles");
+        // Direct Query by Custom Slug (with Document ID fallback & dual collection query)
+        async function fetchTargetBySlugOrId(identifier, signal) {
+            if (!identifier) return null;
+            const decodedId = safeDecodeParam(identifier);
+            if (memoryCache.has(`doc_${decodedId}`)) {
+                return memoryCache.get(`doc_${decodedId}`);
+            }
+            if (memoryCache.has(`doc_${identifier}`)) {
+                return memoryCache.get(`doc_${identifier}`);
             }
 
+<<<<<<< HEAD
             const projectedFields = [
                 "title", "bookName", "bookId", "parentBookId", "playlistName",
                 "priority", "order", "readingTime", "imageUrl", "excerpt", "author",
@@ -581,7 +1069,308 @@
                     console.error("[Reader] Collection fetch failed:", sdkError);
                     throw new Error("Could not load book chapters from Firestore.");
                 }
+=======
+            const localHit = searchLocalArticlesPool(identifier);
+            if (localHit && localHit.content) {
+                memoryCache.set(`doc_${decodedId}`, localHit);
+                memoryCache.set(`doc_${identifier}`, localHit);
+                return localHit;
             }
+
+            if (checkIsRateLimited()) {
+                return localHit;
+            }
+
+            const cleanDecoded = cleanRouteSlug(decodedId);
+            const cleanRaw = cleanRouteSlug(identifier);
+
+            const candidateSet = new Set();
+            [cleanDecoded, cleanRaw, decodedId, identifier].forEach(base => {
+                if (!base) return;
+                const clean = cleanRouteSlug(base);
+                candidateSet.add(base);
+                if (clean) candidateSet.add(clean);
+                candidateSet.add(slugifyText(base));
+                candidateSet.add(slugifyMalayalamRaw(base));
+                if (clean) {
+                    candidateSet.add(slugifyText(clean));
+                    candidateSet.add(slugifyMalayalamRaw(clean));
+                }
+            });
+
+            const collectionsToSearch = (isBookRoute || editionParam) ? ["books", "articles"] : ["articles", "books"];
+            const candList = Array.from(candidateSet).filter(Boolean).slice(0, 10);
+
+            // 1. High-Speed REST Query with op: "IN" (150ms single-roundtrip response)
+            for (const col of collectionsToSearch) {
+                try {
+                    const qRes = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        signal,
+                        body: JSON.stringify({
+                            structuredQuery: {
+                                from: [{ collectionId: col }],
+                                where: {
+                                    fieldFilter: {
+                                        field: { fieldPath: "slug" },
+                                        op: "IN",
+                                        value: {
+                                            arrayValue: {
+                                                values: candList.map(c => ({ stringValue: c }))
+                                            }
+                                        }
+                                    }
+                                },
+                                limit: 1
+                            }
+                        })
+                    });
+                    if (qRes.status === 429) {
+                        markFirestoreRateLimited();
+                        break;
+                    }
+                    if (qRes.ok) {
+                        const qJson = await qRes.json();
+                        const docItem = Array.isArray(qJson) ? qJson.find(item => item && item.document)?.document : null;
+                        if (docItem) {
+                            const docId = docItem.name.split("/").pop();
+                            const data = {};
+                            if (docItem.fields) {
+                                for (const [k, v] of Object.entries(docItem.fields)) {
+                                    if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                    else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                    else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                    else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                    else if (v.arrayValue && v.arrayValue.values) {
+                                        data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                    } else {
+                                        data[k] = null;
+                                    }
+                                }
+                            }
+                            const normalized = normalizeArticleDoc(data, docId);
+                            if (col === "books") {
+                                normalized.type = "BOOK";
+                                normalized.isBook = true;
+                                normalized.isChapter = false;
+                            }
+                            memoryCache.set(`doc_${decodedId}`, normalized);
+                            memoryCache.set(`doc_${identifier}`, normalized);
+                            memoryCache.set(`doc_${docId}`, normalized);
+                            return normalized;
+                        }
+                    }
+                } catch (err) {
+                    if (err.name === 'AbortError') throw err;
+                }
+
+                // If looking for a book, also query bookSlug with op: "IN"
+                if (isBookRoute || editionParam) {
+                    try {
+                        const qRes = await fetch("https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery?key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            signal,
+                            body: JSON.stringify({
+                                structuredQuery: {
+                                    from: [{ collectionId: col }],
+                                    where: {
+                                        fieldFilter: {
+                                            field: { fieldPath: "bookSlug" },
+                                            op: "IN",
+                                            value: {
+                                                arrayValue: {
+                                                    values: candList.map(c => ({ stringValue: c }))
+                                                }
+                                            }
+                                        }
+                                    },
+                                    limit: 1
+                                }
+                            })
+                        });
+                        if (qRes.status === 429) {
+                            markFirestoreRateLimited();
+                            break;
+                        }
+                        if (qRes.ok) {
+                            const qJson = await qRes.json();
+                            const docItem = Array.isArray(qJson) ? qJson.find(item => item && item.document)?.document : null;
+                            if (docItem) {
+                                const docId = docItem.name.split("/").pop();
+                                const data = {};
+                                if (docItem.fields) {
+                                    for (const [k, v] of Object.entries(docItem.fields)) {
+                                        if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                        else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                        else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                        else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                        else if (v.arrayValue && v.arrayValue.values) {
+                                            data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                        } else {
+                                            data[k] = null;
+                                        }
+                                    }
+                                }
+                                const normalized = normalizeArticleDoc(data, docId);
+                                if (col === "books") {
+                                    normalized.type = "BOOK";
+                                    normalized.isBook = true;
+                                    normalized.isChapter = false;
+                                }
+                                memoryCache.set(`doc_${decodedId}`, normalized);
+                                memoryCache.set(`doc_${identifier}`, normalized);
+                                memoryCache.set(`doc_${docId}`, normalized);
+                                return normalized;
+                            }
+                        }
+                    } catch (err) {
+                        if (err.name === 'AbortError') throw err;
+                    }
+                }
+            }
+
+            // 2. Direct document ID lookup in both collections (deduplicated)
+            const idsToTry = Array.from(new Set([cleanDecoded, cleanRaw, decodedId])).filter(Boolean);
+            for (const tryId of idsToTry) {
+                const isLikelyDocId = /^[A-Za-z0-9_-]{15,30}$/.test(tryId) && !tryId.includes("--");
+                if (isLikelyDocId || idsToTry.length === 1) {
+                    const direct = await fetchTargetDocument(tryId, signal);
+                    if (direct) return direct;
+                }
+            }
+
+            return localHit || null;
+        }
+
+        // 2. Fetch Lightweight Articles & Books Collections
+        async function fetchLightweightArticles(signal) {
+            if (memoryCache.has("lightweight_articles")) {
+                return memoryCache.get("lightweight_articles");
+            }
+
+            // Read from local storage caches first
+            const storedArticles = [];
+            try {
+                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v7") || localStorage.getItem("nuqtha_cached_articles_v7");
+                if (s1) {
+                    const parsed = JSON.parse(s1);
+                    if (Array.isArray(parsed) && parsed.length > 0) storedArticles.push(...parsed);
+                }
+            } catch (_) {}
+            try {
+                const s2 = sessionStorage.getItem("nuqtha_all_articles") || localStorage.getItem("nuqtha_all_articles");
+                if (s2) {
+                    const parsed = JSON.parse(s2);
+                    if (Array.isArray(parsed) && parsed.length > 0) storedArticles.push(...parsed);
+                }
+            } catch (_) {}
+
+            if (storedArticles.length > 0 && checkIsRateLimited()) {
+                memoryCache.set("lightweight_articles", storedArticles);
+                return storedArticles;
+            }
+
+            const projectedFields = [
+                "title", "bookName", "bookId", "playlistName",
+                "priority", "excerpt", "storedExcerpt", "hasCustomExcerpt", "author",
+                "date", "createdAt", "type", "category",
+                "order", "chapters", "transcription", "status",
+                "slug", "bookSlug", "isBook", "isPremium", "price"
+            ];
+            const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+            const combinedArticlesMap = new Map();
+
+            async function fetchCol(colName) {
+                if (checkIsRateLimited()) return;
+                let nextPageToken = "";
+                let pageCount = 0;
+                do {
+                    pageCount++;
+                    const pageTokenParam = nextPageToken ? `&pageToken=${encodeURIComponent(nextPageToken)}` : "";
+                    const res = await fetch(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/${colName}?pageSize=100&key=AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE&${maskParams}${pageTokenParam}`, { signal });
+                    if (res.status === 429) {
+                        markFirestoreRateLimited();
+                        break;
+                    }
+                    if (!res.ok) break;
+                    const json = await res.json();
+                    if (json && json.documents && Array.isArray(json.documents)) {
+                        for (const docItem of json.documents) {
+                            const docId = docItem.name.split("/").pop();
+                            const data = {};
+                            if (docItem.fields) {
+                                for (const [k, v] of Object.entries(docItem.fields)) {
+                                    if (v.stringValue !== undefined) data[k] = v.stringValue;
+                                    else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
+                                    else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
+                                    else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
+                                    else if (v.arrayValue && v.arrayValue.values) {
+                                        data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
+                                    } else {
+                                        data[k] = null;
+                                    }
+                                }
+                            }
+                            const normalized = normalizeArticleDoc(data, docId);
+                            if (colName === "books") {
+                                normalized.type = "BOOK";
+                                normalized.isBook = true;
+                                normalized.isChapter = false;
+                            }
+                            combinedArticlesMap.set(docId, normalized);
+                        }
+                    }
+                    nextPageToken = json.nextPageToken || "";
+                } while (nextPageToken && pageCount < 10);
+            }
+
+            try {
+                if (!checkIsRateLimited()) {
+                    await Promise.all([
+                        fetchCol("articles"),
+                        fetchCol("books").catch(() => {})
+                    ]);
+
+                    if (combinedArticlesMap.size > 0) {
+                        const list = Array.from(combinedArticlesMap.values());
+                        memoryCache.set("lightweight_articles", list);
+                        return list;
+                    }
+                }
+            } catch (err) {
+                console.warn("[Reader] Projected REST fetch notice:", err?.message || err);
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
+            }
+
+            // Fallback: SDK getDocs (reads from local IndexedDB cache when network fails or 429)
+            try {
+                const [articlesSnap, booksSnap] = await Promise.all([
+                    getDocs(collection(db, "articles")).catch(() => ({ docs: [], forEach: () => {} })),
+                    getDocs(collection(db, "books")).catch(() => ({ docs: [], forEach: () => {} }))
+                ]);
+                const articles = [];
+                articlesSnap.forEach(d => articles.push(normalizeArticleDoc(d.data(), d.id)));
+                booksSnap.forEach(d => {
+                    const norm = normalizeArticleDoc(d.data(), d.id);
+                    norm.type = "BOOK";
+                    norm.isBook = true;
+                    norm.isChapter = false;
+                    articles.push(norm);
+                });
+                if (articles.length > 0) {
+                    memoryCache.set("lightweight_articles", articles);
+                    return articles;
+                }
+            } catch (e) {
+                console.warn("[Reader] Collection fetch notice:", e?.message || e);
+            }
+
+            // Absolute resilience: Return stored articles or pre-bundled FALLBACK_ARTICLES
+            const resilientList = storedArticles.length > 0 ? storedArticles : FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
+            memoryCache.set("lightweight_articles", resilientList);
+            return resilientList;
         }
 
         // ═══════════ MAIN LOADING ORCHESTRATOR ═══════════
@@ -606,6 +1395,7 @@
                 if (cachedChaptersStr) cachedChapters = JSON.parse(cachedChaptersStr);
             } catch (e) {}
 
+<<<<<<< HEAD
             if (cachedBook) {
                 if (skeletonEl) skeletonEl.classList.add("hidden");
                 if (cachedBook.type === "BOOK") {
@@ -613,6 +1403,39 @@
                     if (bookContainerEl) {
                         bookContainerEl.classList.remove("hidden");
                         renderBookIndex(cachedBook, bookContainerEl, cachedChapters || []);
+=======
+                if (!cachedBook) {
+                    cachedBook = searchLocalArticlesPool(cacheKey);
+                }
+
+                if (cachedBook) {
+                    const cleanCachedUrl = getStoryUrl(cachedBook);
+                    try {
+                        if (window.location.pathname.includes("article.html") && cleanCachedUrl && cleanCachedUrl !== "/") {
+                            window.history.replaceState(null, '', cleanCachedUrl);
+                        }
+                    } catch (e) {}
+                    if (skeletonEl) skeletonEl.classList.add("hidden");
+                    if (errorContainerEl) {
+                        errorContainerEl.classList.add("hidden");
+                        errorContainerEl.innerHTML = "";
+                    }
+                    if ((cachedBook.type || "").toUpperCase() === "BOOK" || cachedBook.isBook === true) {
+                        if (articleViewEl) articleViewEl.classList.add("hidden");
+                        if (bookContainerEl) {
+                            bookContainerEl.classList.remove("hidden");
+                            const bookChaps = cachedChapters || cachedBook.chapters || [];
+                            await renderBookIndex(cachedBook, bookContainerEl, bookChaps);
+                        }
+                        if (cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
+                        initComments(cachedBook.id);
+                    } else {
+                        if (bookContainerEl) bookContainerEl.classList.add("hidden");
+                        if (articleViewEl) articleViewEl.classList.remove("hidden");
+                        await renderArticle(cachedBook);
+                        markArticleAsRead(cachedBook.id);
+                        initComments(cachedBook.id);
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                     }
                     if (cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
                     initComments(cachedBook.id);
@@ -626,6 +1449,7 @@
                 }
             }
 
+<<<<<<< HEAD
             // 2. PARALLEL REVALIDATION / FRESH FETCH (Promise.allSettled)
             const controller = new AbortController();
             const timeoutTimer = setTimeout(() => controller.abort(), 10000);
@@ -635,15 +1459,157 @@
                     withAbortSignal(fetchTargetDocument(articleId, controller.signal), controller.signal),
                     withAbortSignal(fetchLightweightArticles(controller.signal), controller.signal)
                 ]);
+=======
+            // 2. PARALLEL REVALIDATION / FRESH FETCH
+            // If already rendered from cache and Firestore is in 429 rate limit cooldown, exit early cleanly
+            if (cachedBook && checkIsRateLimited()) {
+                return;
+            }
+
+            const controller = new AbortController();
+            const timeoutTimer = setTimeout(() => controller.abort(), 20000);
+
+            try {
+                let currentDoc = null;
+                let allArticles = [];
+
+                const lookupId = articleId || targetIdentifier;
+                const [targetDocResult, allArticlesResult] = await Promise.allSettled([
+                    lookupId ? fetchTargetBySlugOrId(lookupId, controller.signal) : Promise.resolve(null),
+                    fetchLightweightArticles(controller.signal)
+                ]);
+                currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
+                allArticles = allArticlesResult.status === "fulfilled" ? (allArticlesResult.value || []) : [];
+
+                if (!currentDoc) {
+                    currentDoc = cachedBook || searchLocalArticlesPool(lookupId);
+                }
+
+                // Slug and metadata matching in pool if direct ID fetch did not hit
+                if (!currentDoc && allArticles.length > 0) {
+                    // A. Chapter inside book (/story/:bookSlug/:chapterSlug OR /book/:bookSlug/:chapterSlug)
+                    if (pathChapterSlug && pathBookSlug) {
+                        const targetChapterSlug = slugifyText(pathChapterSlug);
+                        const rawChapterSlug = slugifyMalayalamRaw(pathChapterSlug);
+                        const targetBookSlug = slugifyText(pathBookSlug);
+                        const rawBookSlug = slugifyMalayalamRaw(pathBookSlug);
+                        currentDoc = allArticles.find(a => 
+                            (a.slug === targetChapterSlug || a.slug === rawChapterSlug || slugifyText(a.title) === targetChapterSlug || slugifyMalayalamRaw(a.title) === rawChapterSlug || a.id === pathChapterSlug) &&
+                            (a.bookSlug === targetBookSlug || a.bookSlug === rawBookSlug || slugifyText(a.bookName) === targetBookSlug || slugifyMalayalamRaw(a.bookName) === rawBookSlug || slugifyText(a.playlistName) === targetBookSlug || slugifyMalayalamRaw(a.playlistName) === rawBookSlug || a.bookId === pathBookSlug)
+                        ) || allArticles.find(a =>
+                            a.slug === targetChapterSlug || a.slug === rawChapterSlug || slugifyText(a.title) === targetChapterSlug || slugifyMalayalamRaw(a.title) === rawChapterSlug || a.id === pathChapterSlug
+                        );
+                        if (currentDoc) {
+                            isBookRoute = false;
+                        }
+                    }
+
+                    // B. Book edition route (/book/:slug or ?edition=...)
+                    if (!currentDoc && (isBookRoute || editionParam)) {
+                        const rawBookSearch = (editionParam || pathBookSlug || querySlug || "").toString().trim();
+                        const bookSearch = cleanRouteSlug(rawBookSearch);
+                        const targetBookSlug = slugifyText(bookSearch);
+                        const rawTargetSlug = slugifyMalayalamRaw(bookSearch);
+                        const cleanTarget = (bookSearch || "").toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+                        const spaceTarget = cleanTarget.replace(/-/g, ' ');
+
+                        // 1. Must match a dedicated BOOK entity, never a standalone chapter
+                        currentDoc = allArticles.find(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true || isBookEditionDoc(a)) && (
+                            a.slug === targetBookSlug ||
+                            a.slug === rawTargetSlug ||
+                            a.slug === bookSearch ||
+                            a.slug === rawBookSearch ||
+                            a.slug === `book/${bookSearch}` ||
+                            (a.slug && a.slug.replace(/^book\//, '') === bookSearch) ||
+                            a.bookSlug === targetBookSlug ||
+                            a.bookSlug === rawTargetSlug ||
+                            a.bookSlug === bookSearch ||
+                            a.bookSlug === rawBookSearch ||
+                            (a.bookSlug && a.bookSlug.replace(/^book\//, '') === bookSearch) ||
+                            slugifyText(a.bookName) === targetBookSlug ||
+                            slugifyMalayalamRaw(a.bookName) === rawTargetSlug ||
+                            slugifyText(a.title) === targetBookSlug ||
+                            slugifyMalayalamRaw(a.title) === rawTargetSlug ||
+                            slugifyText(a.playlistName) === targetBookSlug ||
+                            a.id === bookSearch ||
+                            a.id === rawBookSearch ||
+                            (a.bookName && a.bookName.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget) ||
+                            (a.title && a.title.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
+                        ));
+
+                        // 2. Fallback: If book overview doc not found directly, find any chapter of this book and fetch parent book by chapter.bookId
+                        if (!currentDoc) {
+                            const chapterWithBookId = allArticles.find(a => 
+                                (a.bookSlug === targetBookSlug || a.bookSlug === rawTargetSlug || slugifyText(a.bookName) === targetBookSlug || slugifyMalayalamRaw(a.bookName) === rawTargetSlug || (a.bookName && a.bookName.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)) && a.bookId
+                            );
+                            if (chapterWithBookId && chapterWithBookId.bookId) {
+                                currentDoc = allArticles.find(a => a.id === chapterWithBookId.bookId);
+                                if (!currentDoc) {
+                                    currentDoc = await fetchTargetDocument(chapterWithBookId.bookId, controller.signal);
+                                }
+                            }
+                        }
+
+                        // Ensure currentDoc is configured with type BOOK for the reader
+                        if (currentDoc) {
+                            currentDoc.type = "BOOK";
+                        }
+
+                        // 3. Fallback for chapter URL mistakenly routed to /book/:chapterSlug (e.g. /book/ആമുഖം)
+                        if (!currentDoc) {
+                            const matchedChapter = allArticles.find(a => 
+                                a.slug === targetBookSlug ||
+                                a.slug === rawTargetSlug ||
+                                slugifyText(a.title) === targetBookSlug ||
+                                slugifyMalayalamRaw(a.title) === rawTargetSlug ||
+                                a.id === bookSearch ||
+                                (a.title && a.title.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
+                            );
+                            if (matchedChapter) {
+                                currentDoc = matchedChapter;
+                                isBookRoute = false; // Render in chapter/article mode instead of 404
+                            }
+                        }
+                    }
+
+                    // C. General article slug or title match (/story/:slug or /article/:slug or ?id=...)
+                    if (!currentDoc && (querySlug || pathStorySlug || pathBookSlug || targetIdentifier)) {
+                        const targetSearch = querySlug || pathStorySlug || pathBookSlug || targetIdentifier;
+                        const decodedTarget = safeDecodeParam(targetSearch);
+                        const targetQuerySlug = slugifyText(decodedTarget);
+                        const rawQuerySlugMatch = slugifyMalayalamRaw(decodedTarget);
+                        const cleanQuery = (decodedTarget || "").toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+                        const spaceQuery = cleanQuery.replace(/-/g, ' ');
+                        currentDoc = allArticles.find(a => 
+                            a.slug === decodedTarget ||
+                            a.slug === targetSearch ||
+                            a.slug === `story/${decodedTarget}` ||
+                            a.slug === `story/${targetSearch}` ||
+                            (a.slug && a.slug.replace(/^story\//, '') === decodedTarget) ||
+                            (a.slug && a.slug.replace(/^story\//, '') === targetSearch) ||
+                            a.slug === targetQuerySlug ||
+                            a.slug === rawQuerySlugMatch ||
+                            slugifyText(a.title) === targetQuerySlug ||
+                            slugifyMalayalamRaw(a.title) === rawQuerySlugMatch ||
+                            a.id === decodedTarget ||
+                            a.id === targetSearch ||
+                            (a.title && a.title.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceQuery) ||
+                            slugifyAuthor(a.title) === slugifyAuthor(decodedTarget)
+                        );
+                    }
+                }
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                 clearTimeout(timeoutTimer);
 
                 const currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
                 let allArticles = allArticlesResult.status === "fulfilled" ? (allArticlesResult.value || []) : [];
 
                 if (!currentDoc) {
-                    if (!cachedBook) {
-                        showErrorWithRetry("ഈ ലേഖനം / പുസ്തകം കണ്ടെത്താനായില്ല അല്ലെങ്കിൽ നെറ്റ്‌വർക്ക് തകരാർ സംഭവിച്ചു.");
-                    }
+                    currentDoc = cachedBook || searchLocalArticlesPool(lookupId);
+                }
+
+                if (!currentDoc) {
+                    showErrorWithRetry("ഈ ലേഖനം / പുസ്തകം കണ്ടെത്താനായില്ല അല്ലെങ്കിൽ നെറ്റ്‌വർക്ക് തകരാർ സംഭവിച്ചു.");
                     return;
                 }
 
@@ -655,29 +1621,94 @@
                     }
                 }
 
+<<<<<<< HEAD
                 sessionStorage.setItem(`nuqtha_book_${articleId}`, JSON.stringify(currentDoc));
+=======
+                try {
+                    sessionStorage.setItem(`nuqtha_book_${articleId}`, JSON.stringify(currentDoc));
+                    if (currentDoc.slug) sessionStorage.setItem(`nuqtha_book_${currentDoc.slug}`, JSON.stringify(currentDoc));
+                    if (currentDoc.title) {
+                        sessionStorage.setItem(`nuqtha_book_${slugifyMalayalamRaw(currentDoc.title)}`, JSON.stringify(currentDoc));
+                        sessionStorage.setItem(`nuqtha_book_${slugifyText(currentDoc.title)}`, JSON.stringify(currentDoc));
+                    }
+                } catch (_) {}
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                 if (currentDoc.imageUrl) preloadCoverImage(currentDoc.imageUrl);
 
                 if (skeletonEl) skeletonEl.classList.add("hidden");
-                if (errorContainerEl) errorContainerEl.classList.add("hidden");
+                if (errorContainerEl) {
+                    errorContainerEl.classList.add("hidden");
+                    errorContainerEl.innerHTML = "";
+                }
 
-                if (currentDoc.type === "BOOK") {
+                if ((currentDoc.type || "").toUpperCase() === "BOOK" || currentDoc.isBook === true) {
                     if (articleViewEl) articleViewEl.classList.add("hidden");
                     if (bookContainerEl) bookContainerEl.classList.remove("hidden");
 
                     const bookChapters = getBookChapters(currentDoc, allArticles);
 
+<<<<<<< HEAD
                     sessionStorage.setItem(`nuqtha_book_articles_${articleId}`, JSON.stringify(bookChapters));
                     renderBookIndex(currentDoc, bookContainerEl, bookChapters);
+=======
+                    if (!bookChapters || bookChapters.length === 0) {
+                        bookChapters = filterAndSortChapters(currentDoc, allArticles);
+                    }
+
+                    try {
+                        sessionStorage.setItem(`nuqtha_book_articles_${articleId}`, JSON.stringify(bookChapters));
+                        if (currentDoc.slug) sessionStorage.setItem(`nuqtha_book_articles_${currentDoc.slug}`, JSON.stringify(bookChapters));
+                        if (currentDoc.title) {
+                            sessionStorage.setItem(`nuqtha_book_articles_${slugifyMalayalamRaw(currentDoc.title)}`, JSON.stringify(bookChapters));
+                            sessionStorage.setItem(`nuqtha_book_articles_${slugifyText(currentDoc.title)}`, JSON.stringify(bookChapters));
+                        }
+                    } catch (_) {}
+                    await renderBookIndex(currentDoc, bookContainerEl, bookChapters);
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                     renderRelatedBooks(currentDoc, allArticles);
                     initComments(currentDoc.id);
 
                 } else {
+                    // Check if chapter belongs to a book and requires login / paywall
+                    const hasParentBook = Boolean(currentDoc.bookId || currentDoc.bookName || currentDoc.isChapter || (currentDoc.type || "").toUpperCase() === "CHAPTER");
+                    if (hasParentBook) {
+                        const parentBook = allArticles.find(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && (a.id === currentDoc.bookId || a.bookName === currentDoc.bookName || a.title === currentDoc.bookName || a.slug === currentDoc.bookSlug));
+                        if (parentBook) {
+                            const isUnlocked = await isUserUnlockedForBook(parentBook);
+                            if (!isUnlocked) {
+                                if (skeletonEl) skeletonEl.classList.add("hidden");
+                                showPaywallModal({
+                                    book: parentBook,
+                                    onUnlocked: () => {
+                                        window.location.reload();
+                                    }
+                                });
+                                return;
+                            }
+                        }
+                    }
+
                     if (bookContainerEl) bookContainerEl.classList.add("hidden");
                     if (articleViewEl) articleViewEl.classList.remove("hidden");
 
+<<<<<<< HEAD
                     renderArticle(currentDoc);
                     renderBookChapterNavigation(currentDoc, allArticles);
+=======
+                    // Guarantee complete article body content is loaded
+                    if ((!currentDoc.content || !currentDoc.content.trim()) && currentDoc.id) {
+                        try {
+                            const fullDoc = await fetchTargetDocument(currentDoc.id, controller.signal);
+                            if (fullDoc && fullDoc.content) {
+                                currentDoc.content = fullDoc.content;
+                                if (fullDoc.imageUrl && !currentDoc.imageUrl) currentDoc.imageUrl = fullDoc.imageUrl;
+                                if (fullDoc.transcription && !currentDoc.transcription) currentDoc.transcription = fullDoc.transcription;
+                            }
+                        } catch (_) {}
+                    }
+
+                    await renderArticle(currentDoc, allArticles);
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                     markArticleAsRead(currentDoc.id);
                     loadRelatedArticlesFromList(currentDoc, allArticles);
                     initComments(currentDoc.id);
@@ -685,16 +1716,53 @@
 
             } catch (err) {
                 clearTimeout(timeoutTimer);
-                console.error("[Reader] Load error:", err);
-                if (!cachedBook) {
+                console.warn("[Reader] Network load notice, falling back to local pool:", err?.message || err);
+                const localDoc = cachedBook || searchLocalArticlesPool(articleId || targetIdentifier);
+                if (localDoc) {
+                    if (skeletonEl) skeletonEl.classList.add("hidden");
+                    if (errorContainerEl) {
+                        errorContainerEl.classList.add("hidden");
+                        errorContainerEl.innerHTML = "";
+                    }
+                    if ((localDoc.type || "").toUpperCase() === "BOOK" || localDoc.isBook === true) {
+                        if (articleViewEl) articleViewEl.classList.add("hidden");
+                        if (bookContainerEl) {
+                            bookContainerEl.classList.remove("hidden");
+                            await renderBookIndex(localDoc, bookContainerEl, localDoc.chapters || []);
+                        }
+                    } else {
+                        if (bookContainerEl) bookContainerEl.classList.add("hidden");
+                        if (articleViewEl) articleViewEl.classList.remove("hidden");
+                        await renderArticle(localDoc);
+                    }
+                } else {
                     showErrorWithRetry("വിവരങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു.");
                 }
             }
         }
 
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
-        function renderBookIndex(book, container, attachedArticles = []) {
+        async function renderBookIndex(book, container, attachedArticles = []) {
+            const errorContainerEl = document.getElementById("page-error-container");
+            if (errorContainerEl) {
+                errorContainerEl.classList.add("hidden");
+                errorContainerEl.innerHTML = "";
+            }
+            window.currentActiveArticle = book;
+            const bookUrl = getStoryUrl(book);
             document.title = `${book.title || "NUQTHA Edition"} | NUQTHA`;
+<<<<<<< HEAD
+=======
+            if (window.NUQTHA_SITE_CONFIG?.updatePageMeta) {
+                window.NUQTHA_SITE_CONFIG.updatePageMeta({
+                    path: bookUrl,
+                    title: `${book.title || "NUQTHA Edition"} | NUQTHA`,
+                    description: book.introduction || book.excerpt || "NUQTHA Malayalam Publishing",
+                    imageUrl: book.thumbnailUrl || book.ogImage || book.imageUrl || "",
+                    articleId: book.id
+                });
+            }
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
 
             const cleanTitle = escapeHtml((book.title || "Untitled Edition").replace(/[*_#~`]/g, ""));
             const cleanAuthor = escapeHtml(book.author || "NUQTHA");
@@ -717,6 +1785,17 @@
                 totalWords += words;
             });
             const totalReadingTime = Math.max(5, Math.round(totalWords / 160)) || (attachedArticles.length * 4);
+
+            const rawPrice = Number(book.price);
+            const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
+            const isFree = !isPremium || price === 0;
+
+            // Access & Unlock Verification (checks Admin, Login state, App Install for Free books, and Purchases for Paid books)
+            const isUnlocked = await isUserUnlockedForBook(book);
+            const isLocked = !isUnlocked;
+            const platform = getDevicePlatform();
+            const isAndroid = platform === "android";
+            const apkUrl = book.apkUrl || "/nuqtha.apk";
 
             // Bookmark status
             const savedBookIds = getSavedBookIds();
@@ -763,6 +1842,7 @@
                         </div>
                     </div>
 
+<<<<<<< HEAD
                     <!-- Polished NUQTHA Edition Hero Card -->
                     <div class="book-edition-hero rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl relative border">
                         <div class="relative z-10 flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
@@ -779,6 +1859,42 @@
                                     `}
                                     <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.04] to-white/[0.12] pointer-events-none"></div>
                                     <div class="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/50 via-white/15 to-transparent pointer-events-none"></div>
+=======
+                    <!-- ═══════════ BOOK HERO (FULL-WIDTH BAND) ═══════════ -->
+                    <article class="book-hero-card book-edition-hero" aria-labelledby="book-hero-title">
+                        <!-- Top Row: Eyebrow Left + Dual Pricing Pill Right -->
+                        <div class="book-hero-top-row flex items-center justify-between gap-3 mb-5 sm:mb-7">
+                            <div class="book-hero-eyebrow font-english" translate="no">
+                                <span class="font-['Noto_Sans_Malayalam'] font-bold">പുസ്തകം</span>
+                                <span class="opacity-50" aria-hidden="true">&middot;</span>
+                                <span class="tracking-widest font-black uppercase text-xs">BOOK</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${isFree ? `
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-black uppercase tracking-wider font-english" translate="no">
+                                        ₹0 • FREE (സൗജന്യം)
+                                    </span>
+                                ` : `
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-black uppercase tracking-wider font-english" translate="no">
+                                        ₹${price} • PREMIUM
+                                    </span>
+                                `}
+                                ${isUnlocked ? `
+                                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase font-english">
+                                    ✓ UNLOCKED
+                                </span>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
+                            <!-- Left: Big Standing Pure-CSS 3D Cover Presentation -->
+                            <div class="book3d-wrapper">
+                                <!-- Two thin concentric circles behind -->
+                                <div class="book3d-concentric-circles" aria-hidden="true">
+                                    <div class="book3d-circle-outer"></div>
+                                    <div class="book3d-circle-inner"></div>
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                                 </div>
                             </div>
 
@@ -851,6 +1967,25 @@
                                         </div>
                                     </div>
                                 ` : ''}
+
+                                <!-- Dynamic Unlock / App Install Prompt if Locked -->
+                                ${isLocked ? `
+                                    <div class="mt-4 p-4 rounded-2xl ${isFree ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-amber-500/10 border border-amber-500/30'} space-y-3">
+                                        <div class="flex items-center justify-between flex-wrap gap-2">
+                                            <div class="space-y-0.5">
+                                                <p class="text-xs font-bold ${isFree ? 'text-emerald-950 dark:text-emerald-200' : 'text-amber-950 dark:text-amber-200'} font-['Noto_Sans_Malayalam']">
+                                                    ${isFree ? '📲 ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്ത് സൗജന്യമായി വായിക്കാം' : '🔒 പ്രീമിയം പുസ്തകം (Chapters Locked)'}
+                                                </p>
+                                                <p class="text-[11px] ${isFree ? 'text-emerald-800 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-400'} font-english">
+                                                    ${isFree ? 'Install NUQTHA Android App to read all chapters free (₹0)' : `One-time purchase: ₹${price} to unlock full book`}
+                                                </p>
+                                            </div>
+                                            <button id="hero-unlock-btn" class="px-5 py-2.5 rounded-full ${isFree ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-[#b4532c] hover:bg-[#923e1b]'} text-white font-bold text-xs sm:text-sm font-english transition shadow-md active:scale-95 cursor-pointer touch-target-44 flex items-center gap-2">
+                                                <span>${isFree ? '📲 Install App to Read Free (₹0)' : `⚡ Unlock Book (₹${price})`}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
 
@@ -896,11 +2031,41 @@
                 </div>
             `;
 
+<<<<<<< HEAD
             // Configure Mobile Sticky Continue Bar
             setupMobileStickyBar(cleanTitle, startReadingHref, progressPercent, nextChapterTitle);
 
             // Render chapters
             renderPaginatedChapters(attachedArticles);
+=======
+            // Wire Hero Unlock button if locked
+            if (isLocked) {
+                const heroUnlockBtn = container.querySelector("#hero-unlock-btn");
+                if (heroUnlockBtn) {
+                    heroUnlockBtn.addEventListener("click", () => {
+                        showPaywallModal({
+                            book,
+                            onUnlocked: () => {
+                                renderBookIndex(book, container, attachedArticles);
+                            }
+                        });
+                    });
+                }
+            } else if (!isPremium && isAndroid) {
+                // Subtle non-intrusive App Banner for Android users on Free Books
+                setTimeout(() => {
+                    renderAndroidAppBanner(document.getElementById("edition-articles-section"), apkUrl);
+                }, 50);
+            }
+
+            // Render chapters with lock state
+            renderPaginatedChapters(attachedArticles, { isLocked, book });
+
+            // 3-Stage Reading Activity Tracker for Book
+            try {
+                trackReadingActivity(book);
+            } catch (_) {}
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
         }
 
         // ═══════════ MOBILE STICKY CONTINUE BAR ═══════════
@@ -933,11 +2098,14 @@
 
         // ═══════════ PAGINATED CHAPTER RENDERING ═══════════
         let visibleChapterCount = 10;
-        function renderPaginatedChapters(articles) {
+        function renderPaginatedChapters(articles, lockOptions = { isLocked: false, book: null }) {
             const listEl = document.getElementById("book-articles-list");
             const loadMoreContainer = document.getElementById("book-load-more-container");
             const loadMoreBtn = document.getElementById("book-load-more-btn");
             if (!listEl) return;
+
+            const isLocked = Boolean(lockOptions?.isLocked);
+            const parentBook = lockOptions?.book;
 
             if (articles.length === 0) {
                 listEl.innerHTML = `
@@ -962,6 +2130,7 @@
                 const cleanArtTitle = escapeHtml((art.title || "അധ്യായം").replace(/[*_#~`]/g, ""));
                 const cleanExcerpt = escapeHtml((art.excerpt || "").replace(/[*_#~`]/g, "").trim());
                 const isRead = readArticleIds.includes(art.id);
+<<<<<<< HEAD
 
                 const words = ((art.excerpt || "") + " " + art.title).split(/\s+/).length;
                 const readingMinutes = Number(art.readingTime) || Math.max(2, Math.round(words / 150)) || 3;
@@ -977,6 +2146,43 @@
                     ` : `
                         <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[#ebdccb]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
                             📄
+=======
+                const chapterImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
+                let targetUrl = "#";
+                if (!isLocked) {
+                    const bSlug = (parentBook?.slug || parentBook?.bookSlug || (parentBook?.title ? slugifyText(parentBook.title) : "") || parentBook?.id || "").toString().trim();
+                    const cSlug = (art.slug && art.slug !== bSlug) ? art.slug : ((art.title ? slugifyText(art.title) : "") || art.id || "");
+                    const cleanFn = typeof cleanUrlPart === "function" ? cleanUrlPart : (window.cleanUrlPart || cleanRouteSlug);
+                    const cleanBook = cleanFn(bSlug);
+                    let cleanChapter = cleanFn(cSlug);
+                    if (cleanBook && cleanChapter.startsWith(cleanBook + "/")) {
+                        cleanChapter = cleanChapter.slice(cleanBook.length + 1);
+                    } else if (cleanBook && cleanChapter.startsWith(cleanBook + "-")) {
+                        cleanChapter = cleanChapter.slice(cleanBook.length + 1);
+                    }
+                    cleanChapter = cleanFn(cleanChapter);
+                    if (cleanChapter === cleanBook || !cleanChapter) {
+                        cleanChapter = cleanFn((art.title ? slugifyText(art.title) : "") || art.id || "");
+                    }
+                    if (cleanBook && cleanChapter) {
+                        targetUrl = `/story/${encodeURIComponent(cleanBook)}/${encodeURIComponent(cleanChapter)}`;
+                    } else {
+                        targetUrl = getStoryUrl(art);
+                    }
+                }
+
+                return `
+                <a href="${targetUrl}" data-chapter-index="${idx}" data-article-id="${art.id}" data-locked="${isLocked ? 'true' : 'false'}" class="chapter-card-link group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isLocked ? 'cursor-pointer' : ''}">
+                    <!-- Thumbnail with Fixed Aspect Ratio -->
+                    ${chapterImg ? `
+                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 aspect-[16/10] relative">
+                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
+                            ${isLocked ? `<div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-lg">🔒</div>` : ''}
+                        </div>
+                    ` : `
+                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
+                            ${isLocked ? '🔒' : '📄'}
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                         </div>
                     `}
                     <div class="flex-1 min-w-0 space-y-1.5">
@@ -984,6 +2190,7 @@
                             <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
                                 അധ്യായം ${idx + 1}
                             </span>
+<<<<<<< HEAD
                             <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-['Anek_Malayalam']">
                                 ${escapeHtml(art.author || "NUQTHA")}
                             </span>
@@ -993,6 +2200,11 @@
                             ${isRead ? `
                                 <span class="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-md font-english flex items-center gap-0.5">
                                     ✓ വായിച്ചു
+=======
+                            ${isLocked ? `
+                                <span class="text-[9px] font-black uppercase text-amber-700 dark:text-amber-300 font-english bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    🔒 LOCKED
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                                 </span>
                             ` : ''}
                         </div>
@@ -1006,14 +2218,41 @@
                         ` : ""}
                         ${art.transcription ? `<p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${escapeHtml(art.transcription)}</p>` : ""}
                     </div>
-                    <div class="hidden sm:flex items-center pr-2 text-[#b4532c] dark:text-[#f87171] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
-                        &rarr;
+                    <div class="flex items-center pr-2 text-[#b4532c] dark:text-[#f87171]">
+                        ${isLocked ? `
+                            <span class="text-xs font-bold font-english text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                                Unlock &rarr;
+                            </span>
+                        ` : `
+                            <span class="hidden sm:inline-block opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">&rarr;</span>
+                        `}
                     </div>
                 </a>
                 `;
             }).join("");
 
-            attachChapterPrefetch();
+            // Wire paywall modal on locked chapter clicks
+            if (isLocked && parentBook) {
+                listEl.querySelectorAll('.chapter-card-link[data-locked="true"]').forEach(card => {
+                    card.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        const targetChapterHref = card.getAttribute("href");
+                        showPaywallModal({
+                            book: parentBook,
+                            onUnlocked: () => {
+                                if (targetChapterHref && targetChapterHref !== "#") {
+                                    window.location.href = targetChapterHref;
+                                } else {
+                                    const bookContainerEl = document.getElementById("edition-view-container");
+                                    renderBookIndex(parentBook, bookContainerEl, articles);
+                                }
+                            }
+                        });
+                    });
+                });
+            } else {
+                attachChapterPrefetch();
+            }
 
             if (articles.length > visibleChapterCount) {
                 if (loadMoreContainer) {
@@ -1023,7 +2262,7 @@
                         loadMoreBtn.textContent = `കൂടുതൽ അധ്യായങ്ങൾ കാണുക (${remaining} ബാക്കി) ↓`;
                         loadMoreBtn.onclick = () => {
                             visibleChapterCount += 10;
-                            renderPaginatedChapters(articles);
+                            renderPaginatedChapters(articles, lockOptions);
                         };
                     }
                 }
@@ -1093,8 +2332,49 @@
         }
 
         // ═══════════ STANDARD ARTICLE RENDERER (NO "Date" / "ലോഡ് ചെയ്യുന്നു...") ═══════════
+<<<<<<< HEAD
         function renderArticle(article) {
             document.title = `${article.title || "NUQTHA"} | NUQTHA`;
+=======
+        async function renderArticle(article, allArticles = []) {
+            const errorContainerEl = document.getElementById("page-error-container");
+            if (errorContainerEl) {
+                errorContainerEl.classList.add("hidden");
+                errorContainerEl.innerHTML = "";
+            }
+            window.currentActiveArticle = article;
+            const storyUrl = getStoryUrl(article);
+            document.title = `${article.title || "NUQTHA"} | NUQTHA`;
+            if (window.NUQTHA_SITE_CONFIG?.updatePageMeta) {
+                window.NUQTHA_SITE_CONFIG.updatePageMeta({
+                    path: storyUrl,
+                    title: `${article.title || "NUQTHA"} | NUQTHA`,
+                    description: article.excerpt || "NUQTHA Malayalam Publishing",
+                    imageUrl: article.thumbnailUrl || article.ogImage || article.imageUrl || "",
+                    articleId: article.id
+                });
+            }
+
+            // Check if this article/chapter belongs to a premium parent book
+            let parentBook = null;
+            if (article.bookId) {
+                parentBook = allArticles.find(a => a.id === article.bookId);
+            }
+            if (!parentBook && article.bookName) {
+                parentBook = allArticles.find(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && (a.title === article.bookName || a.bookName === article.bookName));
+            }
+
+            let isChapterLocked = false;
+            if (parentBook) {
+                const parentIsPremium = Boolean(parentBook.isPremium === true || parentBook.category === "Premium Book" || (typeof parentBook.category === "string" && parentBook.category.toLowerCase().includes("premium")));
+                if (parentIsPremium) {
+                    const purchased = await isBookPurchased(parentBook.id);
+                    if (!purchased) {
+                        isChapterLocked = true;
+                    }
+                }
+            }
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             const titleEl = document.getElementById('art-title');
             if (titleEl) {
                 titleEl.textContent = article.title || "ലേഖനം";
@@ -1160,16 +2440,158 @@
             const contentEl = document.getElementById('art-content');
             if (!contentEl) return;
 
+<<<<<<< HEAD
             const fontSizeMap = { small: "1.05rem", medium: "1.22rem", large: "1.38rem", xlarge: "1.55rem" };
             const chosenSize = fontSizeMap[article.fontSize] || "1.22rem";
+=======
+            let savedUserFontSize = null;
+            try {
+                savedUserFontSize = localStorage.getItem("nuqtha_reader_size_v2") || sessionStorage.getItem("nuqtha_reader_size_v2");
+            } catch (_) {}
+            const defaultSize = 18;
+            let currentReaderSize = savedUserFontSize ? parseInt(savedUserFontSize, 10) : defaultSize;
+            if (isNaN(currentReaderSize) || currentReaderSize < 15 || currentReaderSize > 26) {
+                currentReaderSize = defaultSize;
+            }
+            const effectiveSize = `${currentReaderSize}px`;
+
+            contentEl.style.setProperty("--article-font-size", effectiveSize);
+            document.documentElement.style.setProperty("--article-font-size", effectiveSize);
+            document.querySelectorAll(".font-size-indicator, #font-size-indicator").forEach(el => {
+                el.textContent = effectiveSize;
+            });
+            // Safe declaration and definition of contentStyle with fallback
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             const contentStyleParts = [];
             if (article.contentColor) contentStyleParts.push(`color: ${getThemeSafeTextColor(article.contentColor)}`);
             if (chosenSize) contentStyleParts.push(`font-size: ${chosenSize}`);
             const contentStyleAttr = contentStyleParts.length > 0 ? `style="${contentStyleParts.join('; ')};"` : '';
 
+<<<<<<< HEAD
             contentEl.innerHTML = (article.content || article.excerpt || "")
                 .split('\n\n')
                 .filter(p => p.trim())
+=======
+            // If article content was not loaded (e.g. from cache or lightweight feed), fetch full body content
+            if ((!article.content || !article.content.trim()) && article.id) {
+                try {
+                    const fullDoc = await fetchTargetDocument(article.id);
+                    if (fullDoc && fullDoc.content) {
+                        article.content = fullDoc.content;
+                        if (fullDoc.imageUrl && !article.imageUrl) article.imageUrl = fullDoc.imageUrl;
+                        if (fullDoc.transcription && !article.transcription) article.transcription = fullDoc.transcription;
+                    }
+                } catch (_) {}
+            }
+
+            const bodyContent = (article.content || "").trim();
+            // Clean Rendering: Collapse 3+ line breaks to double line breaks
+            let cleanedBody = bodyContent
+                .replace(/(?:\r?\n){3,}/g, "\n\n")
+                .replace(/(?:<br\s*\/?>\s*){3,}/gi, "<br><br>");
+
+            // Strip clashing inline styles while preserving highlight classes
+            cleanedBody = cleanedBody.replace(/style\s*=\s*(["'])(.*?)\1/gi, (match, quote, styleStr) => {
+                const kept = styleStr
+                    .split(";")
+                    .map(s => s.trim())
+                    .filter(rule => {
+                        if (!rule) return false;
+                        const lower = rule.toLowerCase();
+                        if (lower.startsWith("font-size") ||
+                            lower.startsWith("font-family") ||
+                            lower.startsWith("line-height") ||
+                            lower.startsWith("color") ||
+                            lower.includes("text-align: justify") ||
+                            lower.includes("text-align:justify")) {
+                            return false;
+                        }
+                        return true;
+                    })
+                    .join("; ");
+                return kept ? `style="${kept}"` : "";
+            });
+
+            let rawParagraphs = cleanedBody
+                .split(/\r?\n\r?\n/)
+                .map(p => p.trim())
+                .filter(p => {
+                    if (!p) return false;
+                    const stripped = p.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, "").trim();
+                    if (!stripped && !p.includes("<img") && !p.includes("![") && !p.includes(":::")) return false;
+                    return true;
+                });
+
+            // Locked Chapter Preview & Inline Paywall Card
+            if (isChapterLocked && parentBook) {
+                const platform = getDevicePlatform();
+                const isAndroid = platform === "android";
+                const price = Number(parentBook.price) || 49;
+                const apkUrl = parentBook.apkUrl || "/nuqtha.apk";
+                const cleanParentTitle = (parentBook.title || "പ്രീമിയം പുസ്തകം").replace(/[*_#~`]/g, "");
+
+                const firstP = rawParagraphs[0] ? rawParagraphs[0].replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>').replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>') : (article.excerpt || "");
+
+                contentEl.innerHTML = `
+                    <div class="relative">
+                        <p class="reading-p mb-4" ${contentStyle || contentStyleAttr || ""}>${firstP}</p>
+                        <!-- Gradient Blur Overlay -->
+                        <div class="h-28 bg-gradient-to-b from-transparent via-[var(--bg)]/80 to-[var(--bg)] pointer-events-none -mt-14"></div>
+                    </div>
+
+                    <!-- Sleek Paywall Card -->
+                    <div class="my-8 p-6 sm:p-8 rounded-3xl bg-amber-500/10 border-2 border-amber-500/30 text-center space-y-4 shadow-xl">
+                        <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center text-3xl shadow-lg shadow-amber-500/30">
+                            🔒
+                        </div>
+                        <div class="space-y-1">
+                            <span class="inline-block px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 text-[10px] font-black uppercase font-english">
+                                PREMIUM CHAPTER &bull; പ്രീമിയം അധ്യായം
+                            </span>
+                            <h4 class="text-lg sm:text-xl font-black text-[var(--text)] dark:text-white font-['Anek_Malayalam']">
+                                ഈ അധ്യായം പൂർണ്ണമായി വായിക്കാൻ '${cleanParentTitle}' അൺലോക്ക് ചെയ്യുക
+                            </h4>
+                            <p class="text-xs text-amber-900/90 dark:text-amber-300/90 font-['Noto_Sans_Malayalam']">
+                                ${isAndroid ? 'ആൻഡ്രോയിഡ് ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്തോ വെബ്സൈറ്റിൽ നേരിട്ടോ വായിക്കാം.' : 'മുഴുവൻ അധ്യായങ്ങളും ലഭ്യമാക്കാൻ ഇപ്പോൾ അൺലോക്ക് ചെയ്യുക.'}
+                            </p>
+                        </div>
+
+                        ${isAndroid ? `
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+                                <a href="${apkUrl}" download class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs sm:text-sm font-english transition shadow-md flex items-center justify-center gap-2 cursor-pointer touch-target-44">
+                                    <span>📲 Install App (ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യുക)</span>
+                                </a>
+                                <button id="inline-pay-btn" class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#b4532c] hover:bg-[#923e1b] text-white font-bold text-xs sm:text-sm font-english transition shadow-md flex items-center justify-center gap-2 cursor-pointer touch-target-44">
+                                    <span>💳 UPI വഴി വാങ്ങുക (₹${price})</span>
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="pt-3">
+                                <button id="inline-pay-btn" class="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#b4532c] hover:bg-[#923e1b] text-white font-bold text-sm font-english transition shadow-lg shadow-[#b4532c]/30 active:scale-95 flex items-center justify-center gap-2 mx-auto cursor-pointer touch-target-44">
+                                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                                    <span>⚡ Pay to Unlock (₹${price})</span>
+                                </button>
+                            </div>
+                        `}
+                    </div>
+                `;
+
+                const inlinePayBtn = contentEl.querySelector("#inline-pay-btn");
+                if (inlinePayBtn) {
+                    inlinePayBtn.addEventListener("click", () => {
+                        triggerRazorpayPayment({
+                            book: parentBook,
+                            onSuccess: () => {
+                                renderArticle(article, allArticles);
+                            }
+                        });
+                    });
+                }
+                return;
+            }
+
+            contentEl.innerHTML = rawParagraphs
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                 .map(paragraph => {
                     const p = paragraph.trim();
 
@@ -1201,10 +2623,17 @@
                         const url = imgMatch[3];
                         if (!/^https?:\/\//i.test(url) && !/^data:image\/(jpeg|png|webp);base64,/i.test(url)) return "";
                         return `
+<<<<<<< HEAD
                             <div class="my-6 rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10">
                                 <img src="${escapeHtml(url)}" alt="${escapeHtml(caption)}" class="w-full h-auto" loading="lazy">
                                 ${caption && caption !== "ചിത്രം" ? `<div class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${escapeHtml(caption)}</div>` : ''}
                             </div>
+=======
+                            <figure class="article-image-wrap my-6">
+                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" loading="lazy">
+                                ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
+                            </figure>
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                         `;
                     }
 
@@ -1212,9 +2641,20 @@
                         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1e1b18] dark:text-white">$1</strong>')
                         .replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>');
 
+<<<<<<< HEAD
                     return `<p ${contentStyleAttr}>${formatted}</p>`;
+=======
+                    return `<p class="reading-p mb-4" ${contentStyle || contentStyleAttr || ""}>${formatted}</p>`;
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
                 })
                 .join('');
+
+            // 3-Stage Reading Activity Tracker (Instant View, 5s Engaged, 80% Full Read)
+            try {
+                trackReadingActivity(article);
+            } catch (err) {
+                console.warn("[Analytics] Track invocation failed:", err);
+            }
         }
 
         function renderBookChapterNavigation(article, articles) {
@@ -1638,6 +3078,62 @@
         }
 
         // ═══════════ THEME SWITCHER ═══════════
+<<<<<<< HEAD
+=======
+        // ═══════════ FONT SIZE ADJUSTMENT CONTROLS ═══════════
+        function setupFontSizeControls() {
+            const decBtns = document.querySelectorAll(".font-decrease-btn, #font-decrease-btn");
+            const incBtns = document.querySelectorAll(".font-increase-btn, #font-increase-btn");
+            const resetBtns = document.querySelectorAll(".font-reset-btn, #font-reset-btn");
+            const indicators = document.querySelectorAll(".font-size-indicator, #font-size-indicator");
+            const contentEl = document.getElementById("art-content");
+
+            const defaultSize = 18;
+            let saved = null;
+            try {
+                saved = localStorage.getItem("nuqtha_reader_size_v2") || sessionStorage.getItem("nuqtha_reader_size_v2");
+            } catch (_) {}
+            let currentSize = saved ? parseInt(saved, 10) : defaultSize;
+            if (isNaN(currentSize) || currentSize < 15 || currentSize > 26) {
+                currentSize = defaultSize;
+            }
+
+            function updateSize(sz) {
+                currentSize = Math.max(15, Math.min(26, sz));
+                try {
+                    localStorage.setItem("nuqtha_reader_size_v2", currentSize);
+                } catch (err) {
+                    try { sessionStorage.setItem("nuqtha_reader_size_v2", currentSize); } catch (_) {}
+                }
+                document.documentElement.style.setProperty("--article-font-size", `${currentSize}px`);
+                if (contentEl) contentEl.style.setProperty("--article-font-size", `${currentSize}px`);
+                indicators.forEach(ind => {
+                    if (ind) {
+                        ind.textContent = `${currentSize}px`;
+                    }
+                });
+            }
+
+            decBtns.forEach(btn => {
+                if (btn) btn.onclick = () => updateSize(currentSize - 1);
+            });
+            incBtns.forEach(btn => {
+                if (btn) btn.onclick = () => updateSize(currentSize + 1);
+            });
+            resetBtns.forEach(btn => {
+                if (btn) btn.onclick = () => updateSize(18);
+            });
+            indicators.forEach(ind => {
+                if (ind) {
+                    ind.onclick = () => updateSize(18);
+                    ind.title = "Reset default size (18px)";
+                }
+            });
+
+            updateSize(currentSize);
+        }
+
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
         function setupTheme() {
             const themeBtn = document.getElementById("theme-toggle-btn");
             const sunIcon = document.getElementById("sun-icon");
@@ -1647,7 +3143,21 @@
 
         // ═══════════ SOCIAL SHARE ═══════════
         window.shareArticlePage = function(platform) {
+<<<<<<< HEAD
             const url = window.location.href;
+=======
+            let url = "";
+            if (window.currentActiveArticle) {
+                url = getStoryUrl(window.currentActiveArticle);
+            }
+            if (!url || url === "/" || url === "#") {
+                const canonicalEl = document.querySelector('link[rel="canonical"]');
+                url = (canonicalEl && canonicalEl.getAttribute("href")) || window.location.href;
+            }
+            if (url.startsWith("/")) {
+                url = window.location.origin + url;
+            }
+>>>>>>> 68ff69d703bea0fbdab87eefd5fc16b4f1a78f17
             const title = document.title || "NUQTHA Article";
             if (platform === 'whatsapp') {
                 window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(title + " " + url)}`, '_blank');
