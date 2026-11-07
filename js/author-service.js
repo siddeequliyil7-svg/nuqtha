@@ -18,13 +18,6 @@ export const PRIMARY_AUTHORS = [
         slug: "സുലൈമാൻ-ഫൈസി-കിഴിശ്ശേരി",
         bio: "ഇസ്ലാമിക ചരിത്ര പണ്ഡിതൻ, പ്രഭാഷകൻ, NUQTHA മുഖ്യ പത്രാധിപർ.",
         photoUrl: ""
-    },
-    {
-        name: "അബൂബക്കർ സിദ്ദീഖ് ഉളിയൻ",
-        role: "RESEARCHER & WRITER · ഗവേഷകൻ",
-        slug: "അബൂബക്കർ-സിദ്ദീഖ്",
-        bio: "NUQTHA ഗവേഷകൻ, ചരിത്ര-സാമൂഹിക നിരീക്ഷകൻ, എഴുത്തുകാരൻ.",
-        photoUrl: ""
     }
 ];
 
@@ -149,11 +142,6 @@ async function fetchAuthorsNetwork(db) {
     authors["സുലൈമാൻ ഫൈസി"] = sulaaiman;
     authors["സുലൈമാൻ-ഫൈസി"] = sulaaiman;
     authors[cleanMalayalamText("സുലൈമാൻ ഫൈസി")] = sulaaiman;
-
-    const siddeeq = PRIMARY_AUTHORS[2];
-    authors["അബൂബക്കർ സിദ്ദീഖ്"] = siddeeq;
-    authors["അബൂബക്കർ-സിദ്ദീഖ്"] = siddeeq;
-    authors[cleanMalayalamText("അബൂബക്കർ സിദ്ദീഖ്")] = siddeeq;
 
     let docs = [];
 

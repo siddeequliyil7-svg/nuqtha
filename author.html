@@ -235,6 +235,7 @@
             getAuthorsMap, 
             findAuthorInMap 
         } from "./js/author-service.js";
+        import { FALLBACK_ARTICLES } from "./app.js";
 
         // Theme Setup
         function setupTheme() {
@@ -388,6 +389,10 @@
                     } catch (err) {
                         console.error("[author.html] REST fetch error:", err);
                     }
+                }
+
+                if (allArticles.length === 0) {
+                    allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
                 }
 
                 if (allArticles.length > 0) {

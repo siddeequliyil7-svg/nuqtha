@@ -49,7 +49,7 @@ export const FALLBACK_ARTICLES = [
         title: "ഈ സ്ത്രീയിൽ രാജാവ് പിറക്കും",
         slug: "ee-sthreeyil-raajaav-pirakkum",
         category: "STUDY",
-        author: "അബൂബക്കർ സിദ്ദീഖ് ഉളിയൻ",
+        author: "സുലൈമാൻ ഫൈസി കിഴിശ്ശേരി",
         excerpt: "ചരിത്രത്തിലെ വിസ്മയകരമായ ഒരു ചരിത്ര മുഹൂർത്തത്തെക്കുറിച്ചുള്ള ആഴത്തിലുള്ള പഠനവും വിശകലനവും.",
         placement: "CAROUSEL",
         priority: 3,
@@ -155,6 +155,8 @@ export const FALLBACK_ARTICLES = [
     }
 ];
 
+const CACHE_KEY = 'nuqtha_cached_articles_v5';
+
 function safeCacheArticles(articles) {
     if (!Array.isArray(articles) || articles.length === 0) return;
     try {
@@ -174,8 +176,8 @@ function safeCacheArticles(articles) {
             return copy;
         });
         const str = JSON.stringify(lightweight);
-        sessionStorage.setItem('nuqtha_cached_articles', str);
-        try { localStorage.setItem('nuqtha_cached_articles', str); } catch (_) {}
+        sessionStorage.setItem(CACHE_KEY, str);
+        try { localStorage.setItem(CACHE_KEY, str); } catch (_) {}
     } catch (e) {
         try {
             if (typeof window.clearVolatileStorage === "function") {
@@ -187,16 +189,29 @@ function safeCacheArticles(articles) {
 
 let allArticles = [];
 try {
-    const cachedArts = sessionStorage.getItem('nuqtha_cached_articles') || localStorage.getItem('nuqtha_cached_articles');
+    // Purge outdated or corrupted cache keys
+    sessionStorage.removeItem('nuqtha_cached_articles');
+    localStorage.removeItem('nuqtha_cached_articles');
+    sessionStorage.removeItem('nuqtha_cached_authors');
+
+    const cachedArts = sessionStorage.getItem(CACHE_KEY) || localStorage.getItem(CACHE_KEY);
     if (cachedArts) {
         const parsed = JSON.parse(cachedArts);
-        if (Array.isArray(parsed) && parsed.length > 0) allArticles = parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+            // Verify cache contains valid cover images and no obsolete authors
+            const hasImages = parsed.some(a => a.imageUrl || a.thumbnailUrl);
+            const hasNoOldAuthor = !parsed.some(a => (a.author || "").includes("അബൂബക്കർ"));
+            if (hasImages && hasNoOldAuthor) {
+                allArticles = parsed;
+            }
+        }
     }
 } catch (e) {}
 
-// Pre-fill with normalized fallback articles so feed is NEVER empty or stuck on skeletons
+// Pre-fill with normalized fallback articles so feed is NEVER empty, broken, or stuck on skeletons
 if (!Array.isArray(allArticles) || allArticles.length === 0) {
     allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
+    safeCacheArticles(allArticles);
 }
 
 let siteAuthorsMap = null;
@@ -823,10 +838,10 @@ export async function initAppData(database = db) {
 
     // 1. Instant cache paint
     try {
-        const cached = sessionStorage.getItem("nuqtha_cached_articles");
+        const cached = sessionStorage.getItem(CACHE_KEY) || localStorage.getItem(CACHE_KEY);
         if (cached) {
             const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) {
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed.some(a => a.imageUrl || a.thumbnailUrl)) {
                 allArticles = parsed;
                 renderFeed();
             }
@@ -885,12 +900,15 @@ export async function initAppData(database = db) {
             allArticles = sortArticles(combined);
             safeCacheArticles(allArticles);
             renderFeed();
-        } else if (allArticles.length === 0) {
+        } else if (allArticles.length === 0 || !allArticles.some(a => a.imageUrl || a.thumbnailUrl)) {
+            allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
+            safeCacheArticles(allArticles);
             renderFeed();
         }
     } catch (_) {
-        if (allArticles.length === 0) {
+        if (allArticles.length === 0 || !allArticles.some(a => a.imageUrl || a.thumbnailUrl)) {
             allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
+            safeCacheArticles(allArticles);
         }
         renderFeed();
     } finally {

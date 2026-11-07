@@ -351,8 +351,17 @@ export function sanitizeImageUrl(url) {
     const trimmed = url.trim();
     if (trimmed.length === 0) return "";
 
+    // Allow root-relative and relative local asset paths (e.g., /assets/..., ./assets/..., assets/..., /favicon.ico)
+    if (trimmed.startsWith("/") || trimmed.startsWith("./") || trimmed.startsWith("assets/")) {
+        const lower = trimmed.toLowerCase();
+        // Prevent protocol-relative URLs (//evil.com) and code execution characters
+        if (!lower.startsWith("//") && !lower.includes("<") && !lower.includes(">") && !lower.includes('"') && !lower.includes("'")) {
+            return trimmed;
+        }
+    }
+
     // Allow valid Data URIs for safe raster images only (JPEG, PNG, WEBP, GIF)
-    if (/^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(trimmed)) {
+    if (/^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
         return trimmed;
     }
 
@@ -362,7 +371,10 @@ export function sanitizeImageUrl(url) {
     }
 
     // Disallow corrupted/unknown strings or dangerous pseudo-protocols
-    console.warn("[Sanitizer] Ignored malformed image URL/DataURI");
+    // Do not log warning for empty strings or common benign non-image values
+    if (trimmed.length > 5 && !trimmed.startsWith("blob:")) {
+        console.warn("[Sanitizer] Ignored malformed image URL/DataURI:", trimmed.slice(0, 30));
+    }
     return "";
 }
 
@@ -374,6 +386,12 @@ export function sanitizeUrl(url, fallback = "") {
     if (!url || typeof url !== "string") return fallback;
     const trimmed = url.trim();
     if (!trimmed) return fallback;
+    if (trimmed.startsWith("/") || trimmed.startsWith("./") || trimmed.startsWith("#")) {
+        const lower = trimmed.toLowerCase();
+        if (!lower.startsWith("//") && !lower.includes("<") && !lower.includes(">") && !lower.includes('"') && !lower.includes("'")) {
+            return trimmed;
+        }
+    }
     if (/^https?:\/\/[^\s$.?#].[^\s]*$/i.test(trimmed)) {
         return trimmed;
     }
