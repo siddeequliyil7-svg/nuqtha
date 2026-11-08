@@ -73,7 +73,7 @@ window.isBookOrChapter = isBookOrChapter;
  * 4-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
  * With Strict Data Validation & Schema Sanitization
  */
-import { db, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, uploadImageDataUrl } from "./firebase-config.js";
+import { db, firebaseConfig, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, uploadImageDataUrl } from "./firebase-config.js";
 import {
     validateAndSanitizeArticleForSave,
     normalizeArticleDoc,
@@ -84,7 +84,8 @@ import {
     ALLOWED_CATEGORIES,
     slugifyText,
     transliterateMalayalam,
-    getStoryUrl
+    getStoryUrl,
+    getArticleImageUrl
 } from "./schema-validator.js";
 
 // Helper function to sanitize slug for SEO URLs
@@ -3657,10 +3658,11 @@ function listenToFirestoreArticles() {
     }
 
     try {
-        console.log("[NUQTHA ADMIN] Subscribing to Firestore 'articles' collection onSnapshot...");
-        onSnapshot(colRef, (snapshot) => {
-            console.log(`[NUQTHA ADMIN] onSnapshot received ${snapshot.docs.length} documents (fromCache: ${snapshot.metadata.fromCache})`);
-            const items = snapshot.docs.map(doc => normalizeArticleDoc(doc.data(), doc.id));
+        console.log(`[NUQTHA ADMIN] Subscribing to Firestore collection '${colRef.path}' in project '${firebaseConfig.projectId}'...`);
+        onSnapshot(colRef, (querySnapshot) => {
+            console.log("Fetched articles:", querySnapshot.docs.map(articleDoc => articleDoc.data()));
+            console.log(`[NUQTHA ADMIN] onSnapshot received ${querySnapshot.docs.length} documents (fromCache: ${querySnapshot.metadata.fromCache})`);
+            const items = querySnapshot.docs.map(articleDoc => normalizeArticleDoc(articleDoc.data(), articleDoc.id));
             processArticlesData(items);
         }, (err) => {
             console.error("[NUQTHA ADMIN] Realtime onSnapshot listener failed:", err.code || "", err.message, err);
@@ -3676,6 +3678,7 @@ function listenToFirestoreArticles() {
         }
         try {
             const snapshot = await getDocs(colRef);
+            console.log("Fetched articles:", snapshot.docs.map(articleDoc => articleDoc.data()));
             processArticlesData(snapshot.docs.map(articleDoc => normalizeArticleDoc(articleDoc.data(), articleDoc.id)));
         } catch (error) {
             reportLoadError(error);
@@ -3698,6 +3701,7 @@ export function renderAdminPublishedList(items) {
     const sourceList = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
     const articles = sourceList.filter(a => !isBookOrChapter(a));
     safeArticles = Array.isArray(articles) ? articles : [];
+    updateArticleCounters(safeArticles.length);
     if (typeof window !== "undefined") {
         window.safeArticles = safeArticles;
     }
@@ -3739,7 +3743,7 @@ export function renderAdminPublishedList(items) {
                 <div class="flex items-center gap-3">
                     <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-[#f7eddd] border border-[#ebdccb]">
                         ${(data.thumbnailUrl || data.ogImage || data.imageUrl) ? `
-                            <img src="${data.thumbnailUrl || data.ogImage || data.imageUrl}" alt="${data.title || 'Article'} cover" class="w-full h-full object-cover">
+                            <img src="${getArticleImageUrl(data)}" alt="${data.title || 'Article'} cover" class="w-full h-full object-cover">
                         ` : `
                             <div class="w-full h-full flex items-center justify-center text-[#b4532c] text-xl" aria-hidden="true">📄</div>
                         `}

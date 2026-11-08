@@ -69,7 +69,7 @@ async function loadData() {
         pages: b.pages,
         color: b.color,
         description: b.description,
-        imageUrl: b.imageUrl || b.coverImage || b.coverUrl || b.image || b.thumbnailUrl || "",
+        imageUrl: b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "/og-cover.png",
         slug: b.slug,
         contents: b.contents || b.chapters?.map(chapter => chapter.title || chapter) || []
       }));
@@ -97,7 +97,7 @@ async function loadData() {
       pages: 180 + (i * 25),
       color: COLORS[i % COLORS.length],
       description: b.excerpt,
-      imageUrl: b.imageUrl || b.coverImage || b.coverUrl || b.image || b.thumbnailUrl || "",
+      imageUrl: b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "/og-cover.png",
       slug: b.slug,
       contents: (b.chapters || b.contents || []).map(c => typeof c === "string" ? c : c.title)
     }));

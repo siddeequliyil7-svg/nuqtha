@@ -122,12 +122,18 @@ describe("Schema Validator & Sanitizer Suite", () => {
         });
 
         it("normalizes legacy cover image field names", () => {
-            ["coverImage", "coverUrl", "image"].forEach((field) => {
+            ["coverImage", "coverUrl", "image", "thumbnail"].forEach((field) => {
                 const normalized = normalizeArticleDoc({ title: "Cover test", [field]: "https://example.com/cover.jpg" });
                 expect(normalized.imageUrl).to.equal("https://example.com/cover.jpg");
                 expect(normalized.coverImage).to.equal(normalized.imageUrl);
                 expect(normalized.coverUrl).to.equal(normalized.imageUrl);
             });
+        });
+
+        it("uses the default cover when no supported image field exists", () => {
+            const normalized = normalizeArticleDoc({ title: "No cover" });
+            expect(normalized.imageUrl).to.equal("/og-cover.png");
+            expect(normalized.thumbnailUrl).to.equal("/og-cover.png");
         });
 
         it("preserves supported book relationship and order fields", () => {

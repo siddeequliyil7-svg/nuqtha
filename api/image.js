@@ -152,6 +152,7 @@ export default async function handler(req, res) {
                        fields.imageUrl?.stringValue || 
                        fields.coverImage?.stringValue ||
                        fields.coverUrl?.stringValue ||
+                       fields.thumbnail?.stringValue ||
                        fields.image?.stringValue || "";
 
         // If chapter has no own image, fallback to parent book
@@ -163,6 +164,7 @@ export default async function handler(req, res) {
                            bookFields.imageUrl?.stringValue || 
                            bookFields.coverImage?.stringValue ||
                            bookFields.coverUrl?.stringValue ||
+                           bookFields.thumbnail?.stringValue ||
                            bookFields.image?.stringValue || "";
             }
         }

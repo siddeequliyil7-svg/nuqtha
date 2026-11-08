@@ -7,7 +7,7 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
  * Protected by Strict Schema Validator & Safe Fallbacks
  */
 import { db, collection, doc, getDoc, getDocs, getDocsFromCache } from "./firebase-config.js";
-import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl } from "./schema-validator.js";
+import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl } from "./schema-validator.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
@@ -24,15 +24,16 @@ function safeCacheArticles(articles) {
             const copy = { ...a };
             delete copy.content;
             delete copy.transcription;
-            if (copy.imageUrl && copy.imageUrl.startsWith("data:image/")) {
-                delete copy.imageUrl;
-            }
-            if (copy.thumbnailUrl && copy.thumbnailUrl.startsWith("data:image/")) {
-                delete copy.thumbnailUrl;
-            }
-            if (copy.ogImage && copy.ogImage.startsWith("data:image/")) {
-                delete copy.ogImage;
-            }
+            const cover = copy.imageUrl || copy.coverUrl || copy.coverImage || copy.image || copy.thumbnailUrl || copy.thumbnail || copy.ogImage || "";
+            const thumbnail = copy.thumbnailUrl || copy.thumbnail || copy.ogImage || cover;
+            const isInlineImage = value => typeof value === "string" && value.startsWith("data:image/");
+            copy.imageUrl = isInlineImage(cover) ? "/og-cover.png" : (cover || "/og-cover.png");
+            copy.thumbnailUrl = isInlineImage(thumbnail) ? copy.imageUrl : (thumbnail || copy.imageUrl);
+            delete copy.coverUrl;
+            delete copy.coverImage;
+            delete copy.image;
+            delete copy.thumbnail;
+            delete copy.ogImage;
             return copy;
         });
         const str = JSON.stringify(lightweight);
@@ -1520,8 +1521,8 @@ function buildCategoryFeaturedCard(art, theme = null) {
         <div class="block stretched-card-wrap">
             <!-- Large Prominent Cover Image -->
             <div class="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden bg-gradient-to-br ${t.accentGrad}">
-                ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
-                    <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                ${getArticleImageUrl(art) ? `
+                    <img src="${getArticleImageUrl(art)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
                 ` : `
                     <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90">
                         <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
@@ -1603,8 +1604,8 @@ function buildFeaturedCard(art) {
         <div class="block stretched-card-wrap">
             <!-- Large Top Cover Image Container -->
             <div class="featured-cover-container relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#b8542c] via-[#aa4923] to-[#803113]">
-                ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
-                    <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                ${getArticleImageUrl(art) ? `
+                    <img src="${getArticleImageUrl(art)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
                 ` : `
                     <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90">
                         <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
@@ -1680,8 +1681,8 @@ function buildCompactRecentCard(art, theme = null) {
         <div class="flex items-center p-3 sm:p-4 gap-3.5 sm:gap-4 w-full stretched-card-wrap">
             <!-- Left Thumbnail -->
             <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${t.accentGrad}">
-                ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
-                    <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
+                ${getArticleImageUrl(art) ? `
+                    <img src="${getArticleImageUrl(art)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
                 ` : `
                     <div class="w-full h-full flex items-center justify-center text-white/70 text-[10px]">
                         ചിത്രം
@@ -1796,7 +1797,7 @@ function buildCarouselCard(art) {
     const cleanTitle = stripMarkdown(art.title);
     const authorName = art.author || "NUQTHA";
 
-    const cardImg = art.thumbnailUrl || art.ogImage || art.imageUrl || art.coverImage;
+    const cardImg = getArticleImageUrl(art);
     const imgHtml = cardImg
         ? '<img src="' + cardImg + '" alt="' + cleanTitle + '" class="carousel-card-img" loading="lazy" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"><div class="carousel-card-img-placeholder" style="display:none; background: linear-gradient(135deg, #2a201c, #4a3328); align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;"><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>'
         : '<div class="carousel-card-img-placeholder" style="background: linear-gradient(135deg, #2a201c, #4a3328); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;"><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
@@ -2146,8 +2147,8 @@ function buildBookCard(book, articles) {
     <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${book.id}">
         <!-- Cover Image Container (Vertical Magazine Style) -->
         <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
-            ${book.imageUrl ? `
-                <img src="${book.imageUrl}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+            ${getArticleImageUrl(book) ? `
+                <img src="${getArticleImageUrl(book)}" alt="${cleanTitle} cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
             ` : `
                 <div class="w-full h-full flex items-center justify-center text-white/50 text-xl font-bold">📘</div>
             `}
@@ -2401,7 +2402,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
         const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
         const isFree = !isPremium || price === 0;
 
-        const bookCoverImg = book.imageUrl || book.coverImage || book.thumbnailUrl;
+        const bookCoverImg = getArticleImageUrl(book);
         const bookId = book.id || '';
         const bookHref = bookId ? getStoryUrl(book) : '#';
 
@@ -2526,7 +2527,7 @@ function renderBooksCategoryFeed(container) {
                 const rawPrice = Number(book.price);
                 const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
                 const isFree = !isPremium || price === 0;
-                const bookCoverImg = book.imageUrl || book.coverImage || book.thumbnailUrl;
+                const bookCoverImg = getArticleImageUrl(book);
 
                 return `
                 <div class="book-glass-card group cursor-pointer flex flex-col bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] dark:hover:border-[#f87171] shadow-2xs hover:shadow-lg transition-all duration-300 relative" data-id="${book.id}">

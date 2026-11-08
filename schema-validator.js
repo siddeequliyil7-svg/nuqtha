@@ -378,6 +378,25 @@ export function sanitizeImageUrl(url) {
     return "";
 }
 
+export function getArticleImageUrl(item, fallback = "/og-cover.png") {
+    if (item && typeof item === "object") {
+        const candidates = [
+            item.imageUrl,
+            item.coverUrl,
+            item.coverImage,
+            item.image,
+            item.thumbnail,
+            item.thumbnailUrl,
+            item.ogImage
+        ];
+        for (const candidate of candidates) {
+            const safeUrl = sanitizeImageUrl(candidate);
+            if (safeUrl) return safeUrl;
+        }
+    }
+    return sanitizeImageUrl(fallback) || "/og-cover.png";
+}
+
 /**
  * Validate HTTP/HTTPS URL
  * Prevents javascript: or data: pseudo-protocol code execution.
@@ -612,10 +631,10 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const author = sanitizeString(rawDoc.author, 100, "NUQTHA");
     const authorId = sanitizeString(rawDoc.authorId || "", 100, "");
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
-    const rawImageUrl = rawDoc.imageUrl || rawDoc.coverImage || rawDoc.coverUrl || rawDoc.image || rawDoc.thumbnailUrl || rawDoc.ogImage || "";
-    const rawThumbnailUrl = rawDoc.thumbnailUrl || rawDoc.ogImage || rawDoc.coverImage || rawDoc.coverUrl || rawDoc.imageUrl || rawDoc.image || "";
-    const imageUrl = sanitizeImageUrl(rawImageUrl);
-    const thumbnailUrl = sanitizeImageUrl(rawThumbnailUrl);
+    const rawImageUrl = rawDoc.imageUrl || rawDoc.coverUrl || rawDoc.coverImage || rawDoc.image || rawDoc.thumbnailUrl || rawDoc.thumbnail || rawDoc.ogImage || "";
+    const rawThumbnailUrl = rawDoc.thumbnailUrl || rawDoc.thumbnail || rawDoc.ogImage || rawDoc.imageUrl || rawDoc.coverUrl || rawDoc.coverImage || rawDoc.image || "";
+    const imageUrl = sanitizeImageUrl(rawImageUrl) || "/og-cover.png";
+    const thumbnailUrl = sanitizeImageUrl(rawThumbnailUrl) || imageUrl;
     const slug = sanitizeString(rawDoc.slug || slugifyText(title), 200, "");
     const bookSlug = sanitizeString(rawDoc.bookSlug || (rawDoc.bookName ? slugifyText(rawDoc.bookName) : (rawDoc.playlistName ? slugifyText(rawDoc.playlistName) : "")), 200, "");
     const content = sanitizeString(rawDoc.content, 500000, "");

@@ -222,6 +222,7 @@ export default async function handler(req, res) {
                            f.imageUrl?.stringValue || 
                            f.coverImage?.stringValue ||
                            f.coverUrl?.stringValue ||
+                           f.thumbnail?.stringValue ||
                            f.image?.stringValue || "";
 
             // Fallback: If chapter has no own image, inherit from parent book
@@ -233,6 +234,7 @@ export default async function handler(req, res) {
                                bookDoc.fields.imageUrl?.stringValue || 
                                bookDoc.fields.coverImage?.stringValue ||
                                bookDoc.fields.coverUrl?.stringValue ||
+                               bookDoc.fields.thumbnail?.stringValue ||
                                bookDoc.fields.image?.stringValue || "";
                 }
             }
