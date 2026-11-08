@@ -2599,11 +2599,11 @@ function renderBooksCategoryFeed(container) {
 export async function loadBooksToFrontend(database = db) {
   const container = document.getElementById('booksContainer');
   if (!container) return;
-  
+
   try {
     const querySnapshot = await getDocs(collection(database, "books"));
     container.innerHTML = "";
-    
+
     if (querySnapshot.empty) {
       container.innerHTML = "<p class='text-gray-500 py-6 text-center text-xs'>No books found.</p>";
       return;
@@ -2613,7 +2613,7 @@ export async function loadBooksToFrontend(database = db) {
       const book = documentSnap.data();
       const isPremium = book.type === 'premium' || book.isPremium === true;
       const targetUrl = book.slug ? `/book/${encodeURIComponent(book.slug)}` : `/article.html?id=${encodeURIComponent(documentSnap.id)}`;
-      
+
       const card = document.createElement("div");
       card.className = "bg-white dark:bg-[#12141d] p-4 rounded-xl shadow border border-gray-100 dark:border-white/10 flex flex-col justify-between";
       card.innerHTML = `

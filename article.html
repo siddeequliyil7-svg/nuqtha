@@ -723,7 +723,7 @@
 
             pools.push(...FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id)));
 
-            return pools.find(a => 
+            return pools.find(a =>
                 a.id === identifier ||
                 a.id === decoded ||
                 a.id === clean ||
