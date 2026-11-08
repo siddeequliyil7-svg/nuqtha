@@ -1197,10 +1197,12 @@
                 "priority", "excerpt", "storedExcerpt", "hasCustomExcerpt", "author",
                 "date", "createdAt", "type", "category",
                 "order", "chapters", "transcription", "status",
-                "slug", "bookSlug", "isBook", "isPremium", "price"
+                "slug", "bookSlug", "isBook", "isPremium", "price",
+                "imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage"
             ];
             const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
-            const combinedArticlesMap = new Map();
+            const articleDocsMap = new Map();
+            const bookDocsMap = new Map();
 
             async function fetchCol(colName) {
                 if (checkIsRateLimited()) return;
@@ -1239,7 +1241,7 @@
                                 normalized.isBook = true;
                                 normalized.isChapter = false;
                             }
-                            combinedArticlesMap.set(docId, normalized);
+                            (colName === "books" ? bookDocsMap : articleDocsMap).set(docId, normalized);
                         }
                     }
                     nextPageToken = json.nextPageToken || "";
@@ -1253,7 +1255,26 @@
                         fetchCol("books").catch(() => {})
                     ]);
 
-                    if (combinedArticlesMap.size > 0) {
+                    if (articleDocsMap.size > 0 || bookDocsMap.size > 0) {
+                        const combinedArticlesMap = new Map(articleDocsMap);
+                        for (const book of bookDocsMap.values()) {
+                            const articleRecord = articleDocsMap.get(book.id) ||
+                                Array.from(articleDocsMap.values()).find(article => book.slug && article.slug === book.slug);
+                            const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(book, "");
+                            const thumbnailUrl = getArticleImageUrl(book, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
+                            combinedArticlesMap.set(book.id, {
+                                ...(articleRecord || {}),
+                                ...book,
+                                imageUrl: coverUrl,
+                                coverImage: coverUrl,
+                                coverUrl,
+                                thumbnailUrl,
+                                ogImage: thumbnailUrl,
+                                type: "BOOK",
+                                isBook: true,
+                                isChapter: false
+                            });
+                        }
                         const list = Array.from(combinedArticlesMap.values());
                         memoryCache.set("lightweight_articles", list);
                         return list;
@@ -1385,6 +1406,25 @@
 
                 if (!currentDoc) {
                     currentDoc = cachedBook || searchLocalArticlesPool(lookupId);
+                }
+
+                if (currentDoc && (currentDoc.type === "BOOK" || currentDoc.isBook === true || isBookEditionDoc(currentDoc)) &&
+                    !getArticleImageUrl(currentDoc, "")) {
+                    const articleBook = allArticles.find(item =>
+                        item.id === currentDoc.id || (currentDoc.slug && item.slug === currentDoc.slug)
+                    );
+                    const coverUrl = getArticleImageUrl(articleBook, "");
+                    if (coverUrl) {
+                        const thumbnailUrl = getArticleImageUrl(articleBook, "") || coverUrl;
+                        currentDoc = {
+                            ...currentDoc,
+                            imageUrl: coverUrl,
+                            coverImage: coverUrl,
+                            coverUrl,
+                            thumbnailUrl,
+                            ogImage: thumbnailUrl
+                        };
+                    }
                 }
 
                 // Slug and metadata matching in pool if direct ID fetch did not hit
