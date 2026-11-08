@@ -257,7 +257,9 @@ export async function initLibraryAdmin(root) {
           form.color.value = b.color || "#7b2d26";
           form.order.value = b.order ?? 1;
           form.description.value = b.description || "";
-          form.contents.value = (b.contents || []).join("\n");
+          form.contents.value = (Array.isArray(b.contents) ? b.contents : []).map((item) =>
+            typeof item === "string" ? item : item?.title || ""
+          ).filter(Boolean).join("\n");
           form.visible.checked = !!b.visible;
           form.scrollIntoView({ behavior: "smooth" });
           bkStatus.textContent = `Editing: ${b.title}`;
@@ -357,39 +359,46 @@ export async function initLibraryAdmin(root) {
 
   function parseExistingItems(allDocs) {
     if (!Array.isArray(allDocs)) return;
+    const records = allDocs.filter((record) => record && typeof record === "object");
 
     // 1. Parse Books
     existingBooks = [];
-    allDocs.forEach(a => {
-      const isBook = a.isBook === true || (a.type || "").toUpperCase() === "BOOK" || (a.category || "").toLowerCase() === "premium book" || (a.category || "").toLowerCase() === "book";
-      const isChapter = a.isChapter === true || (a.type || "").toUpperCase() === "CHAPTER" || a.chapterIndex !== undefined;
+    records.forEach(a => {
+      const type = String(a.type || "").toUpperCase();
+      const category = String(a.category || "").toLowerCase();
+      const isBook = a.isBook === true || type === "BOOK" || category === "premium book" || category === "book";
+      const isChapter = a.isChapter === true || type === "CHAPTER" || a.chapterIndex != null;
       if (isBook && !isChapter) {
-        const chapters = allDocs.filter(c => {
+        const chapters = records.filter(c => {
           if (c.id === a.id) return false;
-          if (c.bookId && String(c.bookId).trim() === String(a.id)) return true;
-          if (c.bookName && c.title && c.bookName.trim().toLowerCase() === (a.title || a.bookName || "").trim().toLowerCase()) return true;
+          if (String(c.bookId || "").trim() === String(a.id || "")) return true;
+          if (typeof c.bookName === "string" && typeof c.title === "string" &&
+              c.bookName.trim().toLowerCase() === String(a.title || a.bookName || "").trim().toLowerCase()) return true;
           return false;
-        }).sort((x, y) => (Number(x.order ?? x.chapterIndex ?? 0)) - (Number(y.order ?? y.chapterIndex ?? 0)));
+        }).sort((x, y) => (Number(x.order ?? x.chapterIndex ?? 0) || 0) - (Number(y.order ?? y.chapterIndex ?? 0) || 0));
 
         existingBooks.push({
           id: a.id,
-          title: a.title || a.bookName || "Untitled Book",
+          title: String(a.title || a.bookName || "Untitled Book"),
           author: a.author || "Nuqtha Press",
-          description: a.introduction || a.excerpt || a.description || (a.content ? a.content.replace(/<[^>]*>/g, " ").slice(0, 250) : ""),
+          description: a.introduction || a.excerpt || a.description || (typeof a.content === "string" ? a.content.replace(/<[^>]*>/g, " ").slice(0, 250) : ""),
           pages: a.pages || (chapters.length > 0 ? chapters.length * 15 : 120),
-          chapters: chapters.map((ch, idx) => ch.title || `Chapter ${idx + 1}`),
+          chapters: chapters.map((ch, idx) => String(ch.title || `Chapter ${idx + 1}`)),
           type: "book"
         });
       }
     });
 
     // 2. Parse Articles
-    existingArticles = allDocs.filter(a => {
-      const isBook = a.isBook === true || (a.type || "").toUpperCase() === "BOOK" || (a.category || "").toLowerCase() === "premium book" || (a.category || "").toLowerCase() === "book";
-      const isChapter = a.isChapter === true || (a.type || "").toUpperCase() === "CHAPTER" || a.chapterIndex !== undefined;
-      return !isBook && !isChapter && (a.title || "").trim().length > 0;
+    existingArticles = records.filter(a => {
+      const type = String(a.type || "").toUpperCase();
+      const category = String(a.category || "").toLowerCase();
+      const isBook = a.isBook === true || type === "BOOK" || category === "premium book" || category === "book";
+      const isChapter = a.isChapter === true || type === "CHAPTER" || a.chapterIndex != null;
+      return !isBook && !isChapter && typeof a.title === "string" && a.title.trim().length > 0;
     }).map(a => {
-      const cleanContent = (a.content || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+      const content = typeof a.content === "string" ? a.content : "";
+      const cleanContent = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
       const words = cleanContent ? cleanContent.split(/\s+/).length : 0;
       const estPages = a.pages ? Number(a.pages) : Math.max(8, Math.ceil(words / 250) || 12);
 
@@ -397,7 +406,7 @@ export async function initLibraryAdmin(root) {
       const headings = [];
       const headingRegex = /<h[23][^>]*>(.*?)<\/h[23]>/gi;
       let match;
-      while ((match = headingRegex.exec(a.content || "")) !== null) {
+      while ((match = headingRegex.exec(content)) !== null) {
         const hText = match[1].replace(/<[^>]*>/g, "").trim();
         if (hText && !headings.includes(hText)) headings.push(hText);
       }
@@ -535,13 +544,13 @@ export async function initLibraryAdmin(root) {
       return;
     }
     const data = {
-      title: b.title.trim(),
-      author: b.author.trim() || "Nuqtha Press",
+      title: String(b?.title || "").trim(),
+      author: String(b?.author || "").trim() || "Nuqtha Press",
       pages: Number(b.pages) || 120,
       color: "#7b2d26",
       order: books.length + 1,
-      description: b.description.trim(),
-      contents: b.chapters,
+      description: String(b?.description || "").trim(),
+      contents: Array.isArray(b?.chapters) ? b.chapters.filter(Boolean) : [],
       visible: true
     };
     try {
