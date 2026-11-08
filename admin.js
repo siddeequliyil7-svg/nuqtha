@@ -73,7 +73,7 @@ window.isBookOrChapter = isBookOrChapter;
  * 4-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
  * With Strict Data Validation & Schema Sanitization
  */
-import { db, firebaseConfig, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, uploadImageDataUrl } from "./firebase-config.js";
+import { db, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, uploadImageDataUrl } from "./firebase-config.js";
 import {
     validateAndSanitizeArticleForSave,
     normalizeArticleDoc,
@@ -3658,9 +3658,8 @@ function listenToFirestoreArticles() {
     }
 
     try {
-        console.log(`[NUQTHA ADMIN] Subscribing to Firestore collection '${colRef.path}' in project '${firebaseConfig.projectId}'...`);
+        console.log("[NUQTHA ADMIN] Subscribing to Firestore 'articles' collection onSnapshot...");
         onSnapshot(colRef, (querySnapshot) => {
-            console.log("Fetched articles:", querySnapshot.docs.map(articleDoc => articleDoc.data()));
             console.log(`[NUQTHA ADMIN] onSnapshot received ${querySnapshot.docs.length} documents (fromCache: ${querySnapshot.metadata.fromCache})`);
             const items = querySnapshot.docs.map(articleDoc => normalizeArticleDoc(articleDoc.data(), articleDoc.id));
             processArticlesData(items);
@@ -3678,7 +3677,6 @@ function listenToFirestoreArticles() {
         }
         try {
             const snapshot = await getDocs(colRef);
-            console.log("Fetched articles:", snapshot.docs.map(articleDoc => articleDoc.data()));
             processArticlesData(snapshot.docs.map(articleDoc => normalizeArticleDoc(articleDoc.data(), articleDoc.id)));
         } catch (error) {
             reportLoadError(error);
