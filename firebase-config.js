@@ -22,6 +22,7 @@ import {
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { resolveFirebaseProjectId } from "./js/firebase-project.js";
 
 /**
  * Dynamically resolves Firebase API Key from environment variables, window global, or default.
@@ -41,7 +42,7 @@ export function getFirebaseApiKey() {
 export const firebaseConfig = {
   apiKey: getFirebaseApiKey(),
   authDomain: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN) || "nuqtha-c0900.firebaseapp.com",
-  projectId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_PROJECT_ID) || "nuqtha-c0900",
+  projectId: resolveFirebaseProjectId(import.meta.env?.VITE_FIREBASE_PROJECT_ID),
   storageBucket: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET) || "nuqtha-c0900.firebasestorage.app",
   messagingSenderId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID) || "902747954424",
   appId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_APP_ID) || "1:902747954424:web:af61e4fc48033b20e1af0d",

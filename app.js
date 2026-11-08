@@ -1005,8 +1005,8 @@ function renderHomeFeed(container) {
     // Distinguish book covers from standard articles
     const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
     const bookCovers = allArticles.filter(isBookCoverItem);
-    // Regular articles: keep only genuine standalone articles (exclude book covers AND all book chapters)
-    const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapterEntity(a));
+    // Keep attached chapter articles in the feed; only book-cover documents belong in the books section.
+    const regularArticles = allArticles.filter(a => !isBookCoverItem(a));
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) {
@@ -1032,7 +1032,7 @@ function renderHomeFeed(container) {
         return 0;
     };
 
-    // 1. Group regular articles by explicit Placement or AUTO (No books/chapters!)
+    // 1. Group regular articles by explicit Placement or AUTO.
     const explicitHero = regularArticles.filter(a => a.placement === "HERO").sort(comparePriority);
     const explicitCarousel = regularArticles.filter(a => a.placement === "CAROUSEL").sort(comparePriority);
     const autoArticles = regularArticles.filter(a => !a.placement || a.placement === "AUTO");
@@ -1053,7 +1053,7 @@ function renderHomeFeed(container) {
     }
 
     // 2. Determine Carousel Articles for Top Horizontal Swipe:
-    // Pool regular articles marked for CAROUSEL or HERO or recent AUTO (No books/chapters!)
+    // Pool regular articles marked for CAROUSEL or HERO or recent AUTO.
     const carouselPool = [
         ...explicitCarousel,
         heroArticle,

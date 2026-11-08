@@ -7,8 +7,9 @@
  */
 
 import crypto from "crypto";
+import { resolveFirebaseProjectId } from "../js/firebase-project.js";
 
-const FIRESTORE_PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || "nuqtha-c0900";
+const FIRESTORE_PROJECT_ID = resolveFirebaseProjectId(process.env.VITE_FIREBASE_PROJECT_ID);
 const FIRESTORE_API_KEY = process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY || "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
 
 // Razorpay webhook secret configured in Razorpay Dashboard -> Webhooks
@@ -173,4 +174,3 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "Internal Server Error" });
     }
 }
-

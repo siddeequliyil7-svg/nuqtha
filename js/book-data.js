@@ -4,7 +4,9 @@
  * and counting articles across Admin, Home feed, and Reader mode.
  */
 
-import { fetchWithRetry, getFirebaseApiKey } from "../firebase-config.js";
+import { fetchWithRetry, firebaseConfig, getFirebaseApiKey } from "../firebase-config.js";
+
+const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
 
 // Helper to normalize strings for robust comparison
 export function normalizeBookKey(s) {
@@ -177,7 +179,7 @@ export async function getBookChapters(bookId, options = {}) {
                 const apiKey = getFirebaseApiKey();
                 // 1. Try books collection first
                 let bookRes = await fetchWithRetry(
-                    `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
+                    `${FIRESTORE_REST_BASE}/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
                     { signal: controller.signal },
                     2,
                     250
@@ -185,7 +187,7 @@ export async function getBookChapters(bookId, options = {}) {
                 // 2. Fallback to articles collection
                 if (!bookRes || !bookRes.ok) {
                     bookRes = await fetchWithRetry(
-                        `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
+                        `${FIRESTORE_REST_BASE}/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}`,
                         { signal: controller.signal },
                         2,
                         250
@@ -214,7 +216,7 @@ export async function getBookChapters(bookId, options = {}) {
         try {
             const apiKey = getFirebaseApiKey();
             const runQueryRes = await fetchWithRetry(
-                `https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents:runQuery?key=${encodeURIComponent(apiKey)}`,
+                `${FIRESTORE_REST_BASE}:runQuery?key=${encodeURIComponent(apiKey)}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -264,7 +266,7 @@ export async function getBookChapters(bookId, options = {}) {
                     const apiKey = getFirebaseApiKey();
                     const fetchedDocs = await Promise.allSettled(
                         missingIds.map(id =>
-                            fetchWithRetry(`https://firestore.googleapis.com/v1/projects/nuqtha-c0900/databases/(default)/documents/articles/${encodeURIComponent(id)}?key=${encodeURIComponent(apiKey)}`, { signal: controller.signal }, 2, 250)
+                            fetchWithRetry(`${FIRESTORE_REST_BASE}/articles/${encodeURIComponent(id)}?key=${encodeURIComponent(apiKey)}`, { signal: controller.signal }, 2, 250)
                                 .then(r => r && r.ok ? r.json() : null)
                                 .then(j => j ? parseFirestoreRestDoc(j, id) : null)
                         )

@@ -6,8 +6,9 @@
 
 import fs from "fs";
 import path from "path";
+import { resolveFirebaseProjectId } from "../js/firebase-project.js";
 
-const FIRESTORE_PROJECT_ID = "nuqtha-c0900";
+const FIRESTORE_PROJECT_ID = resolveFirebaseProjectId(process.env.VITE_FIREBASE_PROJECT_ID);
 const FIRESTORE_API_KEY = "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
 const DEFAULT_SITE_TITLE = "NUQTHA - നുഖ്ത | Malayalam Publishing Platform";
 const DEFAULT_SITE_DESC = "A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher.";

@@ -67,6 +67,21 @@ export function isBookOrChapter(art) {
 }
 window.isBookOrChapter = isBookOrChapter;
 
+export function isPublishedArticle(art) {
+    if (!art) return false;
+    const artType = (art.type || "").toString().toLowerCase().trim();
+    const category = (art.category || "").toString().toLowerCase().trim();
+    return !(
+        artType === "book" ||
+        artType === "free" ||
+        artType === "premium" ||
+        art.isBook === true ||
+        category === "book" ||
+        category === "books" ||
+        category === "premium book"
+    );
+}
+
 "use strict";
 /**
  * NUQTHA — Admin Dashboard Logic (admin.js)
@@ -212,7 +227,7 @@ let activeTab = "create";
 let selectedBase64Image = "";
 let selectedBase64Thumbnail = "";
 let selectedBookCoverBase64 = "";
-let bmSelectedArticleImageBase64 = "";
+let bmSelectedArticleImage = "";
 let bmPresentationFileBase64 = "";
 let bmPresentationFileName = "";
 let activeBookName = "";
@@ -1776,7 +1791,9 @@ async function handleSaveBookStep1(e) {
         ));
 
     // Provide default SVG cover if no image was uploaded
-    let coverImage = selectedBookCoverBase64 || (existing ? existing.imageUrl : "") || "";
+    let coverImage = selectedBookCoverBase64 || (existing
+        ? existing.imageUrl || existing.coverUrl || existing.coverImage || existing.thumbnailUrl || existing.ogImage || existing.image
+        : "") || "";
     if (!coverImage) {
         coverImage = generateDefaultBookCover(name, tag);
     }
@@ -1830,14 +1847,6 @@ async function handleSaveBookStep1(e) {
             date: dateVal,
             updatedAt: serverTimestamp()
         };
-
-        // Clean out legacy magazine fields if updating existing book
-        if (existing) {
-            payload.leadTitle = "";
-            payload.featuredTitle = "";
-            payload.volume = "";
-            payload.issue = "";
-        }
 
         let savedDocId = "";
         if (existing) {
@@ -2233,8 +2242,8 @@ function initChapterWriter() {
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
                     ctx.drawImage(img, 0, 0, width, height);
-                    bmSelectedArticleImageBase64 = canvas.toDataURL("image/jpeg", 0.75);
-                    if (previewImg) previewImg.src = bmSelectedArticleImageBase64;
+                    bmSelectedArticleImage = canvas.toDataURL("image/jpeg", 0.75);
+                    if (previewImg) previewImg.src = bmSelectedArticleImage;
                     if (placeholder) placeholder.classList.add("hidden");
                     if (previewContainer) previewContainer.classList.remove("hidden");
                 };
@@ -2278,7 +2287,7 @@ function initChapterWriter() {
 
     if (removeBtn) {
         removeBtn.addEventListener("click", () => {
-            bmSelectedArticleImageBase64 = "";
+            bmSelectedArticleImage = "";
             if (fileInput) fileInput.value = "";
             if (previewImg) previewImg.src = "";
             if (previewContainer) previewContainer.classList.add("hidden");
@@ -2311,6 +2320,7 @@ function initChapterWriter() {
 
     function resetChapterEditMode() {
         editingChapterId = null;
+        bmSelectedArticleImage = "";
         const cancelBtn = document.getElementById("bm-cancel-edit-chapter-btn");
         const publishBtn = document.getElementById("bm-publish-article-btn");
         if (cancelBtn) cancelBtn.classList.add("hidden");
@@ -2379,15 +2389,16 @@ function initChapterWriter() {
             fSizeLabel.textContent = labels[fSize] || fSize;
         }
 
-        if (art.imageUrl && previewImg && previewContainer && placeholder) {
-            previewImg.src = art.imageUrl;
+        const chapterImage = art.imageUrl || art.coverUrl || art.coverImage || art.thumbnailUrl || art.ogImage || art.image || "";
+        if (chapterImage && previewImg && previewContainer && placeholder) {
+            previewImg.src = chapterImage;
             previewContainer.classList.remove("hidden");
             placeholder.classList.add("hidden");
-            bmSelectedArticleImageBase64 = art.imageUrl;
+            bmSelectedArticleImage = chapterImage;
         } else if (previewContainer && placeholder) {
             previewContainer.classList.add("hidden");
             placeholder.classList.remove("hidden");
-            bmSelectedArticleImageBase64 = "";
+            bmSelectedArticleImage = "";
         }
 
         if (cancelBtn) cancelBtn.classList.remove("hidden");
@@ -2453,7 +2464,7 @@ function initChapterWriter() {
         const content = (contentInput?.value || "").trim();
         const transcription = (transcriptionInput?.value || "").trim();
         const excerpt = (excerptInput?.value || "").trim();
-        const imageUrl = (bmSelectedArticleImageBase64 || "").trim();
+        const selectedImage = (bmSelectedArticleImage || "").trim();
         const titleColor = document.getElementById("bm-art-title-color")?.value || "#1e1b18";
         const contentColor = document.getElementById("bm-art-content-color")?.value || "#2b2118";
         const fontSize = document.querySelector('input[name="bm-art-font-size"]:checked')?.value || "medium";
@@ -2491,6 +2502,28 @@ function initChapterWriter() {
         }
 
         try {
+            const chapterId = editingChapterId || doc(collection(db, "articles")).id;
+            const chapter = editingChapterId
+                ? (currentArticlesList.find(article => article.id === editingChapterId) || {})
+                : {};
+            const imageUrl = await uploadImageDataUrl(
+                selectedImage ||
+                    chapter.imageUrl ||
+                    chapter.coverUrl ||
+                    chapter.coverImage ||
+                    chapter.thumbnailUrl ||
+                    chapter.ogImage ||
+                    chapter.image ||
+                    targetBookDoc.imageUrl ||
+                    targetBookDoc.coverUrl ||
+                    targetBookDoc.coverImage ||
+                    targetBookDoc.thumbnailUrl ||
+                    targetBookDoc.ogImage ||
+                    targetBookDoc.image ||
+                    "",
+                `articles/${chapterId}/cover`
+            );
+
             // Sequential order number
             const nextOrder = (activeBookChapters && activeBookChapters.length > 0)
                 ? Math.max(...activeBookChapters.map(c => Number(c.order !== undefined ? c.order : (c.priority || 0))), 0) + 1
@@ -2510,9 +2543,6 @@ function initChapterWriter() {
                 const customChapterSlugVal = customChapterSlugEl ? customChapterSlugEl.value.trim() : "";
                 const chapterSlug = cleanCustomPath(customChapterSlugVal, title);
                 const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
-                const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
-                const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";
-
                 const raw = {
                     title,
                     slug: chapterSlug,
@@ -2528,9 +2558,9 @@ function initChapterWriter() {
                     order: chapterOrder,
                     priority: chapterOrder,
                     content,
-                    imageUrl: chapterImg,
-                    thumbnailUrl: chapterThumb,
-                    ogImage: chapterThumb,
+                    imageUrl,
+                    thumbnailUrl: imageUrl,
+                    ogImage: imageUrl,
                     bookId: activeBookId,
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
@@ -2564,9 +2594,6 @@ function initChapterWriter() {
                 const customChapterSlugVal = customChapterSlugEl ? customChapterSlugEl.value.trim() : "";
                 const chapterSlug = cleanCustomPath(customChapterSlugVal, title);
                 const bookSlug = targetBookDoc.slug || slugifyText(targetBookDoc.bookName || targetBookDoc.title || activeBookName);
-                const chapterImg = imageUrl || targetBookDoc.imageUrl || "";
-                const chapterThumb = imageUrl || targetBookDoc.thumbnailUrl || targetBookDoc.imageUrl || "";
-
                 const raw = {
                     title,
                     slug: chapterSlug,
@@ -2582,9 +2609,9 @@ function initChapterWriter() {
                     order: nextOrder,
                     priority: nextOrder,
                     content,
-                    imageUrl: chapterImg,
-                    thumbnailUrl: chapterThumb,
-                    ogImage: chapterThumb,
+                    imageUrl,
+                    thumbnailUrl: imageUrl,
+                    ogImage: imageUrl,
                     bookId: activeBookId,
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
@@ -2597,7 +2624,8 @@ function initChapterWriter() {
 
                 const sanitized = validateAndSanitizeArticleForSave(raw);
 
-                const docRef = await addDoc(collection(db, "articles"), {
+                const docRef = doc(db, "articles", chapterId);
+                await setDoc(docRef, {
                     ...sanitized,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
@@ -3589,7 +3617,7 @@ function listenToFirestoreArticles() {
             try { sessionStorage.removeItem("nuqtha_cached_articles"); } catch (_) {}
         }
 
-        const standardArticles = items.filter(a => !isBookOrChapter(a));
+        const standardArticles = items.filter(isPublishedArticle);
         const allBooks = items.filter(a => isMainBook(a));
 
         console.log(`[NUQTHA ADMIN] processArticlesData: Total ${items.length} items -> ${allBooks.length} Books, ${standardArticles.length} Standard Articles.`);
@@ -3697,9 +3725,9 @@ export function renderAdminPublishedList(items) {
     const listContainer = document.getElementById("admin-articles-list");
     if (!listContainer) return;
 
-    // Strictly filter out any books and book chapters
+    // Exclude book cover documents but keep article documents attached to books.
     const sourceList = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
-    const articles = sourceList.filter(a => !isBookOrChapter(a));
+    const articles = sourceList.filter(isPublishedArticle);
     safeArticles = Array.isArray(articles) ? articles : [];
     updateArticleCounters(safeArticles.length);
     if (typeof window !== "undefined") {
@@ -3790,7 +3818,7 @@ function initPublishedSearchFilter() {
         const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
         const cat = categoryFilter ? categoryFilter.value : "ALL";
 
-        const standardArticles = currentArticlesList.filter(art => !isBookOrChapter(art));
+        const standardArticles = currentArticlesList.filter(isPublishedArticle);
 
         const filtered = standardArticles.filter(art => {
             const matchesQuery = !query || 

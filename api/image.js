@@ -5,7 +5,9 @@
  * Supports document IDs, slugs, and parent book image inheritance across articles & books collections.
  */
 
-const FIRESTORE_PROJECT_ID = "nuqtha-c0900";
+import { resolveFirebaseProjectId } from "../js/firebase-project.js";
+
+const FIRESTORE_PROJECT_ID = resolveFirebaseProjectId(process.env.VITE_FIREBASE_PROJECT_ID);
 const FIRESTORE_API_KEY = "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
 const DEFAULT_BANNER = "https://nuqtha.vercel.app/og-cover.png";
 
