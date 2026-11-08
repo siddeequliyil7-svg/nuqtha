@@ -565,7 +565,7 @@
         import { app, db, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "./firebase-config.js";
         import { FALLBACK_ARTICLES } from "./fallback-data.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart } from "./schema-validator.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart, getArticleImageUrl } from "./schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
@@ -1272,7 +1272,18 @@
                 const articles = [];
                 articlesSnap.forEach(d => articles.push(normalizeArticleDoc(d.data(), d.id)));
                 booksSnap.forEach(d => {
-                    const norm = normalizeArticleDoc(d.data(), d.id);
+                    const bookData = d.data() || {};
+                    const articleRecord = articles.find(article =>
+                        article.id === d.id || (bookData.slug && article.slug === bookData.slug)
+                    );
+                    const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(bookData, "");
+                    const thumbnailUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
+                    const norm = normalizeArticleDoc({
+                        ...(articleRecord || {}),
+                        ...bookData,
+                        imageUrl: coverUrl,
+                        thumbnailUrl
+                    }, d.id);
                     norm.type = "BOOK";
                     norm.isBook = true;
                     norm.isChapter = false;
@@ -1646,12 +1657,13 @@
                     path: bookUrl,
                     title: `${book.title || "NUQTHA Edition"} | NUQTHA`,
                     description: book.introduction || book.excerpt || "NUQTHA Malayalam Publishing",
-                    imageUrl: book.thumbnailUrl || book.ogImage || book.imageUrl || "",
+                    imageUrl: getArticleImageUrl(book),
                     articleId: book.id
                 });
             }
 
             const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "").trim();
+            const bookCoverUrl = getArticleImageUrl(book, "");
             const cleanAuthor = (book.author || "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ").replace(/[*_#~`]/g, "").trim();
             const rawIntro = (book.introduction || book.intro || book.excerpt || "").trim();
             const hasIntro = rawIntro.replace(/[\s\.\,\-\_\#\*\~\`\:\;\"\'\(\)\!\?]/g, '').length > 0;
@@ -1747,8 +1759,8 @@
                                     <div class="book3d-ribbon" aria-hidden="true"></div>
                                     <div class="book3d-spine" aria-hidden="true"></div>
                                     <div class="book3d-cover">
-                                        ${book.imageUrl ? `
-                                            <img src="${book.imageUrl}" alt="${cleanTitle} Cover" class="book3d-cover-img" width="300" height="400" loading="eager" decoding="async">
+                                        ${bookCoverUrl ? `
+                                            <img src="${bookCoverUrl}" alt="${cleanTitle} Cover" class="book3d-cover-img" width="300" height="400" loading="eager" decoding="async">
                                         ` : `
                                             <div class="book3d-cover-fallback">
                                                 <span class="text-4xl" aria-hidden="true">📚</span>
@@ -1944,7 +1956,7 @@
                 const cleanArtTitle = (art.title || "അധ്യായം").replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
-                const chapterImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
+                const chapterImg = getArticleImageUrl(art, "");
                 let targetUrl = "#";
                 if (!isLocked) {
                     const bSlug = (parentBook?.slug || parentBook?.bookSlug || (parentBook?.title ? slugifyText(parentBook.title) : "") || parentBook?.id || "").toString().trim();
@@ -1974,11 +1986,10 @@
                     ${chapterImg ? `
                         <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 aspect-[16/10] relative">
                             <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
-                            ${isLocked ? `<div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-lg">🔒</div>` : ''}
                         </div>
                     ` : `
                         <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
-                            ${isLocked ? '🔒' : '📄'}
+                            📄
                         </div>
                     `}
                     <div class="flex-1 min-w-0 space-y-1.5">
@@ -2099,8 +2110,8 @@
             grid.innerHTML = otherBooks.slice(0, 4).map(b => `
                 <a href="${getStoryUrl(b)}" class="group flex flex-col p-2.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition-all shadow-2xs hover:shadow-md">
                     <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 mb-2 border border-black/5 dark:border-white/10">
-                        ${b.imageUrl ? `
-                            <img src="${b.imageUrl}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+                        ${getArticleImageUrl(b, "") ? `
+                            <img src="${getArticleImageUrl(b, "")}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
                         ` : `
                             <div class="w-full h-full flex items-center justify-center text-2xl">📚</div>
                         `}

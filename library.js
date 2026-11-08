@@ -1,6 +1,6 @@
 // library.js (loaded lazily: only when the visitor opens the Library view)
 import { db, collection, getDocs, getDocsFromCache, query, where } from "./firebase-config.js";
-import { getStoryUrl } from "./schema-validator.js";
+import { getStoryUrl, getArticleImageUrl } from "./schema-validator.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
 
@@ -58,25 +58,32 @@ async function loadData() {
 
   const [bookSnapshot, articleSnapshot] = await Promise.all([
     getCollectionDocs(query(collection(db, "books"), where("visible", "==", true)), "books"),
-    getCollectionDocs(query(collection(db, "articles"), where("showOnTable", "==", true)), "articles")
+    getCollectionDocs(collection(db, "articles"), "articles")
   ]);
+  const articleRecords = articleSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const articlesById = new Map(articleRecords.map((article) => [article.id, article]));
+  const articlesBySlug = new Map(articleRecords.filter((article) => article.slug).map((article) => [article.slug, article]));
   books = bookSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, MAX_BOOKS)
-      .map((b) => ({
+      .map((b) => {
+        const articleRecord = articlesById.get(b.id) || articlesBySlug.get(b.slug);
+        const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(b);
+        const contents = Array.isArray(b.contents) ? b.contents : Array.isArray(b.chapters) ? b.chapters : [];
+        return ({
         id: b.id,
         title: b.title,
         author: b.author,
         pages: b.pages,
         color: b.color,
         description: b.description,
-        imageUrl: b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "/og-cover.png",
+        imageUrl: coverUrl,
         slug: b.slug,
-        contents: b.contents || b.chapters?.map(chapter => chapter.title || chapter) || []
-      }));
-  papers = articleSnapshot.docs.slice(0, MAX_PAPERS).map((d) => {
-      const a = d.data();
+        contents: contents.map((chapter) => typeof chapter === "string" ? chapter : chapter?.title || "").filter(Boolean)
+      });
+      });
+  papers = articleRecords.filter((article) => article.showOnTable === true).slice(0, MAX_PAPERS).map((a) => {
       return {
-        id: d.id,
+        id: a.id,
         title: a.title,
         author: a.author,
         category: a.category,
@@ -97,9 +104,10 @@ async function loadData() {
       pages: 180 + (i * 25),
       color: COLORS[i % COLORS.length],
       description: b.excerpt,
-      imageUrl: b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "/og-cover.png",
+      imageUrl: getArticleImageUrl(b),
       slug: b.slug,
-      contents: (b.chapters || b.contents || []).map(c => typeof c === "string" ? c : c.title)
+      contents: (Array.isArray(b.chapters) ? b.chapters : Array.isArray(b.contents) ? b.contents : [])
+        .map(c => typeof c === "string" ? c : c?.title || "").filter(Boolean)
     }));
   }
 

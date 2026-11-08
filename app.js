@@ -27,8 +27,8 @@ function safeCacheArticles(articles) {
             const cover = copy.imageUrl || copy.coverUrl || copy.coverImage || copy.image || copy.thumbnailUrl || copy.thumbnail || copy.ogImage || "";
             const thumbnail = copy.thumbnailUrl || copy.thumbnail || copy.ogImage || cover;
             const isInlineImage = value => typeof value === "string" && value.startsWith("data:image/");
-            copy.imageUrl = isInlineImage(cover) ? "/og-cover.png" : (cover || "/og-cover.png");
-            copy.thumbnailUrl = isInlineImage(thumbnail) ? copy.imageUrl : (thumbnail || copy.imageUrl);
+            copy.imageUrl = isInlineImage(cover) ? "" : cover;
+            copy.thumbnailUrl = isInlineImage(thumbnail) ? "" : thumbnail;
             delete copy.coverUrl;
             delete copy.coverImage;
             delete copy.image;
@@ -771,8 +771,16 @@ export function initAppData(database = db) {
 
         const rawBooksList = booksSnapshot.docs.map(bookDoc => {
             const bookData = bookDoc.data();
+            const articleRecord = rawArticlesList.find(article =>
+                article.id === bookDoc.id || (bookData.slug && article.slug === bookData.slug)
+            );
+            const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(bookData, "");
+            const thumbnailUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
             const book = normalizeArticleDoc({
+                ...(articleRecord || {}),
                 ...bookData,
+                imageUrl: coverUrl,
+                thumbnailUrl,
                 title: sanitizeMalayalamText(bookData.title),
                 author: sanitizeMalayalamText(bookData.author),
                 excerpt: sanitizeMalayalamText(bookData.excerpt)
