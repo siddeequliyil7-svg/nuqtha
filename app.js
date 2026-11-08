@@ -2150,15 +2150,16 @@ function buildBookCard(book, articles) {
     const cleanTitle = stripMarkdown(book.title);
     const count = articles.length;
     const dateStr = book.date || formatDate(book.createdAt);
+    const coverUrl = getArticleImageUrl(book, "");
 
     return `
     <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${book.id}">
         <!-- Cover Image Container (Vertical Magazine Style) -->
         <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
-            ${getArticleImageUrl(book) ? `
-                <img src="${getArticleImageUrl(book)}" alt="${cleanTitle} cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+            ${coverUrl ? `
+                <img src="${coverUrl}" alt="${cleanTitle} cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
             ` : `
-                <div class="w-full h-full flex items-center justify-center text-white/50 text-xl font-bold">📘</div>
+                ${buildBookCoverPlaceholder(book)}
             `}
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
         </div>
@@ -2410,7 +2411,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
         const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
         const isFree = !isPremium || price === 0;
 
-        const bookCoverImg = getArticleImageUrl(book);
+        const bookCoverImg = getArticleImageUrl(book, "");
         const bookId = book.id || '';
         const bookHref = bookId ? getStoryUrl(book) : '#';
 
@@ -2535,7 +2536,7 @@ function renderBooksCategoryFeed(container) {
                 const rawPrice = Number(book.price);
                 const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
                 const isFree = !isPremium || price === 0;
-                const bookCoverImg = getArticleImageUrl(book);
+                const bookCoverImg = getArticleImageUrl(book, "");
 
                 return `
                 <div class="book-glass-card group cursor-pointer flex flex-col bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] dark:hover:border-[#f87171] shadow-2xs hover:shadow-lg transition-all duration-300 relative" data-id="${book.id}">
