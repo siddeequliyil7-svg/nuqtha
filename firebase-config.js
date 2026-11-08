@@ -21,6 +21,7 @@ import {
   orderBy,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 /**
  * Dynamically resolves Firebase API Key from environment variables, window global, or default.
@@ -72,6 +73,16 @@ try {
   firestoreDb = getFirestore(app);
 }
 export const db = firestoreDb;
+export const storage = getStorage(app);
+
+export async function uploadImageDataUrl(image, path) {
+  if (typeof image !== "string" || !image.startsWith("data:")) return image || "";
+  const response = await fetch(image);
+  const blob = await response.blob();
+  const imageRef = ref(storage, path);
+  await uploadBytes(imageRef, blob, { contentType: blob.type || "image/jpeg" });
+  return getDownloadURL(imageRef);
+}
 
 /**
  * Fetch with automatic exponential backoff retry to withstand net::ERR_QUIC_PROTOCOL_ERROR,
@@ -119,6 +130,11 @@ if (typeof window !== "undefined" && !window.__NUQTHA_IMG_RETRY_INSTALLED__) {
           setTimeout(() => {
             target.src = `${src}${separator}_retry=${Date.now()}`;
           }, 450);
+        } else if (!target.dataset.nuqthaFallback) {
+          target.dataset.nuqthaFallback = "true";
+          target.src = "/og-cover.png";
+        } else {
+          target.style.visibility = "hidden";
         }
       }
     },

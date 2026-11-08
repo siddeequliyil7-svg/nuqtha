@@ -73,7 +73,7 @@ window.isBookOrChapter = isBookOrChapter;
  * 4-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
  * With Strict Data Validation & Schema Sanitization
  */
-import { db, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
+import { db, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, uploadImageDataUrl } from "./firebase-config.js";
 import {
     validateAndSanitizeArticleForSave,
     normalizeArticleDoc,
@@ -665,6 +665,17 @@ async function handleFormSubmit() {
             date: new Date().toLocaleDateString("en-GB")
         });
 
+        const targetArticleId = editingArticleId || doc(collection(db, "articles")).id;
+        const storedCover = await uploadImageDataUrl(sanitized.imageUrl, `articles/${targetArticleId}/cover`);
+        const storedThumbnail = sanitized.thumbnailUrl === sanitized.imageUrl
+            ? storedCover
+            : await uploadImageDataUrl(sanitized.thumbnailUrl, `articles/${targetArticleId}/thumbnail`);
+        sanitized.imageUrl = storedCover;
+        sanitized.coverImage = storedCover;
+        sanitized.coverUrl = storedCover;
+        sanitized.thumbnailUrl = storedThumbnail;
+        sanitized.ogImage = storedThumbnail;
+
         if (editingArticleId) {
             // UPDATE EXISTING ARTICLE IN FIRESTORE
             const articleRef = doc(db, "articles", editingArticleId);
@@ -693,17 +704,21 @@ async function handleFormSubmit() {
 
             // Only update imageUrl if selected/changed or explicitly set
             if (selectedBase64Image !== undefined && selectedBase64Image !== "") {
-                updatePayload.imageUrl = selectedBase64Image;
+                updatePayload.imageUrl = storedCover;
+                updatePayload.coverImage = storedCover;
+                updatePayload.coverUrl = storedCover;
                 if (!selectedBase64Thumbnail) {
-                    updatePayload.thumbnailUrl = selectedBase64Image;
-                    updatePayload.ogImage = selectedBase64Image;
+                    updatePayload.thumbnailUrl = storedCover;
+                    updatePayload.ogImage = storedCover;
                 }
             }
             if (selectedBase64Thumbnail !== undefined && selectedBase64Thumbnail !== "") {
-                updatePayload.thumbnailUrl = selectedBase64Thumbnail;
-                updatePayload.ogImage = selectedBase64Thumbnail;
+                updatePayload.thumbnailUrl = storedThumbnail;
+                updatePayload.ogImage = storedThumbnail;
                 if (!selectedBase64Image && !updatePayload.imageUrl) {
-                    updatePayload.imageUrl = selectedBase64Thumbnail;
+                    updatePayload.imageUrl = storedThumbnail;
+                    updatePayload.coverImage = storedThumbnail;
+                    updatePayload.coverUrl = storedThumbnail;
                 }
             }
 
@@ -713,13 +728,13 @@ async function handleFormSubmit() {
             switchAdminTab("published");
         } else {
             // CREATE NEW ARTICLE IN FIRESTORE
-            await addDoc(collection(db, "articles"), {
+            await setDoc(doc(db, "articles", targetArticleId), {
                 ...sanitized,
                 hasCustomExcerpt: Boolean(typedExcerpt),
                 storedExcerpt: typedExcerpt,
                 excerpt: typedExcerpt,
-                thumbnailUrl: effectiveThumb,
-                ogImage: effectiveThumb,
+                thumbnailUrl: storedThumbnail,
+                ogImage: storedThumbnail,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
@@ -1783,6 +1798,8 @@ async function handleSaveBookStep1(e) {
         const isPremium = bookTypeValue === "premium" || (isPremiumToggle ? isPremiumToggle.checked : false);
         const priceVal = parseFloat(document.getElementById("book-meta-price")?.value) || 0;
         const apkUrlVal = (document.getElementById("book-meta-apk-url")?.value || "").trim();
+        const targetBookId = existing?.id || doc(collection(db, "articles")).id;
+        const storedCover = await uploadImageDataUrl(coverImage, `books/${targetBookId}/cover`);
 
         const payload = {
             title: name,
@@ -1791,9 +1808,11 @@ async function handleSaveBookStep1(e) {
             category: tag,
             slug: bookSlug,
             bookSlug: bookSlug,
-            imageUrl: coverImage,
-            thumbnailUrl: coverImage,
-            ogImage: coverImage,
+            imageUrl: storedCover,
+            coverImage: storedCover,
+            coverUrl: storedCover,
+            thumbnailUrl: storedCover,
+            ogImage: storedCover,
             introduction: intro,
             excerpt: intro,
             content: intro,
@@ -1826,11 +1845,11 @@ async function handleSaveBookStep1(e) {
             Object.assign(existing, payload);
             showGlobalStatus(`✨ പുസ്തകം '${name}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
         } else {
-            const docRef = await addDoc(collection(db, "articles"), {
+            await setDoc(doc(db, "articles", targetBookId), {
                 ...payload,
                 createdAt: serverTimestamp()
             });
-            savedDocId = docRef.id;
+            savedDocId = targetBookId;
             currentArticlesList.unshift({ id: savedDocId, ...payload });
             showGlobalStatus(`📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
         }
@@ -1845,6 +1864,10 @@ async function handleSaveBookStep1(e) {
                 isPremium: isPremium,
                 price: isPremium ? (priceVal || 49) : 0,
                 description: intro,
+                imageUrl: storedCover,
+                coverImage: storedCover,
+                coverUrl: storedCover,
+                thumbnailUrl: storedCover,
                 visible: true,
                 updatedAt: serverTimestamp(),
                 createdAt: serverTimestamp()
@@ -3714,11 +3737,13 @@ export function renderAdminPublishedList(items) {
                 </div>
 
                 <div class="flex items-center gap-3">
-                    ${(data.thumbnailUrl || data.ogImage || data.imageUrl) ? `
-                        <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border border-[#ebdccb]">
-                            <img src="${data.thumbnailUrl || data.ogImage || data.imageUrl}" alt="Thumb" class="w-full h-full object-cover">
-                        </div>
-                    ` : ''}
+                    <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-[#f7eddd] border border-[#ebdccb]">
+                        ${(data.thumbnailUrl || data.ogImage || data.imageUrl) ? `
+                            <img src="${data.thumbnailUrl || data.ogImage || data.imageUrl}" alt="${data.title || 'Article'} cover" class="w-full h-full object-cover">
+                        ` : `
+                            <div class="w-full h-full flex items-center justify-center text-[#b4532c] text-xl" aria-hidden="true">📄</div>
+                        `}
+                    </div>
                     <div class="flex-1 min-w-0">
                         <h4 class="text-sm font-extrabold line-clamp-2 leading-snug" style="color: ${titleCol};">${data.title}</h4>
                         <p class="text-[11px] font-bold text-[#1e1b18] dark:text-white mt-1"><span class="text-[#1e1b18] dark:text-white font-bold">${data.author || 'NUQTHA'}</span> ${data.transcription ? `<span class="text-[#8c7a6b] dark:text-[#94a3b8] font-semibold ml-2">(📝 കേട്ടെഴുത്ത്: ${data.transcription})</span>` : ''}</p>

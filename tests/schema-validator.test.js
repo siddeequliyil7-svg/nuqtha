@@ -121,6 +121,15 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(normalized.content).to.equal("");
         });
 
+        it("normalizes legacy cover image field names", () => {
+            ["coverImage", "coverUrl", "image"].forEach((field) => {
+                const normalized = normalizeArticleDoc({ title: "Cover test", [field]: "https://example.com/cover.jpg" });
+                expect(normalized.imageUrl).to.equal("https://example.com/cover.jpg");
+                expect(normalized.coverImage).to.equal(normalized.imageUrl);
+                expect(normalized.coverUrl).to.equal(normalized.imageUrl);
+            });
+        });
+
         it("preserves supported book relationship and order fields", () => {
             const normalized = normalizeArticleDoc({
                 type: "ARTICLE",

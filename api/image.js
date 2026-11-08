@@ -150,7 +150,9 @@ export default async function handler(req, res) {
         let rawImage = fields.thumbnailUrl?.stringValue || 
                        fields.ogImage?.stringValue || 
                        fields.imageUrl?.stringValue || 
-                       fields.coverImage?.stringValue || "";
+                       fields.coverImage?.stringValue ||
+                       fields.coverUrl?.stringValue ||
+                       fields.image?.stringValue || "";
 
         // If chapter has no own image, fallback to parent book
         if (!rawImage && (fields.bookId?.stringValue || fields.bookName?.stringValue)) {
@@ -159,7 +161,9 @@ export default async function handler(req, res) {
                 rawImage = bookFields.thumbnailUrl?.stringValue || 
                            bookFields.ogImage?.stringValue || 
                            bookFields.imageUrl?.stringValue || 
-                           bookFields.coverImage?.stringValue || "";
+                           bookFields.coverImage?.stringValue ||
+                           bookFields.coverUrl?.stringValue ||
+                           bookFields.image?.stringValue || "";
             }
         }
 

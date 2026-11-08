@@ -612,8 +612,10 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const author = sanitizeString(rawDoc.author, 100, "NUQTHA");
     const authorId = sanitizeString(rawDoc.authorId || "", 100, "");
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
-    const imageUrl = sanitizeImageUrl(rawDoc.imageUrl || rawDoc.thumbnailUrl || rawDoc.ogImage || "");
-    const thumbnailUrl = sanitizeImageUrl(rawDoc.thumbnailUrl || rawDoc.ogImage || rawDoc.imageUrl || "");
+    const rawImageUrl = rawDoc.imageUrl || rawDoc.coverImage || rawDoc.coverUrl || rawDoc.image || rawDoc.thumbnailUrl || rawDoc.ogImage || "";
+    const rawThumbnailUrl = rawDoc.thumbnailUrl || rawDoc.ogImage || rawDoc.coverImage || rawDoc.coverUrl || rawDoc.imageUrl || rawDoc.image || "";
+    const imageUrl = sanitizeImageUrl(rawImageUrl);
+    const thumbnailUrl = sanitizeImageUrl(rawThumbnailUrl);
     const slug = sanitizeString(rawDoc.slug || slugifyText(title), 200, "");
     const bookSlug = sanitizeString(rawDoc.bookSlug || (rawDoc.bookName ? slugifyText(rawDoc.bookName) : (rawDoc.playlistName ? slugifyText(rawDoc.playlistName) : "")), 200, "");
     const content = sanitizeString(rawDoc.content, 500000, "");
@@ -683,6 +685,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         authorId,
         transcription,
         imageUrl,
+        coverImage: imageUrl,
+        coverUrl: imageUrl,
         thumbnailUrl,
         ogImage: thumbnailUrl,
         hasCustomExcerpt,
