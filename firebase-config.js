@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import {
   initializeFirestore,
   persistentLocalCache,
+  memoryLocalCache,
   persistentMultipleTabManager,
   getFirestore,
   setLogLevel,
@@ -66,12 +67,22 @@ try {
     experimentalForceLongPolling: true,
     experimentalAutoDetectLongPolling: false,
     localCache: persistentLocalCache({
+      cacheSizeBytes: 20 * 1024 * 1024,
       tabManager: persistentMultipleTabManager()
     })
   });
 } catch (e) {
-  console.warn("[Firebase] Persistent Firestore cache could not be initialized; using the existing Firestore instance.", e);
-  firestoreDb = getFirestore(app);
+  console.warn("[Firebase] Persistent Firestore cache could not be initialized; falling back to memory cache.", e);
+  try {
+    firestoreDb = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      experimentalAutoDetectLongPolling: false,
+      localCache: memoryLocalCache()
+    });
+  } catch (memoryError) {
+    console.warn("[Firebase] Memory-cache initialization also failed; using the existing Firestore instance.", memoryError);
+    firestoreDb = getFirestore(app);
+  }
 }
 export const db = firestoreDb;
 export const storage = getStorage(app);

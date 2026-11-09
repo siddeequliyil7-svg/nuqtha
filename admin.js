@@ -2,14 +2,15 @@ import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
 import { initLibraryAdmin } from "./admin-library.js";
 import { FALLBACK_ARTICLE_ITEMS } from "./fallback-data.js";
-import { 
+import {
     checkIsAdminUser, 
     initAuthStateListener, 
     signInWithGoogle, 
     signOutUser, 
     getCachedAuthUser, 
-    ADMIN_SESSION_KEY 
+    ADMIN_SESSION_KEY
 } from "./js/auth-system.js";
+import { addDoc, setDoc, updateDoc, deleteDoc, uploadImageDataUrl, getAdminWriteErrorMessage } from "./js/admin-write-guard.js";
 
 function isExplicitChapterRecord(art) {
     if (!art) return false;
@@ -92,7 +93,7 @@ export function isPublishedArticle(art) {
  * 4-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
  * With Strict Data Validation & Schema Sanitization
  */
-import { db, firebaseConfig, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, uploadImageDataUrl } from "./firebase-config.js";
+import { db, firebaseConfig, collection, getDocs, getDoc, doc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
 import {
     validateAndSanitizeArticleForSave,
     normalizeArticleDoc,
@@ -782,8 +783,8 @@ async function handleFormSubmit() {
             switchAdminTab("published");
         }
     } catch (err) {
-        console.error("[NUQTHA ADMIN] Validation / Firestore save error:", err);
-        showGlobalStatus(err.message || "ലേഖനം സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല. വിവരങ്ങൾ പരിശോധിക്കുക.", "error");
+        console.error("[NUQTHA ADMIN] Save failed:", err?.code || "", err?.message || err);
+        showGlobalStatus(getAdminWriteErrorMessage(err, "Article save"), "error");
         // If validation failed on title or content, bring user back to create tab
         if (!document.getElementById("art-title")?.value.trim()) {
             switchAdminTab("create");
@@ -1046,8 +1047,8 @@ window.deleteArticle = async function (id) {
             exitEditMode();
         }
     } catch (e) {
-        console.error("Firestore delete error:", e);
-        showGlobalStatus("ലേഖനം നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (e.message || "അനുമതി പരിശോധിക്കുക"), "error");
+        console.error("Firestore delete error:", e?.code || "", e?.message || e);
+        showGlobalStatus(getAdminWriteErrorMessage(e, "Article deletion"), "error");
     }
 };
 
@@ -1948,8 +1949,8 @@ async function handleSaveBookStep1(e) {
         }
 
     } catch (err) {
-        console.error("Save book error:", err);
-        showGlobalStatus("പുസ്തകം സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
+        console.error("Save book error:", err?.code || "", err?.message || err);
+        showGlobalStatus(getAdminWriteErrorMessage(err, "Book save"), "error");
     } finally {
         if (publishBtn) {
             publishBtn.disabled = false;
@@ -3623,8 +3624,8 @@ window.deleteBookById = async function(bookId, bookTitle) {
 
         showGlobalStatus(`📚 '${cleanTitle}' വിജയകരമായി നീക്കം ചെയ്തു.`, "success");
     } catch (err) {
-        console.error("[BookManager] Delete book error:", err);
-        showGlobalStatus("പുസ്തകം നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
+        console.error("[BookManager] Delete book error:", err?.code || "", err?.message || err);
+        showGlobalStatus(getAdminWriteErrorMessage(err, "Book deletion"), "error");
     }
 };
 
@@ -3643,6 +3644,84 @@ window.manageBookFromPublished = function(bookName) {
 function listenToFirestoreArticles() {
     const listContainer = document.getElementById("admin-articles-list");
     const colRef = collection(db, "articles");
+    const cacheKey = "nuqtha_cached_articles";
+    const cacheLimitBytes = 256 * 1024;
+    const cacheFields = [
+        "title", "bookTitle", "name", "author", "authorId", "date", "createdAt", "updatedAt",
+        "type", "category", "slug", "bookSlug", "bookId", "parentBookId", "bookName",
+        "playlistName", "volume", "issue", "order", "priority", "placement", "showOnTable",
+        "isBook", "isChapter", "isPremium", "price", "visible", "excerpt", "introduction",
+        "thumbnailUrl", "imageUrl", "ogImage", "coverUrl", "coverImage"
+    ];
+
+    function saveAdminArticleCache(items) {
+        try {
+            const lightweight = items.map(item => {
+                const cached = { id: String(item.id || "") };
+                cacheFields.forEach(field => {
+                    const value = item[field];
+                    if (value === undefined || value === null) return;
+                    if (["imageUrl", "thumbnailUrl", "ogImage", "coverUrl", "coverImage"].includes(field)) {
+                        if (typeof value !== "string" || /^data:/i.test(value) || value.length > 2048) return;
+                    }
+                    if (field === "excerpt" || field === "introduction") {
+                        if (typeof value !== "string") return;
+                        cached[field] = value.slice(0, 300);
+                        return;
+                    }
+                    cached[field] = value;
+                });
+                if (Array.isArray(item.chapters)) {
+                    cached.chapters = item.chapters.slice(0, 100).map((chapter, index) => {
+                        if (typeof chapter === "string") return chapter;
+                        if (!chapter || typeof chapter !== "object") return null;
+                        return {
+                            id: chapter.id || chapter.articleId || chapter.chapterId || "",
+                            title: typeof chapter.title === "string" ? chapter.title.slice(0, 180) : "",
+                            order: Number.isFinite(Number(chapter.order)) ? Number(chapter.order) : index + 1
+                        };
+                    }).filter(Boolean);
+                }
+                return cached;
+            });
+            const serialized = JSON.stringify(lightweight);
+            if (serialized.length * 2 > cacheLimitBytes) {
+                sessionStorage.removeItem(cacheKey);
+                return;
+            }
+
+            let currentBytes = 0;
+            for (let index = 0; index < sessionStorage.length; index++) {
+                const key = sessionStorage.key(index);
+                if (key) currentBytes += (key.length + (sessionStorage.getItem(key) || "").length) * 2;
+            }
+            if (currentBytes + serialized.length * 2 > 2 * 1024 * 1024 && typeof window.clearVolatileStorage === "function") {
+                window.clearVolatileStorage(sessionStorage);
+            }
+            sessionStorage.setItem(cacheKey, serialized);
+        } catch (error) {
+            if (typeof window.clearVolatileStorage === "function") {
+                window.clearVolatileStorage(sessionStorage);
+            }
+            try {
+                const serialized = JSON.stringify(items.map(item => ({
+                    id: String(item.id || ""),
+                    title: String(item.title || item.bookTitle || item.name || "").slice(0, 180),
+                    author: String(item.author || "").slice(0, 120),
+                    type: item.type || "",
+                    category: item.category || "",
+                    slug: item.slug || "",
+                    bookId: item.bookId || "",
+                    parentBookId: item.parentBookId || "",
+                    isBook: item.isBook === true,
+                    isChapter: item.isChapter === true
+                })));
+                if (serialized.length * 2 <= cacheLimitBytes) sessionStorage.setItem(cacheKey, serialized);
+            } catch (retryError) {
+                console.warn("[NUQTHA ADMIN] Offline article cache unavailable; live fetching remains enabled.", retryError?.name || "StorageError");
+            }
+        }
+    }
 
     function processArticlesData(rawItems) {
         if (!Array.isArray(rawItems)) return;
@@ -3660,33 +3739,12 @@ function listenToFirestoreArticles() {
 
         currentArticlesList = items;
 
-        // Persist to session cache for seamless offline fallback safely without quota overflow
-        try {
-            const lightweight = items.map(a => {
-                const copy = { ...a };
-                if (copy.content && copy.content.length > 500) {
-                    copy.content = copy.excerpt || copy.content.slice(0, 300);
-                }
-                if (copy.imageUrl && copy.imageUrl.startsWith("data:") && copy.imageUrl.length > 1000) {
-                    copy.imageUrl = "";
-                }
-                if (copy.thumbnailUrl && copy.thumbnailUrl.startsWith("data:") && copy.thumbnailUrl.length > 1000) {
-                    copy.thumbnailUrl = "";
-                }
-                if (copy.ogImage && copy.ogImage.startsWith("data:") && copy.ogImage.length > 1000) {
-                    copy.ogImage = "";
-                }
-                return copy;
-            });
-            sessionStorage.setItem("nuqtha_cached_articles", JSON.stringify(lightweight));
-        } catch (e) {
-            try { sessionStorage.removeItem("nuqtha_cached_articles"); } catch (_) {}
-        }
+        saveAdminArticleCache(items);
 
         const standardArticles = items.filter(isPublishedArticle);
         const allBooks = items.filter(a => isMainBook(a));
 
-        console.log(`[NUQTHA ADMIN] processArticlesData: Total ${items.length} items -> ${allBooks.length} Books, ${standardArticles.length} Standard Articles.`);
+        console.debug(`[NUQTHA ADMIN] ${items.length} records loaded (${allBooks.length} books, ${standardArticles.length} articles).`);
 
         safeArticles = Array.isArray(standardArticles) ? standardArticles : [];
         if (typeof window !== "undefined") {
@@ -3754,7 +3812,6 @@ function listenToFirestoreArticles() {
     try {
         console.log(`[NUQTHA ADMIN] Subscribing to Firestore collection '${colRef.path}' in project '${firebaseConfig.projectId}'...`);
         onSnapshot(colRef, (querySnapshot) => {
-            console.log("Fetched articles:", querySnapshot.docs.map(articleDoc => articleDoc.data()));
             console.log(`[NUQTHA ADMIN] onSnapshot received ${querySnapshot.docs.length} documents (fromCache: ${querySnapshot.metadata.fromCache})`);
             const items = querySnapshot.docs.map(articleDoc => {
                 const raw = articleDoc.data() || {};
@@ -3779,7 +3836,6 @@ function listenToFirestoreArticles() {
         }
         try {
             const snapshot = await getDocs(colRef);
-            console.log("Fetched articles:", snapshot.docs.map(articleDoc => articleDoc.data()));
             processArticlesData(snapshot.docs.map(articleDoc => {
                 const raw = articleDoc.data() || {};
                 return normalizeArticleDoc({
