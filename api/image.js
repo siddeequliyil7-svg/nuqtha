@@ -9,6 +9,16 @@ import { resolveFirebaseProjectId } from "../js/firebase-project.js";
 const FIRESTORE_PROJECT_ID = resolveFirebaseProjectId(process.env.VITE_FIREBASE_PROJECT_ID);
 const FIRESTORE_API_KEY = "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
 const DEFAULT_BANNER = "https://nuqtha.vercel.app/og-cover.svg";
+const DOMAIN = "https://nuqtha.vercel.app";
+
+function getRemoteImage(fields) {
+    for (const name of ["thumbnailUrl", "ogImage", "imageUrl", "coverImage", "coverUrl", "thumbnail", "image"]) {
+        const value = fields?.[name]?.stringValue?.trim();
+        if (/^https?:\/\//i.test(value || "")) return value;
+        if (value && value.startsWith("/") && !value.startsWith("//")) return `${DOMAIN}${value}`;
+    }
+    return "";
+}
 
 function slugifyText(str = "") {
     if (!str) return "";
@@ -147,26 +157,13 @@ export default async function handler(req, res) {
             return res.redirect(302, DEFAULT_BANNER);
         }
 
-        // Priority: thumbnailUrl -> ogImage -> imageUrl -> coverImage
-        let rawImage = fields.thumbnailUrl?.stringValue || 
-                       fields.ogImage?.stringValue || 
-                       fields.imageUrl?.stringValue || 
-                       fields.coverImage?.stringValue ||
-                       fields.coverUrl?.stringValue ||
-                       fields.thumbnail?.stringValue ||
-                       fields.image?.stringValue || "";
+        let rawImage = getRemoteImage(fields);
 
         // If chapter has no own image, fallback to parent book
         if (!rawImage && (fields.bookId?.stringValue || fields.bookName?.stringValue)) {
             const bookFields = await fetchArticleDoc(fields.bookId?.stringValue || fields.bookName?.stringValue);
             if (bookFields) {
-                rawImage = bookFields.thumbnailUrl?.stringValue || 
-                           bookFields.ogImage?.stringValue || 
-                           bookFields.imageUrl?.stringValue || 
-                           bookFields.coverImage?.stringValue ||
-                           bookFields.coverUrl?.stringValue ||
-                           bookFields.thumbnail?.stringValue ||
-                           bookFields.image?.stringValue || "";
+                rawImage = getRemoteImage(bookFields);
             }
         }
 
@@ -175,8 +172,8 @@ export default async function handler(req, res) {
         }
 
         // If it's a remote HTTPS URL, redirect directly
-        if (rawImage.startsWith("http://") || rawImage.startsWith("https://")) {
-            const secureUrl = rawImage.replace(/^http:\/\//, "https://");
+        if (rawImage) {
+            const secureUrl = rawImage.replace(/^http:\/\//i, "https://");
             return res.redirect(302, secureUrl);
         }
 

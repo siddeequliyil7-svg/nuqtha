@@ -31,6 +31,15 @@ function cleanText(text = "", maxLen = 200) {
     return clean.slice(0, maxLen).trim() + "…";
 }
 
+function getRemoteImage(fields) {
+    for (const name of ["thumbnailUrl", "ogImage", "imageUrl", "coverImage", "coverUrl", "thumbnail", "image"]) {
+        const value = fields?.[name]?.stringValue?.trim();
+        if (/^https?:\/\//i.test(value || "")) return value;
+        if (value && value.startsWith("/") && !value.startsWith("//")) return `${DOMAIN}${value}`;
+    }
+    return "";
+}
+
 function slugifyText(str = "") {
     if (!str) return "";
     return String(str)
@@ -218,36 +227,22 @@ export default async function handler(req, res) {
             }
 
             // Image resolution
-            let rawImage = f.thumbnailUrl?.stringValue || 
-                           f.ogImage?.stringValue || 
-                           f.imageUrl?.stringValue || 
-                           f.coverImage?.stringValue ||
-                           f.coverUrl?.stringValue ||
-                           f.thumbnail?.stringValue ||
-                           f.image?.stringValue || "";
+            let rawImage = getRemoteImage(f);
 
             // Fallback: If chapter has no own image, inherit from parent book
             if (!rawImage && (f.bookId?.stringValue || f.bookName?.stringValue)) {
                 const bookDoc = await fetchArticle(f.bookId?.stringValue || f.bookName?.stringValue);
                 if (bookDoc && bookDoc.fields) {
-                    rawImage = bookDoc.fields.thumbnailUrl?.stringValue || 
-                               bookDoc.fields.ogImage?.stringValue || 
-                               bookDoc.fields.imageUrl?.stringValue || 
-                               bookDoc.fields.coverImage?.stringValue ||
-                               bookDoc.fields.coverUrl?.stringValue ||
-                               bookDoc.fields.thumbnail?.stringValue ||
-                               bookDoc.fields.image?.stringValue || "";
+                    rawImage = getRemoteImage(bookDoc.fields);
                 }
             }
 
-            if (rawImage.startsWith("data:image/")) {
-                imageUrl = DEFAULT_BANNER;
-                imageMime = "image/svg+xml";
-            } else if (rawImage.startsWith("http://") || rawImage.startsWith("https://")) {
-                imageUrl = rawImage.replace(/^http:\/\//, "https://");
+            if (rawImage) {
+                imageUrl = rawImage.replace(/^http:\/\//i, "https://");
                 imageMime = imageUrl.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
             } else {
                 imageUrl = DEFAULT_BANNER;
+                imageMime = "image/svg+xml";
             }
 
             // Refine clean share path based on resolved article type & bookName
