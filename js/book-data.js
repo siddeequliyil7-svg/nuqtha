@@ -29,36 +29,36 @@ export function normalizeBookKey(s) {
 export function isArticleInBook(article, targetBook) {
     if (!article || !targetBook) return false;
     if (article.id && targetBook.id && article.id === targetBook.id) return false;
-    // Strictly exclude if this is another standalone book entity (not a chapter)
     const aType = (article.type || "").toUpperCase();
-    if ((aType === "BOOK" || article.isBook === true) && !article.bookId && article.order === undefined && (!article.bookName || normalizeBookKey(article.bookName) === normalizeBookKey(article.title))) return false;
+    const category = normalizeBookKey(article.category);
+    const isBookRecord = aType === "BOOK" || aType === "FREE" || aType === "PREMIUM" ||
+        article.isBook === true || category === "book" || category === "books" || category === "premium book";
+    const isExplicitChapter = article.isChapter === true || aType === "CHAPTER" ||
+        category === "chapter" || (article.chapterIndex !== undefined && article.chapterIndex !== null);
+    if (isBookRecord && !isExplicitChapter) return false;
 
     // Check chapters array on targetBook doc if present
     if (Array.isArray(targetBook.chapters)) {
         const inArray = targetBook.chapters.some(ch => {
             if (!ch) return false;
             if (typeof ch === "string") return ch === article.id;
-            if (typeof ch === "object" && ch.id) return ch.id === article.id;
+            if (typeof ch === "object" && (ch.id || ch.articleId || ch.chapterId)) {
+                return (ch.id || ch.articleId || ch.chapterId) === article.id;
+            }
             return false;
         });
         if (inArray) return true;
     }
 
     const bId = (targetBook.id || "").toString().trim();
-    const aBookId = (article.bookId || "").toString().trim();
+    const aBookId = (article.bookId || article.parentBookId || "").toString().trim();
     if (bId && aBookId && bId === aBookId) return true;
 
     const bTitle = normalizeBookKey(targetBook.title);
     const bName = normalizeBookKey(targetBook.bookName);
-    const aBook = normalizeBookKey(article.bookName || article.playlistName);
+    const articleBookNames = [article.bookName, article.playlistName].map(normalizeBookKey).filter(Boolean);
 
-    if (aBook) {
-        if (bId && aBookId && bId === aBookId) return true;
-        if (bName && aBook === bName) return true;
-        if (bTitle && aBook === bTitle) return true;
-        if (bName.length >= 3 && (aBook.includes(bName) || bName.includes(aBook))) return true;
-        if (bTitle.length >= 3 && (aBook.includes(bTitle) || bTitle.includes(aBook))) return true;
-    }
+    if (articleBookNames.some(name => (bName && name === bName) || (bTitle && name === bTitle))) return true;
 
     return false;
 }
@@ -94,26 +94,30 @@ export function filterAndSortChapters(bookDoc, allArticles) {
     if (!bookDoc || !Array.isArray(allArticles)) return [];
 
     let chapters = [];
+    const idMap = new Map(allArticles.map(a => [a.id, a]));
+    const seen = new Set();
 
     // Check if bookDoc itself has embedded chapters array
     if (Array.isArray(bookDoc.chapters) && bookDoc.chapters.length > 0) {
-        const idMap = new Map(allArticles.map(a => [a.id, a]));
         chapters = bookDoc.chapters.map((ch, idx) => {
-            if (typeof ch === "string") {
-                const found = idMap.get(ch);
-                return found || { id: ch, title: `Chapter ${idx + 1}`, order: idx + 1 };
-            }
-            if (typeof ch === "object" && ch.id) {
-                const found = idMap.get(ch.id);
-                return { ...ch, ...(found || {}) };
-            }
-            return ch;
+            const chapterId = typeof ch === "string" ? ch : (ch?.id || ch?.articleId || ch?.chapterId);
+            if (!chapterId || seen.has(chapterId)) return null;
+            seen.add(chapterId);
+            const found = idMap.get(chapterId);
+            const embeddedOrder = typeof ch === "object" && ch.order !== undefined && ch.order !== null && !isNaN(ch.order)
+                ? Number(ch.order)
+                : idx + 1;
+            return {
+                ...(typeof ch === "object" ? ch : {}),
+                ...(found || {}),
+                id: chapterId,
+                order: embeddedOrder
+            };
         }).filter(Boolean);
     }
 
     // Merge or fallback to query by bookId / bookName / playlistName
     const matched = allArticles.filter(art => isArticleInBook(art, bookDoc));
-    const seen = new Set(chapters.map(c => c.id));
     for (const m of matched) {
         if (!seen.has(m.id)) {
             seen.add(m.id);
@@ -212,53 +216,55 @@ export async function getBookChapters(bookId, options = {}) {
         const poolMap = new Map();
         pool.forEach(a => { if (a && a.id) poolMap.set(a.id, a); });
 
-        // Query Firestore specifically for articles with this bookId
-        try {
-            const apiKey = getFirebaseApiKey();
-            const runQueryRes = await fetchWithRetry(
-                `${FIRESTORE_REST_BASE}:runQuery?key=${encodeURIComponent(apiKey)}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        structuredQuery: {
-                            from: [{ collectionId: "articles" }],
-                            where: {
-                                fieldFilter: {
-                                    field: { fieldPath: "bookId" },
-                                    op: "EQUAL",
-                                    value: { stringValue: bookDoc.id || bookId }
+        // Query both relationship fields so legacy parentBookId links are not missed.
+        for (const fieldPath of ["bookId", "parentBookId"]) {
+            try {
+                const apiKey = getFirebaseApiKey();
+                const runQueryRes = await fetchWithRetry(
+                    `${FIRESTORE_REST_BASE}:runQuery?key=${encodeURIComponent(apiKey)}`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            structuredQuery: {
+                                from: [{ collectionId: "articles" }],
+                                where: {
+                                    fieldFilter: {
+                                        field: { fieldPath },
+                                        op: "EQUAL",
+                                        value: { stringValue: bookDoc.id || bookId }
+                                    }
                                 }
                             }
-                        }
-                    }),
-                    signal: controller.signal
-                },
-                2,
-                250
-            );
-            if (runQueryRes && runQueryRes.ok) {
-                const queryJson = await runQueryRes.json();
-                if (Array.isArray(queryJson)) {
-                    queryJson.forEach(item => {
-                        if (item.document) {
-                            const parsed = parseFirestoreRestDoc(item.document);
-                            if (parsed && parsed.id) {
-                                poolMap.set(parsed.id, parsed);
-                                if (!pool.some(p => p.id === parsed.id)) pool.push(parsed);
+                        }),
+                        signal: controller.signal
+                    },
+                    2,
+                    250
+                );
+                if (runQueryRes && runQueryRes.ok) {
+                    const queryJson = await runQueryRes.json();
+                    if (Array.isArray(queryJson)) {
+                        queryJson.forEach(item => {
+                            if (item.document) {
+                                const parsed = parseFirestoreRestDoc(item.document);
+                                if (parsed && parsed.id) {
+                                    poolMap.set(parsed.id, parsed);
+                                    if (!pool.some(p => p.id === parsed.id)) pool.push(parsed);
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
+            } catch (qErr) {
+                console.warn(`[BookData] runQuery by ${fieldPath} fallback:`, qErr);
             }
-        } catch (qErr) {
-            console.warn("[BookData] runQuery by bookId fallback:", qErr);
         }
 
         // Fetch any missing chapter documents specifically listed in bookDoc.chapters array
         if (Array.isArray(bookDoc.chapters) && bookDoc.chapters.length > 0) {
             const missingIds = bookDoc.chapters
-                .map(ch => (typeof ch === "string" ? ch : ch?.id))
+                .map(ch => (typeof ch === "string" ? ch : (ch?.id || ch?.articleId || ch?.chapterId)))
                 .filter(id => id && (!poolMap.has(id) || !poolMap.get(id).title));
 
             if (missingIds.length > 0) {
@@ -291,19 +297,22 @@ export async function getBookChapters(bookId, options = {}) {
 
         if (Array.isArray(bookDoc.chapters) && bookDoc.chapters.length > 0) {
             bookDoc.chapters.forEach((ch, idx) => {
-                const chId = typeof ch === "string" ? ch : ch?.id;
+                const chId = typeof ch === "string" ? ch : (ch?.id || ch?.articleId || ch?.chapterId);
                 const found = chId ? poolMap.get(chId) : null;
                 if (found) {
                     seenIds.add(found.id);
                     chapters.push({
                         ...found,
-                        order: found.order !== undefined && found.order !== null ? Number(found.order) : (idx + 1)
+                        order: typeof ch === "object" && ch.order !== undefined && ch.order !== null && !isNaN(ch.order)
+                            ? Number(ch.order)
+                            : (idx + 1)
                     });
                 } else if (typeof ch === "object" && ch) {
-                    if (ch.id) seenIds.add(ch.id);
+                    if (chId) seenIds.add(chId);
                     chapters.push({
                         ...ch,
-                        order: ch.order !== undefined && ch.order !== null ? Number(ch.order) : (idx + 1)
+                        id: chId || ch.id,
+                        order: ch.order !== undefined && ch.order !== null && !isNaN(ch.order) ? Number(ch.order) : (idx + 1)
                     });
                 } else if (chId) {
                     seenIds.add(chId);

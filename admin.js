@@ -91,6 +91,7 @@ import {
     normalizeArticleDoc,
     sanitizePlacement,
     sanitizePriority,
+    sanitizeCategory,
     sanitizeString,
     parseTimestampMillis,
     ALLOWED_CATEGORIES,
@@ -666,6 +667,9 @@ async function handleFormSubmit() {
         if (!resolvedBookSlug && rawBookName) {
             resolvedBookSlug = slugifyText(rawBookName);
         }
+        const existingArticle = editingArticleId
+            ? currentArticlesList.find(article => article.id === editingArticleId)
+            : null;
 
         // STRICT SCHEMA VALIDATION & SANITIZATION
         const sanitized = validateAndSanitizeArticleForSave({
@@ -687,7 +691,9 @@ async function handleFormSubmit() {
             priority: rawPriority,
             bookName: rawBookName,
             bookId: resolvedBookId,
+            parentBookId: resolvedBookId,
             bookSlug: resolvedBookSlug,
+            tags: existingArticle?.tags || [],
             type: isBookCover ? "BOOK" : "ARTICLE",
             date: new Date().toLocaleDateString("en-GB")
         });
@@ -730,7 +736,9 @@ async function handleFormSubmit() {
                 priority: sanitized.priority,
                 bookName: sanitized.bookName,
                 bookId: sanitized.bookId || resolvedBookId || "",
+                parentBookId: sanitized.parentBookId || resolvedBookId || "",
                 bookSlug: sanitized.bookSlug || resolvedBookSlug || "",
+                tags: sanitized.tags,
                 type: sanitized.type,
                 updatedAt: serverTimestamp()
             };
@@ -2581,6 +2589,7 @@ function initChapterWriter() {
                     thumbnailUrl: imageUrl,
                     ogImage: imageUrl,
                     bookId: activeBookId,
+                    parentBookId: activeBookId,
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
                     type: "ARTICLE",
@@ -2970,30 +2979,34 @@ async function saveAndApplyChapterOrder(showToast = true) {
 
     try {
         const chapterIds = [];
+        const parentBookId = activeBookCoverDoc?.id || activeBookId || "";
+        const parentBookName = activeBookCoverDoc?.bookName || activeBookCoverDoc?.title || activeBookName || "";
         for (let i = 0; i < activeBookChapters.length; i++) {
             const art = activeBookChapters[i];
             const newPriority = i + 1;
             chapterIds.push(art.id);
-            if (art.priority !== newPriority || art.order !== newPriority) {
-                art.priority = newPriority;
-                art.order = newPriority;
-                const updatePayload = {
-                    priority: newPriority,
-                    order: newPriority,
-                    updatedAt: serverTimestamp()
-                };
-                if (activeBookCoverDoc?.id && !art.bookId) {
-                    updatePayload.bookId = activeBookCoverDoc.id;
-                    art.bookId = activeBookCoverDoc.id;
-                }
-                await updateDoc(doc(db, "articles", art.id), updatePayload);
-                const globalItem = currentArticlesList.find(a => a.id === art.id);
-                if (globalItem) {
-                    globalItem.priority = newPriority;
-                    globalItem.order = newPriority;
-                    if (updatePayload.bookId) globalItem.bookId = updatePayload.bookId;
-                }
+            const updatePayload = {
+                priority: newPriority,
+                order: newPriority,
+                isChapter: true,
+                updatedAt: serverTimestamp()
+            };
+            if (parentBookId) {
+                updatePayload.bookId = parentBookId;
+                updatePayload.parentBookId = parentBookId;
             }
+            if (parentBookName) updatePayload.bookName = parentBookName;
+
+            await updateDoc(doc(db, "articles", art.id), updatePayload);
+            Object.assign(art, {
+                priority: newPriority,
+                order: newPriority,
+                isChapter: true,
+                ...(parentBookId ? { bookId: parentBookId, parentBookId } : {}),
+                ...(parentBookName ? { bookName: parentBookName } : {})
+            });
+            const globalItem = currentArticlesList.find(a => a.id === art.id);
+            if (globalItem) Object.assign(globalItem, art);
         }
 
         // Also update book doc with ordered chapters array
@@ -3847,7 +3860,7 @@ function initPublishedSearchFilter() {
                 (art.author && art.author.toLowerCase().includes(query)) ||
                 (art.transcription && art.transcription.toLowerCase().includes(query));
 
-            const matchesCategory = cat === "ALL" || (art.category && art.category.toUpperCase() === cat);
+            const matchesCategory = cat === "ALL" || sanitizeCategory(art.category).toUpperCase() === sanitizeCategory(cat).toUpperCase();
 
             return matchesQuery && matchesCategory;
         });

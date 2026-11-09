@@ -564,6 +564,18 @@ export function validateAndSanitizeArticleForSave(raw) {
     }
 
     const chapters = Array.isArray(raw.chapters) ? raw.chapters : [];
+    const tags = [];
+    const seenTags = new Set();
+    if (Array.isArray(raw.tags)) {
+        for (const rawTag of raw.tags) {
+            const tag = sanitizeString(rawTag, 60, "").trim();
+            const tagKey = tag.toLowerCase();
+            if (!tag || seenTags.has(tagKey)) continue;
+            seenTags.add(tagKey);
+            tags.push(tag);
+            if (tags.length === 20) break;
+        }
+    }
 
     return {
         title,
@@ -587,6 +599,8 @@ export function validateAndSanitizeArticleForSave(raw) {
         priority,
         bookName,
         bookId,
+        parentBookId: sanitizeString(raw.parentBookId || bookId, 120, ""),
+        tags,
         order,
         status,
         chapters,
@@ -629,6 +643,9 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
             placement: "AUTO",
             priority: 10,
             bookName: "",
+            bookId: "",
+            parentBookId: "",
+            tags: [],
             type: "ARTICLE",
             date: "",
             createdAt: null
@@ -668,6 +685,18 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const order = hasOrder ? parseInt(rawDoc.order, 10) : undefined;
     const status = sanitizeString(rawDoc.status, 50, "published");
     const chapters = Array.isArray(rawDoc.chapters) ? rawDoc.chapters : [];
+    const tags = [];
+    const seenTags = new Set();
+    if (Array.isArray(rawDoc.tags)) {
+        for (const rawTag of rawDoc.tags) {
+            const tag = sanitizeString(rawTag, 60, "").trim();
+            const tagKey = tag.toLowerCase();
+            if (!tag || seenTags.has(tagKey)) continue;
+            seenTags.add(tagKey);
+            tags.push(tag);
+            if (tags.length === 20) break;
+        }
+    }
     const volume = sanitizeString(rawDoc.volume, 50, "");
     const issue = sanitizeString(rawDoc.issue, 50, "");
     const leadTitle = sanitizeString(rawDoc.leadTitle, 250, "");
@@ -728,6 +757,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         bookId,
         parentBookId: sanitizeString(rawDoc.parentBookId, 120, ""),
         playlistName: sanitizeString(rawDoc.playlistName, 120, ""),
+        tags,
         order,
         status,
         chapters,

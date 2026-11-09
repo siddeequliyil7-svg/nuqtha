@@ -180,6 +180,25 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(normalized.isChapter).to.equal(false);
         });
 
+        it("preserves a bounded set of sanitized recommendation tags", () => {
+            const normalized = normalizeArticleDoc({
+                title: "Tagged article",
+                tags: ["History", " history ", "", "Study", 42]
+            });
+            expect(normalized.tags).to.deep.equal(["History", "Study", "42"]);
+        });
+
+        it("preserves tags and parent-book links when validating saves", () => {
+            const result = validateAndSanitizeArticleForSave({
+                title: "Tagged linked article",
+                content: "A valid article body.",
+                bookId: "book-1",
+                tags: ["History", " history ", "Study"]
+            });
+            expect(result.parentBookId).to.equal("book-1");
+            expect(result.tags).to.deep.equal(["History", "Study"]);
+        });
+
         it("does not use a thumbnail as the primary cover during save validation", () => {
             const result = validateAndSanitizeArticleForSave({
                 title: "Independent images",

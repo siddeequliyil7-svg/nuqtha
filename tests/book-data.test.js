@@ -1,4 +1,5 @@
 import { getBookArticleLinkFields, getBookChapters } from "../book-data.js";
+import { filterAndSortChapters, isArticleInBook } from "../js/book-data.js";
 
 const { describe, it } = window;
 const { expect } = window.chai;
@@ -23,6 +24,16 @@ describe("Book chapter relationships", () => {
         const book = { id: "book-2", title: "Another", chapters: [{ articleId: "legacy-2", order: 1 }, "legacy-1"] };
         expect(getBookChapters(book, articles).map(article => article.id)).to.deep.equal(["legacy-2", "legacy-1"]);
         expect(getBookChapters({ id: "empty", title: "Empty" }, articles)).to.deep.equal([]);
+    });
+
+    it("does not fuzzy-match similarly named books and follows the canonical chapter array order", () => {
+        const book = { id: "book-1", title: "Sample Book", chapters: ["legacy-2", "legacy-1"] };
+        const similarTitleArticle = { id: "unrelated", type: "ARTICLE", bookName: "Sample Book Companion" };
+        const linkedChapters = articles.filter(article => ["legacy-2", "legacy-1"].includes(article.id));
+
+        expect(isArticleInBook(similarTitleArticle, book)).to.equal(false);
+        expect(filterAndSortChapters(book, [...linkedChapters, similarTitleArticle]).map(article => article.id))
+            .to.deep.equal(["legacy-2", "legacy-1"]);
     });
 
     it("writes additive bookId and explicit order without dropping legacy fields", () => {

@@ -565,7 +565,7 @@
         import { app, db, firebaseConfig, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "./firebase-config.js";
         import { FALLBACK_ARTICLES } from "./fallback-data.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart } from "./schema-validator.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart, sanitizeCategory } from "./schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
@@ -834,12 +834,12 @@
         // Helper to determine if an entity is a Book (or a book chapter)
         function isBookEntity(item) {
             if (!item) return false;
-            if (item.type === "BOOK") return true;
-            if (item.isBook === true) return true;
+            if (item.isChapter === true || String(item.type || "").trim().toUpperCase() === "CHAPTER" ||
+                String(item.category || "").trim().toLowerCase() === "chapter" ||
+                (item.chapterIndex !== undefined && item.chapterIndex !== null)) return false;
+            const type = String(item.type || "").trim().toUpperCase();
+            if (type === "BOOK" || type === "FREE" || type === "PREMIUM" || item.isBook === true) return true;
             if (Array.isArray(item.chapters) && item.chapters.length > 0) return true;
-            if (item.bookId && String(item.bookId).trim()) return true;
-            if (item.bookName && String(item.bookName).trim()) return true;
-            if (item.playlistName && String(item.playlistName).trim()) return true;
             const cat = (item.category || "").toLowerCase().trim();
             if (cat === "books" || cat === "book" || cat === "premium book") return true;
             return false;
@@ -859,7 +859,7 @@
             if (item.order !== undefined && item.order !== null && !isNaN(item.order) && Number(item.order) > 0 && (item.bookId || (b && t && b !== t))) return false;
 
             const artType = (item.type || "").toString().toLowerCase().trim();
-            if (artType === "book" || item.isBook === true) return true;
+            if (artType === "book" || artType === "free" || artType === "premium" || item.isBook === true) return true;
             if (Array.isArray(item.chapters) && item.chapters.length > 0) return true;
             const cat = (item.category || "").toLowerCase().trim();
             if (cat === "books" || cat === "book" || cat === "premium book") return true;
@@ -870,7 +870,7 @@
         function matchesBook(art, targetBook) {
             if (!art || !targetBook) return false;
             if (art.id === targetBook.id) return false;
-            if (art.type === "BOOK") return false;
+            if (isBookEntity(art)) return false;
 
             const clean = (s) => (s || "")
                 .toString()
@@ -890,9 +890,6 @@
             if (bId && aBookId && bId === aBookId) return true;
             if (bName && aBook && bName === aBook) return true;
             if (bTitle && aBook && bTitle === aBook) return true;
-
-            if (bName && aBook && bName.length >= 3 && (aBook.includes(bName) || bName.includes(aBook))) return true;
-            if (bTitle && aBook && bTitle.length >= 3 && (aBook.includes(bTitle) || bTitle.includes(aBook))) return true;
 
             return false;
         }
@@ -2528,8 +2525,13 @@
             const relatedGrid = document.getElementById("related-articles-grid");
             if (!relatedSection || !relatedGrid) return;
 
-            // Strictly hide "Related Articles" section if viewing a book or book chapter
-            if (isBookEntity(currentArticle)) {
+            const isChapter = item => item && (
+                item.isChapter === true ||
+                String(item.type || "").trim().toUpperCase() === "CHAPTER" ||
+                String(item.category || "").trim().toLowerCase() === "chapter" ||
+                (item.chapterIndex !== undefined && item.chapterIndex !== null)
+            );
+            if (isBookEntity(currentArticle) || isChapter(currentArticle)) {
                 relatedSection.classList.add("hidden");
                 relatedGrid.innerHTML = "";
                 return;
@@ -2537,20 +2539,50 @@
 
             if (!articlesList || articlesList.length === 0) {
                 relatedSection.classList.add("hidden");
+                relatedGrid.innerHTML = "";
                 return;
             }
 
-            const candidates = articlesList.filter(a => a.id !== currentArticle.id && !isBookEntity(a));
+            const normalizeKey = value => String(value || "")
+                .normalize("NFC")
+                .replace(/[\u200B-\u200D\uFEFF]/g, "")
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, " ");
+            const currentTags = new Set((Array.isArray(currentArticle.tags) ? currentArticle.tags : [])
+                .map(normalizeKey).filter(Boolean));
+            const currentCategory = sanitizeCategory(currentArticle.category).toLowerCase();
+            const bookKeys = item => [
+                item.bookId,
+                item.parentBookId,
+                item.bookSlug,
+                item.bookName,
+                item.playlistName
+            ].map(normalizeKey).filter(Boolean);
+            const currentBookKeys = new Set(bookKeys(currentArticle));
+
+            const candidates = articlesList
+                .filter(item => item && item.id !== currentArticle.id && !isBookEntity(item) && !isChapter(item))
+                .filter(item => !item.status || ["published", "live"].includes(String(item.status).trim().toLowerCase()))
+                .map(item => {
+                    const itemTags = new Set((Array.isArray(item.tags) ? item.tags : []).map(normalizeKey).filter(Boolean));
+                    const sharedTags = [...itemTags].filter(tag => currentTags.has(tag)).length;
+                    const categoryMatch = currentCategory && currentCategory === sanitizeCategory(item.category).toLowerCase();
+                    const sharedBook = bookKeys(item).some(key => currentBookKeys.has(key));
+                    const score = Math.min(sharedTags, 5) * 3 + (categoryMatch ? 2 : 0) + (sharedBook ? 5 : 0);
+                    return { item, score };
+                })
+                .filter(candidate => candidate.score > 0)
+                .sort((a, b) => b.score - a.score ||
+                    parseTimestampMillis(b.item.createdAt) - parseTimestampMillis(a.item.createdAt) ||
+                    String(a.item.id).localeCompare(String(b.item.id)))
+                .map(candidate => candidate.item);
+
             if (candidates.length === 0) {
                 relatedSection.classList.add("hidden");
+                relatedGrid.innerHTML = "";
                 return;
             }
-
-            candidates.sort((a, b) => {
-                if (a.category === currentArticle.category && b.category !== currentArticle.category) return -1;
-                if (b.category === currentArticle.category && a.category !== currentArticle.category) return 1;
-                return parseTimestampMillis(b.createdAt) - parseTimestampMillis(a.createdAt);
-            });
 
             const topRelated = candidates.slice(0, 4);
 
@@ -2580,7 +2612,7 @@
                         </div>
                     </div>
                 `;
-            }).join('');
+            }).join("");
 
             relatedSection.classList.remove("hidden");
         }

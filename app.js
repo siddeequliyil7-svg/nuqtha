@@ -7,7 +7,7 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
  * Protected by Strict Schema Validator & Safe Fallbacks
  */
 import { db, collection, doc, getDoc, getDocs, getDocsFromCache } from "./firebase-config.js";
-import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl } from "./schema-validator.js";
+import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl, sanitizeCategory } from "./schema-validator.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
@@ -103,7 +103,8 @@ const CATEGORY_ML = {
 
 function categoryLabel(cat) {
     if (!cat) return "GENERAL";
-    return CATEGORY_ML[cat.toUpperCase()] || cat.toUpperCase();
+    const category = sanitizeCategory(cat).toUpperCase();
+    return CATEGORY_ML[category] || category;
 }
 
 /**
@@ -387,7 +388,7 @@ function updateMoreCategoriesMenu() {
 
     allArticles.forEach(a => {
         if (isBookEntity(a)) return;
-        const cat = (a.category || "").toUpperCase().trim();
+        const cat = sanitizeCategory(a.category).toUpperCase();
         if (cat && !baseCats.has(cat)) {
             extraCats.add(cat);
         }
@@ -1094,11 +1095,11 @@ function renderHomeFeed(container) {
     // ═══════════════════════════════════════════════════════════
     // 4. CATEGORY FEEDS
     // ═══════════════════════════════════════════════════════════
-    const existingCats = new Set(regularArticles.map(a => (a.category || "").toUpperCase().trim()).filter(Boolean));
+    const existingCats = new Set(regularArticles.map(a => sanitizeCategory(a.category).toUpperCase()).filter(Boolean));
     const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c) && c !== "BOOKS" && c !== "BOOK" && c !== "PREMIUM BOOK")];
 
     orderedCats.forEach(cat => {
-        const catArticles = regularArticles.filter(a => (a.category || "").toUpperCase().trim() === cat).sort(comparePriority);
+        const catArticles = regularArticles.filter(a => sanitizeCategory(a.category).toUpperCase() === cat).sort(comparePriority);
         if (catArticles.length === 0) return;
 
         const theme = getCategoryTheme(cat);
@@ -1140,12 +1141,12 @@ function renderHomeFeed(container) {
 }
 
 function renderCategoryFeed(container, category) {
-    const targetNorm = normalizeCategoryName(category).toUpperCase();
+    const targetNorm = sanitizeCategory(normalizeCategoryName(category)).toUpperCase();
     const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
 
     const filtered = allArticles.filter(a => {
         if (isBookCover(a) || isChapterEntity(a)) return false;
-        const catNorm = normalizeCategoryName(a.category).toUpperCase();
+        const catNorm = sanitizeCategory(normalizeCategoryName(a.category)).toUpperCase();
         return catNorm === targetNorm ||
                categorySlug(catNorm) === categorySlug(targetNorm) ||
                (targetNorm === "HISTORY" && (catNorm === "HISTORY" || catNorm === "ചരിത്രം")) ||
