@@ -1632,11 +1632,19 @@
             }
         }
 
-        // ═══════════ BOOK INTRODUCTION (DISPLAYED IN FULL) ═══════════
-        window.toggleBookIntro = function() {};
+        // ═══════════ BOOK INTRODUCTION TOGGLE ═══════════
+        window.toggleBookIntro = function() {
+            const intro = document.getElementById("book-intro-text");
+            const button = document.getElementById("book-intro-toggle");
+            if (!intro || !button) return;
+            const expanded = intro.classList.toggle("is-expanded");
+            button.setAttribute("aria-expanded", String(expanded));
+            button.textContent = expanded ? "കുറയ്ക്കുക" : "കൂടുതൽ വായിക്കുക";
+        };
 
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
         async function renderBookIndex(book, container, attachedArticles = []) {
+            attachedArticles = filterAndSortChapters(book, Array.isArray(attachedArticles) ? attachedArticles : []);
             const errorContainerEl = document.getElementById("page-error-container");
             if (errorContainerEl) {
                 errorContainerEl.classList.add("hidden");
@@ -1657,9 +1665,12 @@
 
             const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "").trim();
             const cleanAuthor = (book.author || "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ").replace(/[*_#~`]/g, "").trim();
-            const rawIntro = (book.introduction || book.intro || book.excerpt || "").trim();
-            const hasIntro = rawIntro.replace(/[\s\.\,\-\_\#\*\~\`\:\;\"\'\(\)\!\?]/g, '').length > 0;
-            const dateStr = book.date || '28 Oct 2026';
+            const rawIntro = String(book.introduction || book.intro || book.excerpt || "").trim()
+                .replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
+            const hasIntro = rawIntro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
+            const dateStr = typeof book.date === "string" ? book.date.trim() : (book.date ? formatDateSafe(book.date) : "");
+            const chapterCount = countBookChapters(book, attachedArticles);
+            const coverUrl = book.imageUrl || book.coverUrl || book.coverImage || book.image || book.thumbnailUrl || book.thumbnail || book.ogImage || "";
             const authorPhoto = (book.authorPhoto || book.authorAvatar || "").trim();
             const firstLetter = (cleanAuthor || 'N').trim().charAt(0);
             const authorId = (cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
