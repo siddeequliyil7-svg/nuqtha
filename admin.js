@@ -19,8 +19,18 @@ function isExplicitChapterRecord(art) {
         (art.chapterIndex !== undefined && art.chapterIndex !== null);
 }
 
+function escapeAdminHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
+
 function getValidBookTitle(art) {
-    for (const value of [art?.bookName, art?.title]) {
+    for (const value of [art?.title, art?.bookTitle, art?.bookName, art?.name]) {
         const title = String(value || "").normalize("NFC").trim();
         const normalizedTitle = normalizeStringClean(title);
         if (normalizedTitle && !/^(?:untitled(?: book)?|തലക്കെട്ടില്ല(?: \(untitled\))?)$/i.test(normalizedTitle)) {
@@ -34,7 +44,6 @@ export function isMainBook(art) {
     if (!art || !getValidBookTitle(art)) return false;
     if (isExplicitChapterRecord(art)) return false;
 
-    // Filter strictly so only items where type === 'book' / 'BOOK' or isBook === true (or free/premium) qualify as books
     const artType = (art.type || "").toString().toLowerCase().trim();
     const category = (art.category || "").toString().toLowerCase().trim();
     if (
@@ -48,35 +57,33 @@ export function isMainBook(art) {
     ) {
         return true;
     }
-    return false;
+
+    const parentBookId = String(art.parentBookId || art.bookId || "").trim();
+    if (parentBookId && parentBookId !== String(art.id || "").trim()) return false;
+    if (Array.isArray(art.chapters) && art.chapters.length > 0) return true;
+
+    const title = normalizeStringClean(art.title || art.bookTitle || art.name || "");
+    const bookName = normalizeStringClean(art.bookName || "");
+    if (bookName && title && bookName === title) return true;
+    const slug = normalizeStringClean(art.slug || "");
+    const bookSlug = normalizeStringClean(art.bookSlug || "");
+    return Boolean(
+        (bookSlug && slug && bookSlug === slug && !art.order) ||
+        ((art.volume || art.issue) && !art.order)
+    );
 }
 window.isMainBook = isMainBook;
 
 export function isBookOrChapter(art) {
     if (!art) return false;
     if (isExplicitChapterRecord(art)) return true;
-    const artType = (art.type || "").toString().toLowerCase().trim();
-    const category = (art.category || "").toString().toLowerCase().trim();
-    if (artType === "book" || artType === "free" || artType === "premium" || art.isBook === true ||
-        category === "book" || category === "books" || category === "premium book") return true;
-    return false;
+    return isMainBook(art);
 }
 window.isBookOrChapter = isBookOrChapter;
 
 export function isPublishedArticle(art) {
     if (!art) return false;
-    if (isExplicitChapterRecord(art)) return false;
-    const artType = (art.type || "").toString().toLowerCase().trim();
-    const category = (art.category || "").toString().toLowerCase().trim();
-    return !(
-        artType === "book" ||
-        artType === "free" ||
-        artType === "premium" ||
-        art.isBook === true ||
-        category === "book" ||
-        category === "books" ||
-        category === "premium book"
-    );
+    return !isExplicitChapterRecord(art) && !isMainBook(art);
 }
 
 "use strict";
@@ -1026,6 +1033,14 @@ window.deleteArticle = async function (id) {
 
     try {
         await deleteDoc(doc(db, "articles", id));
+        currentArticlesList = currentArticlesList.filter(article => article.id !== id);
+        safeArticles = currentArticlesList.filter(isPublishedArticle);
+        updateArticleCounters(safeArticles.length);
+        updateBooksCounter(currentArticlesList.filter(isMainBook).length);
+        renderAdminPublishedList(safeArticles);
+        renderAdminBooksTab(currentArticlesList);
+        updateActiveBookOverview(currentArticlesList);
+        renderBookManagerCompactArticles(currentArticlesList, activeBookName);
         showGlobalStatus("ലേഖനം വിജയകരമായി Firestore-ൽ നിന്ന് നീക്കം ചെയ്തു!", "success");
         if (editingArticleId === id) {
             exitEditMode();
@@ -2103,7 +2118,7 @@ function resetBookManagerForm() {
     renderAdminBooksTab(currentArticlesList);
 }
 
-function selectActiveBook(bookName) {
+function selectActiveBook(bookName, bookId = "") {
     const wrapper = document.getElementById("bm-step2-3-wrapper");
     if (!bookName) {
         if (wrapper) wrapper.classList.add("hidden");
@@ -2115,10 +2130,12 @@ function selectActiveBook(bookName) {
     }
 
     const cleanTarget = normalizeStringClean(bookName);
-    const bookCover = currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
+    const bookCover = (bookId
+        ? currentArticlesList.find(a => a.id === bookId && isMainBook(a))
+        : currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
         normalizeStringClean(a.bookName) === cleanTarget ||
         normalizeStringClean(a.title) === cleanTarget
-    ));
+    )));
 
     activeBookName = bookCover ? (bookCover.bookName || bookCover.title) : bookName;
     activeBookAuthor = bookCover ? (bookCover.author || "") : "";
@@ -3428,6 +3445,9 @@ function renderAdminBooksTab(articles) {
 
     gridEl.innerHTML = books.map(book => {
         const bookTitle = getValidBookTitle(book);
+        const safeId = escapeAdminHtml(book.id);
+        const safeTitle = escapeAdminHtml(bookTitle);
+        const previewUrl = escapeAdminHtml(getStoryUrl(book));
         const chapterCount = countBookChapters(book, pool);
         const isActive = activeBookCoverDoc && (activeBookCoverDoc.id === book.id || activeBookName === bookTitle);
 
@@ -3435,41 +3455,41 @@ function renderAdminBooksTab(articles) {
             <div class="p-4 bg-white rounded-2xl border-2 ${isActive ? 'border-amber-500 bg-amber-50/20 ring-2 ring-amber-200' : 'border-[#ebdccb] hover:border-amber-300'} transition shadow-xs flex flex-col justify-between gap-3">
                 <div class="flex items-start gap-3">
                     <div class="w-16 h-22 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-amber-600 to-amber-900 border border-amber-200 shadow-xs flex items-center justify-center text-white">
-                        ${book.imageUrl ? `<img src="${book.imageUrl}" alt="${bookTitle}" class="w-full h-full object-cover">` : `<span class="text-2xl">📚</span>`}
+                        ${book.imageUrl ? `<img src="${escapeAdminHtml(book.imageUrl)}" alt="${safeTitle}" class="w-full h-full object-cover">` : `<span class="text-2xl">📚</span>`}
                     </div>
                     <div class="flex-1 min-w-0 space-y-1">
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span class="text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md font-english">
-                                ${book.category || 'Premium Book'}
+                                ${escapeAdminHtml(book.category || 'Premium Book')}
                             </span>
                             <span class="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-english">
                                 📖 ${chapterCount} Chapters
                             </span>
                             ${isActive ? `<span class="text-[9px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md font-english">● ACTIVE</span>` : ''}
                         </div>
-                        <h4 class="text-sm font-extrabold text-[#1e1b18] truncate leading-tight">${bookTitle}</h4>
-                        <p class="text-[11px] font-bold text-[#8c7a6b] truncate">✍️ ${book.author || 'Single Author'}</p>
-                        ${book.date ? `<p class="text-[10px] text-slate-400 font-english">📅 ${book.date}</p>` : ''}
+                        <h4 class="text-sm font-extrabold text-[#1e1b18] truncate leading-tight">${safeTitle}</h4>
+                        <p class="text-[11px] font-bold text-[#8c7a6b] truncate">✍️ ${escapeAdminHtml(book.author || 'Single Author')}</p>
+                        ${book.date ? `<p class="text-[10px] text-slate-400 font-english">📅 ${escapeAdminHtml(book.date)}</p>` : ''}
                     </div>
                 </div>
 
                 <div class="flex items-center justify-between pt-2.5 border-t border-[#f0e6d6] gap-2 flex-wrap">
-                    <a href="${getStoryUrl(book)}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline font-english">
+                    <a href="${previewUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline font-english">
                         <span>👁️ Live</span>
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     </a>
 
                     <div class="flex items-center gap-1.5 flex-wrap">
-                        <button type="button" onclick="window.addChapterToBookById('${book.id}')" title="ഈ പുസ്തകത്തിലേക്ക് പുതിയ അധ്യായം ചേർക്കുക" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs font-['Noto_Sans_Malayalam'] cursor-pointer">
+                        <button type="button" data-action="add-chapter-to-book" data-id="${safeId}" title="ഈ പുസ്തകത്തിലേക്ക് പുതിയ അധ്യായം ചേർക്കുക" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs font-['Noto_Sans_Malayalam'] cursor-pointer">
                             <span>➕ അധ്യായം ചേർക്കുക</span>
                         </button>
-                        <button type="button" onclick="window.manageBookById('${book.id}')" title="അധ്യായങ്ങൾ മാനേജ് ചെയ്യുക & പുനഃക്രമീകരിക്കുക" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
+                        <button type="button" data-action="manage-book" data-id="${safeId}" title="അധ്യായങ്ങൾ മാനേജ് ചെയ്യുക & പുനഃക്രമീകരിക്കുക" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
                             <span>📖 Chapters</span>
                         </button>
-                        <button type="button" onclick="window.editBookMetadataById('${book.id}')" title="പുസ്തക വിവരങ്ങൾ എഡിറ്റ് ചെയ്യുക" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
+                        <button type="button" data-action="edit-book-meta" data-id="${safeId}" title="പുസ്തക വിവരങ്ങൾ എഡിറ്റ് ചെയ്യുക" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1 font-english cursor-pointer">
                             <span>✏️ Edit</span>
                         </button>
-                        <button type="button" onclick="window.deleteBookById('${book.id}', '${bookTitle.replace(/'/g, "\\'")}')" title="ഈ പുസ്തകം ഒഴിവാക്കുക" class="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition font-english cursor-pointer">
+                        <button type="button" data-action="delete-book" data-id="${safeId}" data-title="${safeTitle}" title="ഈ പുസ്തകം ഒഴിവാക്കുക" class="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition font-english cursor-pointer">
                             <span>✕</span>
                         </button>
                     </div>
@@ -3484,7 +3504,7 @@ window.addChapterToBookById = function(bookId) {
     const book = currentArticlesList.find(a => a.id === bookId);
     if (!book) return;
     const name = book.bookName || book.title;
-    selectActiveBook(name);
+    selectActiveBook(name, bookId);
     resetChapterEditMode();
 
     const titleInput = document.getElementById("bm-art-title");
@@ -3514,7 +3534,7 @@ window.manageBookById = function(bookId) {
     const book = currentArticlesList.find(a => a.id === bookId);
     if (!book) return;
     const name = book.bookName || book.title;
-    selectActiveBook(name);
+    selectActiveBook(name, bookId);
     renderAdminBooksTab(currentArticlesList);
     const step3 = document.getElementById("bm-step3-section") || document.getElementById("bm-step2-3-wrapper");
     if (step3) {
@@ -3527,7 +3547,7 @@ window.editBookMetadataById = function(bookId) {
     const book = currentArticlesList.find(a => a.id === bookId);
     if (!book) return;
     const name = book.bookName || book.title;
-    selectActiveBook(name);
+    selectActiveBook(name, bookId);
     renderAdminBooksTab(currentArticlesList);
     const step1 = document.getElementById("bm-step1-section");
     if (step1) {
@@ -3548,36 +3568,48 @@ window.deleteBookById = async function(bookId, bookTitle) {
     if (!confirm(`'${cleanTitle}' എന്ന പുസ്തകം പൂർണ്ണമായി നീക്കം ചെയ്യണോ (Delete Book)?`)) return;
 
     try {
-        await deleteDoc(doc(db, "articles", bookId));
+        const book = currentArticlesList.find(article => article.id === bookId);
+        const chapterIds = new Set((Array.isArray(book?.chapters) ? book.chapters : [])
+            .map(chapter => typeof chapter === "string" ? chapter : chapter?.id || chapter?.articleId || chapter?.chapterId)
+            .filter(Boolean));
+        const normalizedTitle = normalizeStringClean(cleanTitle);
+        const linkedChapters = currentArticlesList.filter(article =>
+            article.id !== bookId && (
+                article.bookId === bookId ||
+                article.parentBookId === bookId ||
+                chapterIds.has(article.id) ||
+                (normalizedTitle && normalizeStringClean(article.bookName || article.playlistName) === normalizedTitle)
+            )
+        );
 
-        // Also delete from books collection (Fix Delete Issue)
-        try {
-            await deleteDoc(doc(db, "books", bookId));
-        } catch (_) {}
+        await Promise.all(linkedChapters.map(chapter => updateDoc(doc(db, "articles", chapter.id), {
+            bookId: "",
+            parentBookId: "",
+            bookName: "",
+            playlistName: "",
+            bookSlug: "",
+            updatedAt: serverTimestamp()
+        })));
+        await Promise.all([
+            deleteDoc(doc(db, "articles", bookId)),
+            deleteDoc(doc(db, "books", bookId))
+        ]);
 
-        // Clear local caches so deleted books don't persist
-        try {
-            sessionStorage.removeItem("nuqtha_cached_articles");
-            sessionStorage.removeItem("nuqtha:library:v1");
-        } catch (_) {}
-
-        // Unlink chapters belonging to this book
-        const linkedChapters = currentArticlesList.filter(a => a.bookId === bookId || (cleanTitle && a.bookName === cleanTitle));
-        for (const ch of linkedChapters) {
-            try {
-                await updateDoc(doc(db, "articles", ch.id), {
-                    bookId: "",
-                    bookName: "",
-                    updatedAt: serverTimestamp()
-                });
-                ch.bookId = "";
-                ch.bookName = "";
-            } catch (chErr) {
-                console.warn("[BookManager] Unlink error:", ch.id, chErr);
-            }
+        for (const chapter of linkedChapters) {
+            chapter.bookId = "";
+            chapter.parentBookId = "";
+            chapter.bookName = "";
+            chapter.playlistName = "";
+            chapter.bookSlug = "";
         }
 
         currentArticlesList = currentArticlesList.filter(a => a.id !== bookId);
+        try {
+            sessionStorage.removeItem("nuqtha_cached_articles");
+            sessionStorage.removeItem("nuqtha:library:v1");
+        } catch (error) {
+            console.warn("[BookManager] Could not clear stale admin caches:", error);
+        }
 
         if (activeBookCoverDoc?.id === bookId || activeBookName === cleanTitle) {
             resetBookManagerForm();
@@ -3724,7 +3756,14 @@ function listenToFirestoreArticles() {
         onSnapshot(colRef, (querySnapshot) => {
             console.log("Fetched articles:", querySnapshot.docs.map(articleDoc => articleDoc.data()));
             console.log(`[NUQTHA ADMIN] onSnapshot received ${querySnapshot.docs.length} documents (fromCache: ${querySnapshot.metadata.fromCache})`);
-            const items = querySnapshot.docs.map(articleDoc => normalizeArticleDoc(articleDoc.data(), articleDoc.id));
+            const items = querySnapshot.docs.map(articleDoc => {
+                const raw = articleDoc.data() || {};
+                return normalizeArticleDoc({
+                    ...raw,
+                    title: raw.title || raw.bookTitle || raw.name,
+                    id: articleDoc.id
+                }, articleDoc.id);
+            });
             processArticlesData(items);
         }, (err) => {
             console.error("[NUQTHA ADMIN] Realtime onSnapshot listener failed:", err.code || "", err.message, err);
@@ -3741,7 +3780,14 @@ function listenToFirestoreArticles() {
         try {
             const snapshot = await getDocs(colRef);
             console.log("Fetched articles:", snapshot.docs.map(articleDoc => articleDoc.data()));
-            processArticlesData(snapshot.docs.map(articleDoc => normalizeArticleDoc(articleDoc.data(), articleDoc.id)));
+            processArticlesData(snapshot.docs.map(articleDoc => {
+                const raw = articleDoc.data() || {};
+                return normalizeArticleDoc({
+                    ...raw,
+                    title: raw.title || raw.bookTitle || raw.name,
+                    id: articleDoc.id
+                }, articleDoc.id);
+            }));
         } catch (error) {
             reportLoadError(error);
         }
@@ -3826,11 +3872,11 @@ export function renderAdminPublishedList(items) {
                         <button type="button" onclick="window.viewArticleComments('${data.id}', '${(data.title || '').replace(/'/g, "\\'")}')" title="ലേഖന അഭിപ്രായങ്ങളും ഇമെയിലുകളും കാണുക" class="inline-flex items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/20 border border-blue-200 px-3 py-1 rounded-xl transition font-english cursor-pointer">
                             <span>💬 Comments</span>
                         </button>
-                        <button type="button" data-action="edit-article" data-id="${data.id}" onclick="window.startEditArticle('${data.id}')" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english cursor-pointer">
+                        <button type="button" data-action="edit-article" data-id="${escapeAdminHtml(data.id)}" title="ലേഖനം എഡിറ്റ് ചെയ്യുക" class="inline-flex items-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/70 hover:bg-amber-200 dark:bg-amber-500/20 border border-amber-300 px-3 py-1 rounded-xl transition font-english cursor-pointer">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                             <span>Edit</span>
                         </button>
-                        <button type="button" data-action="delete-article" data-id="${data.id}" onclick="window.deleteArticle('${data.id}')" title="ലേഖനം ഒഴിവാക്കുക" class="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 border border-rose-200 px-3 py-1 rounded-xl transition font-english cursor-pointer">
+                        <button type="button" data-action="delete-article" data-id="${escapeAdminHtml(data.id)}" title="ലേഖനം ഒഴിവാക്കുക" class="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 border border-rose-200 px-3 py-1 rounded-xl transition font-english cursor-pointer">
                             <span>✕ Delete</span>
                         </button>
                     </div>
@@ -4464,7 +4510,7 @@ window.deleteAdminComment = async function(articleId, commentId) {
 };
 
 /* ═══════════ GLOBAL DELEGATED ACTION DISPATCHER (STABLE EVENT CONTAINER) ═══════════ */
-document.addEventListener("click", (e) => {
+document.addEventListener("click", async (e) => {
     const actionEl = e.target.closest("[data-action]");
     if (!actionEl) return;
 
@@ -4502,7 +4548,10 @@ document.addEventListener("click", (e) => {
         }
         case "add-chapter-to-book": {
             e.preventDefault();
-            if (typeof window.handleAddChapterToBook === "function") {
+            const bookId = actionEl.dataset.id;
+            if (bookId && typeof window.addChapterToBookById === "function") {
+                window.addChapterToBookById(bookId);
+            } else if (typeof window.handleAddChapterToBook === "function") {
                 window.handleAddChapterToBook(e);
             }
             break;
@@ -4568,7 +4617,7 @@ document.addEventListener("click", (e) => {
             const id = actionEl.dataset.id;
             const title = actionEl.dataset.title;
             if (id && typeof window.deleteBookById === "function") {
-                window.deleteBookById(id, title);
+                await window.deleteBookById(id, title);
             }
             break;
         }
@@ -4576,7 +4625,7 @@ document.addEventListener("click", (e) => {
             e.preventDefault();
             const id = actionEl.dataset.id;
             if (id && typeof window.deleteArticle === "function") {
-                window.deleteArticle(id);
+                await window.deleteArticle(id);
             }
             break;
         }

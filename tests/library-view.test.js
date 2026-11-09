@@ -57,12 +57,23 @@ assert.ok(adminLibJs.includes('MAX_PAPERS = 5'), "admin-library.js must validate
 assert.ok(adminLibJs.includes('showOnTable:'), "admin-library.js must toggle showOnTable flag on articles");
 assert.ok(adminLibJs.includes('name="bk-import-type"'), "admin-library.js must contain toggle/radio for Import Book vs Import Article");
 assert.ok(adminLibJs.includes('value="article"'), "admin-library.js must support article import mode");
-assert.ok(adminLibJs.includes('form.title.value = item.title'), "admin-library.js must auto-fill title from selected article");
-assert.ok(adminLibJs.includes('form.author.value = item.author'), "admin-library.js must auto-fill author from selected article");
+assert.ok(adminLibJs.includes('field("title").value = item.title'), "admin-library.js must auto-fill title from selected article");
+assert.ok(adminLibJs.includes('field("author").value = item.author'), "admin-library.js must auto-fill author from selected article");
+assert.ok(adminLibJs.includes('form.elements.namedItem(name)'), "admin-library.js must access form fields without colliding with HTMLFormElement.id");
+assert.ok(!adminLibJs.includes("form.id.value"), "admin-library.js must not read or write the form's built-in id property as a field");
 assert.ok(adminLibJs.includes(".filter(isValidBookRecord)"), "admin-library.js must exclude invalid Firestore book documents");
 assert.ok(adminLibJs.includes("if (total) total.textContent = `${books.length} total`"), "admin-library.js book count must match rendered valid records");
+assert.ok(adminLibJs.includes("id: d.id"), "admin-library.js must use the authoritative Firestore document ID");
 assert.ok(adminJs.includes("if (!art || !getValidBookTitle(art)) return false;"), "admin.js must exclude books without a valid title");
 assert.ok(adminJs.includes("const totalBooks = books.length;"), "admin.js book count must match the deduplicated rendered list");
+assert.ok(adminJs.includes("if (Array.isArray(art.chapters) && art.chapters.length > 0) return true;"), "admin.js must recognize legacy books with chapter records without treating every empty article array as a book");
+assert.ok(adminLibJs.includes("(Array.isArray(record.chapters) && record.chapters.length > 0)"), "admin-library.js must not classify ordinary documents with empty chapter arrays as books");
+assert.ok(adminJs.includes("bookName && title && bookName === title"), "admin.js must recognize legacy book documents by matching book and document titles");
+assert.ok(adminJs.includes('data-action="add-chapter-to-book"'), "admin.js book cards must expose chapter actions through event delegation");
+assert.ok(adminJs.includes('case "add-chapter-to-book"'), "admin.js must dispatch delegated chapter actions");
+assert.strictEqual((adminJs.match(/case "add-chapter-to-book"/g) || []).length, 1, "admin.js must not register duplicate chapter action cases");
+assert.ok(!/data-action="(?:edit-article|delete-article|manage-book|edit-book-meta|delete-book)"[^>]*onclick=/.test(adminJs), "admin.js delegated actions must not also invoke inline handlers");
+assert.ok(adminJs.includes("id: articleDoc.id"), "admin.js must use authoritative Firestore IDs for action bindings");
 
 console.log("  [OK] admin-library.js contains all required management forms, limits, dual article/book import, and Firestore actions.");
 

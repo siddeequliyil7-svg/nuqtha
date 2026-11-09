@@ -46,6 +46,7 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(sanitizeCategory("ചരിത്രം")).to.equal("HISTORY");
             expect(sanitizeCategory("പഠനം")).to.equal("STUDY");
             expect(sanitizeCategory("കഥ")).to.equal("STORY");
+            expect(sanitizeCategory("Study More")).to.equal("STUDY");
             expect(sanitizeCategory("ലേഖനം")).to.equal("ലേഖനം");
         });
 

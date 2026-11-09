@@ -1,36 +1,50 @@
 // admin-library.js : self-contained "Library" panel for your admin page.
 // Usage: import { initLibraryAdmin } from "./admin-library.js"; initLibraryAdmin(document.getElementById("library-admin"));
 import { db, collection, getDocs, getDocsFromCache, addDoc, setDoc, updateDoc, deleteDoc, doc } from "./firebase-config.js";
-import { FALLBACK_ARTICLE_ITEMS } from "./fallback-data.js";
-
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
 const $ = (r, s) => r.querySelector(s);
 const normalizedTitle = (value) => String(value || "").normalize("NFC").trim().toLowerCase();
 
 function isValidBookRecord(record) {
   if (!record || !String(record.id || "").trim() ||
-      record.isChapter === true ||
-      String(record.type || "").trim().toUpperCase() === "CHAPTER" ||
-      String(record.category || "").trim().toLowerCase() === "chapter" ||
-      (record.chapterIndex !== undefined && record.chapterIndex !== null)) {
+      isValidChapterRecord(record)) {
     return false;
   }
-  return [record.title, record.bookName].some((value) => {
+  return [record.title, record.bookTitle, record.bookName, record.name].some((value) => {
     const title = normalizedTitle(value);
     return title && !/^(?:untitled(?: book)?|no title|തലക്കെട്ടില്ല(?: \(untitled\))?)$/i.test(title);
   });
 }
 
-function countWithFallback(records, fallbackRecords) {
-  const ids = new Set(records.map((record) => String(record.id || "")));
-  const slugs = new Set(records.map((record) => String(record.slug || "")));
-  const titles = new Set(records.map((record) => normalizedTitle(record.title)));
-  const missing = fallbackRecords.filter((record) =>
-    !ids.has(String(record.id || "")) &&
-    (!record.slug || !slugs.has(String(record.slug))) &&
-    !titles.has(normalizedTitle(record.title))
+function isValidChapterRecord(record) {
+  return Boolean(record && (
+    record.isChapter === true ||
+    String(record.type || "").trim().toUpperCase() === "CHAPTER" ||
+    String(record.category || "").trim().toLowerCase() === "chapter" ||
+    (record.chapterIndex !== undefined && record.chapterIndex !== null)
+  ));
+}
+
+function isBookArticleRecord(record) {
+  if (!record) return false;
+  const type = String(record.type || "").trim().toUpperCase();
+  const category = String(record.category || "").trim().toLowerCase();
+  if (isValidChapterRecord(record)) return false;
+  if (record.isBook === true || ["BOOK", "FREE", "PREMIUM"].includes(type) ||
+      ["book", "books", "premium book"].includes(category) ||
+      (Array.isArray(record.chapters) && record.chapters.length > 0)) return true;
+
+  const parentId = String(record.bookId || record.parentBookId || "").trim();
+  if (parentId && parentId !== String(record.id || "").trim()) return false;
+  const title = normalizedTitle(record.title || record.bookTitle || record.name);
+  const bookName = normalizedTitle(record.bookName);
+  const slug = normalizedTitle(record.slug);
+  const bookSlug = normalizedTitle(record.bookSlug);
+  return Boolean(
+    (title && bookName && title === bookName) ||
+    (bookSlug && slug && bookSlug === slug && !record.order) ||
+    ((record.volume || record.issue) && !record.order)
   );
-  return records.length + missing.length;
 }
 
 async function getCollectionSnapshot(ref, name) {
@@ -215,6 +229,7 @@ export async function initLibraryAdmin(root) {
   }
 
   const form = $(root, "#bk-form"), bkStatus = $(root, "#bk-status"), tbStatus = $(root, "#tb-status");
+  const field = (name) => form.elements.namedItem(name);
   let books = [];
   let booksLoaded = false;
   let articleRecords = null;
@@ -226,7 +241,14 @@ export async function initLibraryAdmin(root) {
     try {
       const snap = await getCollectionSnapshot(collection(db, "books"), "books");
       books = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
+        .map((d) => {
+          const record = d.data() || {};
+          return {
+            ...record,
+            id: d.id,
+            title: record.title || record.bookTitle || record.bookName || record.name || ""
+          };
+        })
         .filter(isValidBookRecord)
         .sort((a, b) => {
           const aOrder = Number(a.order);
@@ -237,6 +259,7 @@ export async function initLibraryAdmin(root) {
       const total = $(root, "#lib-book-total");
       if (total) total.textContent = `${books.length} total`;
       const ul = $(root, "#bk-list");
+      if (!ul) return;
       ul.innerHTML = "";
       if (!books.length) {
         ul.innerHTML = '<li class="p-4 text-center text-[#8c7a6b]">No books added yet.</li>';
@@ -248,12 +271,14 @@ export async function initLibraryAdmin(root) {
         
         const info = document.createElement("div");
         info.className = "flex items-center gap-3 min-w-0";
-        info.innerHTML = `
-          <span class="w-4 h-4 rounded-full flex-shrink-0 border border-black/10" style="background:${b.color || '#7b2d26'}"></span>
-          <span class="font-bold text-[var(--text)] dark:text-white truncate">
-            #${b.order ?? 0} &bull; ${b.title || "Untitled"} ${b.visible ? '<span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">(On Shelf)</span>' : '<span class="text-[10px] text-slate-400 font-semibold">(Hidden)</span>'}
-          </span>
-        `;
+        const color = /^#[\da-f]{3}(?:[\da-f]{3})?$/i.test(String(b.color || "")) ? b.color : "#7b2d26";
+        const colorDot = document.createElement("span");
+        colorDot.className = "w-4 h-4 rounded-full flex-shrink-0 border border-black/10";
+        colorDot.style.backgroundColor = color;
+        const bookLabel = document.createElement("span");
+        bookLabel.className = "font-bold text-[var(--text)] dark:text-white truncate";
+        bookLabel.textContent = `#${b.order ?? 0} • ${b.title || "Untitled"} ${b.visible ? "(On Shelf)" : "(Hidden)"}`;
+        info.append(colorDot, bookLabel);
 
         const actions = document.createElement("div");
         actions.className = "flex items-center gap-1.5 flex-shrink-0";
@@ -271,15 +296,15 @@ export async function initLibraryAdmin(root) {
         });
 
         edit.onclick = () => {
-          form.id.value = b.id;
-          form.title.value = b.title || "";
-          form.author.value = b.author || "";
-          form.pages.value = b.pages || "";
-          form.color.value = b.color || "#7b2d26";
-          form.order.value = b.order ?? 1;
-          form.description.value = b.description || "";
-          form.contents.value = (b.contents || []).join("\n");
-          form.visible.checked = !!b.visible;
+          field("id").value = b.id;
+          field("title").value = b.title || "";
+          field("author").value = b.author || "";
+          field("pages").value = b.pages || "";
+          field("color").value = color;
+          field("order").value = b.order ?? 1;
+          field("description").value = b.description || "";
+          field("contents").value = (b.contents || []).join("\n");
+          field("visible").checked = !!b.visible;
           form.scrollIntoView({ behavior: "smooth" });
           bkStatus.textContent = `Editing: ${b.title}`;
         };
@@ -288,10 +313,11 @@ export async function initLibraryAdmin(root) {
           if (confirm(`Delete “${b.title}”?`)) {
             try {
               await deleteDoc(doc(db, "books", b.id));
-              loadBooks(true);
+              bkStatus.textContent = "Deleted.";
+              await loadBooks(true);
             } catch (err) {
               console.error(err);
-              bkStatus.textContent = "Could not delete book.";
+              bkStatus.textContent = `Could not delete book: ${err.message || "check Firestore permissions."}`;
             }
           }
         };
@@ -314,7 +340,10 @@ export async function initLibraryAdmin(root) {
     if (!articleLoadPromise) {
       articleLoadPromise = getCollectionSnapshot(collection(db, "articles"), "articles")
         .then((snap) => {
-          articleRecords = snap.docs.map((articleDoc) => ({ id: articleDoc.id, ...articleDoc.data() }));
+          articleRecords = snap.docs.map((articleDoc) => ({
+            ...(articleDoc.data() || {}),
+            id: articleDoc.id
+          }));
           return articleRecords;
         })
         .finally(() => {
@@ -326,20 +355,20 @@ export async function initLibraryAdmin(root) {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const id = form.id.value, visible = form.visible.checked;
+    const id = field("id").value, visible = field("visible").checked;
     const others = books.filter((b) => b.visible && b.id !== id).length;
     if (visible && others >= MAX_BOOKS) {
       bkStatus.textContent = `Shelf is full (${MAX_BOOKS}). Hide another book first.`;
       return;
     }
     const data = {
-      title: form.title.value.trim(),
-      author: form.author.value.trim() || "Nuqtha Press",
-      pages: Number(form.pages.value) || null,
-      color: form.color.value || "#7b2d26",
-      order: Number(form.order.value) || 0,
-      description: form.description.value.trim(),
-      contents: form.contents.value.split("\n").map((x) => x.trim()).filter(Boolean),
+      title: field("title").value.trim(),
+      author: field("author").value.trim() || "Nuqtha Press",
+      pages: Number(field("pages").value) || null,
+      color: field("color").value || "#7b2d26",
+      order: Number(field("order").value) || 0,
+      description: field("description").value.trim(),
+      contents: field("contents").value.split("\n").map((x) => x.trim()).filter(Boolean),
       visible,
     };
     try {
@@ -351,8 +380,8 @@ export async function initLibraryAdmin(root) {
       }
       bkStatus.textContent = "Saved.";
       form.reset();
-      form.id.value = "";
-      loadBooks(true);
+      field("id").value = "";
+      await loadBooks(true);
     } catch (err) {
       console.error(err);
       bkStatus.textContent = "Couldn’t save. Are you signed in as admin?";
@@ -363,7 +392,7 @@ export async function initLibraryAdmin(root) {
   if (clearBtn) {
     clearBtn.onclick = () => {
       form.reset();
-      form.id.value = "";
+      field("id").value = "";
       bkStatus.textContent = "";
     };
   }
@@ -382,19 +411,23 @@ export async function initLibraryAdmin(root) {
     // 1. Parse Books
     existingBooks = [];
     allDocs.forEach(a => {
-      const isBook = a.isBook === true || (a.type || "").toUpperCase() === "BOOK" || (a.category || "").toLowerCase() === "premium book" || (a.category || "").toLowerCase() === "book";
-      const isChapter = a.isChapter === true || (a.type || "").toUpperCase() === "CHAPTER" || a.chapterIndex !== undefined;
-      if (isBook && !isChapter && isValidBookRecord(a)) {
+      if (isBookArticleRecord(a) && isValidBookRecord(a)) {
         const chapters = allDocs.filter(c => {
-          if (c.id === a.id) return false;
-          if (c.bookId && String(c.bookId).trim() === String(a.id)) return true;
-          if (c.bookName && c.title && c.bookName.trim().toLowerCase() === (a.title || a.bookName || "").trim().toLowerCase()) return true;
+          if (c.id === a.id || isBookArticleRecord(c)) return false;
+          if (String(c.bookId || c.parentBookId || "").trim() === String(a.id)) return true;
+          if (c.bookName && c.title &&
+              normalizedTitle(c.bookName) === normalizedTitle(a.title || a.bookName || a.bookTitle || a.name)) return true;
           return false;
-        }).sort((x, y) => (Number(x.order ?? x.chapterIndex ?? 0)) - (Number(y.order ?? y.chapterIndex ?? 0)));
+        }).sort((x, y) => {
+          const xOrder = Number(x.order ?? x.priority ?? x.chapterIndex);
+          const yOrder = Number(y.order ?? y.priority ?? y.chapterIndex);
+          return (Number.isFinite(xOrder) ? xOrder : Number.MAX_SAFE_INTEGER) -
+            (Number.isFinite(yOrder) ? yOrder : Number.MAX_SAFE_INTEGER);
+        });
 
         existingBooks.push({
           id: a.id,
-          title: a.title || a.bookName || "Untitled Book",
+          title: a.title || a.bookTitle || a.bookName || a.name || "Untitled Book",
           author: a.author || "Nuqtha Press",
           description: a.introduction || a.excerpt || a.description || (a.content ? a.content.replace(/<[^>]*>/g, " ").slice(0, 250) : ""),
           pages: a.pages || (chapters.length > 0 ? chapters.length * 15 : 120),
@@ -406,9 +439,7 @@ export async function initLibraryAdmin(root) {
 
     // 2. Parse Articles
     existingArticles = allDocs.filter(a => {
-      const isBook = a.isBook === true || (a.type || "").toUpperCase() === "BOOK" || (a.category || "").toLowerCase() === "premium book" || (a.category || "").toLowerCase() === "book";
-      const isChapter = a.isChapter === true || (a.type || "").toUpperCase() === "CHAPTER" || a.chapterIndex !== undefined;
-      return !isBook && !isChapter && (a.title || "").trim().length > 0;
+      return !isBookArticleRecord(a) && !isValidChapterRecord(a) && String(a.title || "").trim().length > 0;
     }).map(a => {
       const cleanContent = (a.content || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
       const words = cleanContent ? cleanContent.split(/\s+/).length : 0;
@@ -517,13 +548,13 @@ export async function initLibraryAdmin(root) {
       }
 
       const item = list[idx];
-      form.id.value = "";
-      form.title.value = item.title || "";
-      form.author.value = item.author || (mode === "article" ? "Nuqtha Author" : "Nuqtha Press");
-      form.pages.value = item.pages || (mode === "article" ? 12 : 120);
-      form.description.value = item.description || "";
-      form.contents.value = (item.chapters || []).join("\n");
-      form.visible.checked = true;
+      field("id").value = "";
+      field("title").value = item.title || "";
+      field("author").value = item.author || (mode === "article" ? "Nuqtha Author" : "Nuqtha Press");
+      field("pages").value = item.pages || (mode === "article" ? 12 : 120);
+      field("description").value = item.description || "";
+      field("contents").value = (item.chapters || []).join("\n");
+      field("visible").checked = true;
 
       const typeLabelMalayalam = mode === "article" ? "ലേഖന" : "പുസ്തക";
       bkStatus.textContent = `✓ "${item.title}" ${typeLabelMalayalam} വിവരങ്ങൾ ഫോമിൽ നിറച്ചു! താഴെ "Save book" അമർത്തിയാൽ ഇത് 3D ഷെൽഫിൽ എത്തും.`;
@@ -570,10 +601,10 @@ export async function initLibraryAdmin(root) {
       await addDoc(collection(db, "books"), data);
       bkStatus.textContent = `✓ "${b.title}" ഷെൽഫിൽ വിജയകരമായി ചേർത്തു!`;
       form.reset();
-      form.id.value = "";
+      field("id").value = "";
       const quickAddBtn = $(root, "#bk-quick-add-btn");
       if (quickAddBtn) quickAddBtn.classList.add("hidden");
-      loadBooks(true);
+      await loadBooks(true);
     } catch (err) {
       console.error(err);
       bkStatus.textContent = "സേവ് ചെയ്യാൻ സാധിച്ചില്ല. അഡ്മിൻ ലോഗിൻ പരിശോധിക്കുക.";
@@ -587,15 +618,20 @@ export async function initLibraryAdmin(root) {
       parseExistingItems(records);
       renderImportDropdown();
       papersLoaded = true;
+      const papers = records.filter(record =>
+        !isBookArticleRecord(record) &&
+        !isValidChapterRecord(record) &&
+        String(record.title || "").trim()
+      );
       const total = $(root, "#lib-article-total");
-      if (total) total.textContent = `${countWithFallback(records, FALLBACK_ARTICLE_ITEMS)} total`;
+      if (total) total.textContent = `${papers.length} total`;
       const ul = $(root, "#tb-list");
       ul.innerHTML = "";
-      if (!records.length) {
+      if (!papers.length) {
         ul.innerHTML = '<li class="p-4 text-center text-[#8c7a6b]">No articles found.</li>';
         return;
       }
-      records.forEach((a) => {
+      papers.forEach((a) => {
         const li = document.createElement("li"), cb = document.createElement("input");
         li.className = "p-3 flex items-center justify-between gap-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition";
         cb.type = "checkbox";
@@ -634,7 +670,7 @@ export async function initLibraryAdmin(root) {
     } catch (err) {
       console.error(err);
       const total = $(root, "#lib-article-total");
-      if (total) total.textContent = `${countWithFallback([], FALLBACK_ARTICLE_ITEMS)} total (fallback)`;
+      if (total) total.textContent = "Unavailable";
       const ul = $(root, "#tb-list");
       ul.innerHTML = '<li class="p-4 text-center text-red-600">Error loading articles. Check Firestore rules.</li>';
     }
