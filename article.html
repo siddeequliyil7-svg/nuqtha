@@ -14,11 +14,11 @@
     <meta property="og:url" content="https://nuqtha.vercel.app/article.html" />
     <meta property="og:title" content="NUQTHA | Article & Edition Reader" />
     <meta property="og:description" content="NUQTHA Malayalam Publishing Platform — Articles, Studies, History, and Book Editions." />
-    <meta property="og:image" content="https://nuqtha.vercel.app/og-cover.png" />
-    <meta property="og:image:secure_url" content="https://nuqtha.vercel.app/og-cover.png" />
-    <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:width" content="1920" />
-    <meta property="og:image:height" content="1080" />
+    <meta property="og:image" content="https://nuqtha.vercel.app/og-cover.svg" />
+    <meta property="og:image:secure_url" content="https://nuqtha.vercel.app/og-cover.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="NUQTHA Article & Edition Reader" />
 
     <!-- Twitter Card Meta Tags with Absolute Fallback URLs -->
@@ -26,7 +26,7 @@
     <meta name="twitter:url" content="https://nuqtha.vercel.app/article.html" />
     <meta name="twitter:title" content="NUQTHA | Article & Edition Reader" />
     <meta name="twitter:description" content="NUQTHA Malayalam Publishing Platform — Articles, Studies, History, and Book Editions." />
-    <meta name="twitter:image" content="https://nuqtha.vercel.app/og-cover.png" />
+    <meta name="twitter:image" content="https://nuqtha.vercel.app/og-cover.svg" />
     <!-- Google Fonts Preconnect & Load with display=swap -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -366,7 +366,7 @@
 
             <!-- Optional Article Cover Image -->
             <div id="art-image-wrapper" class="hidden rounded-2xl sm:rounded-3xl overflow-hidden border border-[var(--border)] dark:border-white/10 shadow-sm">
-                <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px]" loading="eager" decoding="async">
+                <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px] aspect-[3/4]" width="1200" height="1600" loading="eager" decoding="async" data-nuqtha-cover="true">
             </div>
 
             <!-- Prominent Article Excerpt / Lead Intro Container -->
@@ -566,7 +566,7 @@
         import { app, db, firebaseConfig, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "/firebase-config.js";
         import { FALLBACK_ARTICLES } from "/fallback-data.js";
         import { initHeaderAuthUI } from "/js/auth-ui.js";
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart, sanitizeCategory } from "/schema-validator.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, getArticleImageUrl, cleanUrlPart, sanitizeCategory } from "/schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, saveBookPageLightCache, saveBookChapterListCache, readBookChapterListCache } from "/js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "/js/author-service.js";
         import { categoryUrl, categoryTag } from "/js/category-link.js";
@@ -848,7 +848,7 @@
             const hasIntro = intro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
             const cover = typeof lightData.coverUrl === "string" && !/^data:/i.test(lightData.coverUrl)
                 ? escapeHtml(lightData.coverUrl)
-                : "";
+                : "/cover-placeholder.svg";
             const introMarkup = hasIntro
                 ? `<div class="book-v2-intro"><span class="book-v2-quote-mark" aria-hidden="true">&ldquo;</span><div id="book-intro-text" class="book-v2-intro-text">${escapeHtml(intro)}</div><button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button></div>`
                 : "";
@@ -857,7 +857,7 @@
                     ? chapter.title.trim()
                     : `അധ്യായം ${index + 1}`;
                 const chapterImage = typeof chapter.imageUrl === "string" && !/^data:/i.test(chapter.imageUrl)
-                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapter.imageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" onerror="this.onerror=null;this.hidden=true"></div>`
+                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapter.imageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true"></div>`
                     : `<div class="chapter-thumbnail chapter-thumbnail-empty" aria-hidden="true">📄</div>`;
                 return `<div class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">അധ്യായം ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></div>`;
             }).join("") : "";
@@ -875,7 +875,7 @@
                                     <span class="book-v2-ribbon" aria-hidden="true"></span>
                                     <span class="book-v2-spine" aria-hidden="true"></span>
                                     <div class="book-v2-cover">
-                                        ${cover ? `<img src="${cover}" alt="${title} cover" class="book-v2-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" onerror="this.onerror=null;this.hidden=true;this.nextElementSibling?.classList.remove('hidden')"><div class="book-v2-cover-fallback hidden" aria-hidden="true">📚</div>` : `<div class="book-v2-cover-fallback" aria-hidden="true">📚</div>`}
+                                        ${cover ? `<img src="${cover}" alt="${title} cover" class="book-v2-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" data-nuqtha-cover="true"><div class="book-v2-cover-fallback hidden" aria-hidden="true">📚</div>` : `<div class="book-v2-cover-fallback" aria-hidden="true">📚</div>`}
                                     </div>
                                 </div>
                             </div>
@@ -1790,8 +1790,7 @@
             const hasIntro = rawIntro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
             const dateStr = typeof book.date === "string" ? book.date.trim() : (book.date ? formatDateSafe(book.date) : "");
             const chapterCount = countBookChapters(book, attachedArticles);
-            const coverCandidate = book.imageUrl || book.coverUrl || book.coverImage || book.image || book.thumbnailUrl || book.thumbnail || book.ogImage || "";
-            const coverUrl = typeof coverCandidate === "string" && !/^data:/i.test(coverCandidate) ? coverCandidate : "";
+            const coverUrl = getArticleImageUrl(book);
             const authorPhoto = (book.authorPhoto || book.authorAvatar || "").trim();
             const firstLetter = (cleanAuthor || 'N').trim().charAt(0);
             const authorId = (cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
@@ -1867,7 +1866,7 @@
                                         <span class="book-v2-spine" aria-hidden="true"></span>
                                         <div class="book-v2-cover">
                                         ${coverUrl ? `
-                                            <img src="${coverUrl}" alt="${cleanTitle} Cover" class="book-v2-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" onerror="this.onerror=null;this.hidden=true;this.nextElementSibling?.classList.remove('hidden')">
+                                            <img src="${coverUrl}" alt="${cleanTitle} Cover" class="book-v2-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" data-nuqtha-cover="true">
                                             <div class="book-v2-cover-fallback hidden" aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>
                                         ` : `
                                             <div class="book-v2-cover-fallback">
@@ -2061,10 +2060,7 @@
                 const cleanArtTitle = (chapterTitle || `അധ്യായം ${idx + 1}`).replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
-                const chapterImageCandidate = art.thumbnailUrl || art.ogImage || art.imageUrl;
-                const chapterImg = typeof chapterImageCandidate === "string" && !/^data:/i.test(chapterImageCandidate)
-                    ? chapterImageCandidate
-                    : "";
+                const chapterImg = getArticleImageUrl(art);
                 let targetUrl = isLocked ? "#book-unlock-card" : "#";
                 if (!isLocked) {
                     const bSlug = (parentBook?.slug || parentBook?.bookSlug || (parentBook?.title ? slugifyText(parentBook.title) : "") || parentBook?.id || "").toString().trim();
@@ -2093,7 +2089,7 @@
                     <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${chapterImg ? `
                         <div class="chapter-thumbnail">
-                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="400" height="300" loading="lazy" decoding="async" onerror="this.onerror=null;this.hidden=true">
+                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true">
                             ${isLocked ? `<div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-lg">🔒</div>` : ''}
                         </div>
                     ` : `
@@ -2202,8 +2198,8 @@
             grid.innerHTML = otherBooks.slice(0, 4).map(b => `
                 <a href="${getStoryUrl(b)}" class="group flex flex-col p-2.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition-all shadow-2xs hover:shadow-md">
                     <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 mb-2 border border-black/5 dark:border-white/10">
-                        ${b.imageUrl ? `
-                            <img src="${b.imageUrl}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="300" height="400" loading="lazy">
+                        ${getArticleImageUrl(b) ? `
+                            <img src="${getArticleImageUrl(b)}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="300" height="400" loading="lazy" data-nuqtha-cover="true">
                         ` : `
                             <div class="w-full h-full flex items-center justify-center text-2xl">📚</div>
                         `}
@@ -2688,12 +2684,12 @@
             relatedGrid.innerHTML = topRelated.map(item => {
                 const cleanTitle = (item.title || "").replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (item.excerpt || (item.content ? item.content.substring(0, 100) : "")).replace(/[*_#~`]/g, "").trim();
-                const itemImg = item.thumbnailUrl || item.ogImage || item.imageUrl;
+                const itemImg = getArticleImageUrl(item);
                 return `
                     <div class="related-card group touch-target-44 cursor-pointer relative stretched-card-wrap" onclick="if(!event.target.closest('a')) window.location.href='${getStoryUrl(item)}'">
                         ${itemImg ? `
                             <div class="related-img-container">
-                                <img src="${itemImg}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="400" height="300" loading="lazy">
+                                <img src="${itemImg}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="400" height="300" loading="lazy" data-nuqtha-cover="true">
                             </div>
                         ` : ''}
                         <div class="p-4 flex flex-col justify-between flex-1 gap-2">

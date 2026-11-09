@@ -378,7 +378,7 @@ export function sanitizeImageUrl(url) {
     return "";
 }
 
-export function getArticleImageUrl(item, fallback = "/og-cover.png") {
+export function getArticleImageUrl(item, fallback = "/cover-placeholder.svg") {
     if (item && typeof item === "object") {
         const candidates = [
             item.imageUrl,
@@ -390,11 +390,13 @@ export function getArticleImageUrl(item, fallback = "/og-cover.png") {
             item.ogImage
         ];
         for (const candidate of candidates) {
+            if (typeof candidate === "string" && /^data:/i.test(candidate)) continue;
             const safeUrl = sanitizeImageUrl(candidate);
             if (safeUrl) return safeUrl;
         }
     }
-    return sanitizeImageUrl(fallback) || "/og-cover.png";
+    const safeFallback = sanitizeImageUrl(fallback);
+    return safeFallback && !/^data:/i.test(safeFallback) ? safeFallback : "/cover-placeholder.svg";
 }
 
 /**
@@ -658,10 +660,22 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const author = sanitizeString(rawDoc.author, 100, "NUQTHA");
     const authorId = sanitizeString(rawDoc.authorId || "", 100, "");
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
-    const rawImageUrl = rawDoc.imageUrl || rawDoc.coverUrl || rawDoc.coverImage || rawDoc.image || rawDoc.thumbnailUrl || rawDoc.thumbnail || rawDoc.ogImage || "";
-    const rawThumbnailUrl = rawDoc.thumbnailUrl || rawDoc.thumbnail || rawDoc.ogImage || rawDoc.imageUrl || rawDoc.coverUrl || rawDoc.coverImage || rawDoc.image || "";
-    const imageUrl = sanitizeImageUrl(rawImageUrl) || "/og-cover.png";
-    const thumbnailUrl = sanitizeImageUrl(rawThumbnailUrl) || imageUrl;
+    const firstSafeCoverUrl = candidates => {
+        for (const candidate of candidates) {
+            if (typeof candidate !== "string" || /^data:/i.test(candidate)) continue;
+            const safeUrl = sanitizeImageUrl(candidate);
+            if (safeUrl) return safeUrl;
+        }
+        return "";
+    };
+    const imageUrl = firstSafeCoverUrl([
+        rawDoc.imageUrl, rawDoc.coverUrl, rawDoc.coverImage, rawDoc.image,
+        rawDoc.thumbnailUrl, rawDoc.thumbnail, rawDoc.ogImage
+    ]) || "/cover-placeholder.svg";
+    const thumbnailUrl = firstSafeCoverUrl([
+        rawDoc.thumbnailUrl, rawDoc.thumbnail, rawDoc.ogImage, rawDoc.imageUrl,
+        rawDoc.coverUrl, rawDoc.coverImage, rawDoc.image
+    ]) || imageUrl;
     const slug = sanitizeString(rawDoc.slug || slugifyText(title), 200, "");
     const bookSlug = sanitizeString(rawDoc.bookSlug || (rawDoc.bookName ? slugifyText(rawDoc.bookName) : (rawDoc.playlistName ? slugifyText(rawDoc.playlistName) : "")), 200, "");
     const content = sanitizeString(rawDoc.content, 500000, "");

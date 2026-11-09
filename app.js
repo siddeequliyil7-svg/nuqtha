@@ -15,7 +15,7 @@ import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
 
 /* ═══════════ Pre-bundled Fallback Data for 100% Uptime & Smooth Load ═══════════ */
-const CACHE_KEY = 'nuqtha_cached_articles_v7';
+const CACHE_KEY = 'nuqtha_cached_articles_v8';
 
 function safeCacheArticles(articles) {
     if (!Array.isArray(articles) || articles.length === 0) return;
@@ -27,7 +27,7 @@ function safeCacheArticles(articles) {
             const cover = copy.imageUrl || copy.coverUrl || copy.coverImage || copy.image || copy.thumbnailUrl || copy.thumbnail || copy.ogImage || "";
             const thumbnail = copy.thumbnailUrl || copy.thumbnail || copy.ogImage || cover;
             const isInlineImage = value => typeof value === "string" && value.startsWith("data:image/");
-            copy.imageUrl = isInlineImage(cover) ? "/og-cover.png" : (cover || "/og-cover.png");
+            copy.imageUrl = isInlineImage(cover) ? "/cover-placeholder.svg" : (cover || "/cover-placeholder.svg");
             copy.thumbnailUrl = isInlineImage(thumbnail) ? copy.imageUrl : (thumbnail || copy.imageUrl);
             delete copy.coverUrl;
             delete copy.coverImage;
@@ -62,7 +62,12 @@ try {
         const parsed = JSON.parse(cachedArts);
         if (Array.isArray(parsed) && parsed.length > 0) {
             // Verify cache contains NO aistudio images and no obsolete authors
-            const hasNoAiStudio = !parsed.some(a => (a.imageUrl || "").includes("aistudio") || (a.thumbnailUrl || "").includes("aistudio"));
+            const hasNoAiStudio = !parsed.some(a =>
+                (a.imageUrl || "").includes("aistudio") ||
+                (a.thumbnailUrl || "").includes("aistudio") ||
+                (a.imageUrl || "").includes("og-cover.png") ||
+                (a.thumbnailUrl || "").includes("og-cover.png")
+            );
             const hasNoOldAuthor = !parsed.some(a => (a.author || "").includes("അബൂബക്കർ"));
             if (hasNoAiStudio && hasNoOldAuthor) {
                 allArticles = parsed;
@@ -740,7 +745,12 @@ export function initAppData(database = db) {
             if (cached) {
                 const parsed = JSON.parse(cached);
                 if (Array.isArray(parsed) && parsed.length > 0) {
-                    const hasNoAiStudio = !parsed.some(a => (a.imageUrl || "").includes("aistudio") || (a.thumbnailUrl || "").includes("aistudio"));
+                    const hasNoAiStudio = !parsed.some(a =>
+                        (a.imageUrl || "").includes("aistudio") ||
+                        (a.thumbnailUrl || "").includes("aistudio") ||
+                        (a.imageUrl || "").includes("og-cover.png") ||
+                        (a.thumbnailUrl || "").includes("og-cover.png")
+                    );
                     if (hasNoAiStudio) {
                         allArticles = parsed;
                         renderFeed();
@@ -1526,7 +1536,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
             <!-- Large Prominent Cover Image -->
             <div class="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden bg-gradient-to-br ${t.accentGrad}">
                 ${getArticleImageUrl(art) ? `
-                    <img src="${getArticleImageUrl(art)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+                    <img src="${getArticleImageUrl(art)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" width="1200" height="675" loading="lazy" data-nuqtha-cover="true">
                 ` : `
                     <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90">
                         <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
@@ -1609,7 +1619,7 @@ function buildFeaturedCard(art) {
             <!-- Large Top Cover Image Container -->
             <div class="featured-cover-container relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#b8542c] via-[#aa4923] to-[#803113]">
                 ${getArticleImageUrl(art) ? `
-                    <img src="${getArticleImageUrl(art)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                    <img src="${getArticleImageUrl(art)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" width="1200" height="750" loading="lazy" data-nuqtha-cover="true">
                 ` : `
                     <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90">
                         <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
@@ -1686,7 +1696,7 @@ function buildCompactRecentCard(art, theme = null) {
             <!-- Left Thumbnail -->
             <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${t.accentGrad}">
                 ${getArticleImageUrl(art) ? `
-                    <img src="${getArticleImageUrl(art)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
+                    <img src="${getArticleImageUrl(art)}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" width="400" height="300" loading="lazy" data-nuqtha-cover="true">
                 ` : `
                     <div class="w-full h-full flex items-center justify-center text-white/70 text-[10px]">
                         ചിത്രം
@@ -1733,10 +1743,8 @@ function buildBannerCarousel(articles) {
         const cleanExcerpt = stripMarkdown(rawExcerpt);
         const excerpt = cleanExcerpt.substring(0, 130) + (cleanExcerpt.length > 130 ? '…' : '');
         const authorName = art.author || "NUQTHA";
-        let bgStyle = 'background: linear-gradient(135deg, #b8542c 0%, #803113 100%);';
-        if (art.imageUrl) {
-            bgStyle = 'background-image: url("' + art.imageUrl + '"); background-size: cover; background-position: center;';
-        }
+        const slideCover = getArticleImageUrl(art);
+        const bgStyle = 'background-image: url("' + slideCover + '"), url("/cover-placeholder.svg"); background-size: cover; background-position: center;';
 
         return '<div class="banner-slide' + activeClass + '" data-index="' + i + '" data-id="' + art.id + '">' +
             '<div class="banner-slide-bg" style="' + bgStyle + '"></div>' +
@@ -1803,7 +1811,7 @@ function buildCarouselCard(art) {
 
     const cardImg = getArticleImageUrl(art);
     const imgHtml = cardImg
-        ? '<img src="' + cardImg + '" alt="' + cleanTitle + '" class="carousel-card-img" loading="lazy" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"><div class="carousel-card-img-placeholder" style="display:none; background: linear-gradient(135deg, #2a201c, #4a3328); align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;"><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>'
+        ? '<img src="' + cardImg + '" alt="' + cleanTitle + '" class="carousel-card-img" width="400" height="300" loading="lazy" data-nuqtha-cover="true"><div class="carousel-card-img-placeholder" style="display:none; background: linear-gradient(135deg, #2a201c, #4a3328); align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;"><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>'
         : '<div class="carousel-card-img-placeholder" style="background: linear-gradient(135deg, #2a201c, #4a3328); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;"><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
 
     return '<div class="carousel-card cursor-pointer stretched-card-wrap" data-id="' + art.id + '">' +
@@ -2152,7 +2160,7 @@ function buildBookCard(book, articles) {
         <!-- Cover Image Container (Vertical Magazine Style) -->
         <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
             ${getArticleImageUrl(book) ? `
-                <img src="${getArticleImageUrl(book)}" alt="${cleanTitle} cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                <img src="${getArticleImageUrl(book)}" alt="${cleanTitle} cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" width="600" height="800" loading="lazy" data-nuqtha-cover="true">
             ` : `
                 <div class="w-full h-full flex items-center justify-center text-white/50 text-xl font-bold">📘</div>
             `}
@@ -2434,7 +2442,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
                             <span class="premium-book-ribbon" translate="no">₹${price} • PREMIUM</span>
                         `}
                         ${bookCoverImg ? `
-                            <img src="${bookCoverImg}" alt="${cleanTitle}" class="premium-book-img" width="300" height="400" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <img src="${bookCoverImg}" alt="${cleanTitle}" class="premium-book-img" width="300" height="400" loading="lazy" data-nuqtha-cover="true">
                             ${buildBookCoverPlaceholder(book, idx, true, true)}
                         ` : `
                             ${buildBookCoverPlaceholder(book, idx, true)}
@@ -2558,7 +2566,7 @@ function renderBooksCategoryFeed(container) {
                             ${isFree ? 'FREE' : 'PREMIUM'}
                         </span>
                         ${bookCoverImg ? `
-                            <img src="${bookCoverImg}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <img src="${bookCoverImg}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" width="600" height="800" loading="lazy" data-nuqtha-cover="true">
                             ${buildBookCoverPlaceholder(book, index, false, true)}
                         ` : `
                             ${buildBookCoverPlaceholder(book, index)}

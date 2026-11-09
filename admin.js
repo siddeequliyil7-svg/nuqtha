@@ -29,6 +29,112 @@ function escapeAdminHtml(value) {
     })[char]);
 }
 
+if (typeof window !== "undefined") window.scanCoverImageUrls = async function() {
+    const coverFields = ["imageUrl", "coverUrl", "coverImage", "image", "thumbnailUrl", "thumbnail", "ogImage"];
+    const [articleSnapshot, bookSnapshot] = await Promise.all([
+        getDocs(collection(db, "articles")),
+        getDocs(collection(db, "books"))
+    ]);
+    const documents = [
+        ...articleSnapshot.docs.map(snapshot => ({ collection: "articles", id: snapshot.id, data: snapshot.data() || {} })),
+        ...bookSnapshot.docs.map(snapshot => ({ collection: "books", id: snapshot.id, data: snapshot.data() || {} }))
+    ];
+
+    const loadImage = src => new Promise(resolve => {
+        const image = new Image();
+        const timeout = setTimeout(() => {
+            image.onload = null;
+            image.onerror = null;
+            resolve("timeout");
+        }, 12000);
+        image.onload = () => {
+            clearTimeout(timeout);
+            resolve(image.naturalWidth > 0 ? "" : "invalid image response");
+        };
+        image.onerror = () => {
+            clearTimeout(timeout);
+            resolve("URL returned an image error");
+        };
+        image.src = src;
+    });
+
+    const inspectDocument = async document => {
+        const documentBytes = new Blob([JSON.stringify(document.data)]).size;
+        const fields = coverFields.filter(name =>
+            typeof document.data[name] === "string" && document.data[name].trim()
+        );
+        if (!fields.length) {
+            return [{
+                collection: document.collection,
+                id: document.id,
+                title: document.data.title || document.data.bookTitle || document.data.name || "",
+                field: "(none)",
+                url: "",
+                imageBytes: null,
+                documentBytes,
+                issue: "empty cover"
+            }];
+        }
+
+        const results = [];
+        for (const field of fields) {
+            const rawUrl = document.data[field].trim();
+            let reason = "";
+            let imageBytes = null;
+            if (/^(blob:|file:|data:)/i.test(rawUrl)) {
+                if (/^data:/i.test(rawUrl)) {
+                    const base64 = rawUrl.slice(rawUrl.indexOf(",") + 1);
+                    const approximateBytes = Math.max(0, Math.floor(base64.length * 3 / 4) - (base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0));
+                    imageBytes = approximateBytes;
+                    reason = approximateBytes > 100 * 1024
+                        ? "oversized inline data URL"
+                        : "inline data URL (not a permanent Storage URL)";
+                } else {
+                    reason = "temporary blob or local file URL";
+                }
+            } else if (/^[a-z]:\\/i.test(rawUrl) || /localhost/i.test(rawUrl)) {
+                reason = "local filesystem or localhost URL";
+            } else if (/\/(cover-placeholder|og-cover)\.svg(?:$|[?#])/i.test(rawUrl)) {
+                reason = "placeholder cover";
+            } else {
+                try {
+                    const resolvedUrl = new URL(rawUrl, window.location.origin);
+                    if (!["http:", "https:"].includes(resolvedUrl.protocol)) {
+                        reason = "unsupported URL scheme";
+                    } else {
+                        reason = await loadImage(resolvedUrl.href);
+                    }
+                } catch {
+                    reason = "malformed image URL";
+                }
+            }
+            if (reason) {
+                results.push({
+                    collection: document.collection,
+                    id: document.id,
+                    title: document.data.title || document.data.bookTitle || document.data.name || "",
+                    field,
+                    url: rawUrl.slice(0, 180),
+                    imageBytes,
+                    documentBytes,
+                    issue: reason
+                });
+            }
+        }
+        return results;
+    };
+
+    const findings = [];
+    for (let index = 0; index < documents.length; index += 8) {
+        const batch = documents.slice(index, index + 8);
+        findings.push(...(await Promise.all(batch.map(inspectDocument))).flat());
+    }
+
+    console.table(findings);
+    console.info(`[Cover scan] ${findings.length} cover fields need review across ${documents.length} documents.`);
+    return findings;
+};
+
 function getValidBookTitle(art) {
     for (const value of [art?.title, art?.bookTitle, art?.bookName, art?.name]) {
         const title = String(value || "").normalize("NFC").trim();
@@ -739,12 +845,14 @@ async function handleFormSubmit() {
         });
 
         const targetArticleId = editingArticleId || doc(collection(db, "articles")).id;
-        const storedCover = articleImageChanged || !editingArticleId
+        const shouldPersistCover = articleImageChanged || !editingArticleId || /^data:/i.test(effectiveCover);
+        const storedCover = shouldPersistCover
             ? await uploadImageDataUrl(sanitized.imageUrl, `articles/${targetArticleId}/cover`)
             : effectiveCover || "";
+        const shouldPersistThumbnail = articleThumbnailChanged || !editingArticleId || /^data:/i.test(effectiveThumb);
         const storedThumbnail = articleThumbnailChanged && !selectedBase64Thumbnail
             ? ""
-            : articleThumbnailChanged || !editingArticleId
+            : shouldPersistThumbnail
                 ? sanitized.thumbnailUrl === sanitized.imageUrl
                     ? storedCover
                     : await uploadImageDataUrl(sanitized.thumbnailUrl, `articles/${targetArticleId}/thumbnail`)
@@ -783,12 +891,12 @@ async function handleFormSubmit() {
                 updatedAt: serverTimestamp()
             };
 
-            if (articleImageChanged) {
+            if (shouldPersistCover) {
                 updatePayload.imageUrl = storedCover;
                 updatePayload.coverImage = storedCover;
                 updatePayload.coverUrl = storedCover;
             }
-            if (articleThumbnailChanged) {
+            if (articleThumbnailChanged || /^data:/i.test(effectiveThumb)) {
                 updatePayload.thumbnailUrl = storedThumbnail;
                 updatePayload.ogImage = storedThumbnail;
             }
@@ -1014,8 +1122,8 @@ window.startEditArticle = function (id) {
     const previewContainer = document.getElementById("image-preview-container");
     const placeholder = document.getElementById("upload-placeholder");
 
-    if (art.imageUrl) {
-        if (preview) preview.src = art.imageUrl;
+    if (originalArticleImages.imageUrl) {
+        if (preview) preview.src = originalArticleImages.imageUrl;
         if (previewContainer) previewContainer.classList.remove("hidden");
         if (placeholder) placeholder.classList.add("hidden");
     } else {
@@ -1423,6 +1531,39 @@ function initColorCustomizer() {
 /* ═══════════════════════════════════════════════════════════
    5. COVER IMAGE UPLOAD & COMPRESSION
    ═══════════════════════════════════════════════════════════ */
+function compressAdminImage(file, maxDimension = 1200) {
+    return new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        const releaseUrl = () => URL.revokeObjectURL(objectUrl);
+        img.onerror = () => {
+            releaseUrl();
+            reject(new Error("The selected image could not be decoded."));
+        };
+        img.onload = () => {
+            try {
+                const scale = Math.min(1, maxDimension / Math.max(img.naturalWidth, img.naturalHeight));
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+                canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+                const context = canvas.getContext("2d");
+                if (!context) throw new Error("Image compression is unavailable in this browser.");
+                context.drawImage(img, 0, 0, canvas.width, canvas.height);
+                let compressed = canvas.toDataURL("image/webp", 0.82);
+                if (!compressed.startsWith("data:image/webp")) {
+                    compressed = canvas.toDataURL("image/jpeg", 0.82);
+                }
+                releaseUrl();
+                resolve(compressed);
+            } catch (error) {
+                releaseUrl();
+                reject(error);
+            }
+        };
+        img.src = objectUrl;
+    });
+}
+
 function initImageUpload() {
     const fileInput = document.getElementById("art-file-input");
     const uploadPlaceholder = document.getElementById("upload-placeholder");
@@ -1448,44 +1589,16 @@ function initImageUpload() {
             return;
         }
 
-        const reader = new FileReader();
-        reader.onerror = function() {
-            showGlobalStatus("ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
-        };
-        reader.onload = function (event) {
-            const img = new Image();
-            img.onerror = function() {
-                showGlobalStatus("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
-            };
-            img.onload = function () {
-                const canvas = document.createElement("canvas");
-                const maxDim = 900;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height && width > maxDim) {
-                    height = Math.round((height * maxDim) / width);
-                    width = maxDim;
-                } else if (height > maxDim) {
-                    width = Math.round((width * maxDim) / height);
-                    height = maxDim;
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // High-efficiency JPEG compression to protect Firestore 1MB limits
-                selectedBase64Image = canvas.toDataURL("image/jpeg", 0.78);
+        compressAdminImage(file).then(compressed => {
+                selectedBase64Image = compressed;
                 articleImageChanged = true;
                 if (imagePreview) imagePreview.src = selectedBase64Image;
                 if (uploadPlaceholder) uploadPlaceholder.classList.add("hidden");
                 if (imagePreviewContainer) imagePreviewContainer.classList.remove("hidden");
-            };
-            img.src = event.target.result;
-        };
-        reader.readAsDataURL(file);
+        }).catch(error => {
+            console.error("[Admin] Cover image compression failed:", error);
+            showGlobalStatus("ചിത്രം തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
+        });
     });
 
     if (removeImgBtn) {
@@ -1523,44 +1636,16 @@ function initImageUpload() {
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onerror = function() {
-                showGlobalStatus("തമ്പ്നെയിൽ ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
-            };
-            reader.onload = function (event) {
-                const img = new Image();
-                img.onerror = function() {
-                    showGlobalStatus("തമ്പ്നെയിൽ ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
-                };
-                img.onload = function () {
-                    const canvas = document.createElement("canvas");
-                    // Optimized for social sharing cards & thumbnail rendering
-                    const maxDim = 800;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height && width > maxDim) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    } else if (height > maxDim) {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    selectedBase64Thumbnail = canvas.toDataURL("image/jpeg", 0.78);
+            compressAdminImage(file, 800).then(compressed => {
+                    selectedBase64Thumbnail = compressed;
                     articleThumbnailChanged = true;
                     if (thumbPreview) thumbPreview.src = selectedBase64Thumbnail;
                     if (thumbPlaceholder) thumbPlaceholder.classList.add("hidden");
                     if (thumbPreviewContainer) thumbPreviewContainer.classList.remove("hidden");
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+            }).catch(error => {
+                console.error("[Admin] Thumbnail image compression failed:", error);
+                showGlobalStatus("തമ്പ്നെയിൽ ചിത്രം തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
+            });
         });
     }
 
@@ -1610,33 +1695,6 @@ function matchesBookExact(art, bName, bTitle, bId) {
 
 let isBookManagerSuiteInitialized = false;
 
-function generateDefaultBookCover(title, category = "Book") {
-    const escapedTitle = (title || "NUQTHA BOOK").replace(/[<>&"]/g, "");
-    const escapedCat = (category || "PREMIUM BOOK").replace(/[<>&"]/g, "");
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="600" height="800">
-        <defs>
-            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
-                <stop offset="50%" style="stop-color:#172554;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
-            </linearGradient>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
-            </pattern>
-        </defs>
-        <rect width="600" height="800" fill="url(#grad)"/>
-        <rect width="600" height="800" fill="url(#grid)"/>
-        <rect x="25" y="25" width="550" height="750" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" rx="12"/>
-        <text x="300" y="160" font-family="sans-serif" font-size="16" font-weight="bold" fill="#93c5fd" letter-spacing="4" text-anchor="middle">${escapedCat.toUpperCase()}</text>
-        <line x1="260" y1="180" x2="340" y2="180" stroke="#60a5fa" stroke-width="2"/>
-        <text x="300" y="380" font-family="'Noto Serif Malayalam', serif, sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle" width="500">${escapedTitle}</text>
-        <circle cx="300" cy="520" r="30" fill="rgba(255,255,255,0.1)"/>
-        <text x="300" y="528" font-family="sans-serif" font-size="24" fill="#ffffff" text-anchor="middle">📖</text>
-        <text x="300" y="720" font-family="sans-serif" font-size="14" font-weight="bold" fill="#94a3b8" letter-spacing="3" text-anchor="middle">NUQTHA PUBLICATIONS</text>
-    </svg>`;
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
 function initBookManagerSuite() {
     if (isBookManagerSuiteInitialized) return;
     isBookManagerSuiteInitialized = true;
@@ -1677,65 +1735,16 @@ function initBookCoverUploader() {
         clearCoverError();
         if (!file) return;
 
-        // Instant visual feedback with ObjectURL
-        try {
-            const objectUrl = URL.createObjectURL(file);
-            if (previewImg) previewImg.src = objectUrl;
+        compressAdminImage(file).then(compressed => {
+            selectedBookCoverBase64 = compressed;
+            if (previewImg) previewImg.src = compressed;
             if (placeholder) placeholder.classList.add("hidden");
             if (previewContainer) previewContainer.classList.remove("hidden");
-        } catch (e) {
-            console.warn("ObjectURL fallback:", e);
-        }
-
-        const reader = new FileReader();
-        reader.onerror = (err) => {
-            console.error("FileReader error:", err);
-            showCoverError("ചിത്രം വായിക്കുന്നതിൽ തടസ്സം നേരിട്ടു.");
-        };
-
-        reader.onload = (event) => {
-            const rawBase64 = event.target.result;
-            selectedBookCoverBase64 = rawBase64;
-
-            const img = new Image();
-            img.onerror = () => {
-                clearCoverError();
-            };
-            img.onload = () => {
-                try {
-                    const canvas = document.createElement("canvas");
-                    const maxDim = 800;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > maxDim || height > maxDim) {
-                        if (width > height) {
-                            height = Math.round((height * maxDim) / width);
-                            width = maxDim;
-                        } else {
-                            width = Math.round((width * maxDim) / height);
-                            height = maxDim;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    const compressed = canvas.toDataURL("image/jpeg", 0.82);
-                    if (compressed && compressed.length > 100) {
-                        selectedBookCoverBase64 = compressed;
-                        if (previewImg) previewImg.src = compressed;
-                    }
-                } catch (cErr) {
-                    console.warn("Canvas compression fallback:", cErr);
-                }
-                clearCoverError();
-            };
-            img.src = rawBase64;
-        };
-        reader.readAsDataURL(file);
+            clearCoverError();
+        }).catch(error => {
+            console.error("[Admin] Book cover compression failed:", error);
+            showCoverError("ചിത്രം തയ്യാറാക്കുന്നതിൽ തടസ്സം നേരിട്ടു.");
+        });
     }
 
     window.handleCoverFileSelected = handleCoverFile;
@@ -1865,13 +1874,10 @@ async function handleSaveBookStep1(e) {
             normalizeStringClean(a.title) === normalizeStringClean(name)
         ));
 
-    // Provide default SVG cover if no image was uploaded
+    // Keep an empty cover on the shared neutral static placeholder.
     let coverImage = selectedBookCoverBase64 || (existing
         ? existing.imageUrl || existing.coverUrl || existing.coverImage || existing.thumbnailUrl || existing.ogImage || existing.image
-        : "") || "";
-    if (!coverImage) {
-        coverImage = generateDefaultBookCover(name, tag);
-    }
+        : "") || "/cover-placeholder.svg";
 
     const publishBtn = document.getElementById("publish-book-cover-btn");
     if (publishBtn) {
@@ -2321,33 +2327,15 @@ function initChapterWriter() {
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement("canvas");
-                    const maxDim = 800;
-                    let width = img.width;
-                    let height = img.height;
-                    if (width > height && width > maxDim) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    } else if (height > maxDim) {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, 0, width, height);
-                    bmSelectedArticleImage = canvas.toDataURL("image/jpeg", 0.75);
+            compressAdminImage(file).then(compressed => {
+                    bmSelectedArticleImage = compressed;
                     if (previewImg) previewImg.src = bmSelectedArticleImage;
                     if (placeholder) placeholder.classList.add("hidden");
                     if (previewContainer) previewContainer.classList.remove("hidden");
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+            }).catch(error => {
+                console.error("[Admin] Chapter cover compression failed:", error);
+                showGlobalStatus("അധ്യായത്തിന്റെ ചിത്രം തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല.", "error");
+            });
         }
 
         fileInput.addEventListener("change", (e) => {
@@ -2888,7 +2876,7 @@ function renderBookChaptersReorderList(chapters) {
                     #${idx + 1}
                 </span>
                 ${art.imageUrl ? `
-                    <img src="${art.imageUrl}" alt="Thumb" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-200">
+                    <img src="${art.imageUrl}" alt="Thumb" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-200" width="40" height="40" loading="lazy" data-nuqtha-cover="true">
                 ` : `
                     <span class="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-sm flex-shrink-0 border border-amber-200/60">📄</span>
                 `}
@@ -3239,7 +3227,7 @@ function renderBookManagerCompactArticles(articles, activeBookParam) {
             <label class="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-200/60 hover:border-amber-300 transition cursor-pointer gap-2">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <input type="checkbox" class="bm-article-chk rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer" data-id="${art.id}" ${isBelong ? "checked" : ""}>
-                    ${art.imageUrl ? `<img src="${art.imageUrl}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">` : `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center text-xs flex-shrink-0">📄</span>`}
+                    ${art.imageUrl ? `<img src="${art.imageUrl}" alt="" class="w-8 h-8 rounded-lg object-cover flex-shrink-0" width="32" height="32" loading="lazy" data-nuqtha-cover="true">` : `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center text-xs flex-shrink-0">📄</span>`}
                     <div class="min-w-0">
                         <h5 class="text-xs font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">${art.title}</h5>
                         <p class="text-[10px] text-slate-400">${art.author || "NUQTHA"} • ${art.date || "Recent"}</p>
@@ -3480,7 +3468,7 @@ function renderAdminBooksTab(articles) {
             <div class="p-4 bg-white rounded-2xl border-2 ${isActive ? 'border-amber-500 bg-amber-50/20 ring-2 ring-amber-200' : 'border-[#ebdccb] hover:border-amber-300'} transition shadow-xs flex flex-col justify-between gap-3">
                 <div class="flex items-start gap-3">
                     <div class="w-16 h-22 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-amber-600 to-amber-900 border border-amber-200 shadow-xs flex items-center justify-center text-white">
-                        ${coverImage ? `<img src="${escapeAdminHtml(coverImage)}" alt="${safeTitle}" class="w-full h-full object-cover">` : `<span class="text-2xl">📚</span>`}
+                        ${coverImage ? `<img src="${escapeAdminHtml(coverImage)}" alt="${safeTitle}" class="w-full h-full object-cover" width="64" height="85" loading="lazy" data-nuqtha-cover="true">` : `<span class="text-2xl">📚</span>`}
                     </div>
                     <div class="flex-1 min-w-0 space-y-1">
                         <div class="flex items-center gap-1.5 flex-wrap">
@@ -3988,7 +3976,7 @@ export function renderAdminPublishedList(items) {
                 <div class="flex items-center gap-3">
                     <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-[#f7eddd] border border-[#ebdccb]">
                         ${(data.thumbnailUrl || data.ogImage || data.imageUrl) ? `
-                            <img src="${getArticleImageUrl(data)}" alt="${data.title || 'Article'} cover" class="w-full h-full object-cover">
+                            <img src="${getArticleImageUrl(data)}" alt="${data.title || 'Article'} cover" class="w-full h-full object-cover" width="400" height="300" loading="lazy" data-nuqtha-cover="true">
                         ` : `
                             <div class="w-full h-full flex items-center justify-center text-[#b4532c] text-xl" aria-hidden="true">📄</div>
                         `}
@@ -4165,7 +4153,7 @@ export function renderLayoutManagerList(items) {
                 <div class="flex items-center gap-3">
                     ${art.imageUrl ? `
                         <div class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border border-[#ebdccb]">
-                            <img src="${art.imageUrl}" alt="" class="w-full h-full object-cover">
+                            <img src="${art.imageUrl}" alt="" class="w-full h-full object-cover" width="400" height="300" loading="lazy" data-nuqtha-cover="true">
                         </div>
                     ` : ''}
                     <div class="flex-1 min-w-0">

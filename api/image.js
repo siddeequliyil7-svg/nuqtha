@@ -1,7 +1,6 @@
 /**
  * NUQTHA — Social Image Serving Endpoint
- * Decodes base64 images from Firestore into binary JPEG/PNG with proper MIME types,
- * or redirects to remote HTTPS thumbnail URLs.
+ * Redirects remote HTTPS thumbnail URLs and uses a neutral fallback for inline or invalid images.
  * Supports document IDs, slugs, and parent book image inheritance across articles & books collections.
  */
 
@@ -9,7 +8,7 @@ import { resolveFirebaseProjectId } from "../js/firebase-project.js";
 
 const FIRESTORE_PROJECT_ID = resolveFirebaseProjectId(process.env.VITE_FIREBASE_PROJECT_ID);
 const FIRESTORE_API_KEY = "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
-const DEFAULT_BANNER = "https://nuqtha.vercel.app/og-cover.png";
+const DEFAULT_BANNER = "https://nuqtha.vercel.app/og-cover.svg";
 
 function slugifyText(str = "") {
     if (!str) return "";
@@ -173,28 +172,6 @@ export default async function handler(req, res) {
 
         if (!rawImage) {
             return res.redirect(302, DEFAULT_BANNER);
-        }
-
-        // If it's a base64 data URI (e.g. data:image/jpeg;base64,...)
-        if (rawImage.startsWith("data:image/")) {
-            const matches = rawImage.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/s);
-            if (matches && matches.length === 3) {
-                const mimeType = matches[1].toLowerCase();
-                // Whitelist only safe raster image formats
-                const safeMimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-                if (!safeMimes.includes(mimeType)) {
-                    return res.redirect(302, DEFAULT_BANNER);
-                }
-
-                const base64Data = matches[2].replace(/\s+/g, "");
-                const buffer = Buffer.from(base64Data, "base64");
-
-                res.setHeader("Content-Type", mimeType);
-                res.setHeader("Content-Length", buffer.length);
-                res.setHeader("X-Content-Type-Options", "nosniff");
-                res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400");
-                return res.status(200).send(buffer);
-            }
         }
 
         // If it's a remote HTTPS URL, redirect directly

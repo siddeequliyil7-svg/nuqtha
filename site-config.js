@@ -90,7 +90,7 @@ export function updatePageMeta({ path, title, description, imageUrl, articleId }
         }
     }
     if (!resolvedImage) {
-        resolvedImage = getAbsoluteUrl("og-cover.png");
+        resolvedImage = getAbsoluteUrl("og-cover.svg");
     }
 
     let ogImage = document.querySelector('meta[property="og:image"]');

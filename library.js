@@ -1,6 +1,6 @@
 // library.js (loaded lazily: only when the visitor opens the Library view)
 import { db, collection, getDocs, getDocsFromCache, query, where } from "./firebase-config.js";
-import { getStoryUrl } from "./schema-validator.js";
+import { getArticleImageUrl, getStoryUrl } from "./schema-validator.js";
 import { prefetchBookPage } from "./js/book-data.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
@@ -68,7 +68,6 @@ async function loadData() {
   books = bookSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, MAX_BOOKS)
       .map((b) => {
-        const cover = b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "/og-cover.png";
         return {
           id: b.id,
           title: b.title,
@@ -78,7 +77,7 @@ async function loadData() {
           color: b.color,
           description: b.description,
           introduction: b.introduction || b.description,
-          imageUrl: /^data:/i.test(cover) ? "/og-cover.png" : cover,
+          imageUrl: getArticleImageUrl(b),
           slug: b.slug,
           contents: b.contents || b.chapters?.map(chapter => chapter.title || chapter) || []
         };
@@ -107,9 +106,7 @@ async function loadData() {
       pages: 180 + (i * 25),
       color: COLORS[i % COLORS.length],
       description: b.excerpt,
-      imageUrl: /^data:/i.test(b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "")
-        ? "/og-cover.png"
-        : (b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "/og-cover.png"),
+      imageUrl: getArticleImageUrl(b),
       slug: b.slug,
       date: b.date,
       introduction: b.introduction || b.description,

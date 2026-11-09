@@ -452,18 +452,13 @@
                 const dateStr = art.date || formatDateSafe(art.createdAt, "Recent");
                 const cleanTitle = (art.title || "Untitled").replace(/<[^>]*>?/gm, '');
                 const preview = (art.excerpt || (art.content ? art.content.substring(0, 120) : '')).replace(/<[^>]*>?/gm, '');
+                const coverUrl = art.imageUrl || art.coverUrl || art.coverImage || art.image || art.thumbnailUrl || art.ogImage || "/cover-placeholder.svg";
 
                 return `
                 <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300" onclick="if(!event.target.closest('a')) window.location.href='${getStoryUrl(art)}'">
                     <div class="flex items-center p-3.5 sm:p-4 gap-3.5 w-full stretched-card-wrap">
                         <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#b8542c] to-[#803113]">
-                            ${(art.thumbnailUrl || art.ogImage || art.imageUrl) ? `
-                                <img src="${art.thumbnailUrl || art.ogImage || art.imageUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
-                            ` : `
-                                <div class="w-full h-full flex items-center justify-center text-white/70 text-[10px] font-english uppercase">
-                                    ${art.category || "NUQTHA"}
-                                </div>
-                            `}
+                            <img src="${coverUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" width="400" height="400" loading="lazy" data-nuqtha-cover="true">
                         </div>
                         <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
                             ${categoryTag(art.category, { variant: 'bracket' })}

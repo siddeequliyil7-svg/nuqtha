@@ -12,7 +12,7 @@ const FIRESTORE_PROJECT_ID = resolveFirebaseProjectId(process.env.VITE_FIREBASE_
 const FIRESTORE_API_KEY = "AIzaSyBTKoMKudzOtgv-BY5jlgs7dNl62S9e3HE";
 const DEFAULT_SITE_TITLE = "NUQTHA - നുഖ്ത | Malayalam Publishing Platform";
 const DEFAULT_SITE_DESC = "A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher.";
-const DEFAULT_BANNER = "https://nuqtha.vercel.app/og-cover.png";
+const DEFAULT_BANNER = "https://nuqtha.vercel.app/og-cover.svg";
 const DOMAIN = "https://nuqtha.vercel.app";
 
 function escapeHtml(str = "") {
@@ -241,10 +241,8 @@ export default async function handler(req, res) {
             }
 
             if (rawImage.startsWith("data:image/")) {
-                // Use a single query parameter ?id=... to prevent & / &amp; delimiter corruption by social scrapers
-                imageUrl = `${DOMAIN}/api/image?id=${encodeURIComponent(articleId)}`;
-                const match = rawImage.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,/);
-                imageMime = match ? match[1] : "image/jpeg";
+                imageUrl = DEFAULT_BANNER;
+                imageMime = "image/svg+xml";
             } else if (rawImage.startsWith("http://") || rawImage.startsWith("https://")) {
                 imageUrl = rawImage.replace(/^http:\/\//, "https://");
                 imageMime = imageUrl.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";

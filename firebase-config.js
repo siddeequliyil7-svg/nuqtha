@@ -88,11 +88,24 @@ export const db = firestoreDb;
 export const storage = getStorage(app);
 
 export async function uploadImageDataUrl(image, path) {
-  if (typeof image !== "string" || !image.startsWith("data:")) return image || "";
-  const response = await fetch(image);
+  if (typeof image !== "string" || !image.trim()) return "";
+  const imageUrl = image.trim();
+  if (/^(blob:|file:)/i.test(imageUrl)) {
+    throw new Error("Temporary blob and local file URLs cannot be saved as cover images.");
+  }
+  if (!imageUrl.startsWith("data:")) {
+    if (/^https?:\/\//i.test(imageUrl) || imageUrl.startsWith("/")) return imageUrl;
+    throw new Error("Cover image must be an uploaded image, HTTPS URL, or site-relative asset.");
+  }
+  const response = await fetch(imageUrl);
+  if (!response.ok) throw new Error(`Could not prepare image for upload (HTTP ${response.status}).`);
   const blob = await response.blob();
-  const imageRef = ref(storage, path);
-  await uploadBytes(imageRef, blob, { contentType: blob.type || "image/jpeg" });
+  const uniquePath = `${path}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const imageRef = ref(storage, uniquePath);
+  await uploadBytes(imageRef, blob, {
+    contentType: blob.type || "image/jpeg",
+    cacheControl: "public, max-age=31536000, immutable"
+  });
   return getDownloadURL(imageRef);
 }
 
@@ -135,18 +148,22 @@ if (typeof window !== "undefined" && !window.__NUQTHA_IMG_RETRY_INSTALLED__) {
     (event) => {
       const target = event.target;
       if (target && target.tagName === "IMG") {
+        const isCoverImage = target.dataset.nuqthaCover === "true";
+        if (typeof target.onerror === "function" && !isCoverImage) return;
+        if (isCoverImage) event.stopImmediatePropagation();
         const src = target.currentSrc || target.src;
-        if (src && !src.startsWith("data:") && !src.startsWith("blob:") && !target.dataset.nuqthaRetried) {
+        if (target.dataset.nuqthaFallback) {
+          target.hidden = true;
+        } else if (src && /^https?:/i.test(src) && !target.dataset.nuqthaRetried) {
           target.dataset.nuqthaRetried = "true";
           const separator = src.includes("?") ? "&" : "?";
           setTimeout(() => {
-            target.src = `${src}${separator}_retry=${Date.now()}`;
+            if (target.isConnected) target.src = `${src}${separator}_retry=${Date.now()}`;
           }, 450);
-        } else if (!target.dataset.nuqthaFallback) {
-          target.dataset.nuqthaFallback = "true";
-          target.src = "/og-cover.png";
         } else {
-          target.style.visibility = "hidden";
+          target.dataset.nuqthaFallback = "true";
+          target.removeAttribute("srcset");
+          target.src = "/cover-placeholder.svg";
         }
       }
     },

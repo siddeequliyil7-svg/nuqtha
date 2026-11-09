@@ -160,8 +160,20 @@ describe("Schema Validator & Sanitizer Suite", () => {
 
         it("uses the default cover when no supported image field exists", () => {
             const normalized = normalizeArticleDoc({ title: "No cover" });
-            expect(normalized.imageUrl).to.equal("/og-cover.png");
-            expect(normalized.thumbnailUrl).to.equal("/og-cover.png");
+            expect(normalized.imageUrl).to.equal("/cover-placeholder.svg");
+            expect(normalized.thumbnailUrl).to.equal("/cover-placeholder.svg");
+        });
+
+        it("does not render inline data URLs when a permanent cover alias exists", () => {
+            const permanentCover = "https://cdn.example.test/book-cover.webp";
+            const normalized = normalizeArticleDoc({
+                title: "Book with a legacy inline cover",
+                imageUrl: "data:image/png;base64,AAAA",
+                coverUrl: permanentCover
+            });
+
+            expect(normalized.imageUrl).to.equal(permanentCover);
+            expect(normalized.thumbnailUrl).to.equal(permanentCover);
         });
 
         it("preserves supported book relationship and order fields", () => {
