@@ -2638,6 +2638,8 @@ html.dark {
     transform: translateZ(8px);
 }
 .book3d-cover-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.book3d-cover-img[hidden],
+.book3d-cover-fallback.hidden { display: none; }
 .book3d-cover-fallback {
     position: absolute;
     inset: 0;
@@ -2737,6 +2739,7 @@ html.dark {
     background-size: 18px 18px;
 }
 .chapter-thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.chapter-thumbnail img[hidden] { display: none; }
 .chapter-thumbnail-empty { display: grid; place-items: center; color: var(--book-hero-accent); font-size: 1.5rem; }
 .chapter-author { margin: 0; color: var(--book-hero-muted); font-size: .72rem; }
 .chapter-lock-icon { font-size: .85rem; }
@@ -2747,11 +2750,43 @@ html.dark {
     .book-unlock-button { width: 100%; }
     .chapter-thumbnail { flex-basis: auto; width: 100%; max-width: none; }
 }
+.book-light-layout { display: flex; align-items: flex-start; gap: clamp(20px, 4vw, 44px); }
+.book-light-copy { flex: 1; min-width: 0; display: grid; align-content: start; gap: 16px; }
+.book-light-chapter-skeleton { display: grid; gap: 12px; margin-top: 20px; }
+.book-light-skeleton-title,
+.book-light-skeleton-row {
+    border: 1px solid var(--book-hero-border);
+    border-radius: 16px;
+    background: linear-gradient(90deg, var(--book-hero-surface), var(--book-hero-bg), var(--book-hero-surface));
+    background-size: 200% 100%;
+    animation: shimmerPulse 1.8s infinite ease-in-out;
+}
+.book-light-skeleton-title { width: min(45%, 250px); height: 24px; }
+.book-light-skeleton-row { height: 88px; }
+.book-light-chapter-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    border: 1px solid var(--book-hero-border);
+    border-radius: 16px;
+    background: var(--book-hero-surface);
+}
+.book-light-chapter-row h4 { margin: 4px 0; color: var(--book-hero-text); font-size: .95rem; font-weight: 800; }
+.book-light-chapter-number { color: var(--book-hero-accent); font-size: .68rem; font-weight: 800; }
+@media (max-width: 767px) {
+    .book-light-layout { align-items: center; flex-direction: column; }
+    .book-light-copy { width: 100%; }
+    .book-light-chapter-row { align-items: flex-start; }
+    .book-light-chapter-row .chapter-thumbnail { flex: 0 0 min(40%, 140px); width: min(40%, 140px); }
+}
 
 @media (prefers-reduced-motion: reduce) {
     .book3d { transition: none; }
     .book3d:hover,
-    .book3d:focus-visible { transform: rotateY(-22deg); }
+    .book3d:focus-visible { transform: rotateY(0deg); }
+    .book-light-skeleton-title,
+    .book-light-skeleton-row { animation: none; }
 }
 
 /* ═══════════ PULL-QUOTE EXCERPT CLAMP ═══════════ */

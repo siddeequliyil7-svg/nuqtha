@@ -569,7 +569,7 @@
         import { FALLBACK_ARTICLES } from "/fallback-data.js";
         import { initHeaderAuthUI } from "/js/auth-ui.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart, sanitizeCategory } from "/schema-validator.js";
-        import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, getBookPageLightData, saveBookPageLightCache, prefetchBookPage } from "/js/book-data.js";
+        import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, saveBookPageLightCache, saveBookChapterListCache, readBookChapterListCache } from "/js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "/js/author-service.js";
         import { categoryUrl, categoryTag } from "/js/category-link.js";
         import { trackReadingActivity } from "/js/analytics-tracker.js";
@@ -823,15 +823,76 @@
 
         // Dynamic Image Preloader
         function preloadCoverImage(url) {
-            if (!url || url.includes("placeholder")) return;
-            const existing = document.querySelector(`link[rel="preload"][href="${url}"]`);
+            if (!url || /^data:/i.test(url) || url.includes("placeholder")) return;
+            const existing = Array.from(document.querySelectorAll('link[rel="preload"][as="image"]')).find(link => link.href === new URL(url, window.location.href).href);
             if (!existing) {
                 const link = document.createElement("link");
                 link.rel = "preload";
                 link.as = "image";
                 link.href = url;
+                link.fetchPriority = "high";
                 document.head.appendChild(link);
             }
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "").replace(/[&<>"']/g, char => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+            })[char]);
+        }
+
+        function renderBookLightCache(lightData, container, cachedChapters = []) {
+            if (!lightData || !container) return;
+            const title = escapeHtml(lightData.title || "NUQTHA Edition");
+            const author = escapeHtml(lightData.author || "NUQTHA");
+            const date = escapeHtml(lightData.date || "");
+            const intro = String(lightData.intro || "").trim().replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
+            const hasIntro = intro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
+            const cover = typeof lightData.coverUrl === "string" && !/^data:/i.test(lightData.coverUrl)
+                ? escapeHtml(lightData.coverUrl)
+                : "";
+            const introMarkup = hasIntro
+                ? `<div class="book-hero-pullquote"><span class="book-hero-quote-mark" aria-hidden="true">&ldquo;</span><div class="book-hero-intro-text">${escapeHtml(intro)}</div></div>`
+                : "";
+            const chapterRows = Array.isArray(cachedChapters) ? cachedChapters.map((chapter, index) => {
+                const chapterTitle = typeof chapter.title === "string" && chapter.title.trim()
+                    ? chapter.title.trim()
+                    : `അധ്യായം ${index + 1}`;
+                const chapterImage = typeof chapter.imageUrl === "string" && !/^data:/i.test(chapter.imageUrl)
+                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapter.imageUrl)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.hidden=true"></div>`
+                    : `<div class="chapter-thumbnail chapter-thumbnail-empty" aria-hidden="true">📄</div>`;
+                return `<div class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">അധ്യായം ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></div>`;
+            }).join("") : "";
+
+            container.innerHTML = `
+                <article class="book-hero-card book-edition-hero book-light-cache" aria-labelledby="book-hero-title">
+                    <div class="book-hero-top-row">
+                        <div class="book-hero-eyebrow"><span>പുസ്തകം</span><span aria-hidden="true">&middot;</span><span>BOOK</span></div>
+                        <span class="book-hero-price-pill">PREMIUM BOOK</span>
+                    </div>
+                    <div class="book-light-layout">
+                        <div class="book3d-wrapper">
+                            <div class="book3d-concentric-circles" aria-hidden="true"><div class="book3d-circle-outer"></div><div class="book3d-circle-inner"></div></div>
+                            <div class="book3d" tabindex="0" role="img" aria-label="${title} cover">
+                                <span class="book3d-ribbon" aria-hidden="true"></span><span class="book3d-spine" aria-hidden="true"></span>
+                                <div class="book3d-cover">
+                                    ${cover ? `<img src="${cover}" alt="${title} cover" class="book3d-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" style="aspect-ratio:3/4;background:var(--book-cover-placeholder)" onerror="this.onerror=null;this.hidden=true;this.nextElementSibling?.classList.remove('hidden')"><div class="book3d-cover-fallback hidden" aria-hidden="true">📚</div>` : `<div class="book3d-cover-fallback" aria-hidden="true">📚</div>`}
+                                </div>
+                            </div>
+                            <div class="book3d-floor-shadow" aria-hidden="true"></div>
+                        </div>
+                        <div class="book-light-copy">
+                            <h1 id="book-hero-title" class="book-hero-title">${title}</h1>
+                            <div class="book-hero-author-row"><span class="book-hero-author-avatar"><span class="book-hero-author-initial">${escapeHtml(author.charAt(0) || "N")}</span></span><div><strong class="book-hero-author-name">${author}</strong><div class="book-hero-author-role">എഴുത്തുകാരൻ</div></div></div>
+                            <div class="book-hero-meta-line">${date ? `<span>${date}</span><span class="book-hero-meta-dot" aria-hidden="true"></span>` : ""}<span>${Math.max(0, Number(lightData.chapterCount) || 0)} അധ്യായങ്ങൾ</span></div>
+                            ${introMarkup}
+                        </div>
+                    </div>
+                </article>
+                <section class="book-light-chapter-skeleton" aria-label="Loading chapters" aria-busy="true">
+                    <div class="book-light-skeleton-title"></div>
+                    ${chapterRows || '<div class="book-light-skeleton-row"></div><div class="book-light-skeleton-row"></div>'}
+                </section>`;
         }
 
         // Helper to determine if an entity is a Book (or a book chapter)
@@ -1311,17 +1372,45 @@
             // 1. FAST CACHE PATH (Instant Paint in 0ms)
             let cachedBook = null;
             let cachedChapters = null;
+            let cachedLightBook = null;
             const cacheKey = articleId || targetIdentifier;
+            if (isBookRoute && pathBookSlug) {
+                try {
+                    const lightCacheText = sessionStorage.getItem(`nuqtha_cache_book_${pathBookSlug}_v2`);
+                    const parsedLightCache = lightCacheText ? JSON.parse(lightCacheText) : null;
+                    if (parsedLightCache && parsedLightCache.slug === pathBookSlug && !/^data:/i.test(parsedLightCache.coverUrl || "")) {
+                        cachedLightBook = parsedLightCache;
+                        cachedChapters = readBookChapterListCache(pathBookSlug);
+                    }
+                } catch (error) {
+                    console.warn("[Reader] Lightweight book cache could not be restored.", error);
+                }
+            }
             if (cacheKey) {
                 try {
                     const cachedBookStr = sessionStorage.getItem(`nuqtha_book_${cacheKey}`);
                     const cachedChaptersStr = sessionStorage.getItem(`nuqtha_book_articles_${cacheKey}`);
                     if (cachedBookStr) cachedBook = JSON.parse(cachedBookStr);
-                    if (cachedChaptersStr) cachedChapters = JSON.parse(cachedChaptersStr);
+                    if (cachedChaptersStr && !cachedLightBook) cachedChapters = JSON.parse(cachedChaptersStr);
                 } catch (e) {}
 
                 if (!cachedBook) {
                     cachedBook = searchLocalArticlesPool(cacheKey);
+                }
+
+                if (cachedLightBook) {
+                    cachedBook = {
+                        id: cachedLightBook.slug,
+                        slug: cachedLightBook.slug,
+                        title: cachedLightBook.title,
+                        author: cachedLightBook.author,
+                        date: cachedLightBook.date,
+                        imageUrl: cachedLightBook.coverUrl,
+                        introduction: cachedLightBook.intro,
+                        isBook: true,
+                        type: "BOOK",
+                        __lightCache: true
+                    };
                 }
 
                 if (cachedBook) {
@@ -1340,11 +1429,16 @@
                         if (articleViewEl) articleViewEl.classList.add("hidden");
                         if (bookContainerEl) {
                             bookContainerEl.classList.remove("hidden");
-                            const bookChaps = cachedChapters || cachedBook.chapters || [];
-                            await renderBookIndex(cachedBook, bookContainerEl, bookChaps);
+                            if (cachedLightBook) {
+                                renderBookLightCache(cachedLightBook, bookContainerEl, cachedChapters);
+                                if (cachedLightBook.coverUrl) preloadCoverImage(cachedLightBook.coverUrl);
+                            } else {
+                                const bookChaps = cachedChapters || cachedBook.chapters || [];
+                                await renderBookIndex(cachedBook, bookContainerEl, bookChaps);
+                            }
                         }
-                        if (cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
-                        initComments(cachedBook.id);
+                        if (!cachedLightBook && cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
+                        if (!cachedLightBook) initComments(cachedBook.id);
                     } else {
                         if (bookContainerEl) bookContainerEl.classList.add("hidden");
                         if (articleViewEl) articleViewEl.classList.remove("hidden");
@@ -1367,17 +1461,45 @@
             try {
                 let currentDoc = null;
                 let allArticles = [];
+                let earlyBookChaptersPromise = null;
 
                 const lookupId = articleId || targetIdentifier;
-                const [targetDocResult, allArticlesResult] = await Promise.allSettled([
-                    lookupId ? fetchTargetBySlugOrId(lookupId, controller.signal) : Promise.resolve(null),
-                    fetchLightweightArticles(controller.signal)
-                ]);
+                const targetDocPromise = lookupId
+                    ? fetchTargetBySlugOrId(lookupId, controller.signal)
+                    : Promise.resolve(null);
+                const allArticlesPromise = fetchLightweightArticles(controller.signal);
+                const [targetDocResult] = await Promise.allSettled([targetDocPromise]);
                 currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
+
+                if (currentDoc && ((currentDoc.type || "").toUpperCase() === "BOOK" || currentDoc.isBook === true)) {
+                    earlyBookChaptersPromise = Promise.allSettled([
+                        getBookChapters(currentDoc.id, { articlesPool: [currentDoc], timeoutMs: 8000 })
+                    ]);
+                    const provisionalCover = currentDoc.imageUrl || currentDoc.coverUrl || currentDoc.coverImage ||
+                        currentDoc.image || currentDoc.thumbnailUrl || currentDoc.thumbnail || currentDoc.ogImage || "";
+                    const lightBook = {
+                        slug: pathBookSlug || currentDoc.slug || currentDoc.bookSlug || currentDoc.id,
+                        title: currentDoc.title || "",
+                        author: currentDoc.author || "",
+                        date: typeof currentDoc.date === "string" ? currentDoc.date : (currentDoc.date ? formatDateSafe(currentDoc.date) : ""),
+                        coverUrl: typeof provisionalCover === "string" && !/^data:/i.test(provisionalCover) ? provisionalCover : "",
+                        intro: currentDoc.introduction || currentDoc.intro || currentDoc.excerpt || "",
+                        chapterCount: 0
+                    };
+                    if (skeletonEl) skeletonEl.classList.add("hidden");
+                    if (articleViewEl) articleViewEl.classList.add("hidden");
+                    if (bookContainerEl) {
+                        bookContainerEl.classList.remove("hidden");
+                        renderBookLightCache(lightBook, bookContainerEl);
+                    }
+                    if (lightBook.coverUrl) preloadCoverImage(lightBook.coverUrl);
+                }
+
+                const [allArticlesResult] = await Promise.allSettled([allArticlesPromise]);
                 allArticles = allArticlesResult.status === "fulfilled" ? (allArticlesResult.value || []) : [];
 
                 if (!currentDoc) {
-                    currentDoc = cachedBook || searchLocalArticlesPool(lookupId);
+                    currentDoc = (cachedBook && !cachedBook.__lightCache ? cachedBook : null) || searchLocalArticlesPool(lookupId);
                 }
 
                 // Slug and metadata matching in pool if direct ID fetch did not hit
@@ -1519,14 +1641,6 @@
                 }
                 canonicalEl.setAttribute('href', window.location.origin + cleanUrl);
 
-                try {
-                    sessionStorage.setItem(`nuqtha_book_${articleId}`, JSON.stringify(currentDoc));
-                    if (currentDoc.slug) sessionStorage.setItem(`nuqtha_book_${currentDoc.slug}`, JSON.stringify(currentDoc));
-                    if (currentDoc.title) {
-                        sessionStorage.setItem(`nuqtha_book_${slugifyMalayalamRaw(currentDoc.title)}`, JSON.stringify(currentDoc));
-                        sessionStorage.setItem(`nuqtha_book_${slugifyText(currentDoc.title)}`, JSON.stringify(currentDoc));
-                    }
-                } catch (_) {}
                 if (currentDoc.imageUrl) preloadCoverImage(currentDoc.imageUrl);
 
                 if (skeletonEl) skeletonEl.classList.add("hidden");
@@ -1541,7 +1655,14 @@
 
                     let bookChapters = [];
                     try {
-                        const fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                        let fetched;
+                        if (earlyBookChaptersPromise) {
+                            const [earlyResult] = await earlyBookChaptersPromise;
+                            if (earlyResult.status === "rejected") throw earlyResult.reason;
+                            fetched = earlyResult.value;
+                        } else {
+                            fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                        }
                         bookChapters = Array.isArray(fetched) ? fetched : (fetched?.chapters || []);
                     } catch (chErr) {
                         console.warn("[Reader] Dynamic chapter resolution fallback:", chErr);
@@ -1552,14 +1673,11 @@
                         bookChapters = filterAndSortChapters(currentDoc, allArticles);
                     }
 
-                    try {
-                        sessionStorage.setItem(`nuqtha_book_articles_${articleId}`, JSON.stringify(bookChapters));
-                        if (currentDoc.slug) sessionStorage.setItem(`nuqtha_book_articles_${currentDoc.slug}`, JSON.stringify(bookChapters));
-                        if (currentDoc.title) {
-                            sessionStorage.setItem(`nuqtha_book_articles_${slugifyMalayalamRaw(currentDoc.title)}`, JSON.stringify(bookChapters));
-                            sessionStorage.setItem(`nuqtha_book_articles_${slugifyText(currentDoc.title)}`, JSON.stringify(bookChapters));
-                        }
-                    } catch (_) {}
+                    saveBookPageLightCache({
+                        ...currentDoc,
+                        slug: pathBookSlug || currentDoc.slug || currentDoc.bookSlug
+                    }, bookChapters.length);
+                    saveBookChapterListCache(pathBookSlug || currentDoc.slug || currentDoc.bookSlug || currentDoc.id, bookChapters);
                     await renderBookIndex(currentDoc, bookContainerEl, bookChapters);
                     renderRelatedBooks(currentDoc, allArticles);
                     initComments(currentDoc.id);
@@ -1619,7 +1737,8 @@
                         if (articleViewEl) articleViewEl.classList.add("hidden");
                         if (bookContainerEl) {
                             bookContainerEl.classList.remove("hidden");
-                            await renderBookIndex(localDoc, bookContainerEl, localDoc.chapters || []);
+                            if (cachedLightBook && localDoc.__lightCache) renderBookLightCache(cachedLightBook, bookContainerEl, cachedChapters);
+                            else await renderBookIndex(localDoc, bookContainerEl, localDoc.chapters || []);
                         }
                     } else {
                         if (bookContainerEl) bookContainerEl.classList.add("hidden");
@@ -1670,7 +1789,8 @@
             const hasIntro = rawIntro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
             const dateStr = typeof book.date === "string" ? book.date.trim() : (book.date ? formatDateSafe(book.date) : "");
             const chapterCount = countBookChapters(book, attachedArticles);
-            const coverUrl = book.imageUrl || book.coverUrl || book.coverImage || book.image || book.thumbnailUrl || book.thumbnail || book.ogImage || "";
+            const coverCandidate = book.imageUrl || book.coverUrl || book.coverImage || book.image || book.thumbnailUrl || book.thumbnail || book.ogImage || "";
+            const coverUrl = typeof coverCandidate === "string" && !/^data:/i.test(coverCandidate) ? coverCandidate : "";
             const authorPhoto = (book.authorPhoto || book.authorAvatar || "").trim();
             const firstLetter = (cleanAuthor || 'N').trim().charAt(0);
             const authorId = (cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
@@ -1964,7 +2084,10 @@
                 const cleanArtTitle = (chapterTitle || `അധ്യായം ${idx + 1}`).replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
-                const chapterImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
+                const chapterImageCandidate = art.thumbnailUrl || art.ogImage || art.imageUrl;
+                const chapterImg = typeof chapterImageCandidate === "string" && !/^data:/i.test(chapterImageCandidate)
+                    ? chapterImageCandidate
+                    : "";
                 let targetUrl = isLocked ? "#book-unlock-card" : "#";
                 if (!isLocked) {
                     const bSlug = (parentBook?.slug || parentBook?.bookSlug || (parentBook?.title ? slugifyText(parentBook.title) : "") || parentBook?.id || "").toString().trim();
@@ -1993,7 +2116,7 @@
                     <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${chapterImg ? `
                         <div class="chapter-thumbnail">
-                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
+                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" onerror="this.onerror=null;this.hidden=true">
                             ${isLocked ? `<div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-lg">🔒</div>` : ''}
                         </div>
                     ` : `
@@ -2006,11 +2129,6 @@
                             <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
                                 അധ്യായം ${idx + 1}
                             </span>
-                            ${isLocked ? `
-                                <span class="text-[9px] font-black uppercase text-amber-700 dark:text-amber-300 font-english bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                    🔒 LOCKED
-                                </span>
-                            ` : ''}
                         </div>
                         <h4 class="text-sm sm:text-base font-bold text-[var(--text)] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
                             ${cleanArtTitle}

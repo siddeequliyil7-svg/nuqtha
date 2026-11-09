@@ -1,6 +1,7 @@
 // library.js (loaded lazily: only when the visitor opens the Library view)
 import { db, collection, getDocs, getDocsFromCache, query, where } from "./firebase-config.js";
 import { getStoryUrl } from "./schema-validator.js";
+import { prefetchBookPage } from "./js/book-data.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
 
@@ -29,6 +30,10 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 const safeColor = (c, i) => (/^#[0-9a-f]{6}$/i.test(c || "") ? c : COLORS[i % COLORS.length]);
+const warmBookPage = (book) => {
+  const slug = book.slug || book.bookSlug || book.id;
+  prefetchBookPage({ ...book, slug: slug || book.slug || book.id }, book.contents?.length || 0);
+};
 
 /* ---------- data (cached for 5 min per session, resilient to 429 quota) ---------- */
 async function loadData() {
@@ -62,17 +67,22 @@ async function loadData() {
   ]);
   books = bookSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, MAX_BOOKS)
-      .map((b) => ({
-        id: b.id,
-        title: b.title,
-        author: b.author,
-        pages: b.pages,
-        color: b.color,
-        description: b.description,
-        imageUrl: b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "/og-cover.png",
-        slug: b.slug,
-        contents: b.contents || b.chapters?.map(chapter => chapter.title || chapter) || []
-      }));
+      .map((b) => {
+        const cover = b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "/og-cover.png";
+        return {
+          id: b.id,
+          title: b.title,
+          author: b.author,
+          date: b.date,
+          pages: b.pages,
+          color: b.color,
+          description: b.description,
+          introduction: b.introduction || b.description,
+          imageUrl: /^data:/i.test(cover) ? "/og-cover.png" : cover,
+          slug: b.slug,
+          contents: b.contents || b.chapters?.map(chapter => chapter.title || chapter) || []
+        };
+      });
   papers = articleSnapshot.docs.slice(0, MAX_PAPERS).map((d) => {
       const a = d.data();
       return {
@@ -97,8 +107,12 @@ async function loadData() {
       pages: 180 + (i * 25),
       color: COLORS[i % COLORS.length],
       description: b.excerpt,
-      imageUrl: b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "/og-cover.png",
+      imageUrl: /^data:/i.test(b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "")
+        ? "/og-cover.png"
+        : (b.imageUrl || b.coverUrl || b.coverImage || b.image || b.thumbnailUrl || b.thumbnail || "/og-cover.png"),
       slug: b.slug,
+      date: b.date,
+      introduction: b.introduction || b.description,
       contents: (b.chapters || b.contents || []).map(c => typeof c === "string" ? c : c.title)
     }));
   }
@@ -239,7 +253,13 @@ function renderShelf(books) {
     el.style.setProperty("--w", 44 + ((h >> 3) % 14) + "px");
     el.setAttribute("aria-label", "Open book: " + b.title);
     el.innerHTML = `<span>${esc(b.title)}</span>`;
-    el.addEventListener("click", () => openItem(el, bookItem(b, i)));
+    el.addEventListener("pointerenter", () => warmBookPage(b), { once: true });
+    el.addEventListener("focusin", () => warmBookPage(b), { once: true });
+    el.addEventListener("touchstart", () => warmBookPage(b), { once: true, passive: true });
+    el.addEventListener("click", () => {
+      warmBookPage(b);
+      openItem(el, bookItem(b, i));
+    });
     row.appendChild(el);
   });
   const plank = document.createElement("div"); plank.className = "plank";

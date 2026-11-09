@@ -9,7 +9,7 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
 import { db, collection, doc, getDoc, getDocs, getDocsFromCache } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl, sanitizeCategory } from "./schema-validator.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
-import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
+import { countBookChapters, filterAndSortChapters, prefetchBookPage, saveBookChapterListCache } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
@@ -473,13 +473,20 @@ function setupThemeToggle() {
     const savedTheme = localStorage.getItem("nuqtha_theme");
     if (savedTheme === "dark") {
         document.body.classList.add("dark-mode");
+        document.documentElement.classList.add("dark");
+        document.documentElement.style.colorScheme = "dark";
         if (sunIcon) sunIcon.classList.remove("hidden");
         if (moonIcon) moonIcon.classList.add("hidden");
+    } else {
+        document.documentElement.classList.remove("dark");
+        document.documentElement.style.colorScheme = "light";
     }
 
     if (themeBtn) {
         themeBtn.addEventListener("click", () => {
             const isDark = document.body.classList.toggle("dark-mode");
+            document.documentElement.classList.toggle("dark", isDark);
+            document.documentElement.style.colorScheme = isDark ? "dark" : "light";
             try {
                 localStorage.setItem("nuqtha_theme", isDark ? "dark" : "light");
             } catch (err) {
@@ -2167,7 +2174,20 @@ function buildBookCard(book, articles) {
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
 function attachCardListeners() {
     document.querySelectorAll(".featured-article-card, .category-featured-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card, .premium-book-card").forEach(card => {
+        const warmBookPage = () => {
+            const art = allArticles.find(a => a.id === card.dataset.id);
+            if (!art || !isBookEntity(art)) return;
+            const storyPath = getStoryUrl(art);
+            const routeSlug = storyPath.split("/").filter(Boolean).pop();
+            const chapters = filterAndSortChapters(art, allArticles);
+            const lightData = prefetchBookPage({ ...art, slug: routeSlug || art.slug || art.bookSlug }, chapters.length);
+            if (lightData) saveBookChapterListCache(lightData.slug, chapters);
+        };
+        card.addEventListener("pointerenter", warmBookPage, { once: true });
+        card.addEventListener("focusin", warmBookPage, { once: true });
+        card.addEventListener("touchstart", warmBookPage, { once: true, passive: true });
         card.addEventListener("click", function (e) {
+            warmBookPage();
             // Direct navigation to article.html
             const id = this.dataset.id;
             const art = allArticles.find(a => a.id === id);
@@ -2184,14 +2204,12 @@ function attachCardListeners() {
 }
 
 function openBookIndex(book) {
-    if (book && book.id) {
-        try {
-            sessionStorage.setItem(`nuqtha_book_${book.id}`, JSON.stringify(book));
-            if (Array.isArray(allArticles)) {
-                const bookChapters = filterAndSortChapters(book, allArticles);
-                sessionStorage.setItem(`nuqtha_book_articles_${book.id}`, JSON.stringify(bookChapters));
-            }
-        } catch (e) {}
+    if (book) {
+        const storyPath = getStoryUrl(book);
+        const routeSlug = storyPath.split("/").filter(Boolean).pop();
+        const chapters = filterAndSortChapters(book, allArticles);
+        const lightData = prefetchBookPage({ ...book, slug: routeSlug || book.slug || book.bookSlug }, chapters.length);
+        if (lightData) saveBookChapterListCache(lightData.slug, chapters);
     }
     window.location.href = getStoryUrl(book);
 }
