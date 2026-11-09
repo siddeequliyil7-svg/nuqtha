@@ -1,7 +1,6 @@
 import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
 import { initLibraryAdmin } from "./admin-library.js";
-import { FALLBACK_ARTICLE_ITEMS } from "./fallback-data.js";
 import {
     checkIsAdminUser, 
     initAuthStateListener, 
@@ -75,6 +74,15 @@ export function isMainBook(art) {
 }
 window.isMainBook = isMainBook;
 
+function isBookCatalogRecord(art) {
+    if (!art || isExplicitChapterRecord(art)) return false;
+    const type = String(art.type || "").trim().toUpperCase();
+    const category = String(art.category || "").trim().toLowerCase();
+    return ["BOOK", "FREE", "PREMIUM"].includes(type) ||
+        art.isBook === true ||
+        ["book", "books", "premium book"].includes(category);
+}
+
 export function isBookOrChapter(art) {
     if (!art) return false;
     if (isExplicitChapterRecord(art)) return true;
@@ -85,6 +93,27 @@ window.isBookOrChapter = isBookOrChapter;
 export function isPublishedArticle(art) {
     if (!art) return false;
     return !isExplicitChapterRecord(art) && !isMainBook(art);
+}
+
+function dedupeAdminRecords(records) {
+    const seenIds = new Set();
+    const seenSlugs = new Set();
+    return records.filter(record => {
+        const id = String(record?.id || "").trim();
+        const slug = normalizeStringClean(record?.slug || record?.bookSlug || "");
+        if ((id && seenIds.has(id)) || (slug && seenSlugs.has(slug))) return false;
+        if (id) seenIds.add(id);
+        if (slug) seenSlugs.add(slug);
+        return true;
+    });
+}
+
+function getBookDocumentCollection(book) {
+    return book?.__adminCollection === "books" ? "books" : "articles";
+}
+
+function getBookDocumentRef(book) {
+    return doc(db, getBookDocumentCollection(book), book.id);
 }
 
 "use strict";
@@ -225,6 +254,9 @@ if (typeof window !== "undefined") {
 
 let editingArticleId = null; // null = create mode, string = edit mode
 let currentArticlesList = [];
+let adminArticlesUnsubscribe = null;
+let adminBooksUnsubscribe = null;
+let adminListenerGeneration = 0;
 export let safeArticles = [];
 if (typeof window !== "undefined") {
     window.safeArticles = safeArticles;
@@ -1037,7 +1069,7 @@ window.deleteArticle = async function (id) {
         currentArticlesList = currentArticlesList.filter(article => article.id !== id);
         safeArticles = currentArticlesList.filter(isPublishedArticle);
         updateArticleCounters(safeArticles.length);
-        updateBooksCounter(currentArticlesList.filter(isMainBook).length);
+        updateBooksCounter(dedupeAdminRecords(currentArticlesList.filter(isBookCatalogRecord)).length);
         renderAdminPublishedList(safeArticles);
         renderAdminBooksTab(currentArticlesList);
         updateActiveBookOverview(currentArticlesList);
@@ -1893,7 +1925,7 @@ async function handleSaveBookStep1(e) {
 
         let savedDocId = "";
         if (existing) {
-            await updateDoc(doc(db, "articles", existing.id), payload);
+            await updateDoc(getBookDocumentRef(existing), payload);
             savedDocId = existing.id;
             Object.assign(existing, payload);
             showGlobalStatus(`✨ പുസ്തകം '${name}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
@@ -1911,19 +1943,30 @@ async function handleSaveBookStep1(e) {
         try {
             await setDoc(doc(db, "books", savedDocId), {
                 title: name,
+                bookName: name,
                 author: author,
+                category: tag,
+                slug: bookSlug,
+                bookSlug,
                 type: bookTypeValue,
+                bookType: bookTypeValue,
                 accessType: bookTypeValue,
+                isBook: true,
+                isChapter: false,
                 isPremium: isPremium,
                 price: isPremium ? (priceVal || 49) : 0,
                 description: intro,
+                introduction: intro,
+                excerpt: intro,
                 imageUrl: storedCover,
                 coverImage: storedCover,
                 coverUrl: storedCover,
                 thumbnailUrl: storedCover,
-                visible: true,
+                ogImage: storedCover,
+                date: dateVal,
+                visible: existing?.visible !== false,
+                ...(Array.isArray(existing?.chapters) ? { chapters: existing.chapters } : {}),
                 updatedAt: serverTimestamp(),
-                createdAt: serverTimestamp()
             }, { merge: true });
         } catch (bkErr) {
             console.warn("[Admin] Sync book to books collection note:", bkErr);
@@ -1933,7 +1976,7 @@ async function handleSaveBookStep1(e) {
         activeBookName = name;
         activeBookAuthor = author;
 
-        const allBooks = currentArticlesList.filter(a => isMainBook(a));
+        const allBooks = dedupeAdminRecords(currentArticlesList.filter(isBookCatalogRecord));
         updateBooksCounter(allBooks.length);
         updateActiveBookOverview(currentArticlesList);
         renderAdminBooksTab(currentArticlesList);
@@ -1969,7 +2012,8 @@ function initBookSwitcherAndStep1() {
     if (activeSelect) {
         activeSelect.addEventListener("change", () => {
             const val = activeSelect.value.trim();
-            selectActiveBook(val);
+            const selectedBook = currentArticlesList.find(book => book.id === val && isMainBook(book));
+            selectActiveBook(selectedBook ? getValidBookTitle(selectedBook) : val, selectedBook?.id || "");
         });
     }
 
@@ -2133,13 +2177,14 @@ function selectActiveBook(bookName, bookId = "") {
     const cleanTarget = normalizeStringClean(bookName);
     const bookCover = (bookId
         ? currentArticlesList.find(a => a.id === bookId && isMainBook(a))
-        : currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
+        : currentArticlesList.find(a => a.id === bookName && isMainBook(a)) ||
+          currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
         normalizeStringClean(a.bookName) === cleanTarget ||
         normalizeStringClean(a.title) === cleanTarget
     )));
 
     activeBookName = bookCover ? (bookCover.bookName || bookCover.title) : bookName;
-    activeBookAuthor = bookCover ? (bookCover.author || "") : "";
+    activeBookAuthor = bookCover ? (bookCover.author || bookCover.authorName || "") : "";
     activeBookCoverDoc = bookCover || null;
 
     // Populate Step 1 fields
@@ -2176,11 +2221,19 @@ function selectActiveBook(bookName, bookId = "") {
     const apkUrlInput = document.getElementById("book-meta-apk-url");
     if (apkUrlInput) apkUrlInput.value = bookCover?.apkUrl || "";
 
-    if (bookCover?.imageUrl && previewImg && previewContainer && placeholder) {
-        previewImg.src = bookCover.imageUrl;
-        previewContainer.classList.remove("hidden");
-        placeholder.classList.add("hidden");
-        selectedBookCoverBase64 = bookCover.imageUrl;
+    const activeCoverUrl = bookCover ? getArticleImageUrl(bookCover) : "";
+    if (previewImg && previewContainer && placeholder) {
+        if (activeCoverUrl) {
+            previewImg.src = activeCoverUrl;
+            previewContainer.classList.remove("hidden");
+            placeholder.classList.add("hidden");
+            selectedBookCoverBase64 = activeCoverUrl;
+        } else {
+            previewImg.removeAttribute("src");
+            previewContainer.classList.add("hidden");
+            placeholder.classList.remove("hidden");
+            selectedBookCoverBase64 = "";
+        }
     }
 
     // Update Step 1 button to clarify editing active book
@@ -2199,8 +2252,8 @@ function selectActiveBook(bookName, bookId = "") {
 
     // Synchronize select dropdown
     const activeSelect = document.getElementById("bm-active-book-select");
-    if (activeSelect && activeSelect.value !== activeBookName) {
-        activeSelect.value = activeBookName;
+    if (activeSelect && activeSelect.value !== bookCover?.id) {
+        activeSelect.value = bookCover?.id || "";
     }
 
     // Filter chapters for this book
@@ -2688,7 +2741,7 @@ function initChapterWriter() {
                 if (!chIdList.includes(docRef.id)) {
                     existingChapters.push(docRef.id);
                     targetBookDoc.chapters = existingChapters;
-                    await updateDoc(doc(db, "articles", targetBookDoc.id), {
+                    await updateDoc(getBookDocumentRef(targetBookDoc), {
                         chapters: existingChapters,
                         updatedAt: serverTimestamp()
                     });
@@ -2963,7 +3016,7 @@ function renderBookChaptersReorderList(chapters) {
                     const existingChs = Array.isArray(activeBookCoverDoc.chapters) ? [...activeBookCoverDoc.chapters] : [];
                     const updatedChs = existingChs.filter(ch => (typeof ch === "string" ? ch : ch?.id) !== id);
                     activeBookCoverDoc.chapters = updatedChs;
-                    await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+                    await updateDoc(getBookDocumentRef(activeBookCoverDoc), {
                         chapters: updatedChs,
                         updatedAt: serverTimestamp()
                     });
@@ -3030,7 +3083,7 @@ async function saveAndApplyChapterOrder(showToast = true) {
         // Also update book doc with ordered chapters array
         if (activeBookCoverDoc && activeBookCoverDoc.id) {
             activeBookCoverDoc.chapters = chapterIds;
-            await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+            await updateDoc(getBookDocumentRef(activeBookCoverDoc), {
                 chapters: chapterIds,
                 updatedAt: serverTimestamp()
             });
@@ -3110,7 +3163,7 @@ function initBookAttachExistingArticles() {
                         if (id && !existingChs.includes(id)) existingChs.push(id);
                     }
                     activeBookCoverDoc.chapters = existingChs;
-                    await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+                    await updateDoc(getBookDocumentRef(activeBookCoverDoc), {
                         chapters: existingChs,
                         updatedAt: serverTimestamp()
                     });
@@ -3324,7 +3377,8 @@ function initBookPresentationUpload() {
             };
 
             if (existingBook) {
-                await updateDoc(doc(db, "articles", existingBook.id), payload);
+                await updateDoc(getBookDocumentRef(existingBook), payload);
+                Object.assign(existingBook, payload);
             }
 
             showGlobalStatus(`പ്രസന്റേഷൻ '${activeBookName}' ലേക്ക് വിജയകരമായി സേവ് ചെയ്തു! 📑`, "success");
@@ -3349,37 +3403,23 @@ function initBookPresentationUpload() {
 /* ═══════════ 7. ACTIVE BOOKS OVERVIEW, DEDICATED BOOKS TAB & DROPDOWN ═══════════ */
 function updateActiveBookOverview(articles) {
     const activeSelect = document.getElementById("bm-active-book-select");
-
-    // Discover all book names
-    const bookMap = {};
     const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
-
-    pool.forEach(art => {
-        if (isMainBook(art) && (art.bookName || art.title)) {
-            const name = (art.bookName || art.title).trim();
-            if (!bookMap[name]) bookMap[name] = { cover: art, chapters: 0 };
-        }
-    });
-
-    pool.forEach(art => {
-        if (!isMainBook(art) && (art.bookName || art.bookId)) {
-            const name = (art.bookName || "").trim();
-            if (name && bookMap[name]) {
-                bookMap[name].chapters++;
-            }
-        }
-    });
-
-    const bookNames = Object.keys(bookMap);
+    const books = dedupeAdminRecords(pool.filter(isBookCatalogRecord));
 
     if (activeSelect) {
         const cur = activeSelect.value;
         activeSelect.innerHTML = '<option value="">-- പുസ്തകം തിരഞ്ഞെടുക്കുക (Select Book to Manage) --</option>' + 
-            bookNames.map(name => `<option value="${name}">📚 ${name} (${bookMap[name].chapters} chapters)</option>`).join("");
-        if (cur && bookNames.includes(cur)) {
+            books.map(book => {
+                const title = getValidBookTitle(book);
+                const count = countBookChapters(book, pool);
+                return `<option value="${escapeAdminHtml(book.id)}">📚 ${escapeAdminHtml(title)} (${count} chapters)</option>`;
+            }).join("");
+        const activeBook = books.find(book => book.id === cur) ||
+            books.find(book => normalizeStringClean(getValidBookTitle(book)) === normalizeStringClean(activeBookName));
+        if (activeBook) {
+            activeSelect.value = activeBook.id;
+        } else if (cur && books.some(book => book.id === cur)) {
             activeSelect.value = cur;
-        } else if (activeBookName && bookNames.includes(activeBookName)) {
-            activeSelect.value = activeBookName;
         }
     }
 }
@@ -3394,17 +3434,6 @@ function updateBooksCounter(count) {
     if (totalEl) totalEl.textContent = `${total} Books`;
 }
 
-function countMissingFallbackItems(fallbackItems, databaseItems) {
-    const ids = new Set(databaseItems.map(item => String(item.id || "")));
-    const slugs = new Set(databaseItems.map(item => String(item.slug || "")));
-    const titles = new Set(databaseItems.map(item => normalizeStringClean(item.title || "")));
-    return fallbackItems.filter(item =>
-        !ids.has(String(item.id || "")) &&
-        (!item.slug || !slugs.has(String(item.slug))) &&
-        !titles.has(normalizeStringClean(item.title || ""))
-    ).length;
-}
-
 function renderAdminBooksTab(articles) {
     const gridEl = document.getElementById("bm-published-books-grid");
     const totalCounterEl = document.getElementById("bm-total-books-counter");
@@ -3412,19 +3441,7 @@ function renderAdminBooksTab(articles) {
     const tabBadgeEl = document.getElementById("tab-book-badge");
 
     const pool = Array.isArray(articles) ? articles : (currentArticlesList || []);
-    const rawBooks = pool.filter(isMainBook);
-
-    const books = [];
-    const seenIds = new Set();
-    const seenTitlesWithoutId = new Set();
-    for (const b of rawBooks) {
-        const id = String(b.id || "").trim();
-        const titleKey = normalizeStringClean(getValidBookTitle(b));
-        if (id ? seenIds.has(id) : seenTitlesWithoutId.has(titleKey)) continue;
-        if (id) seenIds.add(id);
-        else seenTitlesWithoutId.add(titleKey);
-        books.push(b);
-    }
+    const books = dedupeAdminRecords(pool.filter(isBookCatalogRecord));
 
     const totalBooks = books.length;
     if (totalCounterEl) totalCounterEl.textContent = `${totalBooks} Books`;
@@ -3450,13 +3467,20 @@ function renderAdminBooksTab(articles) {
         const safeTitle = escapeAdminHtml(bookTitle);
         const previewUrl = escapeAdminHtml(getStoryUrl(book));
         const chapterCount = countBookChapters(book, pool);
+        const coverImage = getArticleImageUrl(book);
+        const bookDate = book.date || book.publishDate || "";
+        const isPremium = book.isPremium === true ||
+            String(book.type || "").toLowerCase() === "premium" ||
+            String(book.bookType || "").toLowerCase() === "premium" ||
+            /premium/i.test(String(book.category || ""));
+        const price = Number(book.price) > 0 ? Number(book.price) : (isPremium ? 49 : 0);
         const isActive = activeBookCoverDoc && (activeBookCoverDoc.id === book.id || activeBookName === bookTitle);
 
         return `
             <div class="p-4 bg-white rounded-2xl border-2 ${isActive ? 'border-amber-500 bg-amber-50/20 ring-2 ring-amber-200' : 'border-[#ebdccb] hover:border-amber-300'} transition shadow-xs flex flex-col justify-between gap-3">
                 <div class="flex items-start gap-3">
                     <div class="w-16 h-22 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-amber-600 to-amber-900 border border-amber-200 shadow-xs flex items-center justify-center text-white">
-                        ${book.imageUrl ? `<img src="${escapeAdminHtml(book.imageUrl)}" alt="${safeTitle}" class="w-full h-full object-cover">` : `<span class="text-2xl">📚</span>`}
+                        ${coverImage ? `<img src="${escapeAdminHtml(coverImage)}" alt="${safeTitle}" class="w-full h-full object-cover">` : `<span class="text-2xl">📚</span>`}
                     </div>
                     <div class="flex-1 min-w-0 space-y-1">
                         <div class="flex items-center gap-1.5 flex-wrap">
@@ -3466,11 +3490,14 @@ function renderAdminBooksTab(articles) {
                             <span class="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-english">
                                 📖 ${chapterCount} Chapters
                             </span>
+                            <span class="text-[9px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full font-english">
+                                ${price > 0 ? `₹${escapeAdminHtml(price)} · PREMIUM` : "FREE"}
+                            </span>
                             ${isActive ? `<span class="text-[9px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md font-english">● ACTIVE</span>` : ''}
                         </div>
                         <h4 class="text-sm font-extrabold text-[#1e1b18] truncate leading-tight">${safeTitle}</h4>
-                        <p class="text-[11px] font-bold text-[#8c7a6b] truncate">✍️ ${escapeAdminHtml(book.author || 'Single Author')}</p>
-                        ${book.date ? `<p class="text-[10px] text-slate-400 font-english">📅 ${escapeAdminHtml(book.date)}</p>` : ''}
+                        <p class="text-[11px] font-bold text-[#8c7a6b] truncate">✍️ ${escapeAdminHtml(book.author || book.authorName || 'Single Author')}</p>
+                        ${bookDate ? `<p class="text-[10px] text-slate-400 font-english">📅 ${escapeAdminHtml(bookDate)}</p>` : ''}
                     </div>
                 </div>
 
@@ -3591,10 +3618,11 @@ window.deleteBookById = async function(bookId, bookTitle) {
             bookSlug: "",
             updatedAt: serverTimestamp()
         })));
-        await Promise.all([
-            deleteDoc(doc(db, "articles", bookId)),
-            deleteDoc(doc(db, "books", bookId))
-        ]);
+        const deleteBookWrites = [deleteDoc(doc(db, "books", bookId))];
+        if (book?.__adminCollection !== "books") {
+            deleteBookWrites.push(deleteDoc(doc(db, "articles", bookId)));
+        }
+        await Promise.all(deleteBookWrites);
 
         for (const chapter of linkedChapters) {
             chapter.bookId = "";
@@ -3616,7 +3644,7 @@ window.deleteBookById = async function(bookId, bookTitle) {
             resetBookManagerForm();
         }
 
-        const allBooks = currentArticlesList.filter(a => isMainBook(a));
+        const allBooks = dedupeAdminRecords(currentArticlesList.filter(isBookCatalogRecord));
         updateBooksCounter(allBooks.length);
         updateActiveBookOverview(currentArticlesList);
         renderAdminBooksTab(currentArticlesList);
@@ -3657,7 +3685,10 @@ function listenToFirestoreArticles() {
     function saveAdminArticleCache(items) {
         try {
             const lightweight = items.map(item => {
-                const cached = { id: String(item.id || "") };
+                const cached = {
+                    id: String(item.id || ""),
+                    __adminCollection: item.__adminCollection === "books" ? "books" : "articles"
+                };
                 cacheFields.forEach(field => {
                     const value = item[field];
                     if (value === undefined || value === null) return;
@@ -3706,6 +3737,7 @@ function listenToFirestoreArticles() {
             try {
                 const serialized = JSON.stringify(items.map(item => ({
                     id: String(item.id || ""),
+                    __adminCollection: item.__adminCollection === "books" ? "books" : "articles",
                     title: String(item.title || item.bookTitle || item.name || "").slice(0, 180),
                     author: String(item.author || "").slice(0, 120),
                     type: item.type || "",
@@ -3726,7 +3758,10 @@ function listenToFirestoreArticles() {
     function processArticlesData(rawItems) {
         if (!Array.isArray(rawItems)) return;
 
-        const items = rawItems.map(d => normalizeArticleDoc(d, d?.id));
+        const items = rawItems.map(d => ({
+            ...normalizeArticleDoc(d, d?.id),
+            __adminCollection: d?.__adminCollection === "books" ? "books" : "articles"
+        }));
 
         items.sort((a, b) => {
             const getMillis = (item) => {
@@ -3741,8 +3776,8 @@ function listenToFirestoreArticles() {
 
         saveAdminArticleCache(items);
 
-        const standardArticles = items.filter(isPublishedArticle);
-        const allBooks = items.filter(a => isMainBook(a));
+        const standardArticles = dedupeAdminRecords(items.filter(isPublishedArticle));
+        const allBooks = dedupeAdminRecords(items.filter(isBookCatalogRecord));
 
         console.debug(`[NUQTHA ADMIN] ${items.length} records loaded (${allBooks.length} books, ${standardArticles.length} articles).`);
 
@@ -3751,7 +3786,7 @@ function listenToFirestoreArticles() {
             window.safeArticles = safeArticles;
         }
 
-        updateArticleCounters(standardArticles.length + countMissingFallbackItems(FALLBACK_ARTICLE_ITEMS, items));
+        updateArticleCounters(standardArticles.length);
         updateBooksCounter(allBooks.length);
 
         renderAdminPublishedList(standardArticles);
@@ -3809,21 +3844,69 @@ function listenToFirestoreArticles() {
         }
     }
 
+    if (adminArticlesUnsubscribe) adminArticlesUnsubscribe();
+    if (adminBooksUnsubscribe) adminBooksUnsubscribe();
+    adminArticlesUnsubscribe = null;
+    adminBooksUnsubscribe = null;
+    const listenerGeneration = ++adminListenerGeneration;
+    let latestArticles = null;
+    let latestBooks = null;
+    const processSnapshots = () => {
+        if (listenerGeneration !== adminListenerGeneration || !latestArticles || !latestBooks) return;
+
+        const items = latestArticles.map(articleDoc => {
+            const raw = articleDoc.data() || {};
+            return normalizeArticleDoc({
+                ...raw,
+                title: raw.title || raw.bookTitle || raw.name,
+                id: articleDoc.id
+            }, articleDoc.id);
+        });
+        const seenIds = new Set(items.map(item => String(item.id || "")));
+        const bookItems = latestBooks.flatMap(bookDoc => {
+            const raw = bookDoc.data() || {};
+            const id = bookDoc.id;
+            if (seenIds.has(String(id))) return [];
+            const normalized = normalizeArticleDoc({
+                ...raw,
+                title: raw.title || raw.bookTitle || raw.bookName || raw.name,
+                type: isExplicitChapterRecord(raw) ? raw.type : (raw.type || "BOOK"),
+                isBook: isExplicitChapterRecord(raw) ? raw.isBook === true : true,
+                id
+            }, id);
+            if (!isMainBook(normalized)) return [];
+
+            const slug = normalizeStringClean(normalized.slug || normalized.bookSlug || "");
+            const articleBookMatch = slug && items.some(item =>
+                isBookCatalogRecord(item) &&
+                normalizeStringClean(item.slug || item.bookSlug || "") === slug
+            );
+            if (articleBookMatch) return [];
+            seenIds.add(String(id));
+            return [{ ...normalized, __adminCollection: "books" }];
+        });
+        processArticlesData([...items, ...bookItems]);
+    };
+
     try {
-        console.log(`[NUQTHA ADMIN] Subscribing to Firestore collection '${colRef.path}' in project '${firebaseConfig.projectId}'...`);
-        onSnapshot(colRef, (querySnapshot) => {
-            console.log(`[NUQTHA ADMIN] onSnapshot received ${querySnapshot.docs.length} documents (fromCache: ${querySnapshot.metadata.fromCache})`);
-            const items = querySnapshot.docs.map(articleDoc => {
-                const raw = articleDoc.data() || {};
-                return normalizeArticleDoc({
-                    ...raw,
-                    title: raw.title || raw.bookTitle || raw.name,
-                    id: articleDoc.id
-                }, articleDoc.id);
-            });
-            processArticlesData(items);
+        console.log(`[NUQTHA ADMIN] Subscribing to Firestore collections 'articles' and 'books' in project '${firebaseConfig.projectId}'...`);
+
+        adminArticlesUnsubscribe = onSnapshot(colRef, (querySnapshot) => {
+            if (listenerGeneration !== adminListenerGeneration) return;
+            latestArticles = querySnapshot.docs;
+            processSnapshots();
         }, (err) => {
-            console.error("[NUQTHA ADMIN] Realtime onSnapshot listener failed:", err.code || "", err.message, err);
+            if (listenerGeneration !== adminListenerGeneration) return;
+            console.error("[NUQTHA ADMIN] Articles listener failed:", err.code || "", err.message || err);
+            reportLoadError(err);
+        });
+        adminBooksUnsubscribe = onSnapshot(collection(db, "books"), (querySnapshot) => {
+            if (listenerGeneration !== adminListenerGeneration) return;
+            latestBooks = querySnapshot.docs;
+            processSnapshots();
+        }, (err) => {
+            if (listenerGeneration !== adminListenerGeneration) return;
+            console.error("[NUQTHA ADMIN] Books listener failed:", err.code || "", err.message || err);
             reportLoadError(err);
         });
     } catch (error) {
@@ -3835,15 +3918,13 @@ function listenToFirestoreArticles() {
             listContainer.innerHTML = '<p class="text-xs text-slate-400 p-4 text-center">ലേഖനങ്ങൾ വീണ്ടും ലോഡ് ചെയ്യുന്നു...</p>';
         }
         try {
-            const snapshot = await getDocs(colRef);
-            processArticlesData(snapshot.docs.map(articleDoc => {
-                const raw = articleDoc.data() || {};
-                return normalizeArticleDoc({
-                    ...raw,
-                    title: raw.title || raw.bookTitle || raw.name,
-                    id: articleDoc.id
-                }, articleDoc.id);
-            }));
+            const [articleSnapshot, bookSnapshot] = await Promise.all([
+                getDocs(colRef),
+                getDocs(collection(db, "books"))
+            ]);
+            latestArticles = articleSnapshot.docs;
+            latestBooks = bookSnapshot.docs;
+            processSnapshots();
         } catch (error) {
             reportLoadError(error);
         }
@@ -3863,7 +3944,7 @@ export function renderAdminPublishedList(items) {
 
     // Exclude book cover documents but keep article documents attached to books.
     const sourceList = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
-    const articles = sourceList.filter(isPublishedArticle);
+    const articles = dedupeAdminRecords(sourceList.filter(isPublishedArticle));
     safeArticles = Array.isArray(articles) ? articles : [];
     updateArticleCounters(safeArticles.length);
     if (typeof window !== "undefined") {
