@@ -283,17 +283,17 @@
             </div>
 
             <!-- Hero Skeleton Card -->
-            <div class="book-edition-hero book-hero-card" aria-hidden="true">
+            <div class="book-v2-hero book-v2-skeleton" aria-hidden="true">
                 <!-- Top Row Skeleton -->
-                <div class="flex items-center justify-between mb-5 sm:mb-7">
+                <div class="book-v2-topline">
                     <div class="h-5 w-32 rounded-full skeleton-shimmer"></div>
                     <div class="h-6 w-20 rounded-full skeleton-shimmer"></div>
                 </div>
-                <div class="flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
-                    <div class="w-[60%] sm:w-[220px] md:w-[260px] flex-shrink-0 mx-auto md:mx-0">
-                        <div class="aspect-[3/4] rounded-2xl skeleton-shimmer border border-white/10"></div>
+                <div class="book-v2-layout">
+                    <div class="book-v2-cover-stage">
+                        <div class="book-v2-cover-skeleton skeleton-shimmer"></div>
                     </div>
-                    <div class="flex-1 w-full space-y-4">
+                    <div class="book-v2-copy">
                         <div class="h-9 w-3/4 rounded-xl skeleton-shimmer"></div>
                         <!-- Author row skeleton -->
                         <div class="flex items-center gap-3 mt-3">
@@ -850,7 +850,7 @@
                 ? escapeHtml(lightData.coverUrl)
                 : "";
             const introMarkup = hasIntro
-                ? `<div class="book-hero-pullquote"><span class="book-hero-quote-mark" aria-hidden="true">&ldquo;</span><div class="book-hero-intro-text">${escapeHtml(intro)}</div></div>`
+                ? `<div class="book-v2-intro"><span class="book-v2-quote-mark" aria-hidden="true">&ldquo;</span><div id="book-intro-text" class="book-v2-intro-text">${escapeHtml(intro)}</div><button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button></div>`
                 : "";
             const chapterRows = Array.isArray(cachedChapters) ? cachedChapters.map((chapter, index) => {
                 const chapterTitle = typeof chapter.title === "string" && chapter.title.trim()
@@ -863,26 +863,28 @@
             }).join("") : "";
 
             container.innerHTML = `
-                <article class="book-hero-card book-edition-hero book-light-cache" aria-labelledby="book-hero-title">
-                    <div class="book-hero-top-row">
-                        <div class="book-hero-eyebrow"><span>പുസ്തകം</span><span aria-hidden="true">&middot;</span><span>BOOK</span></div>
-                        <span class="book-hero-price-pill">PREMIUM BOOK</span>
+                <article class="book-v2-hero book-light-cache" aria-labelledby="book-hero-title">
+                    <div class="book-v2-topline">
+                        <div class="book-v2-eyebrow"><span>പുസ്തകം</span><span aria-hidden="true">&middot;</span><span translate="no">BOOK</span></div>
                     </div>
-                    <div class="book-light-layout">
-                        <div class="book3d-wrapper">
-                            <div class="book3d-concentric-circles" aria-hidden="true"><div class="book3d-circle-outer"></div><div class="book3d-circle-inner"></div></div>
-                            <div class="book3d" tabindex="0" role="img" aria-label="${title} cover">
-                                <span class="book3d-ribbon" aria-hidden="true"></span><span class="book3d-spine" aria-hidden="true"></span>
-                                <div class="book3d-cover">
-                                    ${cover ? `<img src="${cover}" alt="${title} cover" class="book3d-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" style="aspect-ratio:3/4;background:var(--book-cover-placeholder)" onerror="this.onerror=null;this.hidden=true;this.nextElementSibling?.classList.remove('hidden')"><div class="book3d-cover-fallback hidden" aria-hidden="true">📚</div>` : `<div class="book3d-cover-fallback" aria-hidden="true">📚</div>`}
+                    <div class="book-v2-layout">
+                        <div class="book-v2-cover-stage">
+                            <div class="book-v2-circles" aria-hidden="true"><span></span><span></span></div>
+                            <div class="book-v2-perspective">
+                                <div class="book-v2-book" tabindex="0" role="img" aria-label="${title} cover">
+                                    <span class="book-v2-ribbon" aria-hidden="true"></span>
+                                    <span class="book-v2-spine" aria-hidden="true"></span>
+                                    <div class="book-v2-cover">
+                                        ${cover ? `<img src="${cover}" alt="${title} cover" class="book-v2-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" onerror="this.onerror=null;this.hidden=true;this.nextElementSibling?.classList.remove('hidden')"><div class="book-v2-cover-fallback hidden" aria-hidden="true">📚</div>` : `<div class="book-v2-cover-fallback" aria-hidden="true">📚</div>`}
+                                    </div>
                                 </div>
                             </div>
-                            <div class="book3d-floor-shadow" aria-hidden="true"></div>
+                            <div class="book-v2-floor-shadow" aria-hidden="true"></div>
                         </div>
-                        <div class="book-light-copy">
-                            <h1 id="book-hero-title" class="book-hero-title">${title}</h1>
-                            <div class="book-hero-author-row"><span class="book-hero-author-avatar"><span class="book-hero-author-initial">${escapeHtml(author.charAt(0) || "N")}</span></span><div><strong class="book-hero-author-name">${author}</strong><div class="book-hero-author-role">എഴുത്തുകാരൻ</div></div></div>
-                            <div class="book-hero-meta-line">${date ? `<span>${date}</span><span class="book-hero-meta-dot" aria-hidden="true"></span>` : ""}<span>${Math.max(0, Number(lightData.chapterCount) || 0)} അധ്യായങ്ങൾ</span></div>
+                        <div class="book-v2-copy">
+                            <h1 id="book-hero-title" class="book-v2-title">${title}</h1>
+                            <div class="book-v2-author-row"><span class="book-v2-avatar"><span>${escapeHtml(author.charAt(0) || "N")}</span></span><div><strong class="book-v2-author-name">${author}</strong><div class="book-v2-author-role">എഴുത്തുകാരൻ</div></div></div>
+                            <div class="book-v2-meta">${date ? `<span>${date}</span><span class="book-v2-meta-dot" aria-hidden="true"></span>` : ""}<span>${Math.max(0, Number(lightData.chapterCount) || 0)} അധ്യായങ്ങൾ</span></div>
                             ${introMarkup}
                         </div>
                     </div>
@@ -1761,6 +1763,7 @@
 
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
         async function renderBookIndex(book, container, attachedArticles = []) {
+            if (!book || !container) return;
             attachedArticles = filterAndSortChapters(book, Array.isArray(attachedArticles) ? attachedArticles : []);
             const errorContainerEl = document.getElementById("page-error-container");
             if (errorContainerEl) {
@@ -1841,123 +1844,99 @@
                     </div>
 
                     <!-- ═══════════ BOOK HERO (FULL-WIDTH BAND) ═══════════ -->
-                    <article class="book-hero-card book-edition-hero" aria-labelledby="book-hero-title">
-                        <!-- Top Row: Eyebrow Left + Dual Pricing Pill Right -->
-                        <div class="book-hero-top-row flex items-center justify-between gap-3 mb-5 sm:mb-7">
-                            <div class="book-hero-eyebrow font-english" translate="no">
-                                <span class="font-['Noto_Sans_Malayalam'] font-bold">പുസ്തകം</span>
-                                <span class="opacity-50" aria-hidden="true">&middot;</span>
-                                <span class="tracking-widest font-black uppercase text-xs">BOOK</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                ${isFree ? `
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-black uppercase tracking-wider font-english" translate="no">
-                                        ₹0 • FREE (സൗജന്യം)
+                    <article class="book-v2-hero" aria-labelledby="book-hero-title">
+                        <div class="book-v2-topline">
+                            <div class="book-v2-eyebrow"><span>പുസ്തകം</span><span aria-hidden="true">&middot;</span><span translate="no">BOOK</span></div>
+                            <div class="book-v2-badges">
+                                ${isPremium ? `
+                                    <span class="book-v2-premium" translate="no">
+                                        <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m2 6 4 3 4-6 4 6 4-3-2 10H4L2 6Z"/><path d="M4 16h12"/></svg>
+                                        PREMIUM
                                     </span>
-                                ` : `
-                                    <span class="book-hero-price-pill font-english" translate="no">
-                                        ₹${price} · PREMIUM
-                                    </span>
-                                `}
-                                ${isUnlocked ? `
-                                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase font-english">
-                                    ✓ UNLOCKED
-                                </span>
                                 ` : ''}
+                                ${isUnlocked ? `<span class="book-v2-unlocked" translate="no">✓ UNLOCKED</span>` : ''}
                             </div>
                         </div>
 
-                        <div class="flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
-                            <!-- Left: Big Standing Pure-CSS 3D Cover Presentation -->
-                            <div class="book3d-wrapper">
-                                <!-- Two thin concentric circles behind -->
-                                <div class="book3d-concentric-circles" aria-hidden="true">
-                                    <div class="book3d-circle-outer"></div>
-                                    <div class="book3d-circle-inner"></div>
-                                </div>
-                                <div class="book3d" tabindex="0" role="img" aria-label="${cleanTitle} Cover">
-                                    <!-- Accent Bookmark Ribbon (Notched Bottom) -->
-                                    <div class="book3d-ribbon" aria-hidden="true"></div>
-                                    <div class="book3d-spine" aria-hidden="true"></div>
-                                    <div class="book3d-cover">
+                        <div class="book-v2-layout">
+                            <div class="book-v2-cover-stage">
+                                <div class="book-v2-circles" aria-hidden="true"><span></span><span></span></div>
+                                <div class="book-v2-perspective">
+                                    <div class="book-v2-book" tabindex="0" role="img" aria-label="${cleanTitle} cover">
+                                        <span class="book-v2-ribbon" aria-hidden="true"></span>
+                                        <span class="book-v2-spine" aria-hidden="true"></span>
+                                        <div class="book-v2-cover">
                                         ${coverUrl ? `
-                                            <img src="${coverUrl}" alt="${cleanTitle} Cover" class="book3d-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" style="aspect-ratio:3/4;background:var(--book-cover-placeholder)" onerror="this.onerror=null;this.hidden=true;this.nextElementSibling?.classList.remove('hidden')">
-                                            <div class="book3d-cover-fallback hidden" aria-hidden="true"><span>📚</span><span>NUQTHA EDITION</span></div>
+                                            <img src="${coverUrl}" alt="${cleanTitle} Cover" class="book-v2-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" onerror="this.onerror=null;this.hidden=true;this.nextElementSibling?.classList.remove('hidden')">
+                                            <div class="book-v2-cover-fallback hidden" aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>
                                         ` : `
-                                            <div class="book3d-cover-fallback">
+                                            <div class="book-v2-cover-fallback">
                                                 <span class="text-4xl" aria-hidden="true">📚</span>
-                                                <span class="text-xs uppercase font-english font-bold notranslate" translate="no" style="color: var(--accent);">NUQTHA EDITION</span>
+                                                <span translate="no">NUQTHA EDITION</span>
                                             </div>
                                         `}
-                                        <div class="book3d-glare" aria-hidden="true"></div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="book3d-floor-shadow" aria-hidden="true"></div>
+                                <div class="book-v2-floor-shadow" aria-hidden="true"></div>
                             </div>
 
-                            <!-- Right: Title, Author Row, Meta Line, Pull-Quote Introduction -->
-                            <div class="flex-1 w-full space-y-4 text-left">
-                                <header class="space-y-3">
-                                    <!-- Book Title (36px desktop, 27px mobile, line-height 1.3) -->
-                                    <h1 id="book-hero-title" class="book-hero-title">
+                            <div class="book-v2-copy">
+                                <header class="book-v2-heading">
+                                    <h1 id="book-hero-title" class="book-v2-title">
                                         ${cleanTitle}
                                     </h1>
 
-                                    <!-- Author Row with 42px Circular Avatar -->
-                                    <div class="book-hero-author-row">
+                                    <div class="book-v2-author-row">
                                         <a href="${authorUrl}" class="book-hero-author-avatar-link flex-shrink-0" title="രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക">
-                                            <div class="book-hero-author-avatar">
+                                            <div class="book-v2-avatar">
                                                 ${authorPhoto ? `
-                                                    <img src="${authorPhoto}" alt="${cleanAuthor}" class="w-full h-full object-cover rounded-full" width="42" height="42">
+                                                    <img src="${authorPhoto}" alt="${cleanAuthor}" width="42" height="42">
                                                 ` : `
-                                                    <span class="book-hero-author-initial" aria-hidden="true">${firstLetter}</span>
+                                                    <span aria-hidden="true">${firstLetter}</span>
                                                 `}
                                             </div>
                                         </a>
                                         <div class="flex flex-col min-w-0">
-                                            <a href="${authorUrl}" class="book-hero-author-name hover:text-[var(--accent)] transition-colors truncate">
+                                            <a href="${authorUrl}" class="book-v2-author-name">
                                                 ${cleanAuthor}
                                             </a>
-                                            <span class="book-hero-author-role font-['Noto_Sans_Malayalam']">എഴുത്തുകാരൻ</span>
+                                            <span class="book-v2-author-role">എഴുത്തുകാരൻ</span>
                                         </div>
                                     </div>
 
-                                    <!-- One Meta Line: Date • Chapter Count with Small Accent Dot (No Chips) -->
-                                    <div class="book-hero-meta-line font-english">
-                                        ${dateStr ? `<span>${dateStr}</span><span class="book-hero-meta-dot" aria-hidden="true"></span>` : ''}
-                                        <span class="font-['Noto_Sans_Malayalam'] font-semibold">${chapterCount} അധ്യായങ്ങൾ</span>
+                                    <div class="book-v2-meta">
+                                        ${dateStr ? `<span>${dateStr}</span><span class="book-v2-meta-dot" aria-hidden="true"></span>` : ''}
+                                        <span>${chapterCount} അധ്യായങ്ങൾ</span>
                                     </div>
                                 </header>
 
-                                <!-- Introduction as a collapsible three-line pull quote -->
                                 ${hasIntro ? `
-                                    <div class="book-hero-pullquote">
-                                        <div class="book-hero-quote-mark" aria-hidden="true">&ldquo;</div>
-                                        <div id="book-intro-text" class="book-hero-intro-text">
+                                    <div class="book-v2-intro">
+                                        <div class="book-v2-quote-mark" aria-hidden="true">&ldquo;</div>
+                                        <div id="book-intro-text" class="book-v2-intro-text">
                                             ${rawIntro}
                                         </div>
-                                        <button id="book-intro-toggle" type="button" class="book-intro-toggle touch-target-44" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക</button>
-                                    </div>
-                                ` : ''}
-
-                                <!-- Dynamic Unlock / App Install Prompt if Locked -->
-                                ${isLocked ? `
-                                    <div id="book-unlock-card" class="book-unlock-card ${isFree ? 'is-free' : ''}">
-                                        <div class="book-unlock-copy">
-                                            <span class="book-unlock-icon" aria-hidden="true">${isFree ? '↗' : '🔒'}</span>
-                                            <div>
-                                                <p class="book-unlock-title">${isFree ? 'സൗജന്യ പുസ്തകം' : 'പ്രീമിയം പുസ്തകം'}</p>
-                                                <p class="book-unlock-description">${isFree ? 'ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്ത് വായിക്കാം' : `ഒറ്റത്തവണ പണമടയ്ക്കൽ: ₹${price}`}</p>
-                                            </div>
-                                        </div>
-                                        <button id="hero-unlock-btn" type="button" class="book-unlock-button touch-target-44">
-                                            ${isFree ? 'Install App to Read Free (₹0)' : `Unlock Book (₹${price})`}
-                                        </button>
+                                        <button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button>
                                     </div>
                                 ` : ''}
                             </div>
                         </div>
                     </article>
+                    ${isLocked ? `
+                        <div id="book-unlock-card" class="book-unlock-card ${isFree ? 'is-free' : ''}">
+                            <div class="book-unlock-copy">
+                                <span class="book-unlock-icon" aria-hidden="true">${isFree ? '↗' : '🔒'}</span>
+                                <div>
+                                    <p class="book-unlock-title">${isFree ? 'സൗജന്യ പുസ്തകം' : 'പ്രീമിയം പുസ്തകം'}</p>
+                                    <p class="book-unlock-description">${isFree ? 'ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്ത് വായിക്കാം' : `ഒറ്റത്തവണ പണമടയ്ക്കൽ: ₹${price}`}</p>
+                                </div>
+                            </div>
+                            <button id="hero-unlock-btn" type="button" class="book-unlock-button touch-target-44">
+                                ${isFree ? 'Install App to Read Free (₹0)' : `Unlock Book (₹${price})`}
+                            </button>
+                        </div>
+                    ` : ''}
 
                     <!-- Sequential Articles Section ("EDITION ARTICLES") -->
                     <div id="edition-articles-section" class="space-y-4 pt-2">
@@ -2027,7 +2006,7 @@
 
             let lastScrollY = window.scrollY;
             window.addEventListener("scroll", () => {
-                const heroEl = document.querySelector(".book-edition-hero");
+                const heroEl = document.querySelector("#book-edition-container .book-v2-hero");
                 if (!heroEl) return;
                 const rect = heroEl.getBoundingClientRect();
                 // Show sticky bar once hero has scrolled out of view
