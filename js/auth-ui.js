@@ -78,7 +78,7 @@ export function ensureAuthModalDOM() {
                 <div id="auth-pane-phone" class="auth-pane hidden space-y-4">
                     <!-- Step 1: Input Phone -->
                     <div id="phone-step-send" class="space-y-3">
-                        <label class="block text-xs font-bold text-[#5a4b41] dark:text-slate-300 font-english">
+                        <label for="phone-number-input" class="block text-xs font-bold text-[#5a4b41] dark:text-slate-300 font-english">
                             MOBILE NUMBER (ഫോൺ നമ്പർ)
                         </label>
                         <div class="flex gap-2">
@@ -692,4 +692,3 @@ export function updateHeaderUserUI(user) {
         }
     }
 }
-

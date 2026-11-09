@@ -859,7 +859,7 @@
                     ? chapter.title.trim()
                     : `അധ്യായം ${index + 1}`;
                 const chapterImage = typeof chapter.imageUrl === "string" && !/^data:/i.test(chapter.imageUrl)
-                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapter.imageUrl)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.hidden=true"></div>`
+                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapter.imageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" onerror="this.onerror=null;this.hidden=true"></div>`
                     : `<div class="chapter-thumbnail chapter-thumbnail-empty" aria-hidden="true">📄</div>`;
                 return `<div class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">അധ്യായം ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></div>`;
             }).join("") : "";
@@ -2116,7 +2116,7 @@
                     <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${chapterImg ? `
                         <div class="chapter-thumbnail">
-                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" onerror="this.onerror=null;this.hidden=true">
+                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="400" height="300" loading="lazy" decoding="async" onerror="this.onerror=null;this.hidden=true">
                             ${isLocked ? `<div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-lg">🔒</div>` : ''}
                         </div>
                     ` : `
@@ -2226,7 +2226,7 @@
                 <a href="${getStoryUrl(b)}" class="group flex flex-col p-2.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition-all shadow-2xs hover:shadow-md">
                     <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 mb-2 border border-black/5 dark:border-white/10">
                         ${b.imageUrl ? `
-                            <img src="${b.imageUrl}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+                            <img src="${b.imageUrl}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="300" height="400" loading="lazy">
                         ` : `
                             <div class="w-full h-full flex items-center justify-center text-2xl">📚</div>
                         `}
@@ -2622,7 +2622,7 @@
                         const url = imgMatch[3];
                         return `
                             <figure class="article-image-wrap my-6">
-                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" loading="lazy">
+                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" width="1200" height="800" style="aspect-ratio:3/2;object-fit:contain;background:var(--surface)" loading="lazy">
                                 ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
                             </figure>
                         `;
@@ -2719,7 +2719,7 @@
                     <div class="related-card group touch-target-44 cursor-pointer relative stretched-card-wrap" onclick="if(!event.target.closest('a')) window.location.href='${getStoryUrl(item)}'">
                         ${itemImg ? `
                             <div class="related-img-container">
-                                <img src="${itemImg}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+                                <img src="${itemImg}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="400" height="300" loading="lazy">
                             </div>
                         ` : ''}
                         <div class="p-4 flex flex-col justify-between flex-1 gap-2">
