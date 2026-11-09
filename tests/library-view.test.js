@@ -46,6 +46,7 @@ console.log("  [OK] library.js correctly implements dynamic lazy loading, 5-minu
 // ─── Test 3: Verify admin-library.js logic and DOM contract ───
 console.log("Test 3: Verifying admin-library.js management panel...");
 const adminLibJs = fs.readFileSync("nuqtha/admin-library.js", "utf8");
+const adminJs = fs.readFileSync("nuqtha/admin.js", "utf8");
 
 assert.ok(adminLibJs.includes("export async function initLibraryAdmin"), "admin-library.js must export initLibraryAdmin");
 assert.ok(adminLibJs.includes('id="bk-form"'), "admin-library.js must contain #bk-form for book editing");
@@ -58,6 +59,10 @@ assert.ok(adminLibJs.includes('name="bk-import-type"'), "admin-library.js must c
 assert.ok(adminLibJs.includes('value="article"'), "admin-library.js must support article import mode");
 assert.ok(adminLibJs.includes('form.title.value = item.title'), "admin-library.js must auto-fill title from selected article");
 assert.ok(adminLibJs.includes('form.author.value = item.author'), "admin-library.js must auto-fill author from selected article");
+assert.ok(adminLibJs.includes(".filter(isValidBookRecord)"), "admin-library.js must exclude invalid Firestore book documents");
+assert.ok(adminLibJs.includes("if (total) total.textContent = `${books.length} total`"), "admin-library.js book count must match rendered valid records");
+assert.ok(adminJs.includes("if (!art || !getValidBookTitle(art)) return false;"), "admin.js must exclude books without a valid title");
+assert.ok(adminJs.includes("const totalBooks = books.length;"), "admin.js book count must match the deduplicated rendered list");
 
 console.log("  [OK] admin-library.js contains all required management forms, limits, dual article/book import, and Firestore actions.");
 
@@ -88,7 +93,6 @@ console.log("  [OK] app.js correctly wires dynamic import and view toggling with
 // ─── Test 6: Verify admin.html and admin.js integration ───
 console.log("Test 6: Verifying admin.html and admin.js integration...");
 const adminHtml = fs.readFileSync("nuqtha/admin.html", "utf8");
-const adminJs = fs.readFileSync("nuqtha/admin.js", "utf8");
 
 assert.ok(adminHtml.includes('data-tab="library"'), "admin.html must contain tab button for library");
 assert.ok(adminHtml.includes('id="library-admin"'), "admin.html must contain #library-admin container");

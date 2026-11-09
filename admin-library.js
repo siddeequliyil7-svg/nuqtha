@@ -1,11 +1,25 @@
 // admin-library.js : self-contained "Library" panel for your admin page.
 // Usage: import { initLibraryAdmin } from "./admin-library.js"; initLibraryAdmin(document.getElementById("library-admin"));
 import { db, collection, getDocs, getDocsFromCache, addDoc, setDoc, updateDoc, deleteDoc, doc } from "./firebase-config.js";
-import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
+import { FALLBACK_ARTICLE_ITEMS } from "./fallback-data.js";
 
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
 const $ = (r, s) => r.querySelector(s);
 const normalizedTitle = (value) => String(value || "").normalize("NFC").trim().toLowerCase();
+
+function isValidBookRecord(record) {
+  if (!record || !String(record.id || "").trim() ||
+      record.isChapter === true ||
+      String(record.type || "").trim().toUpperCase() === "CHAPTER" ||
+      String(record.category || "").trim().toLowerCase() === "chapter" ||
+      (record.chapterIndex !== undefined && record.chapterIndex !== null)) {
+    return false;
+  }
+  return [record.title, record.bookName].some((value) => {
+    const title = normalizedTitle(value);
+    return title && !/^(?:untitled(?: book)?|no title|തലക്കെട്ടില്ല(?: \(untitled\))?)$/i.test(title);
+  });
+}
 
 function countWithFallback(records, fallbackRecords) {
   const ids = new Set(records.map((record) => String(record.id || "")));
@@ -211,10 +225,17 @@ export async function initLibraryAdmin(root) {
     if (booksLoaded && !force) return;
     try {
       const snap = await getCollectionSnapshot(collection(db, "books"), "books");
-      books = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      books = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter(isValidBookRecord)
+        .sort((a, b) => {
+          const aOrder = Number(a.order);
+          const bOrder = Number(b.order);
+          return (Number.isFinite(aOrder) ? aOrder : 0) - (Number.isFinite(bOrder) ? bOrder : 0);
+        });
       booksLoaded = true;
       const total = $(root, "#lib-book-total");
-      if (total) total.textContent = `${countWithFallback(books, FALLBACK_BOOKS)} total`;
+      if (total) total.textContent = `${books.length} total`;
       const ul = $(root, "#bk-list");
       ul.innerHTML = "";
       if (!books.length) {
@@ -282,7 +303,7 @@ export async function initLibraryAdmin(root) {
     } catch (err) {
       console.error(err);
       const total = $(root, "#lib-book-total");
-      if (total) total.textContent = `${countWithFallback([], FALLBACK_BOOKS)} total (fallback)`;
+      if (total) total.textContent = "0 total";
       const ul = $(root, "#bk-list");
       ul.innerHTML = '<li class="p-4 text-center text-red-600">Error loading books. Check Firestore rules.</li>';
     }
@@ -363,7 +384,7 @@ export async function initLibraryAdmin(root) {
     allDocs.forEach(a => {
       const isBook = a.isBook === true || (a.type || "").toUpperCase() === "BOOK" || (a.category || "").toLowerCase() === "premium book" || (a.category || "").toLowerCase() === "book";
       const isChapter = a.isChapter === true || (a.type || "").toUpperCase() === "CHAPTER" || a.chapterIndex !== undefined;
-      if (isBook && !isChapter) {
+      if (isBook && !isChapter && isValidBookRecord(a)) {
         const chapters = allDocs.filter(c => {
           if (c.id === a.id) return false;
           if (c.bookId && String(c.bookId).trim() === String(a.id)) return true;

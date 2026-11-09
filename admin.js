@@ -1,7 +1,7 @@
 import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
 import { initLibraryAdmin } from "./admin-library.js";
-import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
+import { FALLBACK_ARTICLE_ITEMS } from "./fallback-data.js";
 import { 
     checkIsAdminUser, 
     initAuthStateListener, 
@@ -19,8 +19,19 @@ function isExplicitChapterRecord(art) {
         (art.chapterIndex !== undefined && art.chapterIndex !== null);
 }
 
+function getValidBookTitle(art) {
+    for (const value of [art?.bookName, art?.title]) {
+        const title = String(value || "").normalize("NFC").trim();
+        const normalizedTitle = normalizeStringClean(title);
+        if (normalizedTitle && !/^(?:untitled(?: book)?|തലക്കെട്ടില്ല(?: \(untitled\))?)$/i.test(normalizedTitle)) {
+            return title;
+        }
+    }
+    return "";
+}
+
 export function isMainBook(art) {
-    if (!art) return false;
+    if (!art || !getValidBookTitle(art)) return false;
     if (isExplicitChapterRecord(art)) return false;
 
     // Filter strictly so only items where type === 'book' / 'BOOK' or isBook === true (or free/premium) qualify as books
@@ -3343,7 +3354,7 @@ function updateActiveBookOverview(articles) {
 }
 
 function updateBooksCounter(count) {
-    const total = count + countMissingFallbackItems(FALLBACK_BOOKS, currentArticlesList);
+    const total = count;
     const tabBadge = document.getElementById("tab-book-badge");
     const bmBadge = document.getElementById("bm-books-count-badge");
     const totalEl = document.getElementById("bm-total-books-counter");
@@ -3369,20 +3380,22 @@ function renderAdminBooksTab(articles) {
     const badgeEl = document.getElementById("bm-books-count-badge");
     const tabBadgeEl = document.getElementById("tab-book-badge");
 
-    const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
+    const pool = Array.isArray(articles) ? articles : (currentArticlesList || []);
     const rawBooks = pool.filter(isMainBook);
 
     const books = [];
     const seenIds = new Set();
+    const seenTitlesWithoutId = new Set();
     for (const b of rawBooks) {
-        const key = b.id || b.bookName || b.title;
-        if (!seenIds.has(key)) {
-            seenIds.add(key);
-            books.push(b);
-        }
+        const id = String(b.id || "").trim();
+        const titleKey = normalizeStringClean(getValidBookTitle(b));
+        if (id ? seenIds.has(id) : seenTitlesWithoutId.has(titleKey)) continue;
+        if (id) seenIds.add(id);
+        else seenTitlesWithoutId.add(titleKey);
+        books.push(b);
     }
 
-    const totalBooks = books.length + countMissingFallbackItems(FALLBACK_BOOKS, pool);
+    const totalBooks = books.length;
     if (totalCounterEl) totalCounterEl.textContent = `${totalBooks} Books`;
     if (badgeEl) badgeEl.textContent = `${totalBooks} Books`;
     if (tabBadgeEl) tabBadgeEl.textContent = String(totalBooks);
@@ -3401,7 +3414,7 @@ function renderAdminBooksTab(articles) {
     }
 
     gridEl.innerHTML = books.map(book => {
-        const bookTitle = book.bookName || book.title || "Untitled Book";
+        const bookTitle = getValidBookTitle(book);
         const chapterCount = countBookChapters(book, pool);
         const isActive = activeBookCoverDoc && (activeBookCoverDoc.id === book.id || activeBookName === bookTitle);
 
