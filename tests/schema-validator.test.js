@@ -130,6 +130,33 @@ describe("Schema Validator & Sanitizer Suite", () => {
             });
         });
 
+        it("does not mistake book links or ordering for explicit chapter markers", () => {
+            const normalized = normalizeArticleDoc({
+                title: "Legacy article",
+                type: "ARTICLE",
+                bookId: "parent-book",
+                bookName: "Different title",
+                order: 2
+            }, "legacy-article");
+
+            expect(normalized.isChapter).to.equal(false);
+            expect(normalized.isBook).to.equal(false);
+            expect(normalized.type).to.equal("ARTICLE");
+        });
+
+        it("lets explicit chapter markers override book metadata", () => {
+            const normalized = normalizeArticleDoc({
+                title: "Chapter one",
+                type: "BOOK",
+                isBook: true,
+                isChapter: true
+            }, "chapter-one");
+
+            expect(normalized.isChapter).to.equal(true);
+            expect(normalized.isBook).to.equal(false);
+            expect(normalized.type).to.equal("CHAPTER");
+        });
+
         it("uses the default cover when no supported image field exists", () => {
             const normalized = normalizeArticleDoc({ title: "No cover" });
             expect(normalized.imageUrl).to.equal("/og-cover.png");
@@ -150,6 +177,67 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(normalized.playlistName).to.equal("Legacy Book");
             expect(normalized.order).to.equal(2);
             expect(normalized.chapters).to.deep.equal(["chapter-1"]);
+            expect(normalized.isChapter).to.equal(false);
+        });
+
+        it("does not use a thumbnail as the primary cover during save validation", () => {
+            const result = validateAndSanitizeArticleForSave({
+                title: "Independent images",
+                content: "Valid article content.",
+                thumbnailUrl: "https://example.com/thumbnail.jpg"
+            });
+
+            expect(result.imageUrl).to.equal("");
+            expect(result.thumbnailUrl).to.equal("https://example.com/thumbnail.jpg");
+        });
+
+        it("classifies only explicitly marked chapter records as chapters", () => {
+            const legacyArticle = normalizeArticleDoc({
+                id: "legacy-article",
+                title: "Legacy article",
+                type: "ARTICLE",
+                bookId: "some-book",
+                bookName: "A different parent title",
+                order: 4
+            });
+            const explicitChapter = normalizeArticleDoc({
+                id: "chapter-1",
+                title: "Chapter one",
+                type: "BOOK",
+                isBook: true,
+                isChapter: true
+            });
+
+            expect(legacyArticle.isChapter).to.equal(false);
+            expect(legacyArticle.isBook).to.equal(false);
+            expect(legacyArticle.type).to.equal("ARTICLE");
+            expect(explicitChapter.isChapter).to.equal(true);
+            expect(explicitChapter.isBook).to.equal(false);
+            expect(explicitChapter.type).to.equal("CHAPTER");
+        });
+
+        it("preserves a primary cover independently from its thumbnail", () => {
+            const result = validateAndSanitizeArticleForSave({
+                title: "Cover distinction",
+                content: "Valid article content.",
+                thumbnailUrl: "https://example.com/thumb.jpg"
+            });
+
+            expect(result.imageUrl).to.equal("");
+            expect(result.thumbnailUrl).to.equal("https://example.com/thumb.jpg");
+        });
+
+        it("does not infer chapter status from book links during save validation", () => {
+            const result = validateAndSanitizeArticleForSave({
+                title: "Linked legacy article",
+                content: "A valid article body.",
+                bookName: "Sample Book",
+                bookId: "book-1",
+                order: 2
+            });
+
+            expect(result.isChapter).to.equal(false);
+            expect(result.type).to.equal("ARTICLE");
         });
     });
 
@@ -180,7 +268,7 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(result.order).to.equal(1);
         });
 
-        it("saves book links without throwing on an absent authorId", () => {
+        it("saves linked articles without inferring chapter status or requiring authorId", () => {
             const result = validateAndSanitizeArticleForSave({
                 title: "Book chapter",
                 content: "A valid chapter body.",
@@ -192,6 +280,20 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(result.authorId).to.equal("");
             expect(result.bookId).to.equal("book-1");
             expect(result.order).to.equal(2);
+            expect(result.isChapter).to.equal(false);
+            expect(result.type).to.equal("ARTICLE");
+        });
+
+        it("uses explicit markers rather than relationship fields for saved chapter classification", () => {
+            const result = validateAndSanitizeArticleForSave({
+                title: "Explicit chapter",
+                content: "A valid chapter body.",
+                type: "CHAPTER",
+                bookId: "book-1"
+            });
+
+            expect(result.isChapter).to.equal(true);
+            expect(result.type).to.equal("CHAPTER");
         });
     });
 });

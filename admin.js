@@ -11,28 +11,17 @@ import {
     ADMIN_SESSION_KEY 
 } from "./js/auth-system.js";
 
+function isExplicitChapterRecord(art) {
+    if (!art) return false;
+    return art.isChapter === true ||
+        String(art.type || "").trim().toUpperCase() === "CHAPTER" ||
+        String(art.category || "").trim().toLowerCase() === "chapter" ||
+        (art.chapterIndex !== undefined && art.chapterIndex !== null);
+}
+
 export function isMainBook(art) {
     if (!art) return false;
-    // Strictly exclude any document that is explicitly a chapter or sub-item
-    if (art.isChapter === true || art.type === "CHAPTER") return false;
-    if ((art.category || "").toString().toLowerCase().trim() === "chapter") return false;
-    if (art.chapterIndex !== undefined && art.chapterIndex !== null) return false;
-
-    // Strictly exclude any document that has a bookId referencing another book (these are chapters)
-    if (art.bookId && String(art.bookId).trim() && String(art.bookId).trim() !== String(art.id)) {
-        return false;
-    }
-    // If it has a parent bookName different from its own title, it is a chapter
-    const t = (art.title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
-    const b = (art.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
-    if (b && t && b !== t) {
-        return false;
-    }
-
-    // Only exclude by order if it has an associated parent book
-    if (art.order !== undefined && art.order !== null && !isNaN(art.order) && Number(art.order) > 0 && (art.bookId || (b && t && b !== t))) {
-        return false;
-    }
+    if (isExplicitChapterRecord(art)) return false;
 
     // Filter strictly so only items where type === 'book' / 'BOOK' or isBook === true (or free/premium) qualify as books
     const artType = (art.type || "").toString().toLowerCase().trim();
@@ -54,21 +43,18 @@ window.isMainBook = isMainBook;
 
 export function isBookOrChapter(art) {
     if (!art) return false;
+    if (isExplicitChapterRecord(art)) return true;
     const artType = (art.type || "").toString().toLowerCase().trim();
     const category = (art.category || "").toString().toLowerCase().trim();
     if (artType === "book" || artType === "free" || artType === "premium" || art.isBook === true ||
         category === "book" || category === "books" || category === "premium book") return true;
-    if (art.isChapter === true || artType === "chapter" || category === "chapter") return true;
-    if (art.bookId && String(art.bookId).trim()) return true;
-    const t = (art.title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
-    const b = (art.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
-    if (b && t && b !== t) return true;
     return false;
 }
 window.isBookOrChapter = isBookOrChapter;
 
 export function isPublishedArticle(art) {
     if (!art) return false;
+    if (isExplicitChapterRecord(art)) return false;
     const artType = (art.type || "").toString().toLowerCase().trim();
     const category = (art.category || "").toString().toLowerCase().trim();
     return !(
@@ -234,6 +220,9 @@ let activeBookName = "";
 let activeBookAuthor = "";
 let activeBookCoverDoc = null;
 let activeBookChapters = [];
+let originalArticleImages = { imageUrl: "", thumbnailUrl: "", ogImage: "" };
+let articleImageChanged = false;
+let articleThumbnailChanged = false;
 let dragSrcChapterIndex = null;
 let pendingInlineBase64 = "";
 let compactArticlesDisplayLimit = 20;
@@ -629,8 +618,19 @@ async function handleFormSubmit() {
         const rawBookName = document.getElementById("art-playlist-name")?.value || "";
         const isBookCover = document.getElementById("art-is-book")?.checked || false;
 
-        const effectiveCover = selectedBase64Image || selectedBase64Thumbnail || "";
-        const effectiveThumb = selectedBase64Thumbnail || selectedBase64Image || "";
+        const effectiveCover = articleImageChanged
+            ? selectedBase64Image
+            : (editingArticleId ? originalArticleImages.imageUrl : selectedBase64Image);
+        const effectiveThumb = articleThumbnailChanged
+            ? selectedBase64Thumbnail
+            : (editingArticleId
+                ? originalArticleImages.thumbnailUrl
+                : (selectedBase64Thumbnail || selectedBase64Image));
+        const effectiveOgImage = articleThumbnailChanged
+            ? selectedBase64Thumbnail
+            : (editingArticleId
+                ? originalArticleImages.ogImage
+                : (selectedBase64Thumbnail || selectedBase64Image));
         const customSlugEl = document.getElementById("customSlug");
         const customSlugVal = customSlugEl ? customSlugEl.value.trim() : "";
         const articleSlug = cleanCustomPath(customSlugVal, rawTitle);
@@ -666,7 +666,7 @@ async function handleFormSubmit() {
             transcription: rawTranscription,
             imageUrl: effectiveCover,
             thumbnailUrl: effectiveThumb,
-            ogImage: effectiveThumb,
+            ogImage: effectiveOgImage,
             excerpt: rawExcerpt,
             content: rawContent,
             titleColor: rawTitleColor,
@@ -682,10 +682,16 @@ async function handleFormSubmit() {
         });
 
         const targetArticleId = editingArticleId || doc(collection(db, "articles")).id;
-        const storedCover = await uploadImageDataUrl(sanitized.imageUrl, `articles/${targetArticleId}/cover`);
-        const storedThumbnail = sanitized.thumbnailUrl === sanitized.imageUrl
-            ? storedCover
-            : await uploadImageDataUrl(sanitized.thumbnailUrl, `articles/${targetArticleId}/thumbnail`);
+        const storedCover = articleImageChanged || !editingArticleId
+            ? await uploadImageDataUrl(sanitized.imageUrl, `articles/${targetArticleId}/cover`)
+            : effectiveCover || "";
+        const storedThumbnail = articleThumbnailChanged && !selectedBase64Thumbnail
+            ? ""
+            : articleThumbnailChanged || !editingArticleId
+                ? sanitized.thumbnailUrl === sanitized.imageUrl
+                    ? storedCover
+                    : await uploadImageDataUrl(sanitized.thumbnailUrl, `articles/${targetArticleId}/thumbnail`)
+                : effectiveThumb || effectiveOgImage || "";
         sanitized.imageUrl = storedCover;
         sanitized.coverImage = storedCover;
         sanitized.coverUrl = storedCover;
@@ -718,24 +724,14 @@ async function handleFormSubmit() {
                 updatedAt: serverTimestamp()
             };
 
-            // Only update imageUrl if selected/changed or explicitly set
-            if (selectedBase64Image !== undefined && selectedBase64Image !== "") {
+            if (articleImageChanged) {
                 updatePayload.imageUrl = storedCover;
                 updatePayload.coverImage = storedCover;
                 updatePayload.coverUrl = storedCover;
-                if (!selectedBase64Thumbnail) {
-                    updatePayload.thumbnailUrl = storedCover;
-                    updatePayload.ogImage = storedCover;
-                }
             }
-            if (selectedBase64Thumbnail !== undefined && selectedBase64Thumbnail !== "") {
+            if (articleThumbnailChanged) {
                 updatePayload.thumbnailUrl = storedThumbnail;
                 updatePayload.ogImage = storedThumbnail;
-                if (!selectedBase64Image && !updatePayload.imageUrl) {
-                    updatePayload.imageUrl = storedThumbnail;
-                    updatePayload.coverImage = storedThumbnail;
-                    updatePayload.coverUrl = storedThumbnail;
-                }
             }
 
             await updateDoc(articleRef, updatePayload);
@@ -795,6 +791,10 @@ function resetFormFields() {
 
     // Reset Image
     selectedBase64Image = "";
+    selectedBase64Thumbnail = "";
+    originalArticleImages = { imageUrl: "", thumbnailUrl: "", ogImage: "" };
+    articleImageChanged = false;
+    articleThumbnailChanged = false;
     const fileInput = document.getElementById("art-file-input");
     const preview = document.getElementById("image-preview");
     const previewContainer = document.getElementById("image-preview-container");
@@ -805,7 +805,6 @@ function resetFormFields() {
     if (placeholder) placeholder.classList.remove("hidden");
 
     // Reset Thumbnail / OG Image
-    selectedBase64Thumbnail = "";
     const thumbInput = document.getElementById("art-thumb-input");
     const thumbPreview = document.getElementById("thumb-preview");
     const thumbPreviewContainer = document.getElementById("thumb-preview-container");
@@ -875,6 +874,15 @@ window.startEditArticle = function (id) {
     }
 
     editingArticleId = id;
+    originalArticleImages = {
+        imageUrl: art.imageUrl || art.coverUrl || art.coverImage || art.image || "",
+        thumbnailUrl: art.thumbnailUrl || "",
+        ogImage: art.ogImage || ""
+    };
+    selectedBase64Image = "";
+    selectedBase64Thumbnail = "";
+    articleImageChanged = false;
+    articleThumbnailChanged = false;
 
     // Populate Tab 1: Editor Form
     const titleInput = document.getElementById("art-title");
@@ -948,12 +956,10 @@ window.startEditArticle = function (id) {
     const placeholder = document.getElementById("upload-placeholder");
 
     if (art.imageUrl) {
-        selectedBase64Image = art.imageUrl;
         if (preview) preview.src = art.imageUrl;
         if (previewContainer) previewContainer.classList.remove("hidden");
         if (placeholder) placeholder.classList.add("hidden");
     } else {
-        selectedBase64Image = "";
         if (preview) preview.src = "";
         if (previewContainer) previewContainer.classList.add("hidden");
         if (placeholder) placeholder.classList.remove("hidden");
@@ -966,12 +972,10 @@ window.startEditArticle = function (id) {
     const existingThumb = art.thumbnailUrl || art.ogImage || "";
 
     if (existingThumb) {
-        selectedBase64Thumbnail = existingThumb;
         if (thumbPreview) thumbPreview.src = existingThumb;
         if (thumbPreviewContainer) thumbPreviewContainer.classList.remove("hidden");
         if (thumbPlaceholder) thumbPlaceholder.classList.add("hidden");
     } else {
-        selectedBase64Thumbnail = "";
         if (thumbPreview) thumbPreview.src = "";
         if (thumbPreviewContainer) thumbPreviewContainer.classList.add("hidden");
         if (thumbPlaceholder) thumbPlaceholder.classList.remove("hidden");
@@ -1407,6 +1411,7 @@ function initImageUpload() {
 
                 // High-efficiency JPEG compression to protect Firestore 1MB limits
                 selectedBase64Image = canvas.toDataURL("image/jpeg", 0.78);
+                articleImageChanged = true;
                 if (imagePreview) imagePreview.src = selectedBase64Image;
                 if (uploadPlaceholder) uploadPlaceholder.classList.add("hidden");
                 if (imagePreviewContainer) imagePreviewContainer.classList.remove("hidden");
@@ -1420,6 +1425,7 @@ function initImageUpload() {
         removeImgBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             selectedBase64Image = "";
+            articleImageChanged = true;
             fileInput.value = "";
             if (imagePreview) imagePreview.src = "";
             if (imagePreviewContainer) imagePreviewContainer.classList.add("hidden");
@@ -1480,6 +1486,7 @@ function initImageUpload() {
                     ctx.drawImage(img, 0, 0, width, height);
 
                     selectedBase64Thumbnail = canvas.toDataURL("image/jpeg", 0.78);
+                    articleThumbnailChanged = true;
                     if (thumbPreview) thumbPreview.src = selectedBase64Thumbnail;
                     if (thumbPlaceholder) thumbPlaceholder.classList.add("hidden");
                     if (thumbPreviewContainer) thumbPreviewContainer.classList.remove("hidden");
@@ -1494,6 +1501,7 @@ function initImageUpload() {
         removeThumbBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             selectedBase64Thumbnail = "";
+            articleThumbnailChanged = true;
             if (thumbInput) thumbInput.value = "";
             if (thumbPreview) thumbPreview.src = "";
             if (thumbPreviewContainer) thumbPreviewContainer.classList.add("hidden");

@@ -361,25 +361,20 @@ function setupMoreDropdown() {
 
 function isBookEntity(article) {
     if (!article) return false;
+    if (isChapterEntity(article)) return false;
     const artType = (article.type || "").toUpperCase();
     if (artType === "BOOK" || artType === "FREE" || artType === "PREMIUM" || article.isBook === true) return true;
-    if (article.bookId && String(article.bookId).trim()) return true;
-    if (article.bookName && String(article.bookName).trim()) return true;
-    if (article.playlistName && String(article.playlistName).trim()) return true;
-    if (article.category && (article.category.toLowerCase() === "premium book" || article.category.toLowerCase() === "book")) return true;
+    const category = String(article.category || "").trim().toLowerCase();
+    if (category === "premium book" || category === "book" || category === "books") return true;
     return false;
 }
 
 function isChapterEntity(article) {
     if (!article) return false;
-    if (article.isChapter === true || article.type === "CHAPTER") return true;
-    if (article.chapterIndex !== undefined && article.chapterIndex !== null) return true;
-    if (article.bookId && String(article.bookId).trim() && String(article.bookId).trim() !== String(article.id)) return true;
-    const t = (article.title || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
-    const b = (article.bookName || "").toString().normalize("NFC").replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toLowerCase();
-    if (b && t && b !== t) return true;
-    if (article.order !== undefined && article.order !== null && !isNaN(article.order) && Number(article.order) > 0 && (article.bookId || (b && t && b !== t))) return true;
-    return false;
+    return article.isChapter === true ||
+        String(article.type || "").trim().toUpperCase() === "CHAPTER" ||
+        String(article.category || "").trim().toLowerCase() === "chapter" ||
+        (article.chapterIndex !== undefined && article.chapterIndex !== null);
 }
 
 function updateMoreCategoriesMenu() {
@@ -704,10 +699,11 @@ async function getCollectionSnapshotWithCache(collectionRef, name) {
     }
 }
 
-function restoreFallbackFields(article, fallbacksById) {
+function restoreFallbackFields(article, fallbacksById, rawArticle = {}) {
     const fallback = fallbacksById.get(article.id) || fallbacksById.get(article.slug);
     if (!fallback) return article;
     const isMissing = value => value == null || String(value).trim() === "";
+    const hasRawField = field => Object.prototype.hasOwnProperty.call(rawArticle, field);
     return {
         ...fallback,
         ...article,
@@ -720,8 +716,8 @@ function restoreFallbackFields(article, fallbacksById) {
         ogImage: isMissing(article.ogImage) ? (fallback.ogImage || "") : article.ogImage,
         slug: isMissing(article.slug) ? fallback.slug : article.slug,
         bookSlug: isMissing(article.bookSlug) ? fallback.bookSlug : article.bookSlug,
-        volume: isMissing(article.volume) ? fallback.volume : article.volume,
-        issue: isMissing(article.issue) ? fallback.issue : article.issue,
+        volume: hasRawField("volume") ? article.volume : fallback.volume,
+        issue: hasRawField("issue") ? article.issue : fallback.issue,
         date: isMissing(article.date) ? fallback.date : article.date,
         chapters: Array.isArray(article.chapters) && article.chapters.length ? article.chapters : fallback.chapters
     };
@@ -766,7 +762,7 @@ export function initAppData(database = db) {
                 excerpt: sanitizeMalayalamText(article.excerpt),
                 content: sanitizeMalayalamText(article.content),
                 playlistName: sanitizeMalayalamText(article.playlistName)
-            }, articleDoc.id), fallbacksById);
+            }, articleDoc.id), fallbacksById, article);
         });
 
         const rawBooksList = booksSnapshot.docs.map(bookDoc => {
@@ -777,10 +773,11 @@ export function initAppData(database = db) {
                 author: sanitizeMalayalamText(bookData.author),
                 excerpt: sanitizeMalayalamText(bookData.excerpt)
             }, bookDoc.id);
-            book.type = "BOOK";
-            book.isBook = true;
-            book.isChapter = false;
-            return restoreFallbackFields(book, fallbacksById);
+            if (!book.isChapter) {
+                book.type = "BOOK";
+                book.isBook = true;
+            }
+            return restoreFallbackFields(book, fallbacksById, bookData);
         });
 
         const fallbackItems = [
@@ -947,7 +944,7 @@ function renderSavedFeed(container) {
 function renderSearchFeed(container, query) {
     const lower = query.toLowerCase();
     const matched = allArticles.filter(art => {
-        if (isBookEntity(art)) return false;
+        if (isBookEntity(art) || isChapterEntity(art)) return false;
         const title = (art.title || "").toLowerCase();
         const author = (art.author || "").toLowerCase();
         const excerpt = (art.excerpt || "").toLowerCase();
@@ -1005,8 +1002,7 @@ function renderHomeFeed(container) {
     // Distinguish book covers from standard articles
     const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
     const bookCovers = allArticles.filter(isBookCoverItem);
-    // Keep attached chapter articles in the feed; only book-cover documents belong in the books section.
-    const regularArticles = allArticles.filter(a => !isBookCoverItem(a));
+    const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapterEntity(a));
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) {
@@ -1148,7 +1144,7 @@ function renderCategoryFeed(container, category) {
     const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
 
     const filtered = allArticles.filter(a => {
-        if (isBookCover(a)) return false;
+        if (isBookCover(a) || isChapterEntity(a)) return false;
         const catNorm = normalizeCategoryName(a.category).toUpperCase();
         return catNorm === targetNorm ||
                categorySlug(catNorm) === categorySlug(targetNorm) ||
@@ -2528,6 +2524,13 @@ function renderBooksCategoryFeed(container) {
                 const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
                 const isFree = !isPremium || price === 0;
                 const bookCoverImg = getArticleImageUrl(book);
+                const volumeLabel = book.volume
+                    ? (book.volume.toLowerCase().includes("vol") ? book.volume : `Volume ${book.volume}`)
+                    : "";
+                const issueLabel = book.issue
+                    ? (book.issue.toLowerCase().includes("issue") ? book.issue : `Issue: ${book.issue}`)
+                    : "";
+                const volumeIssueLabel = [volumeLabel, issueLabel].filter(Boolean).map(escapeHtml).join(" • ");
 
                 return `
                 <div class="book-glass-card group cursor-pointer flex flex-col bg-white dark:bg-[#151722] rounded-2xl overflow-hidden border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c] dark:hover:border-[#f87171] shadow-2xs hover:shadow-lg transition-all duration-300 relative" data-id="${book.id}">
@@ -2554,9 +2557,7 @@ function renderBooksCategoryFeed(container) {
                     </div>
                     <!-- Details / Meta Underneath -->
                     <div class="py-2.5 px-2.5 text-center bg-[#fbf7ee]/40 dark:bg-white/[0.02] border-t border-[#ebdccb]/60 dark:border-white/10 space-y-1">
-                        <p class="text-xs font-bold text-[#1e1b18] dark:text-white font-english tracking-wide truncate">
-                            ${book.volume ? (book.volume.toLowerCase().includes('vol') ? book.volume : 'Volume ' + book.volume) : 'Volume 36'} • ${book.issue ? (book.issue.toLowerCase().includes('issue') ? book.issue : 'Issue: ' + book.issue) : 'Issue: 27'}
-                        </p>
+                        ${volumeIssueLabel ? `<p class="text-xs font-bold text-[#1e1b18] dark:text-white font-english tracking-wide truncate">${volumeIssueLabel}</p>` : ""}
                         <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">
                             ${book.date || 'Recent Issue'}
                         </p>
