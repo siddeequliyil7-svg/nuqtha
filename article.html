@@ -1737,8 +1737,8 @@
                                         ₹0 • FREE (സൗജന്യം)
                                     </span>
                                 ` : `
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-black uppercase tracking-wider font-english" translate="no">
-                                        ₹${price} • PREMIUM
+                                    <span class="book-hero-price-pill font-english" translate="no">
+                                        ₹${price} · PREMIUM
                                     </span>
                                 `}
                                 ${isUnlocked ? `
@@ -1762,8 +1762,9 @@
                                     <div class="book3d-ribbon" aria-hidden="true"></div>
                                     <div class="book3d-spine" aria-hidden="true"></div>
                                     <div class="book3d-cover">
-                                        ${book.imageUrl ? `
-                                            <img src="${book.imageUrl}" alt="${cleanTitle} Cover" class="book3d-cover-img" width="300" height="400" loading="eager" decoding="async">
+                                        ${coverUrl ? `
+                                            <img src="${coverUrl}" alt="${cleanTitle} Cover" class="book3d-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" style="aspect-ratio:3/4;background:var(--book-cover-placeholder)" onerror="this.onerror=null;this.hidden=true;this.nextElementSibling?.classList.remove('hidden')">
+                                            <div class="book3d-cover-fallback hidden" aria-hidden="true"><span>📚</span><span>NUQTHA EDITION</span></div>
                                         ` : `
                                             <div class="book3d-cover-fallback">
                                                 <span class="text-4xl" aria-hidden="true">📚</span>
@@ -1805,38 +1806,35 @@
 
                                     <!-- One Meta Line: Date • Chapter Count with Small Accent Dot (No Chips) -->
                                     <div class="book-hero-meta-line font-english">
-                                        <span>${dateStr}</span>
-                                        <span class="book-hero-meta-dot" aria-hidden="true"></span>
-                                        <span class="font-['Noto_Sans_Malayalam'] font-semibold">${attachedArticles.length} അധ്യായങ്ങൾ</span>
+                                        ${dateStr ? `<span>${dateStr}</span><span class="book-hero-meta-dot" aria-hidden="true"></span>` : ''}
+                                        <span class="font-['Noto_Sans_Malayalam'] font-semibold">${chapterCount} അധ്യായങ്ങൾ</span>
                                     </div>
                                 </header>
 
-                                <!-- Introduction as Pull-Quote (Full text displayed directly, no collapse / toggle button) -->
+                                <!-- Introduction as a collapsible three-line pull quote -->
                                 ${hasIntro ? `
                                     <div class="book-hero-pullquote">
                                         <div class="book-hero-quote-mark" aria-hidden="true">&ldquo;</div>
                                         <div id="book-intro-text" class="book-hero-intro-text">
                                             ${rawIntro}
                                         </div>
+                                        <button id="book-intro-toggle" type="button" class="book-intro-toggle touch-target-44" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക</button>
                                     </div>
                                 ` : ''}
 
                                 <!-- Dynamic Unlock / App Install Prompt if Locked -->
                                 ${isLocked ? `
-                                    <div class="mt-4 p-4 rounded-2xl ${isFree ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-amber-500/10 border border-amber-500/30'} space-y-3">
-                                        <div class="flex items-center justify-between flex-wrap gap-2">
-                                            <div class="space-y-0.5">
-                                                <p class="text-xs font-bold ${isFree ? 'text-emerald-950 dark:text-emerald-200' : 'text-amber-950 dark:text-amber-200'} font-['Noto_Sans_Malayalam']">
-                                                    ${isFree ? '📲 ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്ത് സൗജന്യമായി വായിക്കാം' : '🔒 പ്രീമിയം പുസ്തകം (Chapters Locked)'}
-                                                </p>
-                                                <p class="text-[11px] ${isFree ? 'text-emerald-800 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-400'} font-english">
-                                                    ${isFree ? 'Install NUQTHA Android App to read all chapters free (₹0)' : `One-time purchase: ₹${price} to unlock full book`}
-                                                </p>
+                                    <div id="book-unlock-card" class="book-unlock-card ${isFree ? 'is-free' : ''}">
+                                        <div class="book-unlock-copy">
+                                            <span class="book-unlock-icon" aria-hidden="true">${isFree ? '↗' : '🔒'}</span>
+                                            <div>
+                                                <p class="book-unlock-title">${isFree ? 'സൗജന്യ പുസ്തകം' : 'പ്രീമിയം പുസ്തകം'}</p>
+                                                <p class="book-unlock-description">${isFree ? 'ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്ത് വായിക്കാം' : `ഒറ്റത്തവണ പണമടയ്ക്കൽ: ₹${price}`}</p>
                                             </div>
-                                            <button id="hero-unlock-btn" class="px-5 py-2.5 rounded-full ${isFree ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-[#b4532c] hover:bg-[#923e1b]'} text-white font-bold text-xs sm:text-sm font-english transition shadow-md active:scale-95 cursor-pointer touch-target-44 flex items-center gap-2">
-                                                <span>${isFree ? '📲 Install App to Read Free (₹0)' : `⚡ Unlock Book (₹${price})`}</span>
-                                            </button>
                                         </div>
+                                        <button id="hero-unlock-btn" type="button" class="book-unlock-button touch-target-44">
+                                            ${isFree ? 'Install App to Read Free (₹0)' : `Unlock Book (₹${price})`}
+                                        </button>
                                     </div>
                                 ` : ''}
                             </div>
@@ -1844,7 +1842,7 @@
                     </article>
 
                     <!-- Sequential Articles Section ("EDITION ARTICLES") -->
-                    <div id="edition-articles-section" class="space-y-4 pt-4">
+                    <div id="edition-articles-section" class="space-y-4 pt-2">
                         <div class="border-b border-[var(--border)] dark:border-white/10 pb-3 flex items-center justify-between flex-wrap gap-2">
                             <h3 class="text-sm sm:text-base font-black text-[var(--text)] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#b4532c] dark:bg-[#f87171]"></span>
@@ -1954,13 +1952,20 @@
 
             const currentBatch = articles.slice(0, visibleChapterCount);
             const readArticleIds = getReadArticleIds();
+            const unlockCard = document.getElementById("book-unlock-card");
+            const focusUnlockButton = () => {
+                if (!unlockCard) return;
+                unlockCard.scrollIntoView({ behavior: "smooth", block: "center" });
+                unlockCard.querySelector("button")?.focus({ preventScroll: true });
+            };
 
             listEl.innerHTML = currentBatch.map((art, idx) => {
-                const cleanArtTitle = (art.title || "അധ്യായം").replace(/[*_#~`]/g, "");
+                const chapterTitle = typeof art?.title === "string" ? art.title.trim() : "";
+                const cleanArtTitle = (chapterTitle || `അധ്യായം ${idx + 1}`).replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
                 const chapterImg = art.thumbnailUrl || art.ogImage || art.imageUrl;
-                let targetUrl = "#";
+                let targetUrl = isLocked ? "#book-unlock-card" : "#";
                 if (!isLocked) {
                     const bSlug = (parentBook?.slug || parentBook?.bookSlug || (parentBook?.title ? slugifyText(parentBook.title) : "") || parentBook?.id || "").toString().trim();
                     const cSlug = (art.slug && art.slug !== bSlug) ? art.slug : ((art.title ? slugifyText(art.title) : "") || art.id || "");
@@ -1987,13 +1992,13 @@
                 <a href="${targetUrl}" data-chapter-index="${idx}" data-article-id="${art.id}" data-locked="${isLocked ? 'true' : 'false'}" class="chapter-card-link group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isLocked ? 'cursor-pointer' : ''}">
                     <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${chapterImg ? `
-                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 aspect-[16/10] relative">
+                        <div class="chapter-thumbnail">
                             <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
                             ${isLocked ? `<div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-lg">🔒</div>` : ''}
                         </div>
                     ` : `
-                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
-                            ${isLocked ? '🔒' : '📄'}
+                        <div class="chapter-thumbnail chapter-thumbnail-empty">
+                            <span aria-hidden="true">${isLocked ? '🔒' : '📄'}</span>
                         </div>
                     `}
                     <div class="flex-1 min-w-0 space-y-1.5">
@@ -2010,6 +2015,7 @@
                         <h4 class="text-sm sm:text-base font-bold text-[var(--text)] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
                             ${cleanArtTitle}
                         </h4>
+                        <p class="chapter-author">${art.author || parentBook?.author || "NUQTHA"}</p>
                         ${cleanExcerpt ? `
                             <p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-1 leading-relaxed font-sans">
                                 ${cleanExcerpt}
@@ -2019,9 +2025,7 @@
                     </div>
                     <div class="flex items-center pr-2 text-[#b4532c] dark:text-[#f87171]">
                         ${isLocked ? `
-                            <span class="text-xs font-bold font-english text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
-                                Unlock &rarr;
-                            </span>
+                            <span class="chapter-lock-icon" aria-label="Locked chapter" title="Locked chapter">🔒</span>
                         ` : `
                             <span class="hidden sm:inline-block opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">&rarr;</span>
                         `}
@@ -2030,23 +2034,12 @@
                 `;
             }).join("");
 
-            // Wire paywall modal on locked chapter clicks
+            // Locked rows point to the single book-level unlock action.
             if (isLocked && parentBook) {
                 listEl.querySelectorAll('.chapter-card-link[data-locked="true"]').forEach(card => {
                     card.addEventListener("click", (e) => {
                         e.preventDefault();
-                        const targetChapterHref = card.getAttribute("href");
-                        showPaywallModal({
-                            book: parentBook,
-                            onUnlocked: () => {
-                                if (targetChapterHref && targetChapterHref !== "#") {
-                                    window.location.href = targetChapterHref;
-                                } else {
-                                    const bookContainerEl = document.getElementById("edition-view-container");
-                                    renderBookIndex(parentBook, bookContainerEl, articles);
-                                }
-                            }
-                        });
+                        focusUnlockButton();
                     });
                 });
             } else {
