@@ -13,6 +13,30 @@ function chapterReferenceId(reference) {
     return String(reference.articleId || reference.id || reference.docId || reference.reference || "").split("/").pop();
 }
 
+export function mergeBookRecords(articleRecords, bookRecords) {
+    const items = Array.isArray(articleRecords) ? [...articleRecords] : [];
+    if (!Array.isArray(bookRecords)) return items;
+
+    bookRecords.forEach(book => {
+        if (!book) return;
+        const duplicate = items.some(item => {
+            const type = String(item?.type || "").toUpperCase();
+            const isBook = type === "BOOK" || type === "FREE" || type === "PREMIUM" || item?.isBook === true;
+            return isBook && (item.id === book.id || (book.slug && item.slug === book.slug));
+        });
+        if (!duplicate) {
+            items.push({
+                ...book,
+                type: "BOOK",
+                isBook: true,
+                _sourceCollection: "books"
+            });
+        }
+    });
+
+    return items;
+}
+
 export function getBookChapterIds(books) {
     const chapterIds = new Set();
     if (!Array.isArray(books)) return chapterIds;

@@ -1,5 +1,6 @@
 import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
+import { mergeBookRecords } from "./book-data.js";
 import { initLibraryAdmin } from "./admin-library.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import { 
@@ -222,6 +223,14 @@ let activeBookChapters = [];
 let dragSrcChapterIndex = null;
 let pendingInlineBase64 = "";
 let compactArticlesDisplayLimit = 20;
+
+function getBookCollectionName(book) {
+    return book?._sourceCollection === "books" ? "books" : "articles";
+}
+
+function updateBookDocument(book, data) {
+    return updateDoc(doc(db, getBookCollectionName(book), book.id), data);
+}
 
 const ADMIN_PASSWORD = "admin768";
 const AUTH_STORAGE_KEY = "nuqtha_admin_authenticated";
@@ -1841,7 +1850,7 @@ async function handleSaveBookStep1(e) {
 
         let savedDocId = "";
         if (existing) {
-            await updateDoc(doc(db, "articles", existing.id), payload);
+            await updateBookDocument(existing, payload);
             savedDocId = existing.id;
             Object.assign(existing, payload);
             showGlobalStatus(`✨ പുസ്തകം '${name}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
@@ -2614,7 +2623,7 @@ function initChapterWriter() {
                 if (!chIdList.includes(docRef.id)) {
                     existingChapters.push(docRef.id);
                     targetBookDoc.chapters = existingChapters;
-                    await updateDoc(doc(db, "articles", targetBookDoc.id), {
+                    await updateBookDocument(targetBookDoc, {
                         chapters: existingChapters,
                         updatedAt: serverTimestamp()
                     });
@@ -2889,7 +2898,7 @@ function renderBookChaptersReorderList(chapters) {
                     const existingChs = Array.isArray(activeBookCoverDoc.chapters) ? [...activeBookCoverDoc.chapters] : [];
                     const updatedChs = existingChs.filter(ch => (typeof ch === "string" ? ch : ch?.id) !== id);
                     activeBookCoverDoc.chapters = updatedChs;
-                    await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+                    await updateBookDocument(activeBookCoverDoc, {
                         chapters: updatedChs,
                         updatedAt: serverTimestamp()
                     });
@@ -2952,7 +2961,7 @@ async function saveAndApplyChapterOrder(showToast = true) {
         // Also update book doc with ordered chapters array
         if (activeBookCoverDoc && activeBookCoverDoc.id) {
             activeBookCoverDoc.chapters = chapterIds;
-            await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+            await updateBookDocument(activeBookCoverDoc, {
                 chapters: chapterIds,
                 updatedAt: serverTimestamp()
             });
@@ -3032,7 +3041,7 @@ function initBookAttachExistingArticles() {
                         if (id && !existingChs.includes(id)) existingChs.push(id);
                     }
                     activeBookCoverDoc.chapters = existingChs;
-                    await updateDoc(doc(db, "articles", activeBookCoverDoc.id), {
+                    await updateBookDocument(activeBookCoverDoc, {
                         chapters: existingChs,
                         updatedAt: serverTimestamp()
                     });
@@ -3246,7 +3255,7 @@ function initBookPresentationUpload() {
             };
 
             if (existingBook) {
-                await updateDoc(doc(db, "articles", existingBook.id), payload);
+                await updateBookDocument(existingBook, payload);
             }
 
             showGlobalStatus(`പ്രസന്റേഷൻ '${activeBookName}' ലേക്ക് വിജയകരമായി സേവ് ചെയ്തു! 📑`, "success");
@@ -3549,11 +3558,27 @@ window.manageBookFromPublished = function(bookName) {
 function listenToFirestoreArticles() {
     const listContainer = document.getElementById("admin-articles-list");
     const colRef = collection(db, "articles");
+    const booksColRef = collection(db, "books");
+    let latestArticleItems = null;
+    let latestBookItems = [];
 
-    function processArticlesData(rawItems) {
+    function processArticlesData(rawItems, rawBookItems = []) {
         if (!Array.isArray(rawItems)) return;
 
-        const items = rawItems.map(d => normalizeArticleDoc(d, d?.id));
+        const normalizedItems = rawItems.map(d => ({
+            ...normalizeArticleDoc(d, d?.id),
+            ...(d?._sourceCollection ? { _sourceCollection: d._sourceCollection } : {})
+        }));
+        const books = rawBookItems
+            .map(book => ({
+                ...normalizeArticleDoc({ ...book, type: "BOOK", isBook: true }, book.id),
+                ...book,
+                type: "BOOK",
+                isBook: true,
+                _sourceCollection: "books"
+            }))
+            .filter(isMainBook);
+        const items = mergeBookRecords(normalizedItems, books);
 
         items.sort((a, b) => {
             const getMillis = (item) => {
@@ -3615,7 +3640,9 @@ function listenToFirestoreArticles() {
         if (cached) {
             const parsed = JSON.parse(cached);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                processArticlesData(parsed);
+                latestArticleItems = parsed.filter(item => item?._sourceCollection !== "books");
+                latestBookItems = parsed.filter(item => item?._sourceCollection === "books");
+                processArticlesData(latestArticleItems, latestBookItems);
             }
         }
     } catch (e) {
@@ -3661,11 +3688,20 @@ function listenToFirestoreArticles() {
         console.log("[NUQTHA ADMIN] Subscribing to Firestore 'articles' collection onSnapshot...");
         onSnapshot(colRef, (querySnapshot) => {
             console.log(`[NUQTHA ADMIN] onSnapshot received ${querySnapshot.docs.length} documents (fromCache: ${querySnapshot.metadata.fromCache})`);
-            const items = querySnapshot.docs.map(articleDoc => normalizeArticleDoc(articleDoc.data(), articleDoc.id));
-            processArticlesData(items);
+            latestArticleItems = querySnapshot.docs.map(articleDoc => normalizeArticleDoc(articleDoc.data(), articleDoc.id));
+            processArticlesData(latestArticleItems, latestBookItems);
         }, (err) => {
             console.error("[NUQTHA ADMIN] Realtime onSnapshot listener failed:", err.code || "", err.message, err);
             reportLoadError(err);
+        });
+
+        onSnapshot(booksColRef, (querySnapshot) => {
+            console.log(`[NUQTHA ADMIN] onSnapshot received ${querySnapshot.docs.length} book documents (fromCache: ${querySnapshot.metadata.fromCache})`);
+            latestBookItems = querySnapshot.docs.map(bookDoc => ({ id: bookDoc.id, ...bookDoc.data() }));
+            if (latestArticleItems) processArticlesData(latestArticleItems, latestBookItems);
+        }, (err) => {
+            console.error("[NUQTHA ADMIN] Realtime books onSnapshot listener failed:", err.code || "", err.message, err);
+            showGlobalStatus("പുസ്തകങ്ങളുടെ പട്ടിക ലോഡ് ചെയ്യാനായില്ല. Firestore അനുമതികൾ പരിശോധിക്കുക.", "error");
         });
     } catch (error) {
         reportLoadError(error);
@@ -3676,8 +3712,13 @@ function listenToFirestoreArticles() {
             listContainer.innerHTML = '<p class="text-xs text-slate-400 p-4 text-center">ലേഖനങ്ങൾ വീണ്ടും ലോഡ് ചെയ്യുന്നു...</p>';
         }
         try {
-            const snapshot = await getDocs(colRef);
-            processArticlesData(snapshot.docs.map(articleDoc => normalizeArticleDoc(articleDoc.data(), articleDoc.id)));
+            const [snapshot, booksSnapshot] = await Promise.all([
+                getDocs(colRef),
+                getDocs(booksColRef)
+            ]);
+            latestArticleItems = snapshot.docs.map(articleDoc => normalizeArticleDoc(articleDoc.data(), articleDoc.id));
+            latestBookItems = booksSnapshot.docs.map(bookDoc => ({ id: bookDoc.id, ...bookDoc.data() }));
+            processArticlesData(latestArticleItems, latestBookItems);
         } catch (error) {
             reportLoadError(error);
         }
