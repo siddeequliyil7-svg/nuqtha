@@ -13,6 +13,28 @@ function chapterReferenceId(reference) {
     return String(reference.articleId || reference.id || reference.docId || reference.reference || "").split("/").pop();
 }
 
+export function getBookChapterIds(books) {
+    const chapterIds = new Set();
+    if (!Array.isArray(books)) return chapterIds;
+
+    books.forEach(book => {
+        if (!book) return;
+        const type = String(book.type || "").toUpperCase();
+        if (type !== "BOOK" && type !== "FREE" && type !== "PREMIUM" && book.isBook !== true) return;
+
+        const references = [
+            ...(Array.isArray(book.chapters) ? book.chapters : []),
+            ...(Array.isArray(book.articleIds) ? book.articleIds : [])
+        ];
+        references.forEach(reference => {
+            const id = chapterReferenceId(reference);
+            if (id && id !== book.id) chapterIds.add(id);
+        });
+    });
+
+    return chapterIds;
+}
+
 function timestampMillis(value) {
     if (!value) return 0;
     if (typeof value.toMillis === "function") return value.toMillis();

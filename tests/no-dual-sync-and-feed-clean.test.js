@@ -28,7 +28,8 @@ console.log("  [OK] admin.js has no automatic dual-writes or dual-deletes to 'bo
 console.log("Test 2: Verifying app.js home feed excludes chapters from regularArticles...");
 const appJs = fs.readFileSync("nuqtha/app.js", "utf8");
 assert.ok(
-    appJs.includes("!isBookCoverItem(a) && !isChapterEntity(a)"),
+    appJs.includes("!isBookCoverItem(a) && !isChapter(a)") &&
+        appJs.includes("getBookChapterIds(allArticles)"),
     "app.js must filter out both book covers and chapter entities from regularArticles!"
 );
 console.log("  [OK] app.js strictly excludes both book covers and book chapters from regularArticles.");
@@ -41,11 +42,19 @@ const mockArticles = [
     { id: "bk1", title: "Book One", type: "BOOK", isBook: true },
     { id: "bk2", title: "Book Two", type: "BOOK", isBook: true },
     { id: "ch1", title: "Chapter 1 of Book One", type: "ARTICLE", bookId: "bk1", bookName: "Book One", isChapter: true },
-    { id: "ch2", title: "ഇമാം ബുഖാരി(റ)", type: "ARTICLE", bookId: "bk1", bookName: "Book One", order: 3 }
+    { id: "ch2", title: "ഇമാം ബുഖാരി(റ)", type: "ARTICLE", bookId: "bk1", bookName: "Book One", order: 3 },
+    { id: "ch3", title: "Chapter without book link fields", type: "ARTICLE" }
 ];
+mockArticles[2].chapters = ["ch3"];
+
+const referencedChapterIds = new Set(
+    mockArticles.filter(article => article.type === "BOOK")
+        .flatMap(book => book.chapters || [])
+);
 
 function isChapterEntity(article) {
     if (!article) return false;
+    if (referencedChapterIds.has(article.id)) return true;
     if (article.isChapter === true || article.type === "CHAPTER") return true;
     if (article.chapterIndex !== undefined && article.chapterIndex !== null) return true;
     if (article.bookId && String(article.bookId).trim() && String(article.bookId).trim() !== String(article.id)) return true;
@@ -68,4 +77,3 @@ console.log("  [OK] Feed correctly isolates books and articles, zero chapter lea
 console.log("==================================================");
 console.log("PASS: ALL NO-DUAL-SYNC & FEED PURITY TESTS PASSED!");
 console.log("==================================================");
-

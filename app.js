@@ -8,6 +8,7 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
  */
 import { db, collection, doc, getDoc, getDocs, getDocsFromCache } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl } from "./schema-validator.js";
+import { getBookChapterIds } from "./book-data.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
@@ -954,8 +955,9 @@ function renderSavedFeed(container) {
 /* ═══════════ Search Feed: Displays matching articles ═══════════ */
 function renderSearchFeed(container, query) {
     const lower = query.toLowerCase();
+    const bookChapterIds = getBookChapterIds(allArticles);
     const matched = allArticles.filter(art => {
-        if (isBookEntity(art)) return false;
+        if (isBookEntity(art) || isChapterEntity(art) || bookChapterIds.has(art.id)) return false;
         const title = (art.title || "").toLowerCase();
         const author = (art.author || "").toLowerCase();
         const excerpt = (art.excerpt || "").toLowerCase();
@@ -1011,10 +1013,12 @@ function renderSearchFeed(container, query) {
 /* ─── HOME FEED: Scrolling Carousel + Hero Featured + Dedicated Books + Category Feeds ─── */
 function renderHomeFeed(container) {
     // Distinguish book covers from standard articles
-    const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
+    const bookChapterIds = getBookChapterIds(allArticles);
+    const isChapter = a => isChapterEntity(a) || bookChapterIds.has(a.id);
+    const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapter(a);
     const bookCovers = allArticles.filter(isBookCoverItem);
     // Regular articles: keep only genuine standalone articles (exclude book covers AND all book chapters)
-    const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapterEntity(a));
+    const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapter(a));
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) {
@@ -1153,10 +1157,12 @@ function renderHomeFeed(container) {
 
 function renderCategoryFeed(container, category) {
     const targetNorm = normalizeCategoryName(category).toUpperCase();
-    const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
+    const bookChapterIds = getBookChapterIds(allArticles);
+    const isChapter = a => isChapterEntity(a) || bookChapterIds.has(a.id);
+    const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapter(a);
 
     const filtered = allArticles.filter(a => {
-        if (isBookCover(a)) return false;
+        if (isBookCover(a) || isChapter(a)) return false;
         const catNorm = normalizeCategoryName(a.category).toUpperCase();
         return catNorm === targetNorm ||
                categorySlug(catNorm) === categorySlug(targetNorm) ||
@@ -2492,7 +2498,12 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
 
 /* ═══════════ 2. BOOKS CATEGORY PAGE LAYOUT ═══════════ */
 function renderBooksCategoryFeed(container) {
-    const bookCovers = allArticles.filter(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && !isChapterEntity(a));
+    const bookChapterIds = getBookChapterIds(allArticles);
+    const bookCovers = allArticles.filter(a =>
+        ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) &&
+        !isChapterEntity(a) &&
+        !bookChapterIds.has(a.id)
+    );
 
     let html = `
     <div class="category-filter-banner flex items-center justify-between p-4 mb-6 rounded-2xl bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10 shadow-xs">

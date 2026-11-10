@@ -1,4 +1,4 @@
-import { getBookArticleLinkFields, getBookChapters } from "../book-data.js";
+import { getBookArticleLinkFields, getBookChapters, getBookChapterIds } from "../book-data.js";
 
 const { describe, it } = window;
 const { expect } = window.chai;
@@ -23,6 +23,18 @@ describe("Book chapter relationships", () => {
         const book = { id: "book-2", title: "Another", chapters: [{ articleId: "legacy-2", order: 1 }, "legacy-1"] };
         expect(getBookChapters(book, articles).map(article => article.id)).to.deep.equal(["legacy-2", "legacy-1"]);
         expect(getBookChapters({ id: "empty", title: "Empty" }, articles)).to.deep.equal([]);
+    });
+
+    it("identifies chapter IDs listed by books even when chapter articles have no book link fields", () => {
+        const books = [
+            { id: "book-3", type: "BOOK", chapters: ["chapters/chapter-1", { articleId: "chapter-2" }] },
+            { id: "regular-article", type: "ARTICLE", chapters: ["not-a-chapter"] }
+        ];
+        const chapterIds = getBookChapterIds(books);
+
+        expect(chapterIds.has("chapter-1")).to.equal(true);
+        expect(chapterIds.has("chapter-2")).to.equal(true);
+        expect(chapterIds.has("not-a-chapter")).to.equal(false);
     });
 
     it("writes additive bookId and explicit order without dropping legacy fields", () => {
