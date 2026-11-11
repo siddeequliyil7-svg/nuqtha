@@ -27,8 +27,9 @@ console.log("  [OK] Admin classification relies on explicit chapter markers.");
 // Test 2: Check app.js regularArticles excludes explicitly marked chapters
 console.log("Test 2: Verifying app.js home feed excludes explicitly marked chapters...");
 assert.ok(
-    appJs.includes("!isBookCoverItem(a) && !isChapterEntity(a)"),
-    "app.js must filter out book covers and explicitly marked chapters from regularArticles!"
+    appJs.includes("!isBookCoverItem(a) && !isChapter(a)") &&
+        appJs.includes("getBookChapterIds(allArticles)"),
+    "app.js must filter out both book covers and chapter entities from regularArticles!"
 );
 console.log("  [OK] app.js excludes book covers and explicitly marked chapters from regularArticles.");
 
@@ -40,12 +41,20 @@ const mockArticles = [
     { id: "bk1", title: "Book One", type: "BOOK", isBook: true },
     { id: "bk2", title: "Book Two", type: "BOOK", isBook: true },
     { id: "ch1", title: "Chapter 1 of Book One", type: "ARTICLE", bookId: "bk1", bookName: "Book One", isChapter: true },
-    { id: "ch2", title: "ഇമാം ബുഖാരി(റ)", type: "ARTICLE", bookId: "bk1", bookName: "Book One", order: 3 }
+    { id: "ch2", title: "ഇമാം ബുഖാരി(റ)", type: "ARTICLE", bookId: "bk1", bookName: "Book One", order: 3 },
+    { id: "ch3", title: "Chapter without book link fields", type: "ARTICLE" }
 ];
+mockArticles[2].chapters = ["ch3"];
+
+const referencedChapterIds = new Set(
+    mockArticles.filter(article => article.type === "BOOK")
+        .flatMap(book => book.chapters || [])
+);
 
 function isChapterEntity(article) {
     if (!article) return false;
-    return article.isChapter === true ||
+    return referencedChapterIds.has(article.id) ||
+        article.isChapter === true ||
         String(article.type || "").trim().toUpperCase() === "CHAPTER" ||
         String(article.category || "").trim().toLowerCase() === "chapter" ||
         (article.chapterIndex !== undefined && article.chapterIndex !== null);

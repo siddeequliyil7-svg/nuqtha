@@ -8,6 +8,7 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
  */
 import { db, collection, doc, getDoc, getDocs, getDocsFromCache } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl, sanitizeCategory } from "./schema-validator.js";
+import { getBookChapterIds } from "./book-data.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
@@ -27,8 +28,8 @@ function safeCacheArticles(articles) {
             const cover = copy.imageUrl || copy.coverUrl || copy.coverImage || copy.image || copy.thumbnailUrl || copy.thumbnail || copy.ogImage || "";
             const thumbnail = copy.thumbnailUrl || copy.thumbnail || copy.ogImage || cover;
             const isInlineImage = value => typeof value === "string" && value.startsWith("data:image/");
-            copy.imageUrl = isInlineImage(cover) ? "/og-cover.png" : (cover || "/og-cover.png");
-            copy.thumbnailUrl = isInlineImage(thumbnail) ? copy.imageUrl : (thumbnail || copy.imageUrl);
+            copy.imageUrl = isInlineImage(cover) ? "" : cover;
+            copy.thumbnailUrl = isInlineImage(thumbnail) ? "" : thumbnail;
             delete copy.coverUrl;
             delete copy.coverImage;
             delete copy.image;
@@ -768,8 +769,16 @@ export function initAppData(database = db) {
 
         const rawBooksList = booksSnapshot.docs.map(bookDoc => {
             const bookData = bookDoc.data();
+            const articleRecord = rawArticlesList.find(article =>
+                article.id === bookDoc.id || (bookData.slug && article.slug === bookData.slug)
+            );
+            const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(bookData, "");
+            const thumbnailUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
             const book = normalizeArticleDoc({
+                ...(articleRecord || {}),
                 ...bookData,
+                imageUrl: coverUrl,
+                thumbnailUrl,
                 title: sanitizeMalayalamText(bookData.title),
                 author: sanitizeMalayalamText(bookData.author),
                 excerpt: sanitizeMalayalamText(bookData.excerpt)
@@ -944,8 +953,9 @@ function renderSavedFeed(container) {
 /* ═══════════ Search Feed: Displays matching articles ═══════════ */
 function renderSearchFeed(container, query) {
     const lower = query.toLowerCase();
+    const bookChapterIds = getBookChapterIds(allArticles);
     const matched = allArticles.filter(art => {
-        if (isBookEntity(art) || isChapterEntity(art)) return false;
+        if (isBookEntity(art) || isChapterEntity(art) || bookChapterIds.has(art.id)) return false;
         const title = (art.title || "").toLowerCase();
         const author = (art.author || "").toLowerCase();
         const excerpt = (art.excerpt || "").toLowerCase();
@@ -1001,9 +1011,12 @@ function renderSearchFeed(container, query) {
 /* ─── HOME FEED: Scrolling Carousel + Hero Featured + Dedicated Books + Category Feeds ─── */
 function renderHomeFeed(container) {
     // Distinguish book covers from standard articles
-    const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
+    const bookChapterIds = getBookChapterIds(allArticles);
+    const isChapter = a => isChapterEntity(a) || bookChapterIds.has(a.id);
+    const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapter(a);
     const bookCovers = allArticles.filter(isBookCoverItem);
-    const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapterEntity(a));
+    // Regular articles: keep only genuine standalone articles (exclude book covers AND all book chapters)
+    const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapter(a));
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) {
@@ -1142,10 +1155,12 @@ function renderHomeFeed(container) {
 
 function renderCategoryFeed(container, category) {
     const targetNorm = sanitizeCategory(normalizeCategoryName(category)).toUpperCase();
-    const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
+    const bookChapterIds = getBookChapterIds(allArticles);
+    const isChapter = a => isChapterEntity(a) || bookChapterIds.has(a.id);
+    const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapter(a);
 
     const filtered = allArticles.filter(a => {
-        if (isBookCover(a) || isChapterEntity(a)) return false;
+        if (isBookCover(a) || isChapter(a)) return false;
         const catNorm = sanitizeCategory(normalizeCategoryName(a.category)).toUpperCase();
         return catNorm === targetNorm ||
                categorySlug(catNorm) === categorySlug(targetNorm) ||
@@ -2139,15 +2154,16 @@ function buildBookCard(book, articles) {
     const cleanTitle = stripMarkdown(book.title);
     const count = articles.length;
     const dateStr = book.date || formatDate(book.createdAt);
+    const coverUrl = getArticleImageUrl(book, "");
 
     return `
     <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${book.id}">
         <!-- Cover Image Container (Vertical Magazine Style) -->
         <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
-            ${getArticleImageUrl(book) ? `
-                <img src="${getArticleImageUrl(book)}" alt="${cleanTitle} cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+            ${coverUrl ? `
+                <img src="${coverUrl}" alt="${cleanTitle} cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
             ` : `
-                <div class="w-full h-full flex items-center justify-center text-white/50 text-xl font-bold">📘</div>
+                ${buildBookCoverPlaceholder(book)}
             `}
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
         </div>
@@ -2399,7 +2415,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
         const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
         const isFree = !isPremium || price === 0;
 
-        const bookCoverImg = getArticleImageUrl(book);
+        const bookCoverImg = getArticleImageUrl(book, "");
         const bookId = book.id || '';
         const bookHref = bookId ? getStoryUrl(book) : '#';
 
@@ -2480,7 +2496,12 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
 
 /* ═══════════ 2. BOOKS CATEGORY PAGE LAYOUT ═══════════ */
 function renderBooksCategoryFeed(container) {
-    const bookCovers = allArticles.filter(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && !isChapterEntity(a));
+    const bookChapterIds = getBookChapterIds(allArticles);
+    const bookCovers = allArticles.filter(a =>
+        ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) &&
+        !isChapterEntity(a) &&
+        !bookChapterIds.has(a.id)
+    );
 
     let html = `
     <div class="category-filter-banner flex items-center justify-between p-4 mb-6 rounded-2xl bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10 shadow-xs">
@@ -2524,7 +2545,7 @@ function renderBooksCategoryFeed(container) {
                 const rawPrice = Number(book.price);
                 const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
                 const isFree = !isPremium || price === 0;
-                const bookCoverImg = getArticleImageUrl(book);
+                const bookCoverImg = getArticleImageUrl(book, "");
                 const volumeLabel = book.volume
                     ? (book.volume.toLowerCase().includes("vol") ? book.volume : `Volume ${book.volume}`)
                     : "";
@@ -2592,11 +2613,11 @@ function renderBooksCategoryFeed(container) {
 export async function loadBooksToFrontend(database = db) {
   const container = document.getElementById('booksContainer');
   if (!container) return;
-  
+
   try {
     const querySnapshot = await getDocs(collection(database, "books"));
     container.innerHTML = "";
-    
+
     if (querySnapshot.empty) {
       container.innerHTML = "<p class='text-gray-500 py-6 text-center text-xs'>No books found.</p>";
       return;
@@ -2606,7 +2627,7 @@ export async function loadBooksToFrontend(database = db) {
       const book = documentSnap.data();
       const isPremium = book.type === 'premium' || book.isPremium === true;
       const targetUrl = book.slug ? `/book/${encodeURIComponent(book.slug)}` : `/article.html?id=${encodeURIComponent(documentSnap.id)}`;
-      
+
       const card = document.createElement("div");
       card.className = "bg-white dark:bg-[#12141d] p-4 rounded-xl shadow border border-gray-100 dark:border-white/10 flex flex-col justify-between";
       card.innerHTML = `

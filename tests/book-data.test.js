@@ -1,4 +1,4 @@
-import { getBookArticleLinkFields, getBookChapters } from "../book-data.js";
+import { getBookArticleLinkFields, getBookChapters, getBookChapterIds, mergeBookRecords } from "../book-data.js";
 import { filterAndSortChapters, isArticleInBook } from "../js/book-data.js";
 
 const { describe, it } = window;
@@ -34,6 +34,38 @@ describe("Book chapter relationships", () => {
         expect(isArticleInBook(similarTitleArticle, book)).to.equal(false);
         expect(filterAndSortChapters(book, [...linkedChapters, similarTitleArticle]).map(article => article.id))
             .to.deep.equal(["legacy-2", "legacy-1"]);
+    });
+
+    it("identifies chapter IDs listed by books even when chapter articles have no book link fields", () => {
+        const books = [
+            { id: "book-3", type: "BOOK", chapters: ["chapters/chapter-1", { articleId: "chapter-2" }] },
+            { id: "regular-article", type: "ARTICLE", chapters: ["not-a-chapter"] }
+        ];
+        const chapterIds = getBookChapterIds(books);
+
+        expect(chapterIds.has("chapter-1")).to.equal(true);
+        expect(chapterIds.has("chapter-2")).to.equal(true);
+        expect(chapterIds.has("not-a-chapter")).to.equal(false);
+    });
+
+    it("includes books from the books collection without duplicating article-backed books", () => {
+        const articleBook = { id: "shared-id", title: "Article Book", type: "BOOK" };
+        const slugArticleBook = { id: "article-by-slug", slug: "same-book", type: "BOOK" };
+        const collectionBook = { id: "book-2", title: "Collection Book" };
+        const merged = mergeBookRecords([articleBook, slugArticleBook], [
+            { ...articleBook, title: "Duplicate Book" },
+            { id: "book-by-slug", slug: "same-book", title: "Duplicate by Slug" },
+            collectionBook
+        ]);
+
+        expect(merged).to.have.length(3);
+        expect(merged[0].title).to.equal("Article Book");
+        expect(merged[1]).to.include({
+            id: "book-2",
+            type: "BOOK",
+            isBook: true,
+            _sourceCollection: "books"
+        });
     });
 
     it("writes additive bookId and explicit order without dropping legacy fields", () => {
