@@ -1,5 +1,5 @@
 /**
- * Test: Verify that only explicitly marked chapters are excluded from regularArticles.
+ * Test: Verify that book chapters are excluded and homepage articles are not duplicated.
  */
 import assert from "node:assert";
 import fs from "node:fs";
@@ -30,6 +30,15 @@ assert.ok(
     appJs.includes("!isBookCoverItem(a) && !isChapter(a)") &&
         appJs.includes("getBookChapterIds(allArticles)"),
     "app.js must filter out both book covers and chapter entities from regularArticles!"
+);
+assert.ok(
+    appJs.includes("const carouselPool = [\n        ...explicitCarousel,") &&
+        !appJs.includes("        heroArticle,\n"),
+    "app.js must keep the hero article out of the carousel"
+);
+assert.ok(
+    appJs.includes("!usedIds.has(a.id) && sanitizeCategory(a.category).toUpperCase() === cat"),
+    "app.js must not repeat carousel or hero articles in category sections"
 );
 console.log("  [OK] app.js excludes book covers and explicitly marked chapters from regularArticles.");
 
@@ -69,6 +78,23 @@ assert.strictEqual(regularArticles.length, 3, "Must include both standalone arti
 assert.ok(!regularArticles.some(a => a.id === "ch1"), "Explicit chapters must NOT be present in regularArticles");
 assert.ok(regularArticles.some(a => a.id === "ch2"), "Legacy articles must not be hidden solely because of book relationship fields");
 console.log("  [OK] Feed excludes explicitly marked chapters without hiding legacy linked articles.");
+
+// Test 4: Homepage previews must not render the same article in multiple sections.
+console.log("Test 4: Verifying homepage sections do not repeat articles...");
+const homeArticleIds = ["hero", "carousel", "category", "chapter"];
+const heroId = "hero";
+const carouselIds = homeArticleIds.filter(id => id !== heroId && id !== "chapter").slice(0, 10);
+const displayedIds = new Set([heroId, ...carouselIds]);
+const categoryIds = homeArticleIds.filter(id =>
+    id !== "chapter" && !displayedIds.has(id)
+);
+
+assert.ok(!carouselIds.includes(heroId), "Hero article must not appear in the carousel");
+assert.strictEqual(new Set([...displayedIds, ...categoryIds]).size,
+    displayedIds.size + categoryIds.length,
+    "An article must appear in only one homepage preview section");
+assert.deepStrictEqual(categoryIds, ["category"], "Category previews must exclude previously shown articles and chapters");
+console.log("  [OK] Homepage hero, carousel, and category previews contain no duplicate articles.");
 
 console.log("==================================================");
 console.log("PASS: ALL NO-DUAL-SYNC & FEED PURITY TESTS PASSED!");
