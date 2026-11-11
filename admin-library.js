@@ -303,7 +303,9 @@ export async function initLibraryAdmin(root) {
           field("color").value = color;
           field("order").value = b.order ?? 1;
           field("description").value = b.description || "";
-          field("contents").value = (b.contents || []).join("\n");
+          field("contents").value = (Array.isArray(b.contents) ? b.contents : []).map((item) =>
+            typeof item === "string" ? item : item?.title || ""
+          ).filter(Boolean).join("\n");
           field("visible").checked = !!b.visible;
           form.scrollIntoView({ behavior: "smooth" });
           bkStatus.textContent = `Editing: ${b.title}`;
@@ -407,13 +409,20 @@ export async function initLibraryAdmin(root) {
 
   function parseExistingItems(allDocs) {
     if (!Array.isArray(allDocs)) return;
+    const records = allDocs.filter((record) => record && typeof record === "object");
 
     // 1. Parse Books
     existingBooks = [];
-    allDocs.forEach(a => {
+    records.forEach(a => {
       if (isBookArticleRecord(a) && isValidBookRecord(a)) {
-        const chapters = allDocs.filter(c => {
+        const chapterIds = new Set((Array.isArray(a.chapters) ? a.chapters : [])
+          .map(chapter => typeof chapter === "string"
+            ? chapter.split("/").pop()
+            : String(chapter?.articleId || chapter?.id || chapter?.docId || chapter?.reference || "").split("/").pop())
+          .filter(Boolean));
+        const chapters = records.filter(c => {
           if (c.id === a.id || isBookArticleRecord(c)) return false;
+          if (chapterIds.has(String(c.id || ""))) return true;
           if (String(c.bookId || c.parentBookId || "").trim() === String(a.id)) return true;
           if (c.bookName && c.title &&
               normalizedTitle(c.bookName) === normalizedTitle(a.title || a.bookName || a.bookTitle || a.name)) return true;
@@ -429,19 +438,20 @@ export async function initLibraryAdmin(root) {
           id: a.id,
           title: a.title || a.bookTitle || a.bookName || a.name || "Untitled Book",
           author: a.author || "Nuqtha Press",
-          description: a.introduction || a.excerpt || a.description || (a.content ? a.content.replace(/<[^>]*>/g, " ").slice(0, 250) : ""),
+          description: a.introduction || a.excerpt || a.description || (typeof a.content === "string" ? a.content.replace(/<[^>]*>/g, " ").slice(0, 250) : ""),
           pages: a.pages || (chapters.length > 0 ? chapters.length * 15 : 120),
-          chapters: chapters.map((ch, idx) => ch.title || `Chapter ${idx + 1}`),
+          chapters: chapters.map((ch, idx) => String(ch.title || `Chapter ${idx + 1}`)),
           type: "book"
         });
       }
     });
 
     // 2. Parse Articles
-    existingArticles = allDocs.filter(a => {
+    existingArticles = records.filter(a => {
       return !isBookArticleRecord(a) && !isValidChapterRecord(a) && String(a.title || "").trim().length > 0;
     }).map(a => {
-      const cleanContent = (a.content || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+      const content = typeof a.content === "string" ? a.content : "";
+      const cleanContent = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
       const words = cleanContent ? cleanContent.split(/\s+/).length : 0;
       const estPages = a.pages ? Number(a.pages) : Math.max(8, Math.ceil(words / 250) || 12);
 
@@ -449,7 +459,7 @@ export async function initLibraryAdmin(root) {
       const headings = [];
       const headingRegex = /<h[23][^>]*>(.*?)<\/h[23]>/gi;
       let match;
-      while ((match = headingRegex.exec(a.content || "")) !== null) {
+      while ((match = headingRegex.exec(content)) !== null) {
         const hText = match[1].replace(/<[^>]*>/g, "").trim();
         if (hText && !headings.includes(hText)) headings.push(hText);
       }
@@ -587,13 +597,13 @@ export async function initLibraryAdmin(root) {
       return;
     }
     const data = {
-      title: b.title.trim(),
-      author: b.author.trim() || "Nuqtha Press",
+      title: String(b?.title || "").trim(),
+      author: String(b?.author || "").trim() || "Nuqtha Press",
       pages: Number(b.pages) || 120,
       color: "#7b2d26",
       order: books.length + 1,
-      description: b.description.trim(),
-      contents: b.chapters,
+      description: String(b?.description || "").trim(),
+      contents: Array.isArray(b?.chapters) ? b.chapters.filter(Boolean) : [],
       visible: true
     };
     try {

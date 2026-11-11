@@ -394,6 +394,7 @@ export function getArticleImageUrl(item, fallback = "/og-cover.png") {
             if (safeUrl) return safeUrl;
         }
     }
+    if (fallback === "") return "";
     return sanitizeImageUrl(fallback) || "/og-cover.png";
 }
 
@@ -660,7 +661,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
     const rawImageUrl = rawDoc.imageUrl || rawDoc.coverUrl || rawDoc.coverImage || rawDoc.image || rawDoc.thumbnailUrl || rawDoc.thumbnail || rawDoc.ogImage || "";
     const rawThumbnailUrl = rawDoc.thumbnailUrl || rawDoc.thumbnail || rawDoc.ogImage || rawDoc.imageUrl || rawDoc.coverUrl || rawDoc.coverImage || rawDoc.image || "";
-    const imageUrl = sanitizeImageUrl(rawImageUrl) || "/og-cover.png";
+    const imageUrl = sanitizeImageUrl(rawImageUrl);
     const thumbnailUrl = sanitizeImageUrl(rawThumbnailUrl) || imageUrl;
     const slug = sanitizeString(rawDoc.slug || slugifyText(title), 200, "");
     const bookSlug = sanitizeString(rawDoc.bookSlug || (rawDoc.bookName ? slugifyText(rawDoc.bookName) : (rawDoc.playlistName ? slugifyText(rawDoc.playlistName) : "")), 200, "");
