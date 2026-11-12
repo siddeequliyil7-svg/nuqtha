@@ -632,6 +632,7 @@
         import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
+        import { getArticleCategoryId, getCategories, getCachedCategoryName } from "./js/category-store.js";
         import { trackReadingActivity } from "./js/analytics-tracker.js";
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "./js/paywall-service.js";
 
@@ -2301,11 +2302,21 @@
 
             const catEl = document.getElementById('art-category');
             if (catEl) {
-                const cat = (article.category || "GENERAL").toUpperCase().trim();
-                catEl.textContent = cat;
-                catEl.href = categoryUrl(cat);
-                catEl.setAttribute('aria-label', `${cat} വിഭാഗത്തിലെ ലേഖനങ്ങൾ`);
-                catEl.title = `${cat} വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക`;
+                const categoryId = getArticleCategoryId(article);
+                const legacyName = String(article.category || categoryId || "GENERAL").trim();
+                const setCategoryLabel = name => {
+                    catEl.textContent = name;
+                    catEl.href = categoryUrl(categoryId);
+                    catEl.setAttribute('aria-label', `${name} വിഭാഗത്തിലെ ലേഖനങ്ങൾ`);
+                    catEl.title = `${name} വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക`;
+                };
+                setCategoryLabel(getCachedCategoryName(categoryId) || legacyName);
+                void getCategories().then(categories => {
+                    const category = categories.find(item => item.slug === categoryId);
+                    if (category) setCategoryLabel(category.name);
+                }).catch(error => {
+                    console.warn("[Article] Could not resolve the category display name.", error);
+                });
             }
 
             const bookBadgeContainer = document.getElementById('art-book-badge-container');

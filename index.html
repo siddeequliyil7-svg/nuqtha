@@ -158,23 +158,9 @@
                             <div id="articles-dropdown-menu" class="hidden absolute left-0 sm:left-1/2 sm:-translate-x-1/2 mt-2 w-56 rounded-2xl bg-white/95 dark:bg-[#12141d]/95 backdrop-blur-xl border border-[var(--border)] dark:border-white/10 shadow-xl py-2 z-50">
                                 <a href="#home" data-category="ALL" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition uppercase font-english">
                                     <span>ALL ARTICLES</span>
-                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">à´Žà´²àµà´²à´¾ à´²àµ‡à´–à´¨à´™àµà´™à´³àµà´‚</span>
                                 </a>
                                 <div class="border-t border-[var(--border)]/60 dark:border-white/10 my-1"></div>
-                                <a href="#history" data-category="HISTORY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition uppercase font-english">
-                                    <span>HISTORY</span>
-                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">à´šà´°à´¿à´¤àµà´°à´‚</span>
-                                </a>
-                                <a href="#study" data-category="STUDY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition uppercase font-english">
-                                    <span>STUDY</span>
-                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">à´ªà´ à´¨à´‚</span>
-                                </a>
-                                <a href="#story" data-category="STORY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition uppercase font-english">
-                                    <span>STORY</span>
-                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">à´•à´¥</span>
-                                </a>
                                 <div id="dynamic-articles-categories" class="space-y-0.5">
-                                    <!-- Extra categories dynamically inserted -->
                                 </div>
                             </div>
                         </div>
@@ -403,9 +389,7 @@
             <section class="drawer-group">
                 <nav aria-label="Articles">
                     <a href="#home" class="drawer-nav-item drawer-link" data-category="ALL"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5M9 21v-7h6v7"/></svg><span>All Articles</span></a>
-                    <a href="#history" class="drawer-nav-item drawer-link" data-category="HISTORY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M6 5v15m12-15v15M3 20h18M9 9h6m-6 4h6m-6 4h6"/></svg><span>History</span></a>
-                    <a href="#study" class="drawer-nav-item drawer-link" data-category="STUDY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H20v17H5.5A2.5 2.5 0 0 0 3 22V5.5Z"/><path d="M3 18.5A2.5 2.5 0 0 1 5.5 16H20M8 7h8m-8 3h8"/></svg><span>Study</span></a>
-                    <a href="#story" class="drawer-nav-item drawer-link" data-category="STORY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg><span>Stories</span></a>
+                    <div id="drawer-dynamic-categories"></div>
                 </nav>
             </section>
 

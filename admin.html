@@ -227,6 +227,10 @@
                 <span class="tab-icon">🎨</span>
                 <span class="truncate">വായനാ പശ്ചാത്തലം (Reading)</span>
             </button>
+            <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="categories">
+                <span class="tab-icon">🏷️</span>
+                <span class="truncate">Categories</span>
+            </button>
         </nav>
 
         <!-- ═══════════ SINGLE UNIFIED FORM FOR TAB 1 & TAB 2 ═══════════ -->
@@ -287,22 +291,10 @@
                     <!-- Category, Author & Transcription Row -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                            <label for="art-category" class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2 flex items-center justify-between">
-                                <span>വിഭാഗം (Category)</span>
-                                <span class="text-[10px] text-[#8c7a6b] font-normal font-sans">തിരഞ്ഞെടുക്കുക / പുതിയത് ടൈപ്പ് ചെയ്യുക</span>
-                            </label>
-                            <input type="text" id="art-category" list="category-suggestions" placeholder="e.g. HISTORY, STUDY, STORY, കവിത..." class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-bold text-[#1e1b18]" autocomplete="off" value="HISTORY" />
-                            <datalist id="category-suggestions">
-                                <option value="HISTORY">HISTORY (ചരിത്രം)</option>
-                                <option value="STUDY">STUDY (പഠനം)</option>
-                                <option value="STORY">STORY (കഥ)</option>
-                                <option value="GENERAL">GENERAL (ജനറൽ)</option>
-                                <option value="POETRY">POETRY (കവിത)</option>
-                                <option value="ESSAY">ESSAY (ലേഖനം)</option>
-                                <option value="POLITICS">POLITICS (രാഷ്ട്രീയം)</option>
-                                <option value="CULTURE">CULTURE (സംസ്കാരം)</option>
-                                <option value="SPECIAL">SPECIAL (പ്രത്യേകം)</option>
-                            </datalist>
+                            <label for="art-category" class="block text-xs font-bold uppercase tracking-wider text-[#4a3c33] font-english mb-2">Category</label>
+                            <select id="art-category" required class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-bold text-[#1e1b18]">
+                                <option value="">Loading categories…</option>
+                            </select>
                         </div>
                         <div>
                             <div class="flex items-center justify-between mb-2">
@@ -1430,9 +1422,6 @@
                     <div class="w-full sm:w-48">
                         <select id="filter-published-category" class="w-full text-xs font-bold p-3 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white text-[#1e1b18]">
                             <option value="ALL">എല്ലാ വിഭാഗങ്ങളും (All)</option>
-                            <option value="HISTORY">HISTORY (ചരിത്രം)</option>
-                            <option value="STUDY">STUDY (പഠനം)</option>
-                            <option value="STORY">STORY (കഥ)</option>
                         </select>
                     </div>
                 </div>
@@ -1887,6 +1876,10 @@
 
         <div class="admin-tab-pane" data-pane="reading-bg">
             <div id="reading-bg-admin" class="max-w-5xl mx-auto bg-white dark:bg-[#12141d] p-6 md:p-8 rounded-3xl border border-[#ebdccb] dark:border-white/10 shadow-sm"></div>
+        </div>
+
+        <div class="admin-tab-pane" data-pane="categories">
+            <div id="category-admin" class="max-w-5xl mx-auto bg-white dark:bg-[#12141d] p-6 md:p-8 rounded-3xl border border-[#ebdccb] dark:border-white/10 shadow-sm"></div>
         </div>
 
     </main>

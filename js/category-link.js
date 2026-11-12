@@ -1,3 +1,5 @@
+import { getCachedCategoryName, slugifyCategory } from "./category-store.js";
+
 /**
  * NUQTHA Category Link Helper (js/category-link.js)
  * Provides centralized category URL generation, slug normalization,
@@ -29,7 +31,7 @@ function categorySlug(raw) {
     const norm = normalizeCategoryName(raw);
     if (!norm || norm.toUpperCase() === 'ALL') return '';
     if (norm.toUpperCase() === 'BOOKS') return 'books';
-    return encodeURIComponent(norm.toLowerCase());
+    return slugifyCategory(norm);
 }
 
 function isCurrentPageHome() {
@@ -66,15 +68,8 @@ function getCategoryDisplayLabel(cat) {
     }
     const c = normalizeCategoryName(cat);
     if (!c) return 'GENERAL';
-    const upper = c.toUpperCase();
-    const map = {
-        'HISTORY': 'HISTORY',
-        'STUDY': 'STUDY',
-        'STORY': 'STORY',
-        'BOOKS': 'പുസ്തകങ്ങൾ',
-        'GENERAL': 'GENERAL'
-    };
-    return map[upper] || upper;
+    if (c.toUpperCase() === 'BOOKS') return 'Books';
+    return getCachedCategoryName(c) || c;
 }
 
 function handleCategoryLinkClick(event, cat) {

@@ -489,6 +489,7 @@ export function validateAndSanitizeArticleForSave(raw) {
 
     // 3. Category
     const category = sanitizeCategory(raw.category);
+    const categoryId = sanitizeString(raw.categoryId, 120, "");
 
     // 4. Author & Transcription
     const author = sanitizeString(raw.author, 100, "NUQTHA");
@@ -583,6 +584,7 @@ export function validateAndSanitizeArticleForSave(raw) {
         slug,
         bookSlug,
         category,
+        categoryId,
         author,
         authorId,
         transcription,
@@ -632,6 +634,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
             slug: "",
             bookSlug: "",
             category: "GENERAL",
+            categoryId: "",
             author: "NUQTHA",
             authorId: "",
             transcription: "",
@@ -656,6 +659,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const id = sanitizeString(rawDoc.id || docId, 100, "doc_" + Math.random().toString(36).substring(2, 9));
     const title = sanitizeString(rawDoc.title, 300, "തലക്കെട്ടില്ല (Untitled)");
     const category = sanitizeCategory(rawDoc.category);
+    const categoryId = sanitizeString(rawDoc.categoryId, 120, "");
     const author = sanitizeString(rawDoc.author, 100, "NUQTHA");
     const authorId = sanitizeString(rawDoc.authorId || "", 100, "");
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
@@ -737,6 +741,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         slug,
         bookSlug,
         category,
+        categoryId,
         author,
         authorId,
         transcription,

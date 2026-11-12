@@ -15,6 +15,7 @@ import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
+import { getArticleCategoryId, getCachedCategories, getCategories, slugifyCategory } from "./js/category-store.js";
 
 void syncReadingBg();
 
@@ -94,21 +95,31 @@ getAuthorsMap(db).then(map => {
     }
 }).catch(() => {});
 let currentCategory = "ALL";
-
-// Ordered list of categories shown on HOME
-const CATEGORY_ORDER = ["HISTORY", "STUDY", "STORY"];
-
-// Category labels map (English)
-const CATEGORY_ML = {
-    "HISTORY": "HISTORY",
-    "STUDY": "STUDY",
-    "STORY": "STORY"
-};
+let siteCategories = getCachedCategories();
+let siteCategoryById = new Map(siteCategories.map(category => [category.slug, category]));
 
 function categoryLabel(cat) {
     if (!cat) return "GENERAL";
-    const category = sanitizeCategory(cat).toUpperCase();
-    return CATEGORY_ML[category] || category;
+    const categoryId = slugifyCategory(cat);
+    const category = siteCategoryById.get(categoryId);
+    return category?.name || String(cat).trim().toUpperCase();
+}
+window.categoryLabel = categoryLabel;
+
+function getVisibleCategories(articles = allArticles) {
+    const byId = new Map(siteCategories.map(category => [category.slug, category]));
+    const knownIds = new Set(byId.keys());
+    articles.forEach(article => {
+        if (isBookEntity(article) || isChapterEntity(article) || String(article.status || "published").toLowerCase() !== "published") return;
+        const slug = getArticleCategoryId(article);
+        if (!slug || knownIds.has(slug)) return;
+        const name = String(article.category || "").trim() || slug;
+        byId.set(slug, { id: slug, slug, name, order: Number.MAX_SAFE_INTEGER, visible: true });
+        knownIds.add(slug);
+    });
+    return [...byId.values()].filter(category => category.visible !== false).sort((a, b) =>
+        a.order - b.order || a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+    );
 }
 
 /**
@@ -383,37 +394,26 @@ function isChapterEntity(article) {
 }
 
 function updateMoreCategoriesMenu() {
-    // Populate dynamic categories into Articles dropdown
-    const container = document.getElementById("dynamic-articles-categories");
-    if (!container) return;
-
-    const baseCats = new Set(["ALL", "HISTORY", "STUDY", "STORY", "BOOKS", "BOOK", "PREMIUM BOOK"]);
-    const extraCats = new Set();
-
-    allArticles.forEach(a => {
-        if (isBookEntity(a)) return;
-        const cat = sanitizeCategory(a.category).toUpperCase();
-        if (cat && !baseCats.has(cat)) {
-            extraCats.add(cat);
-        }
-    });
-
-    if (extraCats.size === 0) {
-        container.innerHTML = "";
-        return;
-    }
-
-    let html = `<div class="border-t border-[#ebdccb]/60 dark:border-white/10 my-1"></div>`;
-    extraCats.forEach(cat => {
-        const malLabel = categoryLabel(cat);
-        html += `
-            <a href="${categoryUrl(cat)}" data-category="${cat}" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
-                <span>${cat}</span>
-                <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">${malLabel}</span>
+    const categoryLinks = getVisibleCategories()
+        .map(category => `
+            <a href="${categoryUrl(category.slug)}" data-category="${escapeHtml(category.slug)}" class="articles-dropdown-item flex items-center px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition font-english">
+                <span>${escapeHtml(category.name)}</span>
             </a>
-        `;
-    });
-    container.innerHTML = html;
+        `).join("");
+    const container = document.getElementById("dynamic-articles-categories");
+    if (container) container.innerHTML = categoryLinks;
+
+    const drawerContainer = document.getElementById("drawer-dynamic-categories");
+    if (drawerContainer) {
+        drawerContainer.innerHTML = getVisibleCategories().map(category => `
+            <a href="${categoryUrl(category.slug)}" class="drawer-nav-item drawer-link" data-category="${escapeHtml(category.slug)}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M6 5v15m12-15v15M3 20h18M9 9h6m-6 4h6"/></svg>
+                <span>${escapeHtml(category.name)}</span>
+            </a>
+        `).join("");
+        setDrawerCurrentLink([...document.querySelectorAll("#sidebar-drawer .drawer-nav-item")]
+            .find(item => (item.dataset.category || "").toUpperCase() === currentCategory) || null);
+    }
 }
 
 function setupGlobalCategoryBadges() {
@@ -786,10 +786,16 @@ export function initAppData(database = db) {
             console.warn("[NUQTHA App] Could not restore the article cache.", error);
         }
 
-        const [articlesSnapshot, booksSnapshot] = await Promise.all([
+        const [articlesSnapshot, booksSnapshot, categories] = await Promise.all([
             getCollectionSnapshotWithCache(collection(database, "articles"), "articles"),
-            getCollectionSnapshotWithCache(collection(database, "books"), "books")
+            getCollectionSnapshotWithCache(collection(database, "books"), "books"),
+            getCategories().catch(error => {
+                console.error("[NUQTHA App] Could not load Firestore categories.", error);
+                return [];
+            })
         ]);
+        siteCategories = categories;
+        siteCategoryById = new Map(categories.map(category => [category.slug, category]));
         const fallbacksById = new Map();
         FALLBACK_ARTICLES.forEach(article => {
             if (article.id) fallbacksById.set(article.id, article);
@@ -1049,6 +1055,64 @@ function renderSearchFeed(container, query) {
     if (emptyResetBtn) emptyResetBtn.addEventListener("click", () => clearSearch(true));
 }
 
+function getCachedHomeCategoryArticleIds(categoryId, categoryArticles, usedIds) {
+    const cacheKey = `nuqtha:home-category:${categoryId}`;
+    const articleById = new Map(categoryArticles.map(article => [article.id, article]));
+    try {
+        const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+        if (cached && Date.now() - cached.savedAt < 5 * 60 * 1000 && Array.isArray(cached.ids)) {
+            const ids = cached.ids.filter(id => articleById.has(id));
+            if (ids.length > 0) return ids.slice(0, 6);
+        }
+    } catch (error) {
+        console.warn("[NUQTHA App] Could not read a home category cache entry.", error);
+    }
+
+    const selected = categoryArticles.filter(article => !usedIds.has(article.id)).slice(0, 6);
+    if (selected.length < 6) {
+        const selectedIds = new Set(selected.map(article => article.id));
+        categoryArticles.forEach(article => {
+            if (selected.length < 6 && !selectedIds.has(article.id)) {
+                selected.push(article);
+                selectedIds.add(article.id);
+            }
+        });
+    }
+    const ids = selected.map(article => article.id);
+    try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), ids }));
+    } catch (error) {
+        console.warn("[NUQTHA App] Could not cache home category results.", error);
+    }
+    return ids;
+}
+
+function renderLazyHomeCategorySection(section, category, categoryArticles, usedIds) {
+    const ids = getCachedHomeCategoryArticleIds(category.slug, categoryArticles, usedIds);
+    const selected = ids.map(id => categoryArticles.find(article => article.id === id)).filter(Boolean);
+    if (selected.length === 0) {
+        section.remove();
+        return;
+    }
+
+    const theme = getCategoryTheme();
+    const [featuredArt, ...subsequentArticles] = selected;
+    section.innerHTML = `
+        ${buildCategorySectionHeader(category.slug, true, false, theme)}
+        <div class="category-featured-wrapper mt-3 mb-3 sm:mb-4">
+            ${buildCategoryFeaturedCard(featuredArt, theme)}
+        </div>
+        ${subsequentArticles.length ? `
+            <div class="category-cards-list space-y-2.5 sm:space-y-3">
+                ${subsequentArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
+            </div>
+        ` : ""}
+    `;
+    section.dataset.loaded = "true";
+    attachShowMoreListeners();
+    attachCardListeners();
+}
+
 /* ─── HOME FEED: Scrolling Carousel + Hero Featured + Dedicated Books + Category Feeds ─── */
 function renderHomeFeed(container) {
     // Distinguish book covers from standard articles
@@ -1057,7 +1121,11 @@ function renderHomeFeed(container) {
     const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapter(a);
     const bookCovers = allArticles.filter(isBookCoverItem);
     // Regular articles: keep only genuine standalone articles (exclude book covers AND all book chapters)
-    const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapter(a));
+    const regularArticles = allArticles.filter(a =>
+        !isBookCoverItem(a) && !isChapter(a) &&
+        String(a.status || "published").toLowerCase() === "published" &&
+        siteCategoryById.get(getArticleCategoryId(a))?.visible !== false
+    );
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) {
@@ -1143,71 +1211,60 @@ function renderHomeFeed(container) {
         html += buildBookShowcaseSection(bookCovers, allArticles);
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // 4. CATEGORY FEEDS
-    // ═══════════════════════════════════════════════════════════
-    const existingCats = new Set(regularArticles.map(a => sanitizeCategory(a.category).toUpperCase()).filter(Boolean));
-    const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c) && c !== "BOOKS" && c !== "BOOK" && c !== "PREMIUM BOOK")];
-
-    orderedCats.forEach(cat => {
-        const catArticles = regularArticles.filter(a =>
-            !usedIds.has(a.id) && sanitizeCategory(a.category).toUpperCase() === cat
-        ).sort(comparePriority);
-        if (catArticles.length === 0) return;
-
-        const theme = getCategoryTheme(cat);
-        const featuredArt = catArticles[0];
-        const subsequentArticles = catArticles.slice(1, 5);
-        [featuredArt, ...subsequentArticles].forEach(article => usedIds.add(article.id));
-        const hasMore = catArticles.length > 5;
-        const catName = categoryLabel(cat);
-
-        html += `
-        <section class="category-section-block category-section-${cat.toLowerCase()} mt-7 sm:mt-9 p-4 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}">
-            ${buildCategorySectionHeader(cat, hasMore, false, theme)}
-            
-            <!-- Category Featured Card -->
-            <div class="category-featured-wrapper mt-3 mb-3 sm:mb-4">
-                ${buildCategoryFeaturedCard(featuredArt, theme)}
-            </div>
-
-            <!-- Subsequent Compact Cards -->
-            ${subsequentArticles.length > 0 ? `
-            <div class="category-cards-list space-y-2.5 sm:space-y-3">
-                ${subsequentArticles.map(art => buildCompactRecentCard(art, theme)).join('')}
-            </div>
-            ` : ''}
-
-            ${hasMore ? `
-            <div class="flex justify-end pt-3">
-                <a href="${categoryUrl(cat)}" class="show-more-pill" data-category="${cat}" title="${catName} വിഭാഗത്തിലെ കൂടുതൽ ലേഖനങ്ങൾ കാണുക" style="border-color: ${theme.color}40; color: ${theme.color};">
-                    <span class="font-english">VIEW ALL ${catName}</span>
-                    <span class="text-xs">&rarr;</span>
-                </a>
-            </div>
-            ` : ''}
-        </section>
-        `;
+    const categoryGroups = new Map();
+    regularArticles.forEach(article => {
+        const categoryId = getArticleCategoryId(article);
+        if (!categoryId) return;
+        if (!categoryGroups.has(categoryId)) categoryGroups.set(categoryId, []);
+        categoryGroups.get(categoryId).push(article);
     });
-
+    const orderedCategories = getVisibleCategories(regularArticles)
+        .filter(category => categoryGroups.has(category.slug));
+    const lazySections = [];
+    orderedCategories.forEach(category => {
+        const theme = getCategoryTheme();
+        html += `
+            <section class="category-section-block category-section-${category.slug} mt-7 sm:mt-9 p-4 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}" data-home-category-section="${escapeHtml(category.slug)}">
+                ${buildCategorySectionHeader(category.slug, true, false, theme)}
+                <div class="home-category-content min-h-[8rem]"></div>
+            </section>
+        `;
+        lazySections.push({
+            category,
+            articles: categoryGroups.get(category.slug).sort(comparePriority)
+        });
+    });
     container.innerHTML = html;
+    const pendingSections = new Map(lazySections.map(item => [item.category.slug, item]));
+    const observer = "IntersectionObserver" in window
+        ? new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                observer.unobserve(entry.target);
+                const item = pendingSections.get(entry.target.dataset.homeCategorySection);
+                if (item) renderLazyHomeCategorySection(entry.target, item.category, item.articles, usedIds);
+            });
+        }, { rootMargin: "300px 0px" })
+        : null;
+    pendingSections.forEach((item, slug) => {
+        const section = [...container.querySelectorAll("[data-home-category-section]")]
+            .find(item => item.dataset.homeCategorySection === slug);
+        if (!section) return;
+        if (observer) observer.observe(section);
+        else renderLazyHomeCategorySection(section, item.category, item.articles, usedIds);
+    });
     attachShowMoreListeners();
 }
 
 function renderCategoryFeed(container, category) {
-    const targetNorm = sanitizeCategory(normalizeCategoryName(category)).toUpperCase();
+    const targetNorm = slugifyCategory(normalizeCategoryName(category));
     const bookChapterIds = getBookChapterIds(allArticles);
     const isChapter = a => isChapterEntity(a) || bookChapterIds.has(a.id);
     const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapter(a);
 
     const filtered = allArticles.filter(a => {
         if (isBookCover(a) || isChapter(a)) return false;
-        const catNorm = sanitizeCategory(normalizeCategoryName(a.category)).toUpperCase();
-        return catNorm === targetNorm ||
-               categorySlug(catNorm) === categorySlug(targetNorm) ||
-               (targetNorm === "HISTORY" && (catNorm === "HISTORY" || catNorm === "ചരിത്രം")) ||
-               (targetNorm === "STUDY" && (catNorm === "STUDY" || catNorm === "പഠനം")) ||
-               (targetNorm === "STORY" && (catNorm === "STORY" || catNorm === "കഥ"));
+        return getArticleCategoryId(a) === targetNorm;
     });
 
     if (filtered.length === 0) {
@@ -1281,10 +1338,10 @@ function renderCategoryFeed(container, category) {
 /* ─── Category Section Header: glass badge + show-more pill ─── */
 function buildCategorySectionHeader(cat, hasMore, isFilteredView = false, theme = null) {
     const label = cat === "ALL" ? "പുതിയ ലേഖനങ്ങൾ" : categoryLabel(cat);
-    const t = theme || getCategoryTheme(cat);
+    const t = theme || getCategoryTheme();
     const showMoreBtn = (hasMore && !isFilteredView)
         ? `<a href="${categoryUrl(cat)}" class="show-more-pill" data-category="${cat}" title="${label} വിഭാഗത്തിലെ എല്ലാ ലേഖനങ്ങളും കാണുക" style="border-color: ${t.color}40; color: ${t.color};">
-            <span class="font-english">SHOW MORE</span>
+            <span class="font-english">VIEW ALL</span>
             <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
             <span class="text-xs">&rsaquo;</span>
            </a>`
@@ -1299,7 +1356,8 @@ function buildCategorySectionHeader(cat, hasMore, isFilteredView = false, theme 
 
 /* ─── Show-More → switch to category filter ─── */
 function attachShowMoreListeners() {
-    document.querySelectorAll(".show-more-pill").forEach(btn => {
+    document.querySelectorAll(".show-more-pill:not([data-listener])").forEach(btn => {
+        btn.dataset.listener = "true";
         btn.addEventListener("click", (e) => {
             e.preventDefault();
             const cat = btn.dataset.category;
@@ -1337,7 +1395,14 @@ function switchToCategory(cat) {
         window.showNuqthaView("articles");
     }
     const norm = normalizeCategoryName(cat);
-    const upper = norm ? norm.toUpperCase() : "ALL";
+    const isBooks = ["BOOK", "BOOKS"].includes((norm || "").toUpperCase());
+    const upper = !norm || norm.toUpperCase() === "ALL"
+        ? "ALL"
+        : norm.toUpperCase() === "SAVED"
+            ? "SAVED"
+            : isBooks
+                ? "BOOKS"
+                : slugifyCategory(norm).toUpperCase();
     currentCategory = upper;
     const drawerLink = [...document.querySelectorAll("#sidebar-drawer .drawer-nav-item")]
         .find(item => (item.dataset.category || "").toUpperCase() === upper);
@@ -1347,7 +1412,7 @@ function switchToCategory(cat) {
     // Update active state on nav links
     const articlesBtn = document.getElementById("articles-dropdown-btn");
     const booksLink = document.getElementById("nav-books-link");
-    const isBook = upper === "BOOKS" || upper === "BOOK";
+    const isBook = isBooks;
 
     if (booksLink) booksLink.classList.toggle("active", isBook);
     if (articlesBtn) articlesBtn.classList.toggle("active", !isBook && upper !== "ALL");
@@ -1368,9 +1433,9 @@ function switchToCategory(cat) {
             } catch (_) {}
         }
     } else {
-        const catName = isBook ? "പുസ്തകങ്ങൾ (Books)" : categoryLabel(upper);
+        const catName = isBook ? "Books" : categoryLabel(upper);
         document.title = `${catName} | NUQTHA`;
-        const slug = isBook ? "books" : categorySlug(upper);
+        const slug = isBook ? "books" : categorySlug(norm);
         const newHash = "#" + slug;
         if (window.location.hash !== newHash) {
             try {
@@ -1502,46 +1567,7 @@ function stripMarkdown(text) {
 }
 
 /* ═══════════ Category Theme Helper & Subtle Variations ═══════════ */
-function getCategoryTheme(cat) {
-    const c = (cat || "").toUpperCase();
-    if (c === "HISTORY") {
-        return {
-            color: "#b4532c",
-            darkColor: "#f87171",
-            sectionBorder: "border-[#b4532c]/25 dark:border-[#b4532c]/30",
-            cardBorder: "border-[#b4532c]/25 dark:border-[#b4532c]/30 hover:border-[#b4532c]/50",
-            bgTint: "from-[#b4532c]/[0.03] to-transparent dark:from-[#b4532c]/[0.05] dark:to-transparent",
-            badgeBg: "bg-[#b4532c]/10 dark:bg-[#b4532c]/20",
-            badgeText: "text-[#b4532c] dark:text-[#f87171]",
-            badgeBorder: "border-[#b4532c]/30 dark:border-[#b4532c]/40",
-            accentGrad: "from-[#b4532c] via-[#aa4923] to-[#7c2d12]"
-        };
-    } else if (c === "STUDY") {
-        return {
-            color: "#1d4ed8",
-            darkColor: "#60a5fa",
-            sectionBorder: "border-[#1d4ed8]/25 dark:border-[#3b82f6]/30",
-            cardBorder: "border-[#1d4ed8]/25 dark:border-[#3b82f6]/30 hover:border-[#1d4ed8]/50",
-            bgTint: "from-[#1d4ed8]/[0.03] to-transparent dark:from-[#1d4ed8]/[0.05] dark:to-transparent",
-            badgeBg: "bg-[#1d4ed8]/10 dark:bg-[#1d4ed8]/20",
-            badgeText: "text-[#1d4ed8] dark:text-[#60a5fa]",
-            badgeBorder: "border-[#1d4ed8]/30 dark:border-[#1d4ed8]/40",
-            accentGrad: "from-[#1e40af] via-[#1d4ed8] to-[#172554]"
-        };
-    } else if (c === "STORY") {
-        return {
-            color: "#059669",
-            darkColor: "#34d399",
-            sectionBorder: "border-[#059669]/25 dark:border-[#10b981]/30",
-            cardBorder: "border-[#059669]/25 dark:border-[#10b981]/30 hover:border-[#059669]/50",
-            bgTint: "from-[#059669]/[0.03] to-transparent dark:from-[#059669]/[0.05] dark:to-transparent",
-            badgeBg: "bg-[#059669]/10 dark:bg-[#059669]/20",
-            badgeText: "text-[#059669] dark:text-[#34d399]",
-            badgeBorder: "border-[#059669]/30 dark:border-[#059669]/40",
-            accentGrad: "from-[#047857] via-[#059669] to-[#064e3b]"
-        };
-    }
-    // Dynamic / General Fallback
+function getCategoryTheme() {
     return {
         color: "#b4532c",
         darkColor: "#f87171",
@@ -1558,7 +1584,7 @@ function getCategoryTheme(cat) {
 /* ═══════════ Category Featured Card (Larger & More Prominent) ═══════════ */
 function buildCategoryFeaturedCard(art, theme = null) {
     if (!art) return "";
-    const t = theme || getCategoryTheme(art.category);
+    const t = theme || getCategoryTheme();
     const dateStr = art.date || formatDate(art.createdAt);
     const cleanTitle = stripMarkdown(art.title);
     const rawPreview = art.excerpt || (art.content ? art.content.substring(0, 160) : "");
@@ -1730,7 +1756,7 @@ function buildCompactRecentCard(art, theme = null) {
     const authorName = (art && art.author) || "NUQTHA";
     const authorInitial = authorName.trim().charAt(0) || "N";
     const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
-    const t = theme || getCategoryTheme(art?.category);
+    const t = theme || getCategoryTheme();
 
     return `
     <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300 ${t.cardBorder}" data-id="${art.id}">
@@ -2227,6 +2253,8 @@ function buildBookCard(book, articles) {
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
 function attachCardListeners() {
     document.querySelectorAll(".featured-article-card, .category-featured-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card, .premium-book-card").forEach(card => {
+        if (card.dataset.cardClickListener === "true") return;
+        card.dataset.cardClickListener = "true";
         card.addEventListener("click", function (e) {
             // Direct navigation to article.html
             const id = this.dataset.id;
