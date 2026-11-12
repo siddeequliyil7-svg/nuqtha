@@ -1,11 +1,26 @@
 // library.js (loaded lazily: only when the visitor opens the Library view)
 import { db, collection, getDocs, getDocsFromCache, query, where } from "./firebase-config.js";
 import { getStoryUrl, getArticleImageUrl } from "./schema-validator.js";
+import { getCachedAuthUser } from "./js/auth-system.js";
+import { openAuthModal } from "./js/auth-ui.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
 
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
-const CACHE_KEY = "nuqtha:library:v1", CACHE_MS = 5 * 60 * 1000;
+const CACHE_KEY = "nuqtha:library:v2", CACHE_MS = 5 * 60 * 1000;
+let pendingLibraryDestination = "";
+
+window.addEventListener("nuqtha_auth_changed", (event) => {
+  if (!pendingLibraryDestination || !event.detail?.user) return;
+  const destination = pendingLibraryDestination;
+  pendingLibraryDestination = "";
+  window.location.assign(destination);
+});
+
+window.addEventListener("nuqtha:auth-modal-closed", () => {
+  if (!getCachedAuthUser()) pendingLibraryDestination = "";
+});
+
 const articleUrl = (a) => {
   if (typeof a === "object" && a !== null) {
     try {
@@ -67,22 +82,28 @@ async function loadData() {
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, MAX_BOOKS)
       .map((b) => {
         const articleRecord = articlesById.get(b.id) || articlesBySlug.get(b.slug);
+        const mergedBook = { ...(articleRecord || {}), ...b };
         const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(b);
         const contents = Array.isArray(b.contents) ? b.contents : Array.isArray(b.chapters) ? b.chapters : [];
-        return ({
+        return {
+        ...mergedBook,
         id: b.id,
-        title: b.title,
-        author: b.author,
+        title: b.title || articleRecord?.title,
+        author: b.author || articleRecord?.author,
         pages: b.pages,
         color: b.color,
         description: b.description,
         imageUrl: coverUrl,
-        slug: b.slug,
+        slug: b.slug || articleRecord?.slug,
+        type: "BOOK",
+        isBook: true,
+        isChapter: false,
         contents: contents.map((chapter) => typeof chapter === "string" ? chapter : chapter?.title || "").filter(Boolean)
-      });
+      };
       });
   papers = articleRecords.filter((article) => article.showOnTable === true).slice(0, MAX_PAPERS).map((a) => {
       return {
+        ...a,
         id: a.id,
         title: a.title,
         author: a.author,
@@ -98,6 +119,7 @@ async function loadData() {
   // Fallback to FALLBACK_ARTICLES if Firestore quota is exhausted (429) or offline
   if (books.length === 0) {
     books = FALLBACK_BOOKS.map((b, i) => ({
+      ...b,
       id: b.id,
       title: b.title,
       author: b.author,
@@ -106,6 +128,8 @@ async function loadData() {
       description: b.excerpt,
       imageUrl: getArticleImageUrl(b),
       slug: b.slug,
+      type: "BOOK",
+      isBook: true,
       contents: (Array.isArray(b.chapters) ? b.chapters : Array.isArray(b.contents) ? b.contents : [])
         .map(c => typeof c === "string" ? c : c?.title || "").filter(Boolean)
     }));
@@ -218,19 +242,20 @@ async function closeItem() {
 }
 
 /* ---------- items ---------- */
-const bookItem = (b, i) => ({
-  sheet: false, title: b.title, author: b.author, color: safeColor(b.color, i), fc: "#f4e7c8",
-  left: `<p class="k">Book</p><h2>${esc(b.title)}</h2><hr><p class="by">${esc(b.author)}${b.pages ? " · " + esc(b.pages) + " pages" : ""}</p>`,
-  right: `<p>${esc(b.description)}</p>` + (b.contents && b.contents.length
-    ? `<p class="k">Inside this book</p><ul>${b.contents.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""),
-});
+function openLibraryItem(item) {
+  const destination = new URL(articleUrl(item), window.location.origin);
+  if (destination.origin !== window.location.origin) {
+    console.error("[Library] Refusing to navigate to an external item URL.", destination.href);
+    return;
+  }
+  if (getCachedAuthUser()) {
+    window.location.assign(destination.href);
+    return;
+  }
 
-const paperItem = (a) => ({
-  sheet: true, title: a.title, author: a.author, color: "#efe6d4", fc: "#2c221e",
-  left: "",
-  right: `<p class="k">${esc(a.category || "Article")}</p><h2>${esc(a.title)}</h2><p class="by">${esc(a.author || "NUQTHA")}${a.readTime ? " · " + esc(a.readTime) + " read" : ""}</p>
-    <p>${esc(a.excerpt)}…</p><p><a href="${articleUrl(a)}">Read the full article →</a></p>`,
-});
+  pendingLibraryDestination = destination.href;
+  openAuthModal("google");
+}
 
 /* ---------- render ---------- */
 function renderShelf(books) {
@@ -247,7 +272,7 @@ function renderShelf(books) {
     el.style.setProperty("--w", 44 + ((h >> 3) % 14) + "px");
     el.setAttribute("aria-label", "Open book: " + b.title);
     el.innerHTML = `<span>${esc(b.title)}</span>`;
-    el.addEventListener("click", () => openItem(el, bookItem(b, i)));
+    el.addEventListener("click", () => openLibraryItem(b));
     row.appendChild(el);
   });
   const plank = document.createElement("div"); plank.className = "plank";
@@ -264,7 +289,7 @@ function renderTable(papers) {
     p.type = "button"; p.className = "paper"; p.style.setProperty("--r", ROT[i % ROT.length] + "deg");
     p.setAttribute("aria-label", "Open printed article: " + a.title);
     p.innerHTML = `<h4>${esc(a.title)}</h4><i></i><b>${esc(a.author || "NUQTHA")}${a.readTime ? " · " + esc(a.readTime) : ""}</b>`;
-    p.addEventListener("click", () => openItem(p, paperItem(a)));
+    p.addEventListener("click", () => openLibraryItem(a));
     table.appendChild(p);
   });
 }

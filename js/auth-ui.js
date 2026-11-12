@@ -164,6 +164,7 @@ export function closeAuthModal() {
     modal.classList.add("opacity-0");
     setTimeout(() => {
         modal.classList.add("hidden");
+        window.dispatchEvent(new CustomEvent("nuqtha:auth-modal-closed"));
         clearAuthModalError();
         cleanupRecaptcha();
         if (resendTimerInterval) {
