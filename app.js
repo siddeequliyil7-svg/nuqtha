@@ -543,11 +543,32 @@ function setupSidebarDrawer() {
     if (!drawer) return;
     let previousBodyOverflow = "";
     let isOpen = false;
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
     setDrawerCurrentLink([...drawer.querySelectorAll(".drawer-nav-item")]
         .find(item => (item.dataset.category || "").toUpperCase() === currentCategory) || null);
 
+    function syncDrawerViewport() {
+        if (desktopQuery.matches) {
+            isOpen = false;
+            drawer.classList.remove("drawer-open");
+            drawer.setAttribute("role", "complementary");
+            drawer.setAttribute("aria-modal", "false");
+            drawer.setAttribute("aria-hidden", "false");
+            drawer.inert = false;
+            if (backdrop) backdrop.classList.remove("backdrop-active");
+            document.body.style.overflow = previousBodyOverflow;
+            if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "false");
+            return;
+        }
+
+        drawer.setAttribute("role", "dialog");
+        drawer.setAttribute("aria-modal", "true");
+        drawer.setAttribute("aria-hidden", isOpen ? "false" : "true");
+        drawer.inert = !isOpen;
+    }
+
     function openDrawer() {
-        if (isOpen) return;
+        if (isOpen || desktopQuery.matches) return;
         isOpen = true;
         previousBodyOverflow = document.body.style.overflow;
         drawer.inert = false;
@@ -560,7 +581,7 @@ function setupSidebarDrawer() {
     }
 
     function closeDrawer() {
-        if (!isOpen) return;
+        if (!isOpen || desktopQuery.matches) return;
         isOpen = false;
         drawer.classList.remove("drawer-open");
         if (backdrop) backdrop.classList.remove("backdrop-active");
@@ -577,6 +598,12 @@ function setupSidebarDrawer() {
     if (toggleBtn) toggleBtn.addEventListener("click", openDrawer);
     if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
     if (backdrop) backdrop.addEventListener("click", closeDrawer);
+    if (typeof desktopQuery.addEventListener === "function") {
+        desktopQuery.addEventListener("change", syncDrawerViewport);
+    } else {
+        desktopQuery.addListener(syncDrawerViewport);
+    }
+    syncDrawerViewport();
 
     drawer.addEventListener("click", event => {
         const link = event.target.closest("a");

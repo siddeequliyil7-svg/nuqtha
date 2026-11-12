@@ -71,7 +71,7 @@
     <link rel="stylesheet" href="./library.css">
     <script type="module" src="./js/ui-safe.js"></script>
 </head>
-<body class="bg-[var(--bg)] text-[var(--text)] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col">
+<body class="home-page bg-[var(--bg)] text-[var(--text)] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col">
 
     <!-- HERO INTRO: Positioned ABOVE header so navbar is not visible during hero intro -->
     <section id="hero" aria-labelledby="hero-title">
@@ -386,6 +386,7 @@
         </div>
 
         <div class="drawer-body">
+            <p class="drawer-section-label">Publications</p>
             <section class="drawer-group">
                 <nav aria-label="Articles">
                     <a href="#home" class="drawer-nav-item drawer-link" data-category="ALL"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5M9 21v-7h6v7"/></svg><span>All Articles</span></a>
@@ -400,9 +401,10 @@
                 </nav>
             </section>
 
+            <p class="drawer-section-label drawer-workspace-label">Workspace</p>
             <section class="drawer-group">
                 <nav aria-label="Your library">
-                    <a href="#" id="drawer-saved-link" class="drawer-link" onclick="if(window.filterBySavedArticles){window.filterBySavedArticles();const b=document.getElementById('sidebar-close-btn');if(b)b.click();}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v18l-6-4-6 4v-18Z"/></svg><span>Saved Articles</span></a>
+                    <a href="#" id="drawer-saved-link" class="drawer-nav-item drawer-link" data-category="SAVED" onclick="if(window.filterBySavedArticles){window.filterBySavedArticles();const b=document.getElementById('sidebar-close-btn');if(b)b.click();}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v18l-6-4-6 4v-18Z"/></svg><span>Saved Articles</span></a>
                 </nav>
             </section>
 
@@ -415,11 +417,17 @@
 
         <footer id="drawer-auth-section" class="drawer-foot">
             <a id="drawer-contact-link" class="drawer-contact" href="contact.html">Contact us</a>
-            <button id="drawer-login-btn" type="button" class="btn-login"><span>Login</span></button>
-            <div id="drawer-user-info" class="hidden">
+            <div id="drawer-guest-info" class="drawer-account-card">
+                <div class="drawer-user">
+                    <div class="drawer-avatar" aria-hidden="true"><span>N</span></div>
+                    <div class="drawer-user-label"><p>Reader</p><span class="drawer-user-status">Guest account</span></div>
+                </div>
+                <button id="drawer-login-btn" type="button" class="btn-login">Login</button>
+            </div>
+            <div id="drawer-user-info" class="drawer-account-card hidden">
                 <div class="drawer-user">
                     <div id="drawer-user-avatar" class="drawer-avatar"><img id="drawer-user-avatar-img" class="hidden" alt="Avatar"><span id="drawer-user-avatar-initial" class="hidden"></span><svg id="drawer-user-avatar-fallback" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0m8-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg></div>
-                    <div class="drawer-user-label"><p id="drawer-user-name">Reader</p></div>
+                    <div class="drawer-user-label"><p id="drawer-user-name">Reader</p><span id="drawer-user-status" class="drawer-user-status">Signed in</span></div>
                 </div>
                 <button id="drawer-logout-btn" type="button" class="drawer-logout">Log out</button>
             </div>

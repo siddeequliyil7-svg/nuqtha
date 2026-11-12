@@ -514,8 +514,10 @@ export function updateHeaderUserUI(user) {
 
     // Drawer Auth UI elements
     const drawerLoginBtn = document.getElementById("drawer-login-btn");
+    const drawerGuestInfo = document.getElementById("drawer-guest-info");
     const drawerUserInfo = document.getElementById("drawer-user-info");
     const drawerUserName = document.getElementById("drawer-user-name");
+    const drawerUserStatus = document.getElementById("drawer-user-status");
     const drawerUserInitial = document.getElementById("drawer-user-avatar-initial");
     const drawerUserAvatarImg = document.getElementById("drawer-user-avatar-img");
     const drawerUserFallbackSvg = document.getElementById("drawer-user-avatar-fallback");
@@ -605,11 +607,16 @@ export function updateHeaderUserUI(user) {
 
         // Update Drawer Auth UI for Logged-In User
         if (drawerLoginBtn) drawerLoginBtn.classList.add("hidden");
+        if (drawerGuestInfo) {
+            drawerGuestInfo.classList.add("hidden");
+            drawerGuestInfo.classList.remove("block");
+        }
         if (drawerUserInfo) {
             drawerUserInfo.classList.remove("hidden");
             drawerUserInfo.classList.add("block");
         }
         if (drawerUserName) drawerUserName.textContent = displayName;
+        if (drawerUserStatus) drawerUserStatus.textContent = isAdmin ? "Administrator" : "Signed in";
 
         if (user.avatar) {
             if (drawerUserAvatarImg) {
@@ -671,6 +678,10 @@ export function updateHeaderUserUI(user) {
 
         // Update Drawer Auth UI for Logged-Out State
         if (drawerLoginBtn) drawerLoginBtn.classList.remove("hidden");
+        if (drawerGuestInfo) {
+            drawerGuestInfo.classList.remove("hidden");
+            drawerGuestInfo.classList.add("block");
+        }
         if (drawerUserInfo) {
             drawerUserInfo.classList.add("hidden");
             drawerUserInfo.classList.remove("block");
