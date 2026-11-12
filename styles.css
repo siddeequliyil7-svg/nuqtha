@@ -2387,11 +2387,11 @@ body.dark-mode .playlist-preset-chip:hover {
 /* ═══════════ 3-BAR SIDEBAR DRAWER ═══════════ */
 .drawer {
     position: fixed;
-    inset: 0 auto 0 0;
+    inset: 0 0 0 auto;
     z-index: 51;
     display: flex;
     flex-direction: column;
-    width: min(88vw, 272px);
+    width: min(84vw, 256px);
     height: 100vh;
     height: 100dvh;
     max-height: 100dvh;
@@ -2399,8 +2399,8 @@ body.dark-mode .playlist-preset-chip:hover {
     color: var(--text);
     background: var(--drawer-bg);
     border: 0;
-    box-shadow: 12px 0 40px rgba(30, 24, 18, 0.12);
-    transform: translateX(-100%);
+    box-shadow: -12px 0 40px rgba(30, 24, 18, 0.12);
+    transform: translateX(100%);
     overscroll-behavior: contain;
 }
 
@@ -2758,7 +2758,7 @@ body.dark-mode .drawer-account-card {
 @media (min-width: 1024px) {
     body.home-page {
         display: grid;
-        grid-template-columns: 272px minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) 256px;
         grid-template-rows: auto auto minmax(0, 1fr) auto;
         padding-left: 0;
         background: #FAF8F5;
@@ -2775,19 +2775,19 @@ body.dark-mode .drawer-account-card {
     }
 
     #home {
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 2;
     }
 
     #feed,
     #library {
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 3;
         width: 100%;
     }
 
     body > footer:not(.drawer-foot) {
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 4;
         width: 100%;
     }
@@ -2795,19 +2795,19 @@ body.dark-mode .drawer-account-card {
     #sidebar-drawer {
         position: sticky;
         inset: auto;
-        grid-column: 1;
+        grid-column: 2;
         grid-row: 1 / 5;
         align-self: start;
-        width: 272px;
+        width: 256px;
         height: 100dvh;
         max-height: 100dvh;
         transform: none;
-        box-shadow: 1px 0 0 rgba(87, 72, 54, 0.04);
+        box-shadow: -1px 0 0 rgba(87, 72, 54, 0.04);
     }
 
     html.dark #sidebar-drawer,
     body.dark-mode #sidebar-drawer {
-        box-shadow: 1px 0 0 rgba(255, 255, 255, 0.04);
+        box-shadow: -1px 0 0 rgba(255, 255, 255, 0.04);
     }
 
     #sidebar-drawer .drawer-head {
