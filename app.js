@@ -540,7 +540,6 @@ function setupSidebarDrawer() {
     const closeBtn = document.getElementById("sidebar-close-btn");
     const backdrop = document.getElementById("sidebar-backdrop");
     const drawer = document.getElementById("sidebar-drawer");
-    const searchInput = document.getElementById("drawer-search-input");
     if (!drawer) return;
     let previousBodyOverflow = "";
     let isOpen = false;
@@ -557,7 +556,7 @@ function setupSidebarDrawer() {
         if (backdrop) backdrop.classList.add("backdrop-active");
         document.body.style.overflow = "hidden";
         if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "true");
-        searchInput?.focus({ preventScroll: true });
+        drawer.querySelector(".drawer-link")?.focus({ preventScroll: true });
     }
 
     function closeDrawer() {
@@ -683,12 +682,10 @@ function setupSearch() {
     const searchContainer = document.getElementById("header-search-container");
     const headerInput = document.getElementById("header-search-input");
     const headerClearBtn = document.getElementById("header-search-clear");
-    const drawerInput = document.getElementById("drawer-search-input");
 
     function onSearchChange(val) {
         currentSearchQuery = val;
         if (headerInput && headerInput.value !== val) headerInput.value = val;
-        if (drawerInput && drawerInput.value !== val) drawerInput.value = val;
         if (headerClearBtn) {
             headerClearBtn.classList.toggle("hidden", !val.trim());
         }
@@ -709,16 +706,6 @@ function setupSearch() {
         headerInput.addEventListener("input", (e) => onSearchChange(e.target.value));
     }
 
-    if (drawerInput) {
-        drawerInput.addEventListener("input", (e) => {
-            onSearchChange(e.target.value);
-            // Open header search container as well so state is consistent
-            if (searchContainer && searchContainer.classList.contains("hidden")) {
-                searchContainer.classList.remove("hidden");
-            }
-        });
-    }
-
     if (headerClearBtn) {
         headerClearBtn.addEventListener("click", () => clearSearch(true));
     }
@@ -727,10 +714,8 @@ function setupSearch() {
 function clearSearch(triggerRender = true) {
     currentSearchQuery = "";
     const headerInput = document.getElementById("header-search-input");
-    const drawerInput = document.getElementById("drawer-search-input");
     const headerClearBtn = document.getElementById("header-search-clear");
     if (headerInput) headerInput.value = "";
-    if (drawerInput) drawerInput.value = "";
     if (headerClearBtn) headerClearBtn.classList.add("hidden");
     if (triggerRender) renderFeed();
 }

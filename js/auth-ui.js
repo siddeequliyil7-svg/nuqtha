@@ -516,7 +516,6 @@ export function updateHeaderUserUI(user) {
     const drawerLoginBtn = document.getElementById("drawer-login-btn");
     const drawerUserInfo = document.getElementById("drawer-user-info");
     const drawerUserName = document.getElementById("drawer-user-name");
-    const drawerUserIdent = document.getElementById("drawer-user-ident");
     const drawerUserInitial = document.getElementById("drawer-user-avatar-initial");
     const drawerUserAvatarImg = document.getElementById("drawer-user-avatar-img");
     const drawerUserFallbackSvg = document.getElementById("drawer-user-avatar-fallback");
@@ -611,7 +610,6 @@ export function updateHeaderUserUI(user) {
             drawerUserInfo.classList.add("block");
         }
         if (drawerUserName) drawerUserName.textContent = displayName;
-        if (drawerUserIdent) drawerUserIdent.textContent = user.email || user.phoneNumber || "";
 
         if (user.avatar) {
             if (drawerUserAvatarImg) {

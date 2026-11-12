@@ -400,54 +400,44 @@
         </div>
 
         <div class="drawer-body">
-            <div class="drawer-search">
-                <label class="sr-only" for="drawer-search-input">ലേഖനങ്ങൾ തിരയുക / Search articles</label>
-                <input type="search" id="drawer-search-input" placeholder="തലക്കെട്ട്, എഴുത്തുകാരൻ..." aria-label="ലേഖനങ്ങൾ തിരയുക / Search articles">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
-            </div>
-
-            <section class="drawer-group" aria-labelledby="drawer-read-title">
-                <h2 class="drawer-title" id="drawer-read-title">ലേഖനങ്ങൾ <small>Read</small></h2>
-                <nav aria-label="ലേഖനങ്ങൾ / Read">
-                    <a href="#home" class="drawer-nav-item drawer-link" data-category="ALL"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5M9 21v-7h6v7"/></svg><span><span class="ml">എല്ലാ ലേഖനങ്ങളും</span><small>All articles</small></span></a>
-                    <a href="#history" class="drawer-nav-item drawer-link" data-category="HISTORY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M6 5v15m12-15v15M3 20h18M9 9h6m-6 4h6m-6 4h6"/></svg><span><span class="ml">ചരിത്രം</span><small>History</small></span></a>
-                    <a href="#study" class="drawer-nav-item drawer-link" data-category="STUDY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H20v17H5.5A2.5 2.5 0 0 0 3 22V5.5Z"/><path d="M3 18.5A2.5 2.5 0 0 1 5.5 16H20M8 7h8m-8 3h8"/></svg><span><span class="ml">പഠനം</span><small>Study</small></span></a>
-                    <a href="#story" class="drawer-nav-item drawer-link" data-category="STORY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg><span><span class="ml">കഥകൾ</span><small>Stories</small></span></a>
+            <section class="drawer-group">
+                <nav aria-label="Articles">
+                    <a href="#home" class="drawer-nav-item drawer-link" data-category="ALL"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5M9 21v-7h6v7"/></svg><span>All Articles</span></a>
+                    <a href="#history" class="drawer-nav-item drawer-link" data-category="HISTORY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M6 5v15m12-15v15M3 20h18M9 9h6m-6 4h6m-6 4h6"/></svg><span>History</span></a>
+                    <a href="#study" class="drawer-nav-item drawer-link" data-category="STUDY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H20v17H5.5A2.5 2.5 0 0 0 3 22V5.5Z"/><path d="M3 18.5A2.5 2.5 0 0 1 5.5 16H20M8 7h8m-8 3h8"/></svg><span>Study</span></a>
+                    <a href="#story" class="drawer-nav-item drawer-link" data-category="STORY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg><span>Stories</span></a>
                 </nav>
             </section>
 
-            <section class="drawer-group" aria-labelledby="drawer-collections-title">
-                <h2 class="drawer-title" id="drawer-collections-title">ശേഖരം <small>Collections</small></h2>
-                <nav aria-label="ശേഖരം / Collections">
-                    <a href="#books" class="drawer-nav-item drawer-link" data-category="BOOKS"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8 6h8m-8 3h8"/></svg><span><span class="ml">പുസ്തകങ്ങളും പതിപ്പുകളും</span><small>Books &amp; editions</small></span></a>
-                    <button type="button" id="drawer-library-link" class="drawer-nav-item drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-7h6v7M8 10h.01M16 10h.01"/></svg><span><span class="ml">ലൈബ്രറി</span><small>Library</small></span><span class="badge-new">New</span></button>
+            <section class="drawer-group">
+                <nav aria-label="Collections">
+                    <a href="#books" class="drawer-nav-item drawer-link" data-category="BOOKS"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8 6h8m-8 3h8"/></svg><span>Books &amp; Editions</span></a>
+                    <button type="button" id="drawer-library-link" class="drawer-nav-item drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-7h6v7M8 10h.01M16 10h.01"/></svg><span>Library</span><span class="badge-new">New</span></button>
                 </nav>
             </section>
 
-            <section class="drawer-group" aria-labelledby="drawer-space-title">
-                <h2 class="drawer-title" id="drawer-space-title">എന്റെ ഇടം <small>My space</small></h2>
-                <nav aria-label="എന്റെ ഇടം / My space">
-                    <a href="#" id="drawer-saved-link" class="drawer-link" onclick="if(window.filterBySavedArticles){window.filterBySavedArticles();const b=document.getElementById('sidebar-close-btn');if(b)b.click();}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v18l-6-4-6 4v-18Z"/></svg><span><span class="ml">സേവ് ചെയ്ത ലേഖനങ്ങൾ</span><small>Saved articles</small></span></a>
+            <section class="drawer-group">
+                <nav aria-label="Your library">
+                    <a href="#" id="drawer-saved-link" class="drawer-link" onclick="if(window.filterBySavedArticles){window.filterBySavedArticles();const b=document.getElementById('sidebar-close-btn');if(b)b.click();}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v18l-6-4-6 4v-18Z"/></svg><span>Saved Articles</span></a>
                 </nav>
             </section>
 
-            <section id="drawer-admin-group" class="drawer-group hidden" aria-labelledby="drawer-admin-title">
-                <h2 class="drawer-title" id="drawer-admin-title">മാനേജ്മെന്റ് <small>Management</small></h2>
-                <nav aria-label="അഡ്മിൻ / Admin">
-                    <a href="admin.html" id="drawer-admin-link" class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span><span class="ml">അഡ്മിൻ പാനൽ</span><small>Admin panel</small></span></a>
+            <section id="drawer-admin-group" class="drawer-group hidden">
+                <nav aria-label="Administration">
+                    <a href="admin.html" id="drawer-admin-link" class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span>Admin</span></a>
                 </nav>
             </section>
         </div>
 
         <footer id="drawer-auth-section" class="drawer-foot">
-            <a id="drawer-contact-link" class="drawer-contact" href="contact.html">ബന്ധപ്പെടുക <span>Contact us</span></a>
-            <button id="drawer-login-btn" type="button" class="btn-login"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h5a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-5"/></svg><span>ലോഗിൻ / Login</span></button>
+            <a id="drawer-contact-link" class="drawer-contact" href="contact.html">Contact us</a>
+            <button id="drawer-login-btn" type="button" class="btn-login"><span>Login</span></button>
             <div id="drawer-user-info" class="hidden">
                 <div class="drawer-user">
                     <div id="drawer-user-avatar" class="drawer-avatar"><img id="drawer-user-avatar-img" class="hidden" alt="Avatar"><span id="drawer-user-avatar-initial" class="hidden"></span><svg id="drawer-user-avatar-fallback" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0m8-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg></div>
-                    <div class="drawer-user-label"><p id="drawer-user-name">വായനക്കാരൻ</p><p id="drawer-user-ident"></p></div>
+                    <div class="drawer-user-label"><p id="drawer-user-name">Reader</p></div>
                 </div>
-                <button id="drawer-logout-btn" type="button" class="drawer-logout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h5a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-5"/></svg><span>പുറത്തുകടക്കുക / Logout</span></button>
+                <button id="drawer-logout-btn" type="button" class="drawer-logout">Log out</button>
             </div>
         </footer>
     </aside>

@@ -2460,10 +2460,7 @@ body.dark-mode .playlist-preset-chip:hover {
 
 .drawer-brand-mark svg,
 .drawer-icon-button svg,
-.drawer-search svg,
 .drawer-link > svg,
-.btn-login svg,
-.drawer-logout svg,
 .drawer-avatar svg {
     width: 1.2rem;
     height: 1.2rem;
@@ -2502,76 +2499,45 @@ body.dark-mode .playlist-preset-chip:hover {
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 0.75rem 0.75rem 1rem;
+    padding: 0.5rem 0.75rem 1rem;
     -webkit-overflow-scrolling: touch;
 }
 
-.drawer-search {
-    position: relative;
-    margin: 0.15rem 0.25rem 0.9rem;
-}
-
-.drawer-search svg {
-    position: absolute;
-    top: 50%;
-    left: 0.8rem;
-    color: var(--text-muted);
-    transform: translateY(-50%);
-    pointer-events: none;
-}
-
-.drawer-search input {
-    width: 100%;
-    min-height: 46px;
-    padding: 0.65rem 0.8rem 0.65rem 2.55rem;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    outline: none;
-    color: var(--text);
-    background: var(--bg);
-    font: inherit;
-    font-size: 0.875rem;
-}
-
-.drawer-search input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(180, 83, 44, 0.18);
-}
-
 .drawer-group {
-    margin-top: 1.05rem;
+    padding: 0.35rem 0;
 }
 
-.drawer-title {
-    margin: 0;
-    padding: 0.25rem 0.75rem 0.35rem;
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    font-weight: 600;
-    line-height: 1.45;
+.drawer-group + .drawer-group {
+    margin-top: 0.35rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--border);
 }
 
-.drawer-title small {
-    margin-left: 0.3rem;
-    font-size: 0.72rem;
-    font-weight: 400;
+#drawer-admin-group {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
 }
 
 .drawer-group nav {
     display: grid;
-    gap: 0.15rem;
+    gap: 0.1rem;
 }
 
 .drawer-link {
     position: relative;
     gap: 0.8rem;
     width: 100%;
-    min-height: 52px;
-    padding: 0.45rem 0.75rem;
+    min-height: 48px;
+    padding: 0.5rem 0.75rem;
     border: 0;
-    border-radius: 12px;
+    border-radius: 10px;
     color: var(--text);
     background: transparent;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.35;
     text-align: left;
     text-decoration: none;
     cursor: pointer;
@@ -2580,7 +2546,7 @@ body.dark-mode .playlist-preset-chip:hover {
 .drawer-link:hover,
 .drawer-link:focus-visible,
 .drawer-link[aria-current="page"] {
-    background: rgba(180, 83, 44, 0.09);
+    background: rgba(180, 83, 44, 0.1);
 }
 
 .drawer-link[aria-current="page"]::before {
@@ -2598,20 +2564,8 @@ body.dark-mode .playlist-preset-chip:hover {
     color: var(--accent);
 }
 
-.drawer-link .ml {
-    display: block;
-    font-family: "Anek Malayalam", sans-serif;
-    font-size: 0.98rem;
-    font-weight: 600;
-    line-height: 1.45;
-}
-
-.drawer-link small {
-    display: block;
-    margin-top: 0.05rem;
-    color: var(--text-muted);
-    font-size: 0.72rem;
-    line-height: 1.3;
+.drawer-link > span:first-of-type {
+    flex: 1;
 }
 
 .badge-new {
@@ -2636,16 +2590,15 @@ body.dark-mode .playlist-preset-chip:hover {
     margin: 0 0 0.55rem;
     padding: 0.25rem 0.65rem;
     color: var(--text-muted);
-    font-family: "Anek Malayalam", sans-serif;
-    font-size: 0.85rem;
-    line-height: 1.45;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 0.8rem;
+    line-height: 1.4;
     text-decoration: none;
 }
 
-.drawer-contact span {
-    margin-left: 0.35rem;
-    font-family: "Plus Jakarta Sans", sans-serif;
-    font-size: 0.72rem;
+.drawer-contact:hover,
+.drawer-contact:focus-visible {
+    color: var(--accent);
 }
 
 .btn-login {
@@ -2656,9 +2609,11 @@ body.dark-mode .playlist-preset-chip:hover {
     width: 100%;
     min-height: 48px;
     border: 0;
-    border-radius: 12px;
+    border-radius: 10px;
     color: #fff;
     background: var(--accent);
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
 }
@@ -2669,20 +2624,23 @@ body.dark-mode .playlist-preset-chip:hover {
 }
 
 #drawer-user-info.block {
-    display: grid;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 0.5rem;
 }
 
 .drawer-user {
     gap: 0.7rem;
-    min-height: 48px;
-    padding: 0.25rem 0.5rem 0.5rem;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0.1rem 0.25rem;
 }
 
 .drawer-avatar {
     display: grid;
-    width: 42px;
-    height: 42px;
+    width: 36px;
+    height: 36px;
     flex: none;
     overflow: hidden;
     place-items: center;
@@ -2705,36 +2663,28 @@ body.dark-mode .playlist-preset-chip:hover {
     overflow: hidden;
     margin: 0;
     color: var(--text);
-    font-size: 0.84rem;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 0.9rem;
     font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.drawer-user-label p + p {
-    color: var(--text-muted);
-    font-size: 0.7rem;
-    font-weight: 400;
-}
-
 .drawer-logout {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    min-height: 44px;
-    padding: 0.5rem;
+    flex: none;
+    padding: 0.5rem 0.25rem 0.5rem 0.5rem;
     border: 0;
-    border-radius: 10px;
-    color: #dc2626;
+    color: var(--accent);
     background: transparent;
-    text-align: left;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
 }
 
 .drawer-logout:hover,
 .drawer-logout:focus-visible {
-    background: rgba(220, 38, 38, 0.08);
+    text-decoration: underline;
 }
 
 @media (prefers-reduced-motion: no-preference) {
