@@ -1053,20 +1053,16 @@ function renderHomeFeed(container) {
 
     if (explicitHero.length > 0) {
         heroArticle = explicitHero[0];
-        usedIds.add(heroArticle.id);
     } else if (autoArticles.length > 0) {
         heroArticle = autoArticles[0];
-        usedIds.add(heroArticle.id);
     } else if (regularArticles.length > 0) {
         heroArticle = regularArticles[0];
-        usedIds.add(heroArticle.id);
     }
 
     // 2. Determine Carousel Articles for Top Horizontal Swipe:
-    // Pool regular articles marked for CAROUSEL or HERO or recent AUTO.
+    // Keep the hero separate so the same article is not shown twice above the fold.
     const carouselPool = [
         ...explicitCarousel,
-        heroArticle,
         ...explicitHero.filter(a => a.id !== heroArticle?.id),
         ...autoArticles.filter(a => a.id !== heroArticle?.id)
     ].filter(Boolean);
@@ -1096,6 +1092,7 @@ function renderHomeFeed(container) {
     // ═══════════════════════════════════════════════════════════
     if (heroArticle) {
         html += buildFeaturedCard(heroArticle);
+        usedIds.add(heroArticle.id);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1112,12 +1109,15 @@ function renderHomeFeed(container) {
     const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c) && c !== "BOOKS" && c !== "BOOK" && c !== "PREMIUM BOOK")];
 
     orderedCats.forEach(cat => {
-        const catArticles = regularArticles.filter(a => sanitizeCategory(a.category).toUpperCase() === cat).sort(comparePriority);
+        const catArticles = regularArticles.filter(a =>
+            !usedIds.has(a.id) && sanitizeCategory(a.category).toUpperCase() === cat
+        ).sort(comparePriority);
         if (catArticles.length === 0) return;
 
         const theme = getCategoryTheme(cat);
         const featuredArt = catArticles[0];
         const subsequentArticles = catArticles.slice(1, 5);
+        [featuredArt, ...subsequentArticles].forEach(article => usedIds.add(article.id));
         const hasMore = catArticles.length > 5;
         const catName = categoryLabel(cat);
 
