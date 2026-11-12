@@ -521,6 +521,7 @@ export function updateHeaderUserUI(user) {
     const drawerUserAvatarImg = document.getElementById("drawer-user-avatar-img");
     const drawerUserFallbackSvg = document.getElementById("drawer-user-avatar-fallback");
     const drawerAdminLink = document.getElementById("drawer-admin-link");
+    const drawerAdminGroup = document.getElementById("drawer-admin-group");
 
     // Update saved articles count
     let savedCount = 0;
@@ -636,6 +637,7 @@ export function updateHeaderUserUI(user) {
             drawerAdminLink.classList.toggle("hidden", !isAdmin);
             drawerAdminLink.classList.toggle("flex", isAdmin);
         }
+        if (drawerAdminGroup) drawerAdminGroup.classList.toggle("hidden", !isAdmin);
 
     } else {
         if (signinBtn) signinBtn.classList.remove("hidden");
@@ -690,6 +692,6 @@ export function updateHeaderUserUI(user) {
             drawerAdminLink.classList.add("hidden");
             drawerAdminLink.classList.remove("flex");
         }
+        if (drawerAdminGroup) drawerAdminGroup.classList.add("hidden");
     }
 }
-

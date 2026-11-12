@@ -54,6 +54,16 @@
             } catch (e) {}
         })();
     </script>
+    <script>
+        (function() {
+            try {
+                var reading = localStorage.getItem("nuqtha:reading-bg");
+                document.documentElement.dataset.reading = ["cream", "soft", "white"].includes(reading) ? reading : "soft";
+            } catch (e) {
+                document.documentElement.dataset.reading = "soft";
+            }
+        })();
+    </script>
     <script type="module" src="site-config.js"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
@@ -615,6 +625,7 @@
     <!-- Main Module Script -->
     <script type="module">
         import { app, db, firebaseConfig, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "./firebase-config.js";
+        import { syncReadingBg } from "./reading-theme.js";
         import { FALLBACK_ARTICLES } from "./fallback-data.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart, sanitizeCategory, getArticleImageUrl } from "./schema-validator.js";
@@ -623,6 +634,8 @@
         import { categoryUrl, categoryTag } from "./js/category-link.js";
         import { trackReadingActivity } from "./js/analytics-tracker.js";
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "./js/paywall-service.js";
+
+        void syncReadingBg();
 
         const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
         const FIRESTORE_API_KEY = encodeURIComponent(firebaseConfig.apiKey);
@@ -2080,7 +2093,7 @@
                             <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
                         </div>
                     ` : `
-                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[#f7eedf] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
+                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[var(--reading-bg)] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
                             📄
                         </div>
                     `}

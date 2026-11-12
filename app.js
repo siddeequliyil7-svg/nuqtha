@@ -8,12 +8,15 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
  */
 import { db, collection, doc, getDoc, getDocs, getDocsFromCache } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl, sanitizeCategory } from "./schema-validator.js";
+import { syncReadingBg } from "./reading-theme.js";
 import { getBookChapterIds } from "./book-data.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
+
+void syncReadingBg();
 
 /* ═══════════ Pre-bundled Fallback Data for 100% Uptime & Smooth Load ═══════════ */
 const CACHE_KEY = 'nuqtha_cached_articles_v7';
@@ -524,8 +527,7 @@ function setupHomeLink() {
             clearSearch(false);
             document.getElementById("articles-dropdown-menu")?.classList.add("hidden");
             document.getElementById("more-categories-dropdown")?.classList.add("hidden");
-            document.getElementById("sidebar-drawer")?.classList.remove("drawer-open");
-            document.getElementById("sidebar-backdrop")?.classList.remove("backdrop-active");
+            document.getElementById("sidebar-close-btn")?.click();
             switchToCategory("ALL");
             window.scrollTo({ top: 0, behavior: "smooth" });
         });
@@ -538,38 +540,90 @@ function setupSidebarDrawer() {
     const closeBtn = document.getElementById("sidebar-close-btn");
     const backdrop = document.getElementById("sidebar-backdrop");
     const drawer = document.getElementById("sidebar-drawer");
+    const searchInput = document.getElementById("drawer-search-input");
+    if (!drawer) return;
+    let previousBodyOverflow = "";
+    let isOpen = false;
+    setDrawerCurrentLink([...drawer.querySelectorAll(".drawer-nav-item")]
+        .find(item => (item.dataset.category || "").toUpperCase() === currentCategory) || null);
 
     function openDrawer() {
-        if (drawer) drawer.classList.add("drawer-open");
+        if (isOpen) return;
+        isOpen = true;
+        previousBodyOverflow = document.body.style.overflow;
+        drawer.inert = false;
+        drawer.setAttribute("aria-hidden", "false");
+        drawer.classList.add("drawer-open");
         if (backdrop) backdrop.classList.add("backdrop-active");
         document.body.style.overflow = "hidden";
+        if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "true");
+        searchInput?.focus({ preventScroll: true });
     }
 
     function closeDrawer() {
-        if (drawer) drawer.classList.remove("drawer-open");
+        if (!isOpen) return;
+        isOpen = false;
+        drawer.classList.remove("drawer-open");
         if (backdrop) backdrop.classList.remove("backdrop-active");
-        document.body.style.overflow = "";
+        document.body.style.overflow = previousBodyOverflow;
+        drawer.setAttribute("aria-hidden", "true");
+        drawer.inert = true;
+        if (toggleBtn) {
+            toggleBtn.setAttribute("aria-expanded", "false");
+            toggleBtn.focus({ preventScroll: true });
+        }
     }
 
+    if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "false");
     if (toggleBtn) toggleBtn.addEventListener("click", openDrawer);
     if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
     if (backdrop) backdrop.addEventListener("click", closeDrawer);
 
-    document.querySelectorAll(".drawer-nav-item").forEach(item => {
-        if (!item) return;
-        item.addEventListener("click", (e) => {
-            const cat = item.dataset.category;
-            if (cat) {
-                e.preventDefault();
-                switchToCategory(cat);
-                closeDrawer();
-            }
-        });
+    drawer.addEventListener("click", event => {
+        const link = event.target.closest("a");
+        if (!link) return;
+        const category = link.dataset.category;
+        if (category) {
+            event.preventDefault();
+            switchToCategory(category);
+        }
+        if (link.id === "drawer-saved-link") setDrawerCurrentLink(link);
+        closeDrawer();
     });
 
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeDrawer();
+        if (!isOpen) return;
+        if (e.key === "Escape") {
+            closeDrawer();
+            return;
+        }
+        if (e.key !== "Tab") return;
+
+        const focusable = [...drawer.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )].filter(element => !element.closest(".hidden") && element.getClientRects().length > 0);
+        if (focusable.length === 0) {
+            e.preventDefault();
+            drawer.focus();
+            return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && (document.activeElement === first || !drawer.contains(document.activeElement))) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && (document.activeElement === last || !drawer.contains(document.activeElement))) {
+            e.preventDefault();
+            first.focus();
+        }
     });
+}
+
+function setDrawerCurrentLink(link) {
+    document.querySelectorAll("#sidebar-drawer .drawer-link[aria-current]").forEach(item => {
+        item.removeAttribute("aria-current");
+    });
+    link?.setAttribute("aria-current", "page");
 }
 
 /* ═══════════ 3D Library View Switcher Setup ═══════════ */
@@ -588,6 +642,7 @@ function setupLibraryView() {
         lib.hidden = !isLib;
 
         if (isLib) {
+            setDrawerCurrentLink(drawerLibLink);
             if (window.location.hash !== "#library") {
                 history.replaceState(null, null, "#library");
             }
@@ -605,6 +660,7 @@ function setupLibraryView() {
 
     if (drawerLibLink) {
         drawerLibLink.addEventListener("click", () => {
+            setDrawerCurrentLink(drawerLibLink);
             const closeBtn = document.getElementById("sidebar-close-btn");
             if (closeBtn) closeBtn.click();
             showView("library");
@@ -1298,6 +1354,9 @@ function switchToCategory(cat) {
     const norm = normalizeCategoryName(cat);
     const upper = norm ? norm.toUpperCase() : "ALL";
     currentCategory = upper;
+    const drawerLink = [...document.querySelectorAll("#sidebar-drawer .drawer-nav-item")]
+        .find(item => (item.dataset.category || "").toUpperCase() === upper);
+    setDrawerCurrentLink(drawerLink || null);
     clearSearch(false);
 
     // Update active state on nav links

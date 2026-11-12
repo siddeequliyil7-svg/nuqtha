@@ -2,6 +2,7 @@ import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
 import { mergeBookRecords } from "./book-data.js";
 import { initLibraryAdmin } from "./admin-library.js";
+import { initReadingBgAdmin } from "./admin-reading-bg.js";
 import { FALLBACK_ARTICLE_ITEMS } from "./fallback-data.js";
 import { 
     checkIsAdminUser, 
@@ -283,6 +284,10 @@ function initAdminDashboard() {
         const root = document.getElementById("library-admin");
         if (root) initLibraryAdmin(root);
     });
+    safeInit("initReadingBgAdminPanel", () => {
+        const root = document.getElementById("reading-bg-admin");
+        if (root) initReadingBgAdmin(root);
+    });
 }
 
 function initPlaylistPresets() {
@@ -488,7 +493,7 @@ function initTabNavigation() {
 
     // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=book)
     const hash = window.location.hash.replace("#tab=", "").trim();
-    if (["create", "book", "layout", "published", "authors", "menu", "analytics", "library"].includes(hash)) {
+    if (["create", "book", "layout", "published", "authors", "menu", "analytics", "library", "reading-bg"].includes(hash)) {
         try {
             switchAdminTab(hash);
         } catch (err) {

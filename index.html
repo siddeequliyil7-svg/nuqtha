@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUQTHA - നുഖ്ത | Malayalam Publishing Platform</title>
+    <title>NUQTHA - à´¨àµà´–àµà´¤ | Malayalam Publishing Platform</title>
     <meta name="description" content="A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher." />
-    <meta property="og:title" content="NUQTHA - നുഖ്ത | Malayalam Publishing Platform" />
+    <meta property="og:title" content="NUQTHA - à´¨àµà´–àµà´¤ | Malayalam Publishing Platform" />
     <meta property="og:description" content="A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href="https://nuqtha.vercel.app/" />
     <meta property="og:url" content="https://nuqtha.vercel.app/" />
-    <meta property="og:site_name" content="NUQTHA - നുഖ്ത" />
+    <meta property="og:site_name" content="NUQTHA - à´¨àµà´–àµà´¤" />
     <meta property="og:image" content="https://nuqtha.vercel.app/og-cover.png" />
     <meta property="og:image:secure_url" content="https://nuqtha.vercel.app/og-cover.png" />
     <meta property="og:image:type" content="image/png" />
@@ -19,7 +19,7 @@
     <meta property="og:image:height" content="1080" />
     <meta property="og:image:alt" content="NUQTHA Malayalam Publishing Platform" />
     <meta name="twitter:url" content="https://nuqtha.vercel.app/" />
-    <meta name="twitter:title" content="NUQTHA - നുഖ്ത | Malayalam Publishing Platform" />
+    <meta name="twitter:title" content="NUQTHA - à´¨àµà´–àµà´¤ | Malayalam Publishing Platform" />
     <meta name="twitter:description" content="A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher." />
     <meta name="twitter:image" content="https://nuqtha.vercel.app/og-cover.png" />
 
@@ -57,6 +57,16 @@
             } catch (e) {}
         })();
     </script>
+    <script>
+        (function() {
+            try {
+                var reading = localStorage.getItem("nuqtha:reading-bg");
+                document.documentElement.dataset.reading = ["cream", "soft", "white"].includes(reading) ? reading : "soft";
+            } catch (e) {
+                document.documentElement.dataset.reading = "soft";
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="./styles.css">
     <link rel="stylesheet" href="./library.css">
     <script type="module" src="./js/ui-safe.js"></script>
@@ -75,7 +85,7 @@
         <button type="button" class="hero-skip" data-hero-skip>Skip intro</button>
     </section>
 
-    <!-- ═══════════ TOP CANOPY & FLOATING GLASS NAVIGATION ═══════════ -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â• TOP CANOPY & FLOATING GLASS NAVIGATION â•â•â•â•â•â•â•â•â•â•â• -->
     <header id="home" class="relative w-full z-40 flex-shrink-0">
         <div class="top-canopy-band w-full"></div>
         <div class="page-wrapper header-nav-wrapper">
@@ -122,14 +132,14 @@
                     <!-- 2. Action Icons (Top Right Header Controls: Search + 3-Lines Menu) -->
                     <div class="order-2 md:order-3 nav-actions flex items-center justify-end gap-2 sm:gap-3 flex-shrink-0">
                         <!-- Quick Search Toggle Button -->
-                        <button id="header-search-btn" class="more-dots-btn p-1.5 sm:p-2 text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition cursor-pointer" title="Search Articles / ലേഖനങ്ങൾ തിരയുക" aria-label="Search Articles">
+                        <button id="header-search-btn" class="more-dots-btn p-1.5 sm:p-2 text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition cursor-pointer" title="Search Articles / à´²àµ‡à´–à´¨à´™àµà´™àµ¾ à´¤à´¿à´°à´¯àµà´•" aria-label="Search Articles">
                             <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </button>
 
                         <!-- Hamburger Menu Toggle Button (3 Lines) -->
-                        <button id="sidebar-toggle-btn" class="more-dots-btn p-1.5 sm:p-2 text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition cursor-pointer" title="Menu / മെനു" aria-label="Open Menu">
+                        <button id="sidebar-toggle-btn" class="more-dots-btn p-1.5 sm:p-2 text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition cursor-pointer" title="Menu / à´®àµ†à´¨àµ" aria-label="Open Menu" aria-controls="sidebar-drawer" aria-expanded="false">
                             <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
@@ -148,20 +158,20 @@
                             <div id="articles-dropdown-menu" class="hidden absolute left-0 sm:left-1/2 sm:-translate-x-1/2 mt-2 w-56 rounded-2xl bg-white/95 dark:bg-[#12141d]/95 backdrop-blur-xl border border-[var(--border)] dark:border-white/10 shadow-xl py-2 z-50">
                                 <a href="#home" data-category="ALL" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition uppercase font-english">
                                     <span>ALL ARTICLES</span>
-                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">എല്ലാ ലേഖനങ്ങളും</span>
+                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">à´Žà´²àµà´²à´¾ à´²àµ‡à´–à´¨à´™àµà´™à´³àµà´‚</span>
                                 </a>
                                 <div class="border-t border-[var(--border)]/60 dark:border-white/10 my-1"></div>
                                 <a href="#history" data-category="HISTORY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition uppercase font-english">
                                     <span>HISTORY</span>
-                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">ചരിത്രം</span>
+                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">à´šà´°à´¿à´¤àµà´°à´‚</span>
                                 </a>
                                 <a href="#study" data-category="STUDY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition uppercase font-english">
                                     <span>STUDY</span>
-                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">പഠനം</span>
+                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">à´ªà´ à´¨à´‚</span>
                                 </a>
                                 <a href="#story" data-category="STORY" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition uppercase font-english">
                                     <span>STORY</span>
-                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">കഥ</span>
+                                    <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">à´•à´¥</span>
                                 </a>
                                 <div id="dynamic-articles-categories" class="space-y-0.5">
                                     <!-- Extra categories dynamically inserted -->
@@ -181,17 +191,17 @@
                                 <svg class="w-3 h-3 transition-transform duration-200" id="more-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                             </button>
                             <div id="more-categories-dropdown" class="hidden absolute right-0 sm:left-1/2 sm:-translate-x-1/2 mt-2 w-52 rounded-2xl bg-white/95 dark:bg-[#12141d]/95 backdrop-blur-xl border border-[var(--border)] dark:border-white/10 shadow-xl py-2 z-50">
-                                <a href="author.html?id=സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ" class="more-dropdown-item flex items-center gap-2.5 px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition font-english">
-                                    <span>✍️</span>
-                                    <span>AUTHORS (എഴുത്തുകാർ)</span>
+                                <a href="author.html?id=à´¸à´¯àµà´¯à´¿à´¦àµ-à´¸àµ½à´®à´¾àµ»-à´…à´¦à´¨à´¿-à´•à´°à´¿à´ªàµà´ªàµ‚àµ¼" class="more-dropdown-item flex items-center gap-2.5 px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition font-english">
+                                    <span>âœï¸</span>
+                                    <span>AUTHORS (à´Žà´´àµà´¤àµà´¤àµà´•à´¾àµ¼)</span>
                                 </a>
                                 <a href="contact.html" class="more-dropdown-item flex items-center gap-2.5 px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition font-english">
-                                    <span>📬</span>
+                                    <span>ðŸ“¬</span>
                                     <span>ABOUT &amp; CONTACT</span>
                                 </a>
                                 <div class="border-t border-[var(--border)]/60 dark:border-white/10 my-1"></div>
                                 <a href="admin.html" class="more-dropdown-item flex items-center gap-2.5 px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] transition font-english">
-                                    <span>⚙️</span>
+                                    <span>âš™ï¸</span>
                                     <span>ADMIN PORTAL</span>
                                 </a>
                             </div>
@@ -209,7 +219,7 @@
                         <input 
                             type="text" 
                             id="header-search-input" 
-                            placeholder="ലേഖനങ്ങൾ തിരയുക... (Search articles)" 
+                            placeholder="ലേഖനങ്ങൾ തിരയുക... (Search articles)"
                             class="w-full pl-8 pr-8 py-1.5 rounded-xl text-xs bg-white/80 dark:bg-white/10 border border-[var(--border)] dark:border-white/15 focus:border-[#b4532c] focus:ring-1 focus:ring-[#b4532c] outline-none text-[var(--text)] dark:text-white placeholder-[#8c7a6b]"
                         />
                         <button id="header-search-clear" class="hidden absolute inset-y-0 right-0 pr-2.5 flex items-center text-[#8c7a6b] hover:text-[var(--text)] dark:hover:text-white" title="Clear search">
@@ -224,7 +234,7 @@
 
 
 
-    <!-- ═══════════ MAIN FEED / BLOG-ROLL ═══════════ -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â• MAIN FEED / BLOG-ROLL â•â•â•â•â•â•â•â•â•â•â• -->
     <main id="feed" class="flex-grow w-full page-wrapper feed-main-wrapper" style="scroll-margin-top: var(--header-h, 57px)">
         
         <!-- Feed Container -->
@@ -289,10 +299,10 @@
 
         </main>
 
-    <!-- ═══════════ 3D INTERACTIVE LIBRARY VIEW (SHELF & TABLE) ═══════════ -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â• 3D INTERACTIVE LIBRARY VIEW (SHELF & TABLE) â•â•â•â•â•â•â•â•â•â•â• -->
     <section id="library" class="flex-grow w-full page-wrapper pb-16" hidden></section>
 
-    <!-- ═══════════ FULL SCREEN READING INTERFACE (OPTION 2) ═══════════ -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â• FULL SCREEN READING INTERFACE (OPTION 2) â•â•â•â•â•â•â•â•â•â•â• -->
     <div id="fullscreen-reader-overlay" class="fixed inset-0 z-50 bg-[var(--bg)] overflow-y-auto hidden">
         <!-- Top Reader Navbar -->
         <div class="sticky top-0 bg-[var(--bg)]/90 backdrop-blur-md border-b border-[var(--border)] px-6 py-4 flex items-center justify-between z-10">
@@ -306,7 +316,7 @@
         <!-- Article Reader View -->
         <div class="max-w-4xl lg:max-w-5xl mx-auto px-6 py-12 space-y-8">
             <div class="space-y-4">
-                <a id="reader-category" href="#" class="category-badge category-pill-link font-english cursor-pointer" title="ഈ വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക">General</a>
+                <a id="reader-category" href="#" class="category-badge category-pill-link font-english cursor-pointer" title="à´ˆ à´µà´¿à´­à´¾à´—à´¤àµà´¤à´¿à´²àµ† à´²àµ‡à´–à´¨à´™àµà´™àµ¾ à´•à´¾à´£àµà´•">General</a>
                 <h1 id="reader-title" class="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--text)] dark:text-white leading-snug tracking-tight font-['Anek_Malayalam']">
                     Article Title
                 </h1>
@@ -315,7 +325,7 @@
                         <span id="reader-author" class="font-bold text-[var(--text)] dark:text-white text-sm sm:text-base font-['Anek_Malayalam']">Author</span>
                     </div>
                     <span id="reader-transcription-container" class="hidden text-xs font-semibold text-[#5a4b41] dark:text-[#cbd5e1] bg-black/5 dark:bg-white/5 px-3 py-1.5 rounded-full">
-                        <span class="text-[#8c7a6b] dark:text-[#a0aec0]">📝 കേട്ടെഴുത്ത്:</span> <span id="reader-transcription" class="font-bold text-[var(--text)] dark:text-white"></span>
+                        <span class="text-[#8c7a6b] dark:text-[#a0aec0]">ðŸ“ à´•àµ‡à´Ÿàµà´Ÿàµ†à´´àµà´¤àµà´¤àµ:</span> <span id="reader-transcription" class="font-bold text-[var(--text)] dark:text-white"></span>
                     </span>
                     <span id="reader-date" class="font-english text-xs text-[#8c7a6b] dark:text-[#a0aec0] ml-auto">Date</span>
                 </div>
@@ -359,192 +369,88 @@
         </div>
     </div>
 
-    <!-- ═══════════ FOOTER ═══════════ -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â• FOOTER â•â•â•â•â•â•â•â•â•â•â• -->
     <footer class="flex-shrink-0 bg-[#241711] text-[#cbbba9] border-t border-[#3d2c22] py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-english tracking-wider">
             <span translate="no" class="notranslate">&copy; 2026 NUQTHA. All rights reserved.</span>
             <div class="flex items-center gap-4">
                 <a href="admin.html" class="hover:text-white transition">Admin Portal</a>
-                <span>•</span>
+                <span>â€¢</span>
                 <a href="contact.html" class="hover:text-white transition">Contact</a>
             </div>
         </div>
     </footer>
 
-    <!-- ═══════════ SIDEBAR DRAWER (3-BAR MENU) ═══════════ -->
-    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+    <!-- SIDEBAR DRAWER (3-BAR MENU) -->
+    <div id="sidebar-backdrop" class="drawer-backdrop" aria-hidden="true"></div>
 
-    <aside id="sidebar-drawer" class="fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-[var(--surface)] dark:bg-[#12141d] z-50 shadow-2xl border-l border-[var(--border)] dark:border-white/10 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col justify-between overflow-y-auto">
-        <!-- Drawer Top Content -->
-        <div class="p-5 space-y-5">
-            <!-- Drawer Header -->
-            <div class="flex items-center justify-between pb-3 border-b border-[var(--border)] dark:border-white/10">
-                <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] flex items-center justify-center p-1 text-white shadow-sm">
-                        <svg class="w-full h-full" viewBox="0 0 24 24" fill="currentColor"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z"/></svg>
-                    </div>
-                    <span translate="no" class="notranslate font-black font-english text-lg tracking-tight uppercase text-[var(--text)] dark:text-white">NUQTHA</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <!-- Light / Dark Mode Toggle inside Drawer -->
-                    <button id="theme-toggle-btn" class="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#5a4b41] dark:text-[#cbd5e1] hover:text-[#b4532c] transition cursor-pointer" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
-                        <svg id="sun-icon" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        <svg id="moon-icon" class="w-4 h-4 text-[#4a3c33] dark:text-[#cbbba9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                    </button>
-                    <!-- Close Drawer Button -->
-                    <button id="sidebar-close-btn" class="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#5a4b41] dark:text-[#cbd5e1] hover:text-[#b4532c] transition cursor-pointer" aria-label="Close menu">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Drawer Search Bar -->
-            <div class="space-y-1.5">
-                <label class="text-[10px] font-bold uppercase tracking-wider text-[#8c7a6b] font-english">ലേഖനങ്ങൾ തിരയുക (Search)</label>
-                <div class="relative w-full">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8c7a6b]">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    </span>
-                    <input 
-                        type="text" 
-                        id="drawer-search-input" 
-                        placeholder="തലക്കെട്ട്, എഴുത്തുകാരൻ..." 
-                        class="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/15 focus:border-[#b4532c] focus:ring-1 focus:ring-[#b4532c] outline-none text-[var(--text)] dark:text-white placeholder-[#8c7a6b]"
-                    />
-                </div>
-            </div>
-
-            <!-- Categories Section -->
-            <div class="space-y-1">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-[#8c7a6b] font-english px-1">വിഭാഗങ്ങൾ (Categories)</span>
-                <nav class="space-y-1 font-english">
-                    <a href="#home" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="ALL">
-                        <span class="flex items-center gap-2.5">
-                            <span class="text-base">🏠</span>
-                            <span>ALL ARTICLES (എല്ലാം)</span>
-                        </span>
-                    </a>
-                    <a href="#history" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="HISTORY">
-                        <span class="flex items-center gap-2.5">
-                            <span class="text-base">📜</span>
-                            <span>HISTORY (ചരിത്രം)</span>
-                        </span>
-                    </a>
-                    <a href="#study" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="STUDY">
-                        <span class="flex items-center gap-2.5">
-                            <span class="text-base">📖</span>
-                            <span>STUDY (പഠനം)</span>
-                        </span>
-                    </a>
-                    <a href="#story" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="STORY">
-                        <span class="flex items-center gap-2.5">
-                            <span class="text-base">✍️</span>
-                            <span>STORY (കഥ)</span>
-                        </span>
-                    </a>
-                    <a href="#books" class="drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition" data-category="BOOKS">
-                        <span class="flex items-center gap-2.5">
-                            <span class="text-base">📚</span>
-                            <span>BOOKS & EDITIONS (പുസ്തകങ്ങൾ)</span>
-                        </span>
-                    </a>
-                                    <button type="button" id="drawer-library-link" class="w-full drawer-nav-item flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition cursor-pointer text-left font-english">
-                        <span class="flex items-center gap-2.5">
-                            <span class="text-base">🏛️</span>
-                            <span>LIBRARY (ലൈബ്രറി 3D)</span>
-                        </span>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#b4532c]/15 text-[#b4532c] dark:text-[#f87171] font-bold">New</span>
-                    </button>
-                </nav>
-            </div>
-
-            <!-- Saved Articles Link in Drawer -->
-            <div class="border-t border-[var(--border)] dark:border-white/10 pt-3 space-y-1.5">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-[#8c7a6b] font-english px-1">ലൈബ്രറി (Library)</span>
-                <a href="#" onclick="if(window.filterBySavedArticles){window.filterBySavedArticles();const b=document.getElementById('sidebar-close-btn');if(b)b.click();}" class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#2b2118] dark:text-[#f8fafc] text-xs font-bold transition">
-                    <span class="flex items-center gap-2.5">
-                        <span class="text-base">🔖</span>
-                        <span>SAVED ARTICLES (സേവ് ചെയ്തവ)</span>
-                    </span>
-                </a>
-            </div>
-
-            <!-- Management Section -->
-            <div class="border-t border-[var(--border)] dark:border-white/10 pt-3 space-y-1.5">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-[#8c7a6b] font-english px-1">മാനേജ്മെന്റ് & അഡ്മിൻ</span>
-                
-                <!-- ADMIN PANEL OPTION INSIDE 3-BAR SIDE DRAWER -->
-                <a href="admin.html" id="drawer-admin-link" class="hidden flex items-center justify-between px-3.5 py-3 rounded-2xl bg-[#b4532c]/10 dark:bg-[#b4532c]/20 hover:bg-[#b4532c] hover:text-white text-[#b4532c] dark:text-[#f87171] text-xs font-bold transition group shadow-sm">
-                    <span class="flex items-center gap-2.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                        <span class="font-english uppercase">Admin Panel (അഡ്മിൻ)</span>
-                    </span>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#b4532c]/15 group-hover:bg-white/20 font-mono">🔒</span>
-                </a>
-
-                <a href="contact.html" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-[#5a4b41] dark:text-[#cbd5e1] text-xs font-bold transition font-english">
-                    <span class="text-base">📞</span>
-                    <span>CONTACT US (ബന്ധപ്പെടുക)</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- Bottom Login / Logout Section -->
-        <div id="drawer-auth-section" class="p-5 border-t border-[var(--border)] dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]">
-            <!-- Logged-Out: Login button -->
-            <button 
-                id="drawer-login-btn"
-                type="button"
-                class="w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-[#A75D3A] dark:text-[#f87171] hover:bg-[#A75D3A]/10 font-bold text-sm tracking-wide transition-all cursor-pointer font-english"
-            >
-                <span class="flex items-center gap-2.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                    </svg>
-                    <span>Login (പ്രവേശിക്കുക)</span>
-                </span>
-                <span class="text-xs opacity-60">→</span>
-            </button>
-
-            <!-- Logged-In: User info + Logout button -->
-            <div id="drawer-user-info" class="hidden space-y-2.5">
-                <div class="flex items-center gap-3 pb-2 border-b border-[var(--border)]/50 dark:border-white/10">
-                    <div id="drawer-user-avatar" class="w-9 h-9 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-xs overflow-hidden flex-shrink-0">
-                        <img id="drawer-user-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
-                        <span id="drawer-user-avatar-initial" class="hidden"></span>
-                        <svg id="drawer-user-avatar-fallback" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p id="drawer-user-name" class="text-xs font-bold text-[var(--text)] dark:text-white truncate">വായനക്കാരൻ</p>
-                        <p id="drawer-user-ident" class="text-[11px] text-[#8c7a6b] dark:text-slate-400 truncate"></p>
-                    </div>
-                </div>
-
-                <button 
-                    id="drawer-logout-btn"
-                    type="button"
-                    class="w-full text-left py-2 px-3 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 font-bold text-xs tracking-wide transition-opacity flex items-center gap-2.5 cursor-pointer font-english"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                    </svg>
-                    <span>Logout (പുറത്തുകടക്കുക)</span>
+    <aside id="sidebar-drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true" inert>
+        <div class="drawer-head">
+            <a href="#home" class="drawer-brand drawer-home-link" aria-label="NUQTHA home">
+                <span class="drawer-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 0 4 22V5.5Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8 7h8M8 10h8"/></svg></span>
+                <span id="drawer-title">NUQTHA</span>
+            </a>
+            <div class="drawer-head-actions">
+                <button id="theme-toggle-btn" class="drawer-icon-button" type="button" title="Toggle Light / Dark Mode" aria-label="Toggle theme">
+                    <svg id="sun-icon" class="hidden" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+                    <svg id="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 15.5A8.8 8.8 0 0 1 8.5 3.2 8.9 8.9 0 1 0 20.8 15.5Z"/></svg>
                 </button>
+                <button id="sidebar-close-btn" class="drawer-icon-button" type="button" aria-label="Close menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
             </div>
         </div>
 
-        <!-- Drawer Bottom -->
-        <div class="p-4 border-t border-[var(--border)] dark:border-white/10 text-center text-xs text-[#8c7a6b] font-english">
-            NUQTHA &bull; Malayalam Publishing
-        </div>
-    </aside>
+        <div class="drawer-body">
+            <div class="drawer-search">
+                <label class="sr-only" for="drawer-search-input">ലേഖനങ്ങൾ തിരയുക / Search articles</label>
+                <input type="search" id="drawer-search-input" placeholder="തലക്കെട്ട്, എഴുത്തുകാരൻ..." aria-label="ലേഖനങ്ങൾ തിരയുക / Search articles">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+            </div>
 
+            <section class="drawer-group" aria-labelledby="drawer-read-title">
+                <h2 class="drawer-title" id="drawer-read-title">ലേഖനങ്ങൾ <small>Read</small></h2>
+                <nav aria-label="ലേഖനങ്ങൾ / Read">
+                    <a href="#home" class="drawer-nav-item drawer-link" data-category="ALL"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5M9 21v-7h6v7"/></svg><span><span class="ml">എല്ലാ ലേഖനങ്ങളും</span><small>All articles</small></span></a>
+                    <a href="#history" class="drawer-nav-item drawer-link" data-category="HISTORY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M6 5v15m12-15v15M3 20h18M9 9h6m-6 4h6m-6 4h6"/></svg><span><span class="ml">ചരിത്രം</span><small>History</small></span></a>
+                    <a href="#study" class="drawer-nav-item drawer-link" data-category="STUDY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H20v17H5.5A2.5 2.5 0 0 0 3 22V5.5Z"/><path d="M3 18.5A2.5 2.5 0 0 1 5.5 16H20M8 7h8m-8 3h8"/></svg><span><span class="ml">പഠനം</span><small>Study</small></span></a>
+                    <a href="#story" class="drawer-nav-item drawer-link" data-category="STORY"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg><span><span class="ml">കഥകൾ</span><small>Stories</small></span></a>
+                </nav>
+            </section>
+
+            <section class="drawer-group" aria-labelledby="drawer-collections-title">
+                <h2 class="drawer-title" id="drawer-collections-title">ശേഖരം <small>Collections</small></h2>
+                <nav aria-label="ശേഖരം / Collections">
+                    <a href="#books" class="drawer-nav-item drawer-link" data-category="BOOKS"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8 6h8m-8 3h8"/></svg><span><span class="ml">പുസ്തകങ്ങളും പതിപ്പുകളും</span><small>Books &amp; editions</small></span></a>
+                    <button type="button" id="drawer-library-link" class="drawer-nav-item drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-7h6v7M8 10h.01M16 10h.01"/></svg><span><span class="ml">ലൈബ്രറി</span><small>Library</small></span><span class="badge-new">New</span></button>
+                </nav>
+            </section>
+
+            <section class="drawer-group" aria-labelledby="drawer-space-title">
+                <h2 class="drawer-title" id="drawer-space-title">എന്റെ ഇടം <small>My space</small></h2>
+                <nav aria-label="എന്റെ ഇടം / My space">
+                    <a href="#" id="drawer-saved-link" class="drawer-link" onclick="if(window.filterBySavedArticles){window.filterBySavedArticles();const b=document.getElementById('sidebar-close-btn');if(b)b.click();}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v18l-6-4-6 4v-18Z"/></svg><span><span class="ml">സേവ് ചെയ്ത ലേഖനങ്ങൾ</span><small>Saved articles</small></span></a>
+                </nav>
+            </section>
+
+            <section id="drawer-admin-group" class="drawer-group hidden" aria-labelledby="drawer-admin-title">
+                <h2 class="drawer-title" id="drawer-admin-title">മാനേജ്മെന്റ് <small>Management</small></h2>
+                <nav aria-label="അഡ്മിൻ / Admin">
+                    <a href="admin.html" id="drawer-admin-link" class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span><span class="ml">അഡ്മിൻ പാനൽ</span><small>Admin panel</small></span></a>
+                </nav>
+            </section>
+        </div>
+
+        <footer id="drawer-auth-section" class="drawer-foot">
+            <a id="drawer-contact-link" class="drawer-contact" href="contact.html">ബന്ധപ്പെടുക <span>Contact us</span></a>
+            <button id="drawer-login-btn" type="button" class="btn-login"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h5a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-5"/></svg><span>ലോഗിൻ / Login</span></button>
+            <div id="drawer-user-info" class="hidden">
+                <div class="drawer-user">
+                    <div id="drawer-user-avatar" class="drawer-avatar"><img id="drawer-user-avatar-img" class="hidden" alt="Avatar"><span id="drawer-user-avatar-initial" class="hidden"></span><svg id="drawer-user-avatar-fallback" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0m8-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg></div>
+                    <div class="drawer-user-label"><p id="drawer-user-name">വായനക്കാരൻ</p><p id="drawer-user-ident"></p></div>
+                </div>
+                <button id="drawer-logout-btn" type="button" class="drawer-logout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m9-9h5a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-5"/></svg><span>പുറത്തുകടക്കുക / Logout</span></button>
+            </div>
+        </footer>
+    </aside>
     <!-- App Module -->
     <script type="module" src="./js/category-link.js"></script>
     <script type="module" src="./hero.js"></script>
