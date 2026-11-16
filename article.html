@@ -623,6 +623,7 @@
         import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, saveBookPageLightCache, saveBookChapterListCache, readBookChapterListCache } from "/js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "/js/author-service.js";
         import { categoryUrl, categoryTag } from "/js/category-link.js";
+        import { getArticleCategoryId, getCachedCategoryName, getCategories } from "/js/category-store.js";
         import { trackReadingActivity } from "/js/analytics-tracker.js";
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "/js/paywall-service.js";
 
