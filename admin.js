@@ -3,6 +3,8 @@ import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapt
 import { getArticleCategoryId, getCategories } from "./js/category-store.js";
 import { mergeBookRecords } from "./book-data.js";
 import { initLibraryAdmin } from "./admin-library.js";
+import { initCategoryAdmin } from "./admin-categories.js";
+import { initReadingBgAdmin } from "./admin-reading-bg.js";
 import {
     checkIsAdminUser, 
     initAuthStateListener, 
@@ -364,6 +366,7 @@ let currentArticlesList = [];
 let adminArticlesUnsubscribe = null;
 let adminBooksUnsubscribe = null;
 let adminListenerGeneration = 0;
+let adminCategoryNames = new Map();
 export let safeArticles = [];
 if (typeof window !== "undefined") {
     window.safeArticles = safeArticles;
@@ -457,6 +460,11 @@ async function populateCategoryControls(selectedCategoryId = "") {
         const articleSelect = document.getElementById("art-category");
         if (articleSelect) articleSelect.innerHTML = `<option value="">Categories unavailable</option>`;
     }
+}
+
+function getAdminArticleCategoryName(article) {
+    const categoryId = getArticleCategoryId(article);
+    return adminCategoryNames.get(categoryId) || String(article?.category || categoryId || "GENERAL").trim();
 }
 
 function initPlaylistPresets() {
@@ -3845,9 +3853,7 @@ function listenToFirestoreArticles() {
         if (cached) {
             const parsed = JSON.parse(cached);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                latestArticleItems = parsed.filter(item => item?._sourceCollection !== "books");
-                latestBookItems = parsed.filter(item => item?._sourceCollection === "books");
-                processArticlesData(latestArticleItems, latestBookItems);
+                processArticlesData(parsed);
             }
         }
     } catch (e) {
@@ -3955,14 +3961,6 @@ function listenToFirestoreArticles() {
             reportLoadError(err);
         });
 
-        onSnapshot(booksColRef, (querySnapshot) => {
-            console.log(`[NUQTHA ADMIN] onSnapshot received ${querySnapshot.docs.length} book documents (fromCache: ${querySnapshot.metadata.fromCache})`);
-            latestBookItems = querySnapshot.docs.map(bookDoc => ({ id: bookDoc.id, ...bookDoc.data() }));
-            if (latestArticleItems) processArticlesData(latestArticleItems, latestBookItems);
-        }, (err) => {
-            console.error("[NUQTHA ADMIN] Realtime books onSnapshot listener failed:", err.code || "", err.message, err);
-            showGlobalStatus("പുസ്തകങ്ങളുടെ പട്ടിക ലോഡ് ചെയ്യാനായില്ല. Firestore അനുമതികൾ പരിശോധിക്കുക.", "error");
-        });
     } catch (error) {
         reportLoadError(error);
     }
