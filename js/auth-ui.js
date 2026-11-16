@@ -444,42 +444,6 @@ export function initHeaderAuthUI(options = {}) {
         });
     }
 
-    // Drawer Auth UI (Login / Logout in Sidebar Menu)
-    const drawerLoginBtn = document.getElementById("drawer-login-btn");
-    const drawerLogoutBtn = document.getElementById("drawer-logout-btn");
-
-    if (drawerLoginBtn) {
-        drawerLoginBtn.addEventListener("click", () => {
-            const closeBtn = document.getElementById("sidebar-close-btn");
-            if (closeBtn) closeBtn.click();
-            openAuthModal("google");
-        });
-    }
-
-    if (drawerLogoutBtn) {
-        drawerLogoutBtn.addEventListener("click", async () => {
-            await signOutUser();
-            const closeBtn = document.getElementById("sidebar-close-btn");
-            if (closeBtn) closeBtn.click();
-        });
-    }
-
-    // Navbar Brand Auth UI (Small Bordered Login / Logout under brand logo)
-    const navLoginBtn = document.getElementById("nav-login-btn");
-    const navLogoutBtn = document.getElementById("nav-logout-btn");
-
-    if (navLoginBtn) {
-        navLoginBtn.addEventListener("click", () => {
-            openAuthModal("google");
-        });
-    }
-
-    if (navLogoutBtn) {
-        navLogoutBtn.addEventListener("click", async () => {
-            await signOutUser();
-        });
-    }
-
     // Auth State Listener
     initAuthStateListener((user) => {
         updateHeaderUserUI(user);
@@ -509,19 +473,6 @@ export function updateHeaderUserUI(user) {
     const dropAdminLink = document.getElementById("dropdown-admin-link");
     const dropSavedCount = document.getElementById("dropdown-saved-count");
 
-    // Navbar Brand Auth UI elements
-    const navLoginBtn = document.getElementById("nav-login-btn");
-    const navLogoutBtn = document.getElementById("nav-logout-btn");
-
-    // Drawer Auth UI elements
-    const drawerLoginBtn = document.getElementById("drawer-login-btn");
-    const drawerGuestInfo = document.getElementById("drawer-guest-info");
-    const drawerUserInfo = document.getElementById("drawer-user-info");
-    const drawerUserName = document.getElementById("drawer-user-name");
-    const drawerUserStatus = document.getElementById("drawer-user-status");
-    const drawerUserInitial = document.getElementById("drawer-user-avatar-initial");
-    const drawerUserAvatarImg = document.getElementById("drawer-user-avatar-img");
-    const drawerUserFallbackSvg = document.getElementById("drawer-user-avatar-fallback");
     const drawerAdminLink = document.getElementById("drawer-admin-link");
     const drawerAdminGroup = document.getElementById("drawer-admin-group");
 
@@ -591,43 +542,6 @@ export function updateHeaderUserUI(user) {
             dropAdminLink.classList.toggle("flex", isAdmin);
         }
 
-        // Update Navbar Brand Auth UI
-        if (navLoginBtn) navLoginBtn.classList.add("hidden");
-        if (navLogoutBtn) navLogoutBtn.classList.remove("hidden");
-
-        // Update Drawer Auth UI for Logged-In User
-        if (drawerLoginBtn) drawerLoginBtn.classList.add("hidden");
-        if (drawerGuestInfo) {
-            drawerGuestInfo.classList.add("hidden");
-            drawerGuestInfo.classList.remove("block");
-        }
-        if (drawerUserInfo) {
-            drawerUserInfo.classList.remove("hidden");
-            drawerUserInfo.classList.add("block");
-        }
-        if (drawerUserName) drawerUserName.textContent = displayName;
-        if (drawerUserStatus) drawerUserStatus.textContent = isAdmin ? "Administrator" : "Signed in";
-
-        if (user.avatar) {
-            if (drawerUserAvatarImg) {
-                drawerUserAvatarImg.src = user.avatar;
-                drawerUserAvatarImg.classList.remove("hidden");
-            }
-            if (drawerUserInitial) drawerUserInitial.classList.add("hidden");
-            if (drawerUserFallbackSvg) drawerUserFallbackSvg.classList.add("hidden");
-        } else if (initialLetter) {
-            if (drawerUserAvatarImg) drawerUserAvatarImg.classList.add("hidden");
-            if (drawerUserInitial) {
-                drawerUserInitial.textContent = initialLetter;
-                drawerUserInitial.classList.remove("hidden");
-            }
-            if (drawerUserFallbackSvg) drawerUserFallbackSvg.classList.add("hidden");
-        } else {
-            if (drawerUserAvatarImg) drawerUserAvatarImg.classList.add("hidden");
-            if (drawerUserInitial) drawerUserInitial.classList.add("hidden");
-            if (drawerUserFallbackSvg) drawerUserFallbackSvg.classList.remove("hidden");
-        }
-
         if (drawerAdminLink) {
             drawerAdminLink.classList.toggle("hidden", !isAdmin);
             drawerAdminLink.classList.toggle("flex", isAdmin);
@@ -662,31 +576,6 @@ export function updateHeaderUserUI(user) {
         const userDropdown = document.getElementById("header-user-dropdown");
         if (userDropdown) userDropdown.classList.add("hidden");
 
-        // Update Navbar Brand Auth UI
-        if (navLoginBtn) navLoginBtn.classList.remove("hidden");
-        if (navLogoutBtn) navLogoutBtn.classList.add("hidden");
-
-        // Update Drawer Auth UI for Logged-Out State
-        if (drawerLoginBtn) drawerLoginBtn.classList.remove("hidden");
-        if (drawerGuestInfo) {
-            drawerGuestInfo.classList.remove("hidden");
-            drawerGuestInfo.classList.add("block");
-        }
-        if (drawerUserInfo) {
-            drawerUserInfo.classList.add("hidden");
-            drawerUserInfo.classList.remove("block");
-        }
-        if (drawerUserInitial) {
-            drawerUserInitial.textContent = "";
-            drawerUserInitial.classList.add("hidden");
-        }
-        if (drawerUserAvatarImg) {
-            drawerUserAvatarImg.src = "";
-            drawerUserAvatarImg.classList.add("hidden");
-        }
-        if (drawerUserFallbackSvg) {
-            drawerUserFallbackSvg.classList.remove("hidden");
-        }
         if (drawerAdminLink) {
             drawerAdminLink.classList.add("hidden");
             drawerAdminLink.classList.remove("flex");

@@ -2446,7 +2446,6 @@ body.dark-mode #sidebar-drawer {
 
 .drawer-brand,
 .drawer-head-actions,
-.drawer-user,
 .drawer-link {
     display: flex;
     align-items: center;
@@ -2472,8 +2471,7 @@ body.dark-mode #sidebar-drawer {
 
 .drawer-brand-mark svg,
 .drawer-icon-button svg,
-.drawer-link > svg,
-.drawer-avatar svg {
+.drawer-link > svg {
     width: 1.2rem;
     height: 1.2rem;
     flex: none;
@@ -2619,7 +2617,7 @@ body.dark-mode .drawer-link[aria-current="page"] {
 
 .drawer-contact {
     display: block;
-    margin: 0 0 0.7rem;
+    margin: 0;
     padding: 0.2rem 0.35rem;
     color: var(--text-muted);
     font-family: "Plus Jakarta Sans", sans-serif;
@@ -2631,113 +2629,6 @@ body.dark-mode .drawer-link[aria-current="page"] {
 .drawer-contact:hover,
 .drawer-contact:focus-visible {
     color: var(--accent);
-}
-
-.btn-login {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    min-width: 76px;
-    min-height: 36px;
-    padding: 0.45rem 0.85rem;
-    border: 0;
-    border-radius: 999px;
-    color: #fff;
-    background: #B84A27;
-    font-family: "Plus Jakarta Sans", sans-serif;
-    font-size: 0.78rem;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.btn-login:hover,
-.btn-login:focus-visible {
-    background: var(--terracotta-dark);
-}
-
-.drawer-account-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.4rem;
-    min-height: 60px;
-    padding: 0.45rem 0.5rem 0.45rem 0.4rem;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.58);
-}
-
-html.dark .drawer-account-card,
-body.dark-mode .drawer-account-card {
-    background: rgba(255, 255, 255, 0.06);
-}
-
-.drawer-user {
-    gap: 0.6rem;
-    min-width: 0;
-    min-height: 44px;
-    padding: 0.1rem 0.25rem;
-}
-
-.drawer-avatar {
-    display: grid;
-    width: 38px;
-    height: 38px;
-    flex: none;
-    overflow: hidden;
-    place-items: center;
-    border-radius: 50%;
-    color: #fff;
-    background: #B84A27;
-}
-
-.drawer-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.drawer-user-label {
-    min-width: 0;
-}
-
-.drawer-user-label p {
-    overflow: hidden;
-    margin: 0;
-    color: var(--text);
-    font-family: "Plus Jakarta Sans", sans-serif;
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.drawer-user-status {
-    display: block;
-    margin-top: 0.12rem;
-    color: var(--text-muted);
-    font-family: "Plus Jakarta Sans", sans-serif;
-    font-size: 0.67rem;
-    line-height: 1.25;
-}
-
-.drawer-logout {
-    flex: none;
-    min-height: 34px;
-    padding: 0.4rem 0.7rem;
-    border: 1px solid rgba(135, 120, 101, 0.2);
-    border-radius: 999px;
-    color: var(--text);
-    background: transparent;
-    font-family: "Plus Jakarta Sans", sans-serif;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.drawer-logout:hover,
-.drawer-logout:focus-visible {
-    background: rgba(89, 75, 58, 0.09);
 }
 
 @media (prefers-reduced-motion: no-preference) {

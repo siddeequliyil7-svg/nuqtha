@@ -84,7 +84,7 @@ const indexHtml = fs.readFileSync("nuqtha/index.html", "utf8");
 const articleHtml = fs.readFileSync("nuqtha/article.html", "utf8");
 const authUiJs = fs.readFileSync("nuqtha/js/auth-ui.js", "utf8");
 
-// Top Navbar right actions: search button and hamburger 3-lines button present, profile avatar removed
+// Top Navbar: centered brand, search, hamburger, and profile auth controls
 assert.ok(
     indexHtml.includes('id="header-search-btn"'),
     "index.html must have header-search-btn in top navbar"
@@ -95,23 +95,25 @@ assert.ok(
 );
 assert.strictEqual(
     indexHtml.includes('id="header-auth-container"'),
-    false,
-    "index.html top navbar must NOT contain header-auth-container (profile icons fully removed from top navbar as requested)"
+    true,
+    "index.html top navbar must contain header-auth-container"
 );
-
-// Sidebar Drawer: Bottom Login / Logout section
-assert.ok(
-    indexHtml.includes('id="drawer-auth-section"'),
-    "index.html sidebar drawer must contain drawer-auth-section"
-);
-assert.ok(
-    indexHtml.includes('id="drawer-login-btn"'),
-    "index.html sidebar drawer must contain drawer-login-btn for logged-out state"
-);
-assert.ok(
-    indexHtml.includes('id="drawer-logout-btn"'),
-    "index.html sidebar drawer must contain drawer-logout-btn for logged-in state"
-);
+assert.ok(indexHtml.includes('id="header-signin-btn"') && indexHtml.includes('id="header-user-btn"'),
+    "Header must expose sign-in and signed-in profile states");
+assert.ok(indexHtml.includes('id="dropdown-signout-btn"'),
+    "Signed-in profile menu must provide sign-out");
+assert.strictEqual(indexHtml.includes('id="drawer-login-btn"'), false,
+    "Sidebar must not contain a separate login button");
+assert.strictEqual(indexHtml.includes('id="drawer-logout-btn"'), false,
+    "Sidebar must not contain a separate logout button");
+assert.strictEqual(indexHtml.includes('id="drawer-guest-info"'), false,
+    "Sidebar must not contain a separate guest account card");
+assert.strictEqual(indexHtml.includes('id="drawer-user-info"'), false,
+    "Sidebar must not contain a separate signed-in account card");
+assert.strictEqual(indexHtml.includes('id="drawer-auth-section"'), false,
+    "Sidebar must not contain a separate auth section");
+assert.ok(indexHtml.includes('w-72 max-w-[82vw]'),
+    "Mobile sidebar must use a compact width");
 
 // Verify that initial letter 'U' is completely removed
 assert.strictEqual(
@@ -130,47 +132,25 @@ assert.strictEqual(
     "article.html must not contain hardcoded fallback initial 'U' in dropdown-user-avatar-initial!"
 );
 
-// Verify auth-ui.js does not fall back to "U" and wires drawer auth buttons
+// Verify auth-ui.js does not fall back to "U" and wires header auth controls
 assert.strictEqual(
     authUiJs.includes('|| "U"'),
     false,
     "auth-ui.js must not contain fallback letter 'U'!"
 );
-assert.ok(
-    authUiJs.includes('drawer-login-btn') && authUiJs.includes('drawer-logout-btn'),
-    "auth-ui.js must wire drawer-login-btn and drawer-logout-btn"
-);
+assert.ok(authUiJs.includes('header-signin-btn') && authUiJs.includes('header-user-btn'),
+    "auth-ui.js must wire sign-in and signed-in profile controls");
+assert.strictEqual(articleHtml.includes(">SHARE:</span>"), false,
+    "Article share bar must not render a SHARE label");
 
-// Top Navbar Left Section: Small Bordered Login / Logout under brand logo
-assert.ok(
-    indexHtml.includes('id="nav-login-btn"'),
-    "index.html must have nav-login-btn under brand logo"
-);
-assert.ok(
-    indexHtml.includes('id="nav-logout-btn"'),
-    "index.html must have nav-logout-btn under brand logo"
-);
-assert.ok(
-    authUiJs.includes('nav-login-btn') && authUiJs.includes('nav-logout-btn'),
-    "auth-ui.js must wire nav-login-btn and nav-logout-btn"
-);
-
-console.log("  [OK] Top navbar is clean (search + 3-lines menu), user profile icons removed from top bar, and drawer login/logout implemented.");
+console.log("  [OK] Header auth, compact navigation, and icon-only article share controls are configured.");
 
 // ─── Test 4: Navbar layout & responsiveness ───
 console.log("Test 4: Verifying navbar layout & desktop/mobile alignment classes...");
 
 assert.ok(
-    indexHtml.includes('order-1 brand-badge'),
-    "Brand logo must have order-1 for flex alignment"
-);
-assert.ok(
-    indexHtml.includes('order-2 md:order-3 nav-actions'),
-    "Nav actions must have order-2 md:order-3 for flex alignment"
-);
-assert.ok(
-    indexHtml.includes('order-3 md:order-2') && indexHtml.includes('id="category-nav"'),
-    "Category nav must have order-3 md:order-2 to sit centered on desktop and row 2 on mobile"
+    indexHtml.includes('absolute left-1/2 top-1/2') && indexHtml.includes('id="category-nav"'),
+    "Brand must be centered independently of the navigation actions"
 );
 
 const stylesCss = fs.readFileSync("nuqtha/styles.css", "utf8");
