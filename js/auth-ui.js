@@ -164,6 +164,7 @@ export function closeAuthModal() {
     modal.classList.add("opacity-0");
     setTimeout(() => {
         modal.classList.add("hidden");
+        window.dispatchEvent(new CustomEvent("nuqtha:auth-modal-closed"));
         clearAuthModalError();
         cleanupRecaptcha();
         if (resendTimerInterval) {
@@ -514,13 +515,15 @@ export function updateHeaderUserUI(user) {
 
     // Drawer Auth UI elements
     const drawerLoginBtn = document.getElementById("drawer-login-btn");
+    const drawerGuestInfo = document.getElementById("drawer-guest-info");
     const drawerUserInfo = document.getElementById("drawer-user-info");
     const drawerUserName = document.getElementById("drawer-user-name");
-    const drawerUserIdent = document.getElementById("drawer-user-ident");
+    const drawerUserStatus = document.getElementById("drawer-user-status");
     const drawerUserInitial = document.getElementById("drawer-user-avatar-initial");
     const drawerUserAvatarImg = document.getElementById("drawer-user-avatar-img");
     const drawerUserFallbackSvg = document.getElementById("drawer-user-avatar-fallback");
     const drawerAdminLink = document.getElementById("drawer-admin-link");
+    const drawerAdminGroup = document.getElementById("drawer-admin-group");
 
     // Update saved articles count
     let savedCount = 0;
@@ -605,12 +608,16 @@ export function updateHeaderUserUI(user) {
 
         // Update Drawer Auth UI for Logged-In User
         if (drawerLoginBtn) drawerLoginBtn.classList.add("hidden");
+        if (drawerGuestInfo) {
+            drawerGuestInfo.classList.add("hidden");
+            drawerGuestInfo.classList.remove("block");
+        }
         if (drawerUserInfo) {
             drawerUserInfo.classList.remove("hidden");
             drawerUserInfo.classList.add("block");
         }
         if (drawerUserName) drawerUserName.textContent = displayName;
-        if (drawerUserIdent) drawerUserIdent.textContent = user.email || user.phoneNumber || "";
+        if (drawerUserStatus) drawerUserStatus.textContent = isAdmin ? "Administrator" : "Signed in";
 
         if (user.avatar) {
             if (drawerUserAvatarImg) {
@@ -636,6 +643,7 @@ export function updateHeaderUserUI(user) {
             drawerAdminLink.classList.toggle("hidden", !isAdmin);
             drawerAdminLink.classList.toggle("flex", isAdmin);
         }
+        if (drawerAdminGroup) drawerAdminGroup.classList.toggle("hidden", !isAdmin);
 
     } else {
         if (signinBtn) signinBtn.classList.remove("hidden");
@@ -671,6 +679,10 @@ export function updateHeaderUserUI(user) {
 
         // Update Drawer Auth UI for Logged-Out State
         if (drawerLoginBtn) drawerLoginBtn.classList.remove("hidden");
+        if (drawerGuestInfo) {
+            drawerGuestInfo.classList.remove("hidden");
+            drawerGuestInfo.classList.add("block");
+        }
         if (drawerUserInfo) {
             drawerUserInfo.classList.add("hidden");
             drawerUserInfo.classList.remove("block");
@@ -690,5 +702,6 @@ export function updateHeaderUserUI(user) {
             drawerAdminLink.classList.add("hidden");
             drawerAdminLink.classList.remove("flex");
         }
+        if (drawerAdminGroup) drawerAdminGroup.classList.add("hidden");
     }
 }

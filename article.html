@@ -116,6 +116,58 @@
                 padding-right: 16px;
                 overflow-x: hidden;
             }
+
+            #art-share-bar {
+                flex-wrap: nowrap;
+                gap: 6px;
+            }
+
+            #art-share-bar .article-share-actions {
+                min-width: 0;
+                gap: 4px;
+                overflow: visible;
+            }
+
+            #art-share-bar .article-share-label {
+                font-size: 8px;
+                margin-right: 1px;
+            }
+
+            #art-share-bar .article-share-button {
+                width: 28px;
+                height: 28px;
+                border-radius: 8px;
+            }
+
+            #art-share-bar .article-share-button svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            #art-share-bar .article-size-controls {
+                gap: 2px;
+                padding: 3px 5px;
+                border-radius: 9px;
+            }
+
+            #art-share-bar .article-size-label {
+                font-size: 8px;
+                margin-right: 0;
+            }
+
+            #art-share-bar .article-size-button {
+                width: 23px;
+                height: 23px;
+                border-radius: 7px;
+                font-size: 10px;
+            }
+
+            #art-share-bar .article-size-value {
+                min-width: 27px;
+                padding-left: 1px;
+                padding-right: 1px;
+                font-size: 10px;
+            }
         }
 
         /* Editorial Blockquote */
@@ -573,6 +625,8 @@
         import { trackReadingActivity } from "/js/analytics-tracker.js";
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "/js/paywall-service.js";
 
+        void syncReadingBg();
+
         const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
         const FIRESTORE_API_KEY = encodeURIComponent(firebaseConfig.apiKey);
         const urlParams = new URLSearchParams(window.location.search);
@@ -726,7 +780,7 @@
 
             pools.push(...FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id)));
 
-            return pools.find(a => 
+            return pools.find(a =>
                 a.id === identifier ||
                 a.id === decoded ||
                 a.id === clean ||
@@ -1265,7 +1319,8 @@
                 "thumbnailUrl", "thumbnail", "ogImage"
             ];
             const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
-            const combinedArticlesMap = new Map();
+            const articleDocsMap = new Map();
+            const bookDocsMap = new Map();
 
             async function fetchCol(colName) {
                 if (checkIsRateLimited()) return;
@@ -1304,7 +1359,7 @@
                                 normalized.isBook = true;
                                 normalized.isChapter = false;
                             }
-                            combinedArticlesMap.set(docId, normalized);
+                            (colName === "books" ? bookDocsMap : articleDocsMap).set(docId, normalized);
                         }
                     }
                     nextPageToken = json.nextPageToken || "";
@@ -1318,7 +1373,26 @@
                         fetchCol("books").catch(() => {})
                     ]);
 
-                    if (combinedArticlesMap.size > 0) {
+                    if (articleDocsMap.size > 0 || bookDocsMap.size > 0) {
+                        const combinedArticlesMap = new Map(articleDocsMap);
+                        for (const book of bookDocsMap.values()) {
+                            const articleRecord = articleDocsMap.get(book.id) ||
+                                Array.from(articleDocsMap.values()).find(article => book.slug && article.slug === book.slug);
+                            const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(book, "");
+                            const thumbnailUrl = getArticleImageUrl(book, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
+                            combinedArticlesMap.set(book.id, {
+                                ...(articleRecord || {}),
+                                ...book,
+                                imageUrl: coverUrl,
+                                coverImage: coverUrl,
+                                coverUrl,
+                                thumbnailUrl,
+                                ogImage: thumbnailUrl,
+                                type: "BOOK",
+                                isBook: true,
+                                isChapter: false
+                            });
+                        }
                         const list = Array.from(combinedArticlesMap.values());
                         memoryCache.set("lightweight_articles", list);
                         return list;
@@ -1337,7 +1411,18 @@
                 const articles = [];
                 articlesSnap.forEach(d => articles.push(normalizeArticleDoc(d.data(), d.id)));
                 booksSnap.forEach(d => {
-                    const norm = normalizeArticleDoc(d.data(), d.id);
+                    const bookData = d.data() || {};
+                    const articleRecord = articles.find(article =>
+                        article.id === d.id || (bookData.slug && article.slug === bookData.slug)
+                    );
+                    const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(bookData, "");
+                    const thumbnailUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
+                    const norm = normalizeArticleDoc({
+                        ...(articleRecord || {}),
+                        ...bookData,
+                        imageUrl: coverUrl,
+                        thumbnailUrl
+                    }, d.id);
                     norm.type = "BOOK";
                     norm.isBook = true;
                     norm.isChapter = false;
@@ -1500,6 +1585,25 @@
 
                 if (!currentDoc) {
                     currentDoc = (cachedBook && !cachedBook.__lightCache ? cachedBook : null) || searchLocalArticlesPool(lookupId);
+                }
+
+                if (currentDoc && (currentDoc.type === "BOOK" || currentDoc.isBook === true || isBookEditionDoc(currentDoc)) &&
+                    !getArticleImageUrl(currentDoc, "")) {
+                    const articleBook = allArticles.find(item =>
+                        item.id === currentDoc.id || (currentDoc.slug && item.slug === currentDoc.slug)
+                    );
+                    const coverUrl = getArticleImageUrl(articleBook, "");
+                    if (coverUrl) {
+                        const thumbnailUrl = getArticleImageUrl(articleBook, "") || coverUrl;
+                        currentDoc = {
+                            ...currentDoc,
+                            imageUrl: coverUrl,
+                            coverImage: coverUrl,
+                            coverUrl,
+                            thumbnailUrl,
+                            ogImage: thumbnailUrl
+                        };
+                    }
                 }
 
                 // Slug and metadata matching in pool if direct ID fetch did not hit
@@ -1778,12 +1882,13 @@
                     path: bookUrl,
                     title: `${book.title || "NUQTHA Edition"} | NUQTHA`,
                     description: book.introduction || book.excerpt || "NUQTHA Malayalam Publishing",
-                    imageUrl: book.thumbnailUrl || book.ogImage || book.imageUrl || "",
+                    imageUrl: getArticleImageUrl(book),
                     articleId: book.id
                 });
             }
 
             const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "").trim();
+            const bookCoverUrl = getArticleImageUrl(book, "");
             const cleanAuthor = (book.author || "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ").replace(/[*_#~`]/g, "").trim();
             const rawIntro = String(book.introduction || book.intro || book.excerpt || "").trim()
                 .replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
@@ -2284,11 +2389,21 @@
 
             const catEl = document.getElementById('art-category');
             if (catEl) {
-                const cat = (article.category || "GENERAL").toUpperCase().trim();
-                catEl.textContent = cat;
-                catEl.href = categoryUrl(cat);
-                catEl.setAttribute('aria-label', `${cat} വിഭാഗത്തിലെ ലേഖനങ്ങൾ`);
-                catEl.title = `${cat} വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക`;
+                const categoryId = getArticleCategoryId(article);
+                const legacyName = String(article.category || categoryId || "GENERAL").trim();
+                const setCategoryLabel = name => {
+                    catEl.textContent = name;
+                    catEl.href = categoryUrl(categoryId);
+                    catEl.setAttribute('aria-label', `${name} വിഭാഗത്തിലെ ലേഖനങ്ങൾ`);
+                    catEl.title = `${name} വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക`;
+                };
+                setCategoryLabel(getCachedCategoryName(categoryId) || legacyName);
+                void getCategories().then(categories => {
+                    const category = categories.find(item => item.slug === categoryId);
+                    if (category) setCategoryLabel(category.name);
+                }).catch(error => {
+                    console.warn("[Article] Could not resolve the category display name.", error);
+                });
             }
 
             const bookBadgeContainer = document.getElementById('art-book-badge-container');

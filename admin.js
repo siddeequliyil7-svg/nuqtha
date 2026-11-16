@@ -1,5 +1,6 @@
 import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
+import { mergeBookRecords } from "./book-data.js";
 import { initLibraryAdmin } from "./admin-library.js";
 import {
     checkIsAdminUser, 
@@ -237,7 +238,6 @@ import {
     sanitizeCategory,
     sanitizeString,
     parseTimestampMillis,
-    ALLOWED_CATEGORIES,
     slugifyText,
     transliterateMalayalam,
     getStoryUrl,
@@ -385,6 +385,14 @@ let dragSrcChapterIndex = null;
 let pendingInlineBase64 = "";
 let compactArticlesDisplayLimit = 20;
 
+function getBookCollectionName(book) {
+    return book?._sourceCollection === "books" ? "books" : "articles";
+}
+
+function updateBookDocument(book, data) {
+    return updateDoc(doc(db, getBookCollectionName(book), book.id), data);
+}
+
 const ADMIN_PASSWORD = "admin768";
 const AUTH_STORAGE_KEY = "nuqtha_admin_authenticated";
 let isDashboardInitialized = false;
@@ -413,6 +421,41 @@ function initAdminDashboard() {
         const root = document.getElementById("library-admin");
         if (root) initLibraryAdmin(root);
     });
+    safeInit("initReadingBgAdminPanel", () => {
+        const root = document.getElementById("reading-bg-admin");
+        if (root) initReadingBgAdmin(root);
+    });
+    safeInit("initCategoryAdminPanel", () => {
+        const root = document.getElementById("category-admin");
+        if (root) initCategoryAdmin(root);
+    });
+    window.addEventListener("nuqtha:categories-updated", populateCategoryControls);
+    void populateCategoryControls();
+}
+
+async function populateCategoryControls(selectedCategoryId = "") {
+    try {
+        const categories = await getCategories();
+        adminCategoryNames = new Map(categories.map(category => [category.slug, category.name]));
+        const articleSelect = document.getElementById("art-category");
+        const filterSelect = document.getElementById("filter-published-category");
+        if (articleSelect) {
+            const selected = selectedCategoryId || articleSelect.value;
+            articleSelect.innerHTML = categories.length
+                ? `<option value="">Select a category</option>${categories.map(category => `<option value="${escapeAdminHtml(category.slug)}">${escapeAdminHtml(category.name)}${category.visible ? "" : " (hidden)"}</option>`).join("")}`
+                : `<option value="">Create or migrate a category first</option>`;
+            articleSelect.value = categories.some(category => category.slug === selected) ? selected : "";
+        }
+        if (filterSelect) {
+            const selected = filterSelect.value || "ALL";
+            filterSelect.innerHTML = `<option value="ALL">All categories</option>${categories.map(category => `<option value="${escapeAdminHtml(category.slug)}">${escapeAdminHtml(category.name)}</option>`).join("")}`;
+            filterSelect.value = categories.some(category => category.slug === selected) ? selected : "ALL";
+        }
+    } catch (error) {
+        console.error("[Admin Categories] Could not populate category controls.", error);
+        const articleSelect = document.getElementById("art-category");
+        if (articleSelect) articleSelect.innerHTML = `<option value="">Categories unavailable</option>`;
+    }
 }
 
 function initPlaylistPresets() {
@@ -618,7 +661,7 @@ function initTabNavigation() {
 
     // Check URL hash on load (e.g. #tab=published, #tab=layout, #tab=book)
     const hash = window.location.hash.replace("#tab=", "").trim();
-    if (["create", "book", "layout", "published", "authors", "menu", "analytics", "library"].includes(hash)) {
+    if (["create", "book", "layout", "published", "authors", "menu", "analytics", "library", "reading-bg", "categories"].includes(hash)) {
         try {
             switchAdminTab(hash);
         } catch (err) {
@@ -677,6 +720,11 @@ export function switchAdminTab(tabName) {
             root.dataset.loaded = "true";
             initLibraryAdmin(root);
         }
+    }
+
+    if (tabName === "categories") {
+        const root = document.getElementById("category-admin");
+        if (root && !root.dataset.categoriesInitialized) initCategoryAdmin(root);
     }
 }
 
@@ -760,7 +808,10 @@ async function handleFormSubmit() {
     try {
         // Collect raw form fields
         const rawTitle = document.getElementById("art-title")?.value || "";
-        const rawCategory = document.getElementById("art-category")?.value || "HISTORY";
+        const rawCategoryId = document.getElementById("art-category")?.value || "";
+        const categories = await getCategories();
+        const selectedCategory = categories.find(category => category.slug === rawCategoryId);
+        if (!selectedCategory) throw new Error("Select an existing category before publishing.");
         const rawAuthor = document.getElementById("art-author")?.value || "";
         const authorId = window.currentUser?.uid || localStorage.getItem("nuqtha_admin_uid") || "admin";
         const rawTranscription = document.getElementById("art-transcription")?.value || "";
@@ -821,7 +872,8 @@ async function handleFormSubmit() {
         const sanitized = validateAndSanitizeArticleForSave({
             title: rawTitle,
             slug: articleSlug,
-            category: rawCategory,
+            category: selectedCategory.slug,
+            categoryId: selectedCategory.slug,
             author: rawAuthor,
             authorId,
             transcription: rawTranscription,
@@ -870,6 +922,7 @@ async function handleFormSubmit() {
                 title: sanitized.title,
                 slug: sanitized.slug || articleSlug,
                 category: sanitized.category,
+                categoryId: sanitized.categoryId,
                 author: sanitized.author,
                 authorId: sanitized.authorId || authorId,
                 transcription: sanitized.transcription || "",
@@ -909,6 +962,7 @@ async function handleFormSubmit() {
             // CREATE NEW ARTICLE IN FIRESTORE
             await setDoc(doc(db, "articles", targetArticleId), {
                 ...sanitized,
+                category: sanitized.categoryId,
                 hasCustomExcerpt: Boolean(typedExcerpt),
                 storedExcerpt: typedExcerpt,
                 excerpt: typedExcerpt,
@@ -1066,7 +1120,7 @@ window.startEditArticle = function (id) {
         if (art.slug) slugInput.dataset.touched = "true";
         else delete slugInput.dataset.touched;
     }
-    if (catInput) catInput.value = (art.category || "HISTORY").toUpperCase();
+    if (catInput) void populateCategoryControls(getArticleCategoryId(art));
     if (authorInput) authorInput.value = art.author || "";
     if (transcriptionInput) transcriptionInput.value = art.transcription || "";
     if (excerptInput) {
@@ -3743,7 +3797,7 @@ function listenToFirestoreArticles() {
         }
     }
 
-    function processArticlesData(rawItems) {
+    function processArticlesData(rawItems, rawBookItems = []) {
         if (!Array.isArray(rawItems)) return;
 
         const items = rawItems.map(d => ({
@@ -3790,7 +3844,9 @@ function listenToFirestoreArticles() {
         if (cached) {
             const parsed = JSON.parse(cached);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                processArticlesData(parsed);
+                latestArticleItems = parsed.filter(item => item?._sourceCollection !== "books");
+                latestBookItems = parsed.filter(item => item?._sourceCollection === "books");
+                processArticlesData(latestArticleItems, latestBookItems);
             }
         }
     } catch (e) {
@@ -3897,6 +3953,15 @@ function listenToFirestoreArticles() {
             console.error("[NUQTHA ADMIN] Books listener failed:", err.code || "", err.message || err);
             reportLoadError(err);
         });
+
+        onSnapshot(booksColRef, (querySnapshot) => {
+            console.log(`[NUQTHA ADMIN] onSnapshot received ${querySnapshot.docs.length} book documents (fromCache: ${querySnapshot.metadata.fromCache})`);
+            latestBookItems = querySnapshot.docs.map(bookDoc => ({ id: bookDoc.id, ...bookDoc.data() }));
+            if (latestArticleItems) processArticlesData(latestArticleItems, latestBookItems);
+        }, (err) => {
+            console.error("[NUQTHA ADMIN] Realtime books onSnapshot listener failed:", err.code || "", err.message, err);
+            showGlobalStatus("പുസ്തകങ്ങളുടെ പട്ടിക ലോഡ് ചെയ്യാനായില്ല. Firestore അനുമതികൾ പരിശോധിക്കുക.", "error");
+        });
     } catch (error) {
         reportLoadError(error);
     }
@@ -3963,7 +4028,7 @@ export function renderAdminPublishedList(items) {
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-[10px] font-black text-[#b4532c] dark:text-[#f87171] uppercase font-english bg-[#b4532c]/10 px-2 py-0.5 rounded-md">
-                            ${data.category || 'General'}
+                            ${escapeAdminHtml(getAdminArticleCategoryName(data))}
                         </span>
                         <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#fbf7ee] dark:bg-white/10 border border-[#ebdccb] dark:border-white/10 text-[#4a3c33] dark:text-[#cbd5e1] font-english">
                             ${placementLabel}
@@ -4031,7 +4096,7 @@ function initPublishedSearchFilter() {
                 (art.author && art.author.toLowerCase().includes(query)) ||
                 (art.transcription && art.transcription.toLowerCase().includes(query));
 
-            const matchesCategory = cat === "ALL" || sanitizeCategory(art.category).toUpperCase() === sanitizeCategory(cat).toUpperCase();
+            const matchesCategory = cat === "ALL" || getArticleCategoryId(art) === cat;
 
             return matchesQuery && matchesCategory;
         });
@@ -4141,7 +4206,7 @@ export function renderLayoutManagerList(items) {
                 <div class="flex items-start justify-between gap-3 flex-wrap">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-[10px] font-black uppercase font-english bg-[#b4532c]/10 text-[#b4532c] px-2.5 py-0.5 rounded-md">
-                            ${art.category || 'General'}
+                            ${escapeAdminHtml(getAdminArticleCategoryName(art))}
                         </span>
                         <span class="text-[10px] text-[#8c7a6b] font-english">${art.date || ''}</span>
                         ${art.bookName ? `<span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-md">📚 ${art.bookName}</span>` : ''}

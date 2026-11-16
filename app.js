@@ -8,11 +8,16 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
  */
 import { db, collection, doc, getDoc, getDocs, getDocsFromCache } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl, sanitizeCategory } from "./schema-validator.js";
+import { syncReadingBg } from "./reading-theme.js";
+import { getBookChapterIds } from "./book-data.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
 import { countBookChapters, filterAndSortChapters, prefetchBookPage, saveBookChapterListCache } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
+import { getArticleCategoryId, getCachedCategories, getCategories, slugifyCategory } from "./js/category-store.js";
+
+void syncReadingBg();
 
 /* ═══════════ Pre-bundled Fallback Data for 100% Uptime & Smooth Load ═══════════ */
 const CACHE_KEY = 'nuqtha_cached_articles_v8';
@@ -95,21 +100,31 @@ getAuthorsMap(db).then(map => {
     }
 }).catch(() => {});
 let currentCategory = "ALL";
-
-// Ordered list of categories shown on HOME
-const CATEGORY_ORDER = ["HISTORY", "STUDY", "STORY"];
-
-// Category labels map (English)
-const CATEGORY_ML = {
-    "HISTORY": "HISTORY",
-    "STUDY": "STUDY",
-    "STORY": "STORY"
-};
+let siteCategories = getCachedCategories();
+let siteCategoryById = new Map(siteCategories.map(category => [category.slug, category]));
 
 function categoryLabel(cat) {
     if (!cat) return "GENERAL";
-    const category = sanitizeCategory(cat).toUpperCase();
-    return CATEGORY_ML[category] || category;
+    const categoryId = slugifyCategory(cat);
+    const category = siteCategoryById.get(categoryId);
+    return category?.name || String(cat).trim().toUpperCase();
+}
+window.categoryLabel = categoryLabel;
+
+function getVisibleCategories(articles = allArticles) {
+    const byId = new Map(siteCategories.map(category => [category.slug, category]));
+    const knownIds = new Set(byId.keys());
+    articles.forEach(article => {
+        if (isBookEntity(article) || isChapterEntity(article) || String(article.status || "published").toLowerCase() !== "published") return;
+        const slug = getArticleCategoryId(article);
+        if (!slug || knownIds.has(slug)) return;
+        const name = String(article.category || "").trim() || slug;
+        byId.set(slug, { id: slug, slug, name, order: Number.MAX_SAFE_INTEGER, visible: true });
+        knownIds.add(slug);
+    });
+    return [...byId.values()].filter(category => category.visible !== false).sort((a, b) =>
+        a.order - b.order || a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+    );
 }
 
 /**
@@ -384,37 +399,26 @@ function isChapterEntity(article) {
 }
 
 function updateMoreCategoriesMenu() {
-    // Populate dynamic categories into Articles dropdown
-    const container = document.getElementById("dynamic-articles-categories");
-    if (!container) return;
-
-    const baseCats = new Set(["ALL", "HISTORY", "STUDY", "STORY", "BOOKS", "BOOK", "PREMIUM BOOK"]);
-    const extraCats = new Set();
-
-    allArticles.forEach(a => {
-        if (isBookEntity(a)) return;
-        const cat = sanitizeCategory(a.category).toUpperCase();
-        if (cat && !baseCats.has(cat)) {
-            extraCats.add(cat);
-        }
-    });
-
-    if (extraCats.size === 0) {
-        container.innerHTML = "";
-        return;
-    }
-
-    let html = `<div class="border-t border-[#ebdccb]/60 dark:border-white/10 my-1"></div>`;
-    extraCats.forEach(cat => {
-        const malLabel = categoryLabel(cat);
-        html += `
-            <a href="${categoryUrl(cat)}" data-category="${cat}" class="articles-dropdown-item flex items-center justify-between px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition uppercase font-english">
-                <span>${cat}</span>
-                <span class="text-[10px] text-[#8c7a6b] font-normal font-['Noto_Sans_Malayalam']">${malLabel}</span>
+    const categoryLinks = getVisibleCategories()
+        .map(category => `
+            <a href="${categoryUrl(category.slug)}" data-category="${escapeHtml(category.slug)}" class="articles-dropdown-item flex items-center px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#1e1b18] dark:text-white transition font-english">
+                <span>${escapeHtml(category.name)}</span>
             </a>
-        `;
-    });
-    container.innerHTML = html;
+        `).join("");
+    const container = document.getElementById("dynamic-articles-categories");
+    if (container) container.innerHTML = categoryLinks;
+
+    const drawerContainer = document.getElementById("drawer-dynamic-categories");
+    if (drawerContainer) {
+        drawerContainer.innerHTML = getVisibleCategories().map(category => `
+            <a href="${categoryUrl(category.slug)}" class="drawer-nav-item drawer-link" data-category="${escapeHtml(category.slug)}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M6 5v15m12-15v15M3 20h18M9 9h6m-6 4h6"/></svg>
+                <span>${escapeHtml(category.name)}</span>
+            </a>
+        `).join("");
+        setDrawerCurrentLink([...document.querySelectorAll("#sidebar-drawer .drawer-nav-item")]
+            .find(item => (item.dataset.category || "").toUpperCase() === currentCategory) || null);
+    }
 }
 
 function setupGlobalCategoryBadges() {
@@ -535,8 +539,7 @@ function setupHomeLink() {
             clearSearch(false);
             document.getElementById("articles-dropdown-menu")?.classList.add("hidden");
             document.getElementById("more-categories-dropdown")?.classList.add("hidden");
-            document.getElementById("sidebar-drawer")?.classList.remove("drawer-open");
-            document.getElementById("sidebar-backdrop")?.classList.remove("backdrop-active");
+            document.getElementById("sidebar-close-btn")?.click();
             switchToCategory("ALL");
             window.scrollTo({ top: 0, behavior: "smooth" });
         });
@@ -549,38 +552,116 @@ function setupSidebarDrawer() {
     const closeBtn = document.getElementById("sidebar-close-btn");
     const backdrop = document.getElementById("sidebar-backdrop");
     const drawer = document.getElementById("sidebar-drawer");
+    if (!drawer) return;
+    let previousBodyOverflow = "";
+    let isOpen = false;
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    setDrawerCurrentLink([...drawer.querySelectorAll(".drawer-nav-item")]
+        .find(item => (item.dataset.category || "").toUpperCase() === currentCategory) || null);
+
+    function syncDrawerViewport() {
+        if (desktopQuery.matches) {
+            isOpen = false;
+            drawer.classList.remove("drawer-open");
+            drawer.setAttribute("role", "complementary");
+            drawer.setAttribute("aria-modal", "false");
+            drawer.setAttribute("aria-hidden", "false");
+            drawer.inert = false;
+            if (backdrop) backdrop.classList.remove("backdrop-active");
+            document.body.style.overflow = previousBodyOverflow;
+            if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "false");
+            return;
+        }
+
+        drawer.setAttribute("role", "dialog");
+        drawer.setAttribute("aria-modal", "true");
+        drawer.setAttribute("aria-hidden", isOpen ? "false" : "true");
+        drawer.inert = !isOpen;
+    }
 
     function openDrawer() {
-        if (drawer) drawer.classList.add("drawer-open");
+        if (isOpen || desktopQuery.matches) return;
+        isOpen = true;
+        previousBodyOverflow = document.body.style.overflow;
+        drawer.inert = false;
+        drawer.setAttribute("aria-hidden", "false");
+        drawer.classList.add("drawer-open");
         if (backdrop) backdrop.classList.add("backdrop-active");
         document.body.style.overflow = "hidden";
+        if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "true");
+        drawer.querySelector(".drawer-link")?.focus({ preventScroll: true });
     }
 
     function closeDrawer() {
-        if (drawer) drawer.classList.remove("drawer-open");
+        if (!isOpen || desktopQuery.matches) return;
+        isOpen = false;
+        drawer.classList.remove("drawer-open");
         if (backdrop) backdrop.classList.remove("backdrop-active");
-        document.body.style.overflow = "";
+        document.body.style.overflow = previousBodyOverflow;
+        drawer.setAttribute("aria-hidden", "true");
+        drawer.inert = true;
+        if (toggleBtn) {
+            toggleBtn.setAttribute("aria-expanded", "false");
+            toggleBtn.focus({ preventScroll: true });
+        }
     }
 
+    if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "false");
     if (toggleBtn) toggleBtn.addEventListener("click", openDrawer);
     if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
     if (backdrop) backdrop.addEventListener("click", closeDrawer);
+    if (typeof desktopQuery.addEventListener === "function") {
+        desktopQuery.addEventListener("change", syncDrawerViewport);
+    } else {
+        desktopQuery.addListener(syncDrawerViewport);
+    }
+    syncDrawerViewport();
 
-    document.querySelectorAll(".drawer-nav-item").forEach(item => {
-        if (!item) return;
-        item.addEventListener("click", (e) => {
-            const cat = item.dataset.category;
-            if (cat) {
-                e.preventDefault();
-                switchToCategory(cat);
-                closeDrawer();
-            }
-        });
+    drawer.addEventListener("click", event => {
+        const link = event.target.closest("a");
+        if (!link) return;
+        const category = link.dataset.category;
+        if (category) {
+            event.preventDefault();
+            switchToCategory(category);
+        }
+        if (link.id === "drawer-saved-link") setDrawerCurrentLink(link);
+        closeDrawer();
     });
 
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeDrawer();
+        if (!isOpen) return;
+        if (e.key === "Escape") {
+            closeDrawer();
+            return;
+        }
+        if (e.key !== "Tab") return;
+
+        const focusable = [...drawer.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )].filter(element => !element.closest(".hidden") && element.getClientRects().length > 0);
+        if (focusable.length === 0) {
+            e.preventDefault();
+            drawer.focus();
+            return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && (document.activeElement === first || !drawer.contains(document.activeElement))) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && (document.activeElement === last || !drawer.contains(document.activeElement))) {
+            e.preventDefault();
+            first.focus();
+        }
     });
+}
+
+function setDrawerCurrentLink(link) {
+    document.querySelectorAll("#sidebar-drawer .drawer-link[aria-current]").forEach(item => {
+        item.removeAttribute("aria-current");
+    });
+    link?.setAttribute("aria-current", "page");
 }
 
 /* ═══════════ 3D Library View Switcher Setup ═══════════ */
@@ -599,6 +680,7 @@ function setupLibraryView() {
         lib.hidden = !isLib;
 
         if (isLib) {
+            setDrawerCurrentLink(drawerLibLink);
             if (window.location.hash !== "#library") {
                 history.replaceState(null, null, "#library");
             }
@@ -616,6 +698,7 @@ function setupLibraryView() {
 
     if (drawerLibLink) {
         drawerLibLink.addEventListener("click", () => {
+            setDrawerCurrentLink(drawerLibLink);
             const closeBtn = document.getElementById("sidebar-close-btn");
             if (closeBtn) closeBtn.click();
             showView("library");
@@ -638,12 +721,10 @@ function setupSearch() {
     const searchContainer = document.getElementById("header-search-container");
     const headerInput = document.getElementById("header-search-input");
     const headerClearBtn = document.getElementById("header-search-clear");
-    const drawerInput = document.getElementById("drawer-search-input");
 
     function onSearchChange(val) {
         currentSearchQuery = val;
         if (headerInput && headerInput.value !== val) headerInput.value = val;
-        if (drawerInput && drawerInput.value !== val) drawerInput.value = val;
         if (headerClearBtn) {
             headerClearBtn.classList.toggle("hidden", !val.trim());
         }
@@ -664,16 +745,6 @@ function setupSearch() {
         headerInput.addEventListener("input", (e) => onSearchChange(e.target.value));
     }
 
-    if (drawerInput) {
-        drawerInput.addEventListener("input", (e) => {
-            onSearchChange(e.target.value);
-            // Open header search container as well so state is consistent
-            if (searchContainer && searchContainer.classList.contains("hidden")) {
-                searchContainer.classList.remove("hidden");
-            }
-        });
-    }
-
     if (headerClearBtn) {
         headerClearBtn.addEventListener("click", () => clearSearch(true));
     }
@@ -682,10 +753,8 @@ function setupSearch() {
 function clearSearch(triggerRender = true) {
     currentSearchQuery = "";
     const headerInput = document.getElementById("header-search-input");
-    const drawerInput = document.getElementById("drawer-search-input");
     const headerClearBtn = document.getElementById("header-search-clear");
     if (headerInput) headerInput.value = "";
-    if (drawerInput) drawerInput.value = "";
     if (headerClearBtn) headerClearBtn.classList.add("hidden");
     if (triggerRender) renderFeed();
 }
@@ -761,10 +830,16 @@ export function initAppData(database = db) {
             console.warn("[NUQTHA App] Could not restore the article cache.", error);
         }
 
-        const [articlesSnapshot, booksSnapshot] = await Promise.all([
+        const [articlesSnapshot, booksSnapshot, categories] = await Promise.all([
             getCollectionSnapshotWithCache(collection(database, "articles"), "articles"),
-            getCollectionSnapshotWithCache(collection(database, "books"), "books")
+            getCollectionSnapshotWithCache(collection(database, "books"), "books"),
+            getCategories().catch(error => {
+                console.error("[NUQTHA App] Could not load Firestore categories.", error);
+                return [];
+            })
         ]);
+        siteCategories = categories;
+        siteCategoryById = new Map(categories.map(category => [category.slug, category]));
         const fallbacksById = new Map();
         FALLBACK_ARTICLES.forEach(article => {
             if (article.id) fallbacksById.set(article.id, article);
@@ -785,8 +860,16 @@ export function initAppData(database = db) {
 
         const rawBooksList = booksSnapshot.docs.map(bookDoc => {
             const bookData = bookDoc.data();
+            const articleRecord = rawArticlesList.find(article =>
+                article.id === bookDoc.id || (bookData.slug && article.slug === bookData.slug)
+            );
+            const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(bookData, "");
+            const thumbnailUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
             const book = normalizeArticleDoc({
+                ...(articleRecord || {}),
                 ...bookData,
+                imageUrl: coverUrl,
+                thumbnailUrl,
                 title: sanitizeMalayalamText(bookData.title),
                 author: sanitizeMalayalamText(bookData.author),
                 excerpt: sanitizeMalayalamText(bookData.excerpt)
@@ -961,8 +1044,9 @@ function renderSavedFeed(container) {
 /* ═══════════ Search Feed: Displays matching articles ═══════════ */
 function renderSearchFeed(container, query) {
     const lower = query.toLowerCase();
+    const bookChapterIds = getBookChapterIds(allArticles);
     const matched = allArticles.filter(art => {
-        if (isBookEntity(art) || isChapterEntity(art)) return false;
+        if (isBookEntity(art) || isChapterEntity(art) || bookChapterIds.has(art.id)) return false;
         const title = (art.title || "").toLowerCase();
         const author = (art.author || "").toLowerCase();
         const excerpt = (art.excerpt || "").toLowerCase();
@@ -1015,12 +1099,77 @@ function renderSearchFeed(container, query) {
     if (emptyResetBtn) emptyResetBtn.addEventListener("click", () => clearSearch(true));
 }
 
+function getCachedHomeCategoryArticleIds(categoryId, categoryArticles, usedIds) {
+    const cacheKey = `nuqtha:home-category:${categoryId}`;
+    const articleById = new Map(categoryArticles.map(article => [article.id, article]));
+    try {
+        const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+        if (cached && Date.now() - cached.savedAt < 5 * 60 * 1000 && Array.isArray(cached.ids)) {
+            const ids = cached.ids.filter(id => articleById.has(id));
+            if (ids.length > 0) return ids.slice(0, 6);
+        }
+    } catch (error) {
+        console.warn("[NUQTHA App] Could not read a home category cache entry.", error);
+    }
+
+    const selected = categoryArticles.filter(article => !usedIds.has(article.id)).slice(0, 6);
+    if (selected.length < 6) {
+        const selectedIds = new Set(selected.map(article => article.id));
+        categoryArticles.forEach(article => {
+            if (selected.length < 6 && !selectedIds.has(article.id)) {
+                selected.push(article);
+                selectedIds.add(article.id);
+            }
+        });
+    }
+    const ids = selected.map(article => article.id);
+    try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), ids }));
+    } catch (error) {
+        console.warn("[NUQTHA App] Could not cache home category results.", error);
+    }
+    return ids;
+}
+
+function renderLazyHomeCategorySection(section, category, categoryArticles, usedIds) {
+    const ids = getCachedHomeCategoryArticleIds(category.slug, categoryArticles, usedIds);
+    const selected = ids.map(id => categoryArticles.find(article => article.id === id)).filter(Boolean);
+    if (selected.length === 0) {
+        section.remove();
+        return;
+    }
+
+    const theme = getCategoryTheme();
+    const [featuredArt, ...subsequentArticles] = selected;
+    section.innerHTML = `
+        ${buildCategorySectionHeader(category.slug, true, false, theme)}
+        <div class="category-featured-wrapper mt-3 mb-3 sm:mb-4">
+            ${buildCategoryFeaturedCard(featuredArt, theme)}
+        </div>
+        ${subsequentArticles.length ? `
+            <div class="category-cards-list space-y-2.5 sm:space-y-3">
+                ${subsequentArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
+            </div>
+        ` : ""}
+    `;
+    section.dataset.loaded = "true";
+    attachShowMoreListeners();
+    attachCardListeners();
+}
+
 /* ─── HOME FEED: Scrolling Carousel + Hero Featured + Dedicated Books + Category Feeds ─── */
 function renderHomeFeed(container) {
     // Distinguish book covers from standard articles
-    const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
+    const bookChapterIds = getBookChapterIds(allArticles);
+    const isChapter = a => isChapterEntity(a) || bookChapterIds.has(a.id);
+    const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapter(a);
     const bookCovers = allArticles.filter(isBookCoverItem);
-    const regularArticles = allArticles.filter(a => !isBookCoverItem(a) && !isChapterEntity(a));
+    // Regular articles: keep only genuine standalone articles (exclude book covers AND all book chapters)
+    const regularArticles = allArticles.filter(a =>
+        !isBookCoverItem(a) && !isChapter(a) &&
+        String(a.status || "published").toLowerCase() === "published" &&
+        siteCategoryById.get(getArticleCategoryId(a))?.visible !== false
+    );
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) {
@@ -1057,20 +1206,16 @@ function renderHomeFeed(container) {
 
     if (explicitHero.length > 0) {
         heroArticle = explicitHero[0];
-        usedIds.add(heroArticle.id);
     } else if (autoArticles.length > 0) {
         heroArticle = autoArticles[0];
-        usedIds.add(heroArticle.id);
     } else if (regularArticles.length > 0) {
         heroArticle = regularArticles[0];
-        usedIds.add(heroArticle.id);
     }
 
     // 2. Determine Carousel Articles for Top Horizontal Swipe:
-    // Pool regular articles marked for CAROUSEL or HERO or recent AUTO.
+    // Keep the hero separate so the same article is not shown twice above the fold.
     const carouselPool = [
         ...explicitCarousel,
-        heroArticle,
         ...explicitHero.filter(a => a.id !== heroArticle?.id),
         ...autoArticles.filter(a => a.id !== heroArticle?.id)
     ].filter(Boolean);
@@ -1100,6 +1245,7 @@ function renderHomeFeed(container) {
     // ═══════════════════════════════════════════════════════════
     if (heroArticle) {
         html += buildFeaturedCard(heroArticle);
+        usedIds.add(heroArticle.id);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1109,66 +1255,60 @@ function renderHomeFeed(container) {
         html += buildBookShowcaseSection(bookCovers, allArticles);
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // 4. CATEGORY FEEDS
-    // ═══════════════════════════════════════════════════════════
-    const existingCats = new Set(regularArticles.map(a => sanitizeCategory(a.category).toUpperCase()).filter(Boolean));
-    const orderedCats = [...CATEGORY_ORDER.filter(c => existingCats.has(c)), ...[...existingCats].filter(c => !CATEGORY_ORDER.includes(c) && c !== "BOOKS" && c !== "BOOK" && c !== "PREMIUM BOOK")];
-
-    orderedCats.forEach(cat => {
-        const catArticles = regularArticles.filter(a => sanitizeCategory(a.category).toUpperCase() === cat).sort(comparePriority);
-        if (catArticles.length === 0) return;
-
-        const theme = getCategoryTheme(cat);
-        const featuredArt = catArticles[0];
-        const subsequentArticles = catArticles.slice(1, 5);
-        const hasMore = catArticles.length > 5;
-        const catName = categoryLabel(cat);
-
-        html += `
-        <section class="category-section-block category-section-${cat.toLowerCase()} mt-7 sm:mt-9 p-4 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}">
-            ${buildCategorySectionHeader(cat, hasMore, false, theme)}
-            
-            <!-- Category Featured Card -->
-            <div class="category-featured-wrapper mt-3 mb-3 sm:mb-4">
-                ${buildCategoryFeaturedCard(featuredArt, theme)}
-            </div>
-
-            <!-- Subsequent Compact Cards -->
-            ${subsequentArticles.length > 0 ? `
-            <div class="category-cards-list space-y-2.5 sm:space-y-3">
-                ${subsequentArticles.map(art => buildCompactRecentCard(art, theme)).join('')}
-            </div>
-            ` : ''}
-
-            ${hasMore ? `
-            <div class="flex justify-end pt-3">
-                <a href="${categoryUrl(cat)}" class="show-more-pill" data-category="${cat}" title="${catName} വിഭാഗത്തിലെ കൂടുതൽ ലേഖനങ്ങൾ കാണുക" style="border-color: ${theme.color}40; color: ${theme.color};">
-                    <span class="font-english">VIEW ALL ${catName}</span>
-                    <span class="text-xs">&rarr;</span>
-                </a>
-            </div>
-            ` : ''}
-        </section>
-        `;
+    const categoryGroups = new Map();
+    regularArticles.forEach(article => {
+        const categoryId = getArticleCategoryId(article);
+        if (!categoryId) return;
+        if (!categoryGroups.has(categoryId)) categoryGroups.set(categoryId, []);
+        categoryGroups.get(categoryId).push(article);
     });
-
+    const orderedCategories = getVisibleCategories(regularArticles)
+        .filter(category => categoryGroups.has(category.slug));
+    const lazySections = [];
+    orderedCategories.forEach(category => {
+        const theme = getCategoryTheme();
+        html += `
+            <section class="category-section-block category-section-${category.slug} mt-7 sm:mt-9 p-4 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}" data-home-category-section="${escapeHtml(category.slug)}">
+                ${buildCategorySectionHeader(category.slug, true, false, theme)}
+                <div class="home-category-content min-h-[8rem]"></div>
+            </section>
+        `;
+        lazySections.push({
+            category,
+            articles: categoryGroups.get(category.slug).sort(comparePriority)
+        });
+    });
     container.innerHTML = html;
+    const pendingSections = new Map(lazySections.map(item => [item.category.slug, item]));
+    const observer = "IntersectionObserver" in window
+        ? new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                observer.unobserve(entry.target);
+                const item = pendingSections.get(entry.target.dataset.homeCategorySection);
+                if (item) renderLazyHomeCategorySection(entry.target, item.category, item.articles, usedIds);
+            });
+        }, { rootMargin: "300px 0px" })
+        : null;
+    pendingSections.forEach((item, slug) => {
+        const section = [...container.querySelectorAll("[data-home-category-section]")]
+            .find(item => item.dataset.homeCategorySection === slug);
+        if (!section) return;
+        if (observer) observer.observe(section);
+        else renderLazyHomeCategorySection(section, item.category, item.articles, usedIds);
+    });
     attachShowMoreListeners();
 }
 
 function renderCategoryFeed(container, category) {
-    const targetNorm = sanitizeCategory(normalizeCategoryName(category)).toUpperCase();
-    const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapterEntity(a);
+    const targetNorm = slugifyCategory(normalizeCategoryName(category));
+    const bookChapterIds = getBookChapterIds(allArticles);
+    const isChapter = a => isChapterEntity(a) || bookChapterIds.has(a.id);
+    const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapter(a);
 
     const filtered = allArticles.filter(a => {
-        if (isBookCover(a) || isChapterEntity(a)) return false;
-        const catNorm = sanitizeCategory(normalizeCategoryName(a.category)).toUpperCase();
-        return catNorm === targetNorm ||
-               categorySlug(catNorm) === categorySlug(targetNorm) ||
-               (targetNorm === "HISTORY" && (catNorm === "HISTORY" || catNorm === "ചരിത്രം")) ||
-               (targetNorm === "STUDY" && (catNorm === "STUDY" || catNorm === "പഠനം")) ||
-               (targetNorm === "STORY" && (catNorm === "STORY" || catNorm === "കഥ"));
+        if (isBookCover(a) || isChapter(a)) return false;
+        return getArticleCategoryId(a) === targetNorm;
     });
 
     if (filtered.length === 0) {
@@ -1242,10 +1382,10 @@ function renderCategoryFeed(container, category) {
 /* ─── Category Section Header: glass badge + show-more pill ─── */
 function buildCategorySectionHeader(cat, hasMore, isFilteredView = false, theme = null) {
     const label = cat === "ALL" ? "പുതിയ ലേഖനങ്ങൾ" : categoryLabel(cat);
-    const t = theme || getCategoryTheme(cat);
+    const t = theme || getCategoryTheme();
     const showMoreBtn = (hasMore && !isFilteredView)
         ? `<a href="${categoryUrl(cat)}" class="show-more-pill" data-category="${cat}" title="${label} വിഭാഗത്തിലെ എല്ലാ ലേഖനങ്ങളും കാണുക" style="border-color: ${t.color}40; color: ${t.color};">
-            <span class="font-english">SHOW MORE</span>
+            <span class="font-english">VIEW ALL</span>
             <span class="opacity-70 text-[9px] font-['Noto_Sans_Malayalam'] hidden sm:inline">(എല്ലാം കാണുക)</span>
             <span class="text-xs">&rsaquo;</span>
            </a>`
@@ -1260,7 +1400,8 @@ function buildCategorySectionHeader(cat, hasMore, isFilteredView = false, theme 
 
 /* ─── Show-More → switch to category filter ─── */
 function attachShowMoreListeners() {
-    document.querySelectorAll(".show-more-pill").forEach(btn => {
+    document.querySelectorAll(".show-more-pill:not([data-listener])").forEach(btn => {
+        btn.dataset.listener = "true";
         btn.addEventListener("click", (e) => {
             e.preventDefault();
             const cat = btn.dataset.category;
@@ -1298,14 +1439,24 @@ function switchToCategory(cat) {
         window.showNuqthaView("articles");
     }
     const norm = normalizeCategoryName(cat);
-    const upper = norm ? norm.toUpperCase() : "ALL";
+    const isBooks = ["BOOK", "BOOKS"].includes((norm || "").toUpperCase());
+    const upper = !norm || norm.toUpperCase() === "ALL"
+        ? "ALL"
+        : norm.toUpperCase() === "SAVED"
+            ? "SAVED"
+            : isBooks
+                ? "BOOKS"
+                : slugifyCategory(norm).toUpperCase();
     currentCategory = upper;
+    const drawerLink = [...document.querySelectorAll("#sidebar-drawer .drawer-nav-item")]
+        .find(item => (item.dataset.category || "").toUpperCase() === upper);
+    setDrawerCurrentLink(drawerLink || null);
     clearSearch(false);
 
     // Update active state on nav links
     const articlesBtn = document.getElementById("articles-dropdown-btn");
     const booksLink = document.getElementById("nav-books-link");
-    const isBook = upper === "BOOKS" || upper === "BOOK";
+    const isBook = isBooks;
 
     if (booksLink) booksLink.classList.toggle("active", isBook);
     if (articlesBtn) articlesBtn.classList.toggle("active", !isBook && upper !== "ALL");
@@ -1326,9 +1477,9 @@ function switchToCategory(cat) {
             } catch (_) {}
         }
     } else {
-        const catName = isBook ? "പുസ്തകങ്ങൾ (Books)" : categoryLabel(upper);
+        const catName = isBook ? "Books" : categoryLabel(upper);
         document.title = `${catName} | NUQTHA`;
-        const slug = isBook ? "books" : categorySlug(upper);
+        const slug = isBook ? "books" : categorySlug(norm);
         const newHash = "#" + slug;
         if (window.location.hash !== newHash) {
             try {
@@ -1460,46 +1611,7 @@ function stripMarkdown(text) {
 }
 
 /* ═══════════ Category Theme Helper & Subtle Variations ═══════════ */
-function getCategoryTheme(cat) {
-    const c = (cat || "").toUpperCase();
-    if (c === "HISTORY") {
-        return {
-            color: "#b4532c",
-            darkColor: "#f87171",
-            sectionBorder: "border-[#b4532c]/25 dark:border-[#b4532c]/30",
-            cardBorder: "border-[#b4532c]/25 dark:border-[#b4532c]/30 hover:border-[#b4532c]/50",
-            bgTint: "from-[#b4532c]/[0.03] to-transparent dark:from-[#b4532c]/[0.05] dark:to-transparent",
-            badgeBg: "bg-[#b4532c]/10 dark:bg-[#b4532c]/20",
-            badgeText: "text-[#b4532c] dark:text-[#f87171]",
-            badgeBorder: "border-[#b4532c]/30 dark:border-[#b4532c]/40",
-            accentGrad: "from-[#b4532c] via-[#aa4923] to-[#7c2d12]"
-        };
-    } else if (c === "STUDY") {
-        return {
-            color: "#1d4ed8",
-            darkColor: "#60a5fa",
-            sectionBorder: "border-[#1d4ed8]/25 dark:border-[#3b82f6]/30",
-            cardBorder: "border-[#1d4ed8]/25 dark:border-[#3b82f6]/30 hover:border-[#1d4ed8]/50",
-            bgTint: "from-[#1d4ed8]/[0.03] to-transparent dark:from-[#1d4ed8]/[0.05] dark:to-transparent",
-            badgeBg: "bg-[#1d4ed8]/10 dark:bg-[#1d4ed8]/20",
-            badgeText: "text-[#1d4ed8] dark:text-[#60a5fa]",
-            badgeBorder: "border-[#1d4ed8]/30 dark:border-[#1d4ed8]/40",
-            accentGrad: "from-[#1e40af] via-[#1d4ed8] to-[#172554]"
-        };
-    } else if (c === "STORY") {
-        return {
-            color: "#059669",
-            darkColor: "#34d399",
-            sectionBorder: "border-[#059669]/25 dark:border-[#10b981]/30",
-            cardBorder: "border-[#059669]/25 dark:border-[#10b981]/30 hover:border-[#059669]/50",
-            bgTint: "from-[#059669]/[0.03] to-transparent dark:from-[#059669]/[0.05] dark:to-transparent",
-            badgeBg: "bg-[#059669]/10 dark:bg-[#059669]/20",
-            badgeText: "text-[#059669] dark:text-[#34d399]",
-            badgeBorder: "border-[#059669]/30 dark:border-[#059669]/40",
-            accentGrad: "from-[#047857] via-[#059669] to-[#064e3b]"
-        };
-    }
-    // Dynamic / General Fallback
+function getCategoryTheme() {
     return {
         color: "#b4532c",
         darkColor: "#f87171",
@@ -1516,7 +1628,7 @@ function getCategoryTheme(cat) {
 /* ═══════════ Category Featured Card (Larger & More Prominent) ═══════════ */
 function buildCategoryFeaturedCard(art, theme = null) {
     if (!art) return "";
-    const t = theme || getCategoryTheme(art.category);
+    const t = theme || getCategoryTheme();
     const dateStr = art.date || formatDate(art.createdAt);
     const cleanTitle = stripMarkdown(art.title);
     const rawPreview = art.excerpt || (art.content ? art.content.substring(0, 160) : "");
@@ -1688,7 +1800,7 @@ function buildCompactRecentCard(art, theme = null) {
     const authorName = (art && art.author) || "NUQTHA";
     const authorInitial = authorName.trim().charAt(0) || "N";
     const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
-    const t = theme || getCategoryTheme(art?.category);
+    const t = theme || getCategoryTheme();
 
     return `
     <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300 ${t.cardBorder}" data-id="${art.id}">
@@ -2154,6 +2266,7 @@ function buildBookCard(book, articles) {
     const cleanTitle = stripMarkdown(book.title);
     const count = articles.length;
     const dateStr = book.date || formatDate(book.createdAt);
+    const coverUrl = getArticleImageUrl(book, "");
 
     return `
     <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${book.id}">
@@ -2162,7 +2275,7 @@ function buildBookCard(book, articles) {
             ${getArticleImageUrl(book) ? `
                 <img src="${getArticleImageUrl(book)}" alt="${cleanTitle} cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" width="600" height="800" loading="lazy" data-nuqtha-cover="true">
             ` : `
-                <div class="w-full h-full flex items-center justify-center text-white/50 text-xl font-bold">📘</div>
+                ${buildBookCoverPlaceholder(book)}
             `}
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
         </div>
@@ -2425,7 +2538,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
         const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
         const isFree = !isPremium || price === 0;
 
-        const bookCoverImg = getArticleImageUrl(book);
+        const bookCoverImg = getArticleImageUrl(book, "");
         const bookId = book.id || '';
         const bookHref = bookId ? getStoryUrl(book) : '#';
 
@@ -2506,7 +2619,12 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
 
 /* ═══════════ 2. BOOKS CATEGORY PAGE LAYOUT ═══════════ */
 function renderBooksCategoryFeed(container) {
-    const bookCovers = allArticles.filter(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && !isChapterEntity(a));
+    const bookChapterIds = getBookChapterIds(allArticles);
+    const bookCovers = allArticles.filter(a =>
+        ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) &&
+        !isChapterEntity(a) &&
+        !bookChapterIds.has(a.id)
+    );
 
     let html = `
     <div class="category-filter-banner flex items-center justify-between p-4 mb-6 rounded-2xl bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10 shadow-xs">
@@ -2550,7 +2668,7 @@ function renderBooksCategoryFeed(container) {
                 const rawPrice = Number(book.price);
                 const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
                 const isFree = !isPremium || price === 0;
-                const bookCoverImg = getArticleImageUrl(book);
+                const bookCoverImg = getArticleImageUrl(book, "");
                 const volumeLabel = book.volume
                     ? (book.volume.toLowerCase().includes("vol") ? book.volume : `Volume ${book.volume}`)
                     : "";
@@ -2618,11 +2736,11 @@ function renderBooksCategoryFeed(container) {
 export async function loadBooksToFrontend(database = db) {
   const container = document.getElementById('booksContainer');
   if (!container) return;
-  
+
   try {
     const querySnapshot = await getDocs(collection(database, "books"));
     container.innerHTML = "";
-    
+
     if (querySnapshot.empty) {
       container.innerHTML = "<p class='text-gray-500 py-6 text-center text-xs'>No books found.</p>";
       return;
@@ -2632,7 +2750,7 @@ export async function loadBooksToFrontend(database = db) {
       const book = documentSnap.data();
       const isPremium = book.type === 'premium' || book.isPremium === true;
       const targetUrl = book.slug ? `/book/${encodeURIComponent(book.slug)}` : `/article.html?id=${encodeURIComponent(documentSnap.id)}`;
-      
+
       const card = document.createElement("div");
       card.className = "bg-white dark:bg-[#12141d] p-4 rounded-xl shadow border border-gray-100 dark:border-white/10 flex flex-col justify-between";
       card.innerHTML = `

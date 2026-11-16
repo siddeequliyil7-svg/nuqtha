@@ -6,7 +6,20 @@ import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
 
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
-const CACHE_KEY = "nuqtha:library:v1", CACHE_MS = 5 * 60 * 1000;
+const CACHE_KEY = "nuqtha:library:v2", CACHE_MS = 5 * 60 * 1000;
+let pendingLibraryDestination = "";
+
+window.addEventListener("nuqtha_auth_changed", (event) => {
+  if (!pendingLibraryDestination || !event.detail?.user) return;
+  const destination = pendingLibraryDestination;
+  pendingLibraryDestination = "";
+  window.location.assign(destination);
+});
+
+window.addEventListener("nuqtha:auth-modal-closed", () => {
+  if (!getCachedAuthUser()) pendingLibraryDestination = "";
+});
+
 const articleUrl = (a) => {
   if (typeof a === "object" && a !== null) {
     try {
@@ -63,8 +76,11 @@ async function loadData() {
 
   const [bookSnapshot, articleSnapshot] = await Promise.all([
     getCollectionDocs(query(collection(db, "books"), where("visible", "==", true)), "books"),
-    getCollectionDocs(query(collection(db, "articles"), where("showOnTable", "==", true)), "articles")
+    getCollectionDocs(collection(db, "articles"), "articles")
   ]);
+  const articleRecords = articleSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const articlesById = new Map(articleRecords.map((article) => [article.id, article]));
+  const articlesBySlug = new Map(articleRecords.filter((article) => article.slug).map((article) => [article.slug, article]));
   books = bookSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, MAX_BOOKS)
       .map((b) => {
@@ -85,7 +101,8 @@ async function loadData() {
   papers = articleSnapshot.docs.slice(0, MAX_PAPERS).map((d) => {
       const a = d.data();
       return {
-        id: d.id,
+        ...a,
+        id: a.id,
         title: a.title,
         author: a.author,
         category: a.category,
@@ -100,6 +117,7 @@ async function loadData() {
   // Fallback to FALLBACK_ARTICLES if Firestore quota is exhausted (429) or offline
   if (books.length === 0) {
     books = FALLBACK_BOOKS.map((b, i) => ({
+      ...b,
       id: b.id,
       title: b.title,
       author: b.author,
@@ -221,19 +239,20 @@ async function closeItem() {
 }
 
 /* ---------- items ---------- */
-const bookItem = (b, i) => ({
-  sheet: false, title: b.title, author: b.author, color: safeColor(b.color, i), fc: "#f4e7c8",
-  left: `<p class="k">Book</p><h2>${esc(b.title)}</h2><hr><p class="by">${esc(b.author)}${b.pages ? " · " + esc(b.pages) + " pages" : ""}</p>`,
-  right: `<p>${esc(b.description)}</p>` + (b.contents && b.contents.length
-    ? `<p class="k">Inside this book</p><ul>${b.contents.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""),
-});
+function openLibraryItem(item) {
+  const destination = new URL(articleUrl(item), window.location.origin);
+  if (destination.origin !== window.location.origin) {
+    console.error("[Library] Refusing to navigate to an external item URL.", destination.href);
+    return;
+  }
+  if (getCachedAuthUser()) {
+    window.location.assign(destination.href);
+    return;
+  }
 
-const paperItem = (a) => ({
-  sheet: true, title: a.title, author: a.author, color: "#efe6d4", fc: "#2c221e",
-  left: "",
-  right: `<p class="k">${esc(a.category || "Article")}</p><h2>${esc(a.title)}</h2><p class="by">${esc(a.author || "NUQTHA")}${a.readTime ? " · " + esc(a.readTime) + " read" : ""}</p>
-    <p>${esc(a.excerpt)}…</p><p><a href="${articleUrl(a)}">Read the full article →</a></p>`,
-});
+  pendingLibraryDestination = destination.href;
+  openAuthModal("google");
+}
 
 /* ---------- render ---------- */
 function renderShelf(books) {
@@ -273,7 +292,7 @@ function renderTable(papers) {
     p.type = "button"; p.className = "paper"; p.style.setProperty("--r", ROT[i % ROT.length] + "deg");
     p.setAttribute("aria-label", "Open printed article: " + a.title);
     p.innerHTML = `<h4>${esc(a.title)}</h4><i></i><b>${esc(a.author || "NUQTHA")}${a.readTime ? " · " + esc(a.readTime) : ""}</b>`;
-    p.addEventListener("click", () => openItem(p, paperItem(a)));
+    p.addEventListener("click", () => openLibraryItem(a));
     table.appendChild(p);
   });
 }
