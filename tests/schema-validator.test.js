@@ -193,6 +193,18 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(getArticleImageUrl({ imageUrl: "/cover-placeholder.svg" }, "")).to.equal("");
         });
 
+        it("uses a raster data URL when no permanent cover alias exists", () => {
+            const inlineCover = "data:image/png;base64,AAAA";
+            const normalized = normalizeArticleDoc({ title: "Inline cover", imageUrl: inlineCover });
+
+            expect(getArticleImageUrl({ imageUrl: inlineCover }, "")).to.equal(inlineCover);
+            expect(getArticleImageUrl({
+                imageUrl: inlineCover,
+                coverUrl: "https://cdn.example.test/book-cover.webp"
+            }, "")).to.equal("https://cdn.example.test/book-cover.webp");
+            expect(normalized.imageUrl).to.equal(inlineCover);
+        });
+
         it("preserves supported book relationship and order fields", () => {
             const normalized = normalizeArticleDoc({
                 type: "ARTICLE",

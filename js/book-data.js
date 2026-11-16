@@ -55,7 +55,8 @@ export function saveBookChapterListCache(slug, chapters) {
     if (!slug || !Array.isArray(chapters)) return false;
     try {
         const safeChapters = chapters.filter(chapter => chapter && typeof chapter === "object" && chapter.id).map(chapter => {
-            const image = getArticleImageUrl(chapter, "");
+            const imageUrl = getArticleImageUrl(chapter, "");
+            const image = /^data:/i.test(imageUrl) ? "" : imageUrl;
             return {
                 id: String(chapter.id),
                 title: typeof chapter.title === "string" ? chapter.title : "",

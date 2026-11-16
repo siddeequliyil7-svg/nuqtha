@@ -393,10 +393,13 @@ export function getArticleImageUrl(item, fallback = "/cover-placeholder.svg") {
             item.thumbnailUrl,
             item.ogImage
         ];
-        for (const candidate of candidates) {
-            if (typeof candidate === "string" && (/^data:/i.test(candidate) || isCoverPlaceholder(candidate))) continue;
-            const safeUrl = sanitizeImageUrl(candidate);
-            if (safeUrl) return safeUrl;
+        for (const allowDataUri of [false, true]) {
+            for (const candidate of candidates) {
+                if (typeof candidate !== "string" || isCoverPlaceholder(candidate) ||
+                    /^data:/i.test(candidate) !== allowDataUri) continue;
+                const safeUrl = sanitizeImageUrl(candidate);
+                if (safeUrl) return safeUrl;
+            }
         }
     }
     if (fallback === "") return "";
@@ -670,10 +673,13 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const authorId = sanitizeString(rawDoc.authorId || "", 100, "");
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
     const firstSafeCoverUrl = candidates => {
-        for (const candidate of candidates) {
-            if (typeof candidate !== "string" || /^data:/i.test(candidate) || isCoverPlaceholder(candidate)) continue;
-            const safeUrl = sanitizeImageUrl(candidate);
-            if (safeUrl) return safeUrl;
+        for (const allowDataUri of [false, true]) {
+            for (const candidate of candidates) {
+                if (typeof candidate !== "string" || isCoverPlaceholder(candidate) ||
+                    /^data:/i.test(candidate) !== allowDataUri) continue;
+                const safeUrl = sanitizeImageUrl(candidate);
+                if (safeUrl) return safeUrl;
+            }
         }
         return "";
     };
