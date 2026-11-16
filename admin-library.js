@@ -1,6 +1,7 @@
 // admin-library.js : self-contained "Library" panel for your admin page.
 // Usage: import { initLibraryAdmin } from "./admin-library.js"; initLibraryAdmin(document.getElementById("library-admin"));
-import { db, collection, getDocs, getDocsFromCache, addDoc, setDoc, updateDoc, deleteDoc, doc } from "./firebase-config.js";
+import { db, collection, getDocs, getDocsFromCache, doc } from "./firebase-config.js";
+import { addDoc, setDoc, updateDoc, deleteDoc, getAdminWriteErrorMessage } from "./js/admin-write-guard.js";
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
 const $ = (r, s) => r.querySelector(s);
 const normalizedTitle = (value) => String(value || "").normalize("NFC").trim().toLowerCase();
@@ -318,8 +319,8 @@ export async function initLibraryAdmin(root) {
               bkStatus.textContent = "Deleted.";
               await loadBooks(true);
             } catch (err) {
-              console.error(err);
-              bkStatus.textContent = `Could not delete book: ${err.message || "check Firestore permissions."}`;
+              console.error("Library book deletion failed:", err?.code || "", err?.message || err);
+              bkStatus.textContent = getAdminWriteErrorMessage(err, "Library book deletion");
             }
           }
         };
@@ -385,8 +386,8 @@ export async function initLibraryAdmin(root) {
       field("id").value = "";
       await loadBooks(true);
     } catch (err) {
-      console.error(err);
-      bkStatus.textContent = "Couldn’t save. Are you signed in as admin?";
+      console.error("Library book save failed:", err?.code || "", err?.message || err);
+      bkStatus.textContent = getAdminWriteErrorMessage(err, "Library book save");
     }
   });
 
@@ -616,8 +617,8 @@ export async function initLibraryAdmin(root) {
       if (quickAddBtn) quickAddBtn.classList.add("hidden");
       await loadBooks(true);
     } catch (err) {
-      console.error(err);
-      bkStatus.textContent = "സേവ് ചെയ്യാൻ സാധിച്ചില്ല. അഡ്മിൻ ലോഗിൻ പരിശോധിക്കുക.";
+      console.error("Library quick-add failed:", err?.code || "", err?.message || err);
+      bkStatus.textContent = getAdminWriteErrorMessage(err, "Library book quick-add");
     }
   }
 
@@ -661,9 +662,9 @@ export async function initLibraryAdmin(root) {
             a.showOnTable = cb.checked;
             tbStatus.textContent = "Saved.";
           } catch (err) {
-            console.error(err);
+            console.error("Library article visibility update failed:", err?.code || "", err?.message || err);
             cb.checked = !cb.checked;
-            tbStatus.textContent = "Couldn’t save. Are you signed in as admin?";
+            tbStatus.textContent = getAdminWriteErrorMessage(err, "Library article update");
           }
         };
 

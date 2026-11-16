@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NUQTHA - à´¨àµà´–àµà´¤ | Malayalam Publishing Platform</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>NUQTHA - നുഖ്ത | Malayalam Publishing Platform</title>
     <meta name="description" content="A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher." />
     <meta property="og:title" content="NUQTHA - à´¨àµà´–àµà´¤ | Malayalam Publishing Platform" />
     <meta property="og:description" content="A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher." />
@@ -11,17 +12,15 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href="https://nuqtha.vercel.app/" />
     <meta property="og:url" content="https://nuqtha.vercel.app/" />
-    <meta property="og:site_name" content="NUQTHA - à´¨àµà´–àµà´¤" />
-    <meta property="og:image" content="https://nuqtha.vercel.app/og-cover.png" />
-    <meta property="og:image:secure_url" content="https://nuqtha.vercel.app/og-cover.png" />
-    <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:width" content="1920" />
-    <meta property="og:image:height" content="1080" />
+    <meta property="og:site_name" content="NUQTHA - നുഖ്ത" />
+    <meta property="og:image" content="https://nuqtha.vercel.app/og-cover.svg" />
+    <meta property="og:image:secure_url" content="https://nuqtha.vercel.app/og-cover.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
     <meta property="og:image:alt" content="NUQTHA Malayalam Publishing Platform" />
     <meta name="twitter:url" content="https://nuqtha.vercel.app/" />
     <meta name="twitter:title" content="NUQTHA - à´¨àµà´–àµà´¤ | Malayalam Publishing Platform" />
     <meta name="twitter:description" content="A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher." />
-    <meta name="twitter:image" content="https://nuqtha.vercel.app/og-cover.png" />
+    <meta name="twitter:image" content="https://nuqtha.vercel.app/og-cover.svg" />
 
     <!-- Google Fonts Preconnect & Load (Noto Sans Malayalam, Manjari, Plus Jakarta Sans) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -367,21 +366,51 @@
         </div>
     </footer>
 
-    <!-- SIDEBAR DRAWER (3-BAR MENU) -->
-    <div id="sidebar-backdrop" class="drawer-backdrop" aria-hidden="true"></div>
+    <!-- ═══════════ SIDEBAR DRAWER (3-BAR MENU) ═══════════ -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
 
-    <aside id="sidebar-drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true" inert>
-        <div class="drawer-head">
-            <a href="#home" class="drawer-brand drawer-home-link" aria-label="NUQTHA home">
-                <span class="drawer-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 0 4 22V5.5Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8 7h8M8 10h8"/></svg></span>
-                <span id="drawer-title">NUQTHA</span>
-            </a>
-            <div class="drawer-head-actions">
-                <button id="theme-toggle-btn" class="drawer-icon-button" type="button" title="Toggle Light / Dark Mode" aria-label="Toggle theme">
-                    <svg id="sun-icon" class="hidden" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
-                    <svg id="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 15.5A8.8 8.8 0 0 1 8.5 3.2 8.9 8.9 0 1 0 20.8 15.5Z"/></svg>
-                </button>
-                <button id="sidebar-close-btn" class="drawer-icon-button" type="button" aria-label="Close menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+    <aside id="sidebar-drawer" class="fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-[var(--surface)] dark:bg-[#12141d] z-50 shadow-2xl border-l border-[var(--border)] dark:border-white/10 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col justify-between overflow-y-auto">
+        <!-- Drawer Top Content -->
+        <div class="p-5 space-y-5">
+            <!-- Drawer Header -->
+            <div class="flex items-center justify-between pb-3 border-b border-[var(--border)] dark:border-white/10">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] flex items-center justify-center p-1 text-white shadow-sm">
+                        <svg class="w-full h-full" viewBox="0 0 24 24" fill="currentColor"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z"/></svg>
+                    </div>
+                    <span translate="no" class="notranslate font-black font-english text-lg tracking-tight uppercase text-[var(--text)] dark:text-white">NUQTHA</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <!-- Light / Dark Mode Toggle inside Drawer -->
+                    <button id="theme-toggle-btn" class="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#5a4b41] dark:text-[#cbd5e1] hover:text-[#b4532c] transition cursor-pointer" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+                        <svg id="sun-icon" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <svg id="moon-icon" class="w-4 h-4 text-[#4a3c33] dark:text-[#cbbba9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                    <!-- Close Drawer Button -->
+                    <button id="sidebar-close-btn" class="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-[#5a4b41] dark:text-[#cbd5e1] hover:text-[#b4532c] transition cursor-pointer" aria-label="Close menu">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Drawer Search Bar -->
+            <div class="space-y-1.5">
+                <label for="drawer-search-input" class="text-[10px] font-bold uppercase tracking-wider text-[#8c7a6b] font-english">ലേഖനങ്ങൾ തിരയുക (Search)</label>
+                <div class="relative w-full">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8c7a6b]">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </span>
+                    <input 
+                        type="text" 
+                        id="drawer-search-input" 
+                        placeholder="തലക്കെട്ട്, എഴുത്തുകാരൻ..." 
+                        class="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/15 focus:border-[#b4532c] focus:ring-1 focus:ring-[#b4532c] outline-none text-[var(--text)] dark:text-white placeholder-[#8c7a6b]"
+                    />
+                </div>
             </div>
         </div>
 

@@ -2,18 +2,15 @@ import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
 import { mergeBookRecords } from "./book-data.js";
 import { initLibraryAdmin } from "./admin-library.js";
-import { initReadingBgAdmin } from "./admin-reading-bg.js";
-import { initCategoryAdmin } from "./admin-categories.js";
-import { getCategories, getArticleCategoryId, getCachedCategoryName } from "./js/category-store.js";
-import { FALLBACK_ARTICLE_ITEMS } from "./fallback-data.js";
-import { 
+import {
     checkIsAdminUser, 
     initAuthStateListener, 
     signInWithGoogle, 
     signOutUser, 
     getCachedAuthUser, 
-    ADMIN_SESSION_KEY 
+    ADMIN_SESSION_KEY
 } from "./js/auth-system.js";
+import { addDoc, setDoc, updateDoc, deleteDoc, uploadImageDataUrl, getAdminWriteErrorMessage } from "./js/admin-write-guard.js";
 
 function isExplicitChapterRecord(art) {
     if (!art) return false;
@@ -33,12 +30,111 @@ function escapeAdminHtml(value) {
     })[char]);
 }
 
-let adminCategoryNames = new Map();
+if (typeof window !== "undefined") window.scanCoverImageUrls = async function() {
+    const coverFields = ["imageUrl", "coverUrl", "coverImage", "image", "thumbnailUrl", "thumbnail", "ogImage"];
+    const [articleSnapshot, bookSnapshot] = await Promise.all([
+        getDocs(collection(db, "articles")),
+        getDocs(collection(db, "books"))
+    ]);
+    const documents = [
+        ...articleSnapshot.docs.map(snapshot => ({ collection: "articles", id: snapshot.id, data: snapshot.data() || {} })),
+        ...bookSnapshot.docs.map(snapshot => ({ collection: "books", id: snapshot.id, data: snapshot.data() || {} }))
+    ];
 
-function getAdminArticleCategoryName(article) {
-    const categoryId = getArticleCategoryId(article);
-    return adminCategoryNames.get(categoryId) || getCachedCategoryName(categoryId) || article.category || "General";
-}
+    const loadImage = src => new Promise(resolve => {
+        const image = new Image();
+        const timeout = setTimeout(() => {
+            image.onload = null;
+            image.onerror = null;
+            resolve("timeout");
+        }, 12000);
+        image.onload = () => {
+            clearTimeout(timeout);
+            resolve(image.naturalWidth > 0 ? "" : "invalid image response");
+        };
+        image.onerror = () => {
+            clearTimeout(timeout);
+            resolve("URL returned an image error");
+        };
+        image.src = src;
+    });
+
+    const inspectDocument = async document => {
+        const documentBytes = new Blob([JSON.stringify(document.data)]).size;
+        const fields = coverFields.filter(name =>
+            typeof document.data[name] === "string" && document.data[name].trim()
+        );
+        if (!fields.length) {
+            return [{
+                collection: document.collection,
+                id: document.id,
+                title: document.data.title || document.data.bookTitle || document.data.name || "",
+                field: "(none)",
+                url: "",
+                imageBytes: null,
+                documentBytes,
+                issue: "empty cover"
+            }];
+        }
+
+        const results = [];
+        for (const field of fields) {
+            const rawUrl = document.data[field].trim();
+            let reason = "";
+            let imageBytes = null;
+            if (/^(blob:|file:|data:)/i.test(rawUrl)) {
+                if (/^data:/i.test(rawUrl)) {
+                    const base64 = rawUrl.slice(rawUrl.indexOf(",") + 1);
+                    const approximateBytes = Math.max(0, Math.floor(base64.length * 3 / 4) - (base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0));
+                    imageBytes = approximateBytes;
+                    reason = approximateBytes > 100 * 1024
+                        ? "oversized inline data URL"
+                        : "inline data URL (not a permanent Storage URL)";
+                } else {
+                    reason = "temporary blob or local file URL";
+                }
+            } else if (/^[a-z]:\\/i.test(rawUrl) || /localhost/i.test(rawUrl)) {
+                reason = "local filesystem or localhost URL";
+            } else if (/\/(cover-placeholder|og-cover)\.svg(?:$|[?#])/i.test(rawUrl)) {
+                reason = "placeholder cover";
+            } else {
+                try {
+                    const resolvedUrl = new URL(rawUrl, window.location.origin);
+                    if (!["http:", "https:"].includes(resolvedUrl.protocol)) {
+                        reason = "unsupported URL scheme";
+                    } else {
+                        reason = await loadImage(resolvedUrl.href);
+                    }
+                } catch {
+                    reason = "malformed image URL";
+                }
+            }
+            if (reason) {
+                results.push({
+                    collection: document.collection,
+                    id: document.id,
+                    title: document.data.title || document.data.bookTitle || document.data.name || "",
+                    field,
+                    url: rawUrl.slice(0, 180),
+                    imageBytes,
+                    documentBytes,
+                    issue: reason
+                });
+            }
+        }
+        return results;
+    };
+
+    const findings = [];
+    for (let index = 0; index < documents.length; index += 8) {
+        const batch = documents.slice(index, index + 8);
+        findings.push(...(await Promise.all(batch.map(inspectDocument))).flat());
+    }
+
+    console.table(findings);
+    console.info(`[Cover scan] ${findings.length} cover fields need review across ${documents.length} documents.`);
+    return findings;
+};
 
 function getValidBookTitle(art) {
     for (const value of [art?.title, art?.bookTitle, art?.bookName, art?.name]) {
@@ -85,6 +181,15 @@ export function isMainBook(art) {
 }
 window.isMainBook = isMainBook;
 
+function isBookCatalogRecord(art) {
+    if (!art || isExplicitChapterRecord(art)) return false;
+    const type = String(art.type || "").trim().toUpperCase();
+    const category = String(art.category || "").trim().toLowerCase();
+    return ["BOOK", "FREE", "PREMIUM"].includes(type) ||
+        art.isBook === true ||
+        ["book", "books", "premium book"].includes(category);
+}
+
 export function isBookOrChapter(art) {
     if (!art) return false;
     if (isExplicitChapterRecord(art)) return true;
@@ -97,13 +202,34 @@ export function isPublishedArticle(art) {
     return !isExplicitChapterRecord(art) && !isMainBook(art);
 }
 
+function dedupeAdminRecords(records) {
+    const seenIds = new Set();
+    const seenSlugs = new Set();
+    return records.filter(record => {
+        const id = String(record?.id || "").trim();
+        const slug = normalizeStringClean(record?.slug || record?.bookSlug || "");
+        if ((id && seenIds.has(id)) || (slug && seenSlugs.has(slug))) return false;
+        if (id) seenIds.add(id);
+        if (slug) seenSlugs.add(slug);
+        return true;
+    });
+}
+
+function getBookDocumentCollection(book) {
+    return book?.__adminCollection === "books" ? "books" : "articles";
+}
+
+function getBookDocumentRef(book) {
+    return doc(db, getBookDocumentCollection(book), book.id);
+}
+
 "use strict";
 /**
  * NUQTHA — Admin Dashboard Logic (admin.js)
  * 4-Folder Tab Architecture, Special Playlist Series Curation & Firestore Realtime Sync
  * With Strict Data Validation & Schema Sanitization
  */
-import { db, collection, getDocs, getDoc, addDoc, setDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, uploadImageDataUrl } from "./firebase-config.js";
+import { db, firebaseConfig, collection, getDocs, getDoc, doc, serverTimestamp, query, orderBy, onSnapshot } from "./firebase-config.js";
 import {
     validateAndSanitizeArticleForSave,
     normalizeArticleDoc,
@@ -234,6 +360,9 @@ if (typeof window !== "undefined") {
 
 let editingArticleId = null; // null = create mode, string = edit mode
 let currentArticlesList = [];
+let adminArticlesUnsubscribe = null;
+let adminBooksUnsubscribe = null;
+let adminListenerGeneration = 0;
 export let safeArticles = [];
 if (typeof window !== "undefined") {
     window.safeArticles = safeArticles;
@@ -768,12 +897,14 @@ async function handleFormSubmit() {
         });
 
         const targetArticleId = editingArticleId || doc(collection(db, "articles")).id;
-        const storedCover = articleImageChanged || !editingArticleId
+        const shouldPersistCover = articleImageChanged || !editingArticleId || /^data:/i.test(effectiveCover);
+        const storedCover = shouldPersistCover
             ? await uploadImageDataUrl(sanitized.imageUrl, `articles/${targetArticleId}/cover`)
             : effectiveCover || "";
+        const shouldPersistThumbnail = articleThumbnailChanged || !editingArticleId || /^data:/i.test(effectiveThumb);
         const storedThumbnail = articleThumbnailChanged && !selectedBase64Thumbnail
             ? ""
-            : articleThumbnailChanged || !editingArticleId
+            : shouldPersistThumbnail
                 ? sanitized.thumbnailUrl === sanitized.imageUrl
                     ? storedCover
                     : await uploadImageDataUrl(sanitized.thumbnailUrl, `articles/${targetArticleId}/thumbnail`)
@@ -813,12 +944,12 @@ async function handleFormSubmit() {
                 updatedAt: serverTimestamp()
             };
 
-            if (articleImageChanged) {
+            if (shouldPersistCover) {
                 updatePayload.imageUrl = storedCover;
                 updatePayload.coverImage = storedCover;
                 updatePayload.coverUrl = storedCover;
             }
-            if (articleThumbnailChanged) {
+            if (articleThumbnailChanged || /^data:/i.test(effectiveThumb)) {
                 updatePayload.thumbnailUrl = storedThumbnail;
                 updatePayload.ogImage = storedThumbnail;
             }
@@ -846,8 +977,8 @@ async function handleFormSubmit() {
             switchAdminTab("published");
         }
     } catch (err) {
-        console.error("[NUQTHA ADMIN] Validation / Firestore save error:", err);
-        showGlobalStatus(err.message || "ലേഖനം സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല. വിവരങ്ങൾ പരിശോധിക്കുക.", "error");
+        console.error("[NUQTHA ADMIN] Save failed:", err?.code || "", err?.message || err);
+        showGlobalStatus(getAdminWriteErrorMessage(err, "Article save"), "error");
         // If validation failed on title or content, bring user back to create tab
         if (!document.getElementById("art-title")?.value.trim()) {
             switchAdminTab("create");
@@ -1045,8 +1176,8 @@ window.startEditArticle = function (id) {
     const previewContainer = document.getElementById("image-preview-container");
     const placeholder = document.getElementById("upload-placeholder");
 
-    if (art.imageUrl) {
-        if (preview) preview.src = art.imageUrl;
+    if (originalArticleImages.imageUrl) {
+        if (preview) preview.src = originalArticleImages.imageUrl;
         if (previewContainer) previewContainer.classList.remove("hidden");
         if (placeholder) placeholder.classList.add("hidden");
     } else {
@@ -1100,7 +1231,7 @@ window.deleteArticle = async function (id) {
         currentArticlesList = currentArticlesList.filter(article => article.id !== id);
         safeArticles = currentArticlesList.filter(isPublishedArticle);
         updateArticleCounters(safeArticles.length);
-        updateBooksCounter(currentArticlesList.filter(isMainBook).length);
+        updateBooksCounter(dedupeAdminRecords(currentArticlesList.filter(isBookCatalogRecord)).length);
         renderAdminPublishedList(safeArticles);
         renderAdminBooksTab(currentArticlesList);
         updateActiveBookOverview(currentArticlesList);
@@ -1110,8 +1241,8 @@ window.deleteArticle = async function (id) {
             exitEditMode();
         }
     } catch (e) {
-        console.error("Firestore delete error:", e);
-        showGlobalStatus("ലേഖനം നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (e.message || "അനുമതി പരിശോധിക്കുക"), "error");
+        console.error("Firestore delete error:", e?.code || "", e?.message || e);
+        showGlobalStatus(getAdminWriteErrorMessage(e, "Article deletion"), "error");
     }
 };
 
@@ -1454,6 +1585,39 @@ function initColorCustomizer() {
 /* ═══════════════════════════════════════════════════════════
    5. COVER IMAGE UPLOAD & COMPRESSION
    ═══════════════════════════════════════════════════════════ */
+function compressAdminImage(file, maxDimension = 1200) {
+    return new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        const releaseUrl = () => URL.revokeObjectURL(objectUrl);
+        img.onerror = () => {
+            releaseUrl();
+            reject(new Error("The selected image could not be decoded."));
+        };
+        img.onload = () => {
+            try {
+                const scale = Math.min(1, maxDimension / Math.max(img.naturalWidth, img.naturalHeight));
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+                canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+                const context = canvas.getContext("2d");
+                if (!context) throw new Error("Image compression is unavailable in this browser.");
+                context.drawImage(img, 0, 0, canvas.width, canvas.height);
+                let compressed = canvas.toDataURL("image/webp", 0.82);
+                if (!compressed.startsWith("data:image/webp")) {
+                    compressed = canvas.toDataURL("image/jpeg", 0.82);
+                }
+                releaseUrl();
+                resolve(compressed);
+            } catch (error) {
+                releaseUrl();
+                reject(error);
+            }
+        };
+        img.src = objectUrl;
+    });
+}
+
 function initImageUpload() {
     const fileInput = document.getElementById("art-file-input");
     const uploadPlaceholder = document.getElementById("upload-placeholder");
@@ -1479,44 +1643,16 @@ function initImageUpload() {
             return;
         }
 
-        const reader = new FileReader();
-        reader.onerror = function() {
-            showGlobalStatus("ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
-        };
-        reader.onload = function (event) {
-            const img = new Image();
-            img.onerror = function() {
-                showGlobalStatus("ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
-            };
-            img.onload = function () {
-                const canvas = document.createElement("canvas");
-                const maxDim = 900;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height && width > maxDim) {
-                    height = Math.round((height * maxDim) / width);
-                    width = maxDim;
-                } else if (height > maxDim) {
-                    width = Math.round((width * maxDim) / height);
-                    height = maxDim;
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // High-efficiency JPEG compression to protect Firestore 1MB limits
-                selectedBase64Image = canvas.toDataURL("image/jpeg", 0.78);
+        compressAdminImage(file).then(compressed => {
+                selectedBase64Image = compressed;
                 articleImageChanged = true;
                 if (imagePreview) imagePreview.src = selectedBase64Image;
                 if (uploadPlaceholder) uploadPlaceholder.classList.add("hidden");
                 if (imagePreviewContainer) imagePreviewContainer.classList.remove("hidden");
-            };
-            img.src = event.target.result;
-        };
-        reader.readAsDataURL(file);
+        }).catch(error => {
+            console.error("[Admin] Cover image compression failed:", error);
+            showGlobalStatus("ചിത്രം തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
+        });
     });
 
     if (removeImgBtn) {
@@ -1554,44 +1690,16 @@ function initImageUpload() {
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onerror = function() {
-                showGlobalStatus("തമ്പ്നെയിൽ ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
-            };
-            reader.onload = function (event) {
-                const img = new Image();
-                img.onerror = function() {
-                    showGlobalStatus("തമ്പ്നെയിൽ ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
-                };
-                img.onload = function () {
-                    const canvas = document.createElement("canvas");
-                    // Optimized for social sharing cards & thumbnail rendering
-                    const maxDim = 800;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height && width > maxDim) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    } else if (height > maxDim) {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    selectedBase64Thumbnail = canvas.toDataURL("image/jpeg", 0.78);
+            compressAdminImage(file, 800).then(compressed => {
+                    selectedBase64Thumbnail = compressed;
                     articleThumbnailChanged = true;
                     if (thumbPreview) thumbPreview.src = selectedBase64Thumbnail;
                     if (thumbPlaceholder) thumbPlaceholder.classList.add("hidden");
                     if (thumbPreviewContainer) thumbPreviewContainer.classList.remove("hidden");
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+            }).catch(error => {
+                console.error("[Admin] Thumbnail image compression failed:", error);
+                showGlobalStatus("തമ്പ്നെയിൽ ചിത്രം തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും തിരഞ്ഞെടുക്കുക.", "error");
+            });
         });
     }
 
@@ -1641,33 +1749,6 @@ function matchesBookExact(art, bName, bTitle, bId) {
 
 let isBookManagerSuiteInitialized = false;
 
-function generateDefaultBookCover(title, category = "Book") {
-    const escapedTitle = (title || "NUQTHA BOOK").replace(/[<>&"]/g, "");
-    const escapedCat = (category || "PREMIUM BOOK").replace(/[<>&"]/g, "");
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="600" height="800">
-        <defs>
-            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
-                <stop offset="50%" style="stop-color:#172554;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
-            </linearGradient>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
-            </pattern>
-        </defs>
-        <rect width="600" height="800" fill="url(#grad)"/>
-        <rect width="600" height="800" fill="url(#grid)"/>
-        <rect x="25" y="25" width="550" height="750" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" rx="12"/>
-        <text x="300" y="160" font-family="sans-serif" font-size="16" font-weight="bold" fill="#93c5fd" letter-spacing="4" text-anchor="middle">${escapedCat.toUpperCase()}</text>
-        <line x1="260" y1="180" x2="340" y2="180" stroke="#60a5fa" stroke-width="2"/>
-        <text x="300" y="380" font-family="'Noto Serif Malayalam', serif, sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle" width="500">${escapedTitle}</text>
-        <circle cx="300" cy="520" r="30" fill="rgba(255,255,255,0.1)"/>
-        <text x="300" y="528" font-family="sans-serif" font-size="24" fill="#ffffff" text-anchor="middle">📖</text>
-        <text x="300" y="720" font-family="sans-serif" font-size="14" font-weight="bold" fill="#94a3b8" letter-spacing="3" text-anchor="middle">NUQTHA PUBLICATIONS</text>
-    </svg>`;
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
 function initBookManagerSuite() {
     if (isBookManagerSuiteInitialized) return;
     isBookManagerSuiteInitialized = true;
@@ -1708,65 +1789,16 @@ function initBookCoverUploader() {
         clearCoverError();
         if (!file) return;
 
-        // Instant visual feedback with ObjectURL
-        try {
-            const objectUrl = URL.createObjectURL(file);
-            if (previewImg) previewImg.src = objectUrl;
+        compressAdminImage(file).then(compressed => {
+            selectedBookCoverBase64 = compressed;
+            if (previewImg) previewImg.src = compressed;
             if (placeholder) placeholder.classList.add("hidden");
             if (previewContainer) previewContainer.classList.remove("hidden");
-        } catch (e) {
-            console.warn("ObjectURL fallback:", e);
-        }
-
-        const reader = new FileReader();
-        reader.onerror = (err) => {
-            console.error("FileReader error:", err);
-            showCoverError("ചിത്രം വായിക്കുന്നതിൽ തടസ്സം നേരിട്ടു.");
-        };
-
-        reader.onload = (event) => {
-            const rawBase64 = event.target.result;
-            selectedBookCoverBase64 = rawBase64;
-
-            const img = new Image();
-            img.onerror = () => {
-                clearCoverError();
-            };
-            img.onload = () => {
-                try {
-                    const canvas = document.createElement("canvas");
-                    const maxDim = 800;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > maxDim || height > maxDim) {
-                        if (width > height) {
-                            height = Math.round((height * maxDim) / width);
-                            width = maxDim;
-                        } else {
-                            width = Math.round((width * maxDim) / height);
-                            height = maxDim;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    const compressed = canvas.toDataURL("image/jpeg", 0.82);
-                    if (compressed && compressed.length > 100) {
-                        selectedBookCoverBase64 = compressed;
-                        if (previewImg) previewImg.src = compressed;
-                    }
-                } catch (cErr) {
-                    console.warn("Canvas compression fallback:", cErr);
-                }
-                clearCoverError();
-            };
-            img.src = rawBase64;
-        };
-        reader.readAsDataURL(file);
+            clearCoverError();
+        }).catch(error => {
+            console.error("[Admin] Book cover compression failed:", error);
+            showCoverError("ചിത്രം തയ്യാറാക്കുന്നതിൽ തടസ്സം നേരിട്ടു.");
+        });
     }
 
     window.handleCoverFileSelected = handleCoverFile;
@@ -1896,13 +1928,10 @@ async function handleSaveBookStep1(e) {
             normalizeStringClean(a.title) === normalizeStringClean(name)
         ));
 
-    // Provide default SVG cover if no image was uploaded
+    // Keep an empty cover on the shared neutral static placeholder.
     let coverImage = selectedBookCoverBase64 || (existing
         ? existing.imageUrl || existing.coverUrl || existing.coverImage || existing.thumbnailUrl || existing.ogImage || existing.image
-        : "") || "";
-    if (!coverImage) {
-        coverImage = generateDefaultBookCover(name, tag);
-    }
+        : "") || "/cover-placeholder.svg";
 
     const publishBtn = document.getElementById("publish-book-cover-btn");
     if (publishBtn) {
@@ -1956,7 +1985,7 @@ async function handleSaveBookStep1(e) {
 
         let savedDocId = "";
         if (existing) {
-            await updateBookDocument(existing, payload);
+            await updateDoc(getBookDocumentRef(existing), payload);
             savedDocId = existing.id;
             Object.assign(existing, payload);
             showGlobalStatus(`✨ പുസ്തകം '${name}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
@@ -1974,19 +2003,30 @@ async function handleSaveBookStep1(e) {
         try {
             await setDoc(doc(db, "books", savedDocId), {
                 title: name,
+                bookName: name,
                 author: author,
+                category: tag,
+                slug: bookSlug,
+                bookSlug,
                 type: bookTypeValue,
+                bookType: bookTypeValue,
                 accessType: bookTypeValue,
+                isBook: true,
+                isChapter: false,
                 isPremium: isPremium,
                 price: isPremium ? (priceVal || 49) : 0,
                 description: intro,
+                introduction: intro,
+                excerpt: intro,
                 imageUrl: storedCover,
                 coverImage: storedCover,
                 coverUrl: storedCover,
                 thumbnailUrl: storedCover,
-                visible: true,
+                ogImage: storedCover,
+                date: dateVal,
+                visible: existing?.visible !== false,
+                ...(Array.isArray(existing?.chapters) ? { chapters: existing.chapters } : {}),
                 updatedAt: serverTimestamp(),
-                createdAt: serverTimestamp()
             }, { merge: true });
         } catch (bkErr) {
             console.warn("[Admin] Sync book to books collection note:", bkErr);
@@ -1996,7 +2036,7 @@ async function handleSaveBookStep1(e) {
         activeBookName = name;
         activeBookAuthor = author;
 
-        const allBooks = currentArticlesList.filter(a => isMainBook(a));
+        const allBooks = dedupeAdminRecords(currentArticlesList.filter(isBookCatalogRecord));
         updateBooksCounter(allBooks.length);
         updateActiveBookOverview(currentArticlesList);
         renderAdminBooksTab(currentArticlesList);
@@ -2012,8 +2052,8 @@ async function handleSaveBookStep1(e) {
         }
 
     } catch (err) {
-        console.error("Save book error:", err);
-        showGlobalStatus("പുസ്തകം സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
+        console.error("Save book error:", err?.code || "", err?.message || err);
+        showGlobalStatus(getAdminWriteErrorMessage(err, "Book save"), "error");
     } finally {
         if (publishBtn) {
             publishBtn.disabled = false;
@@ -2032,7 +2072,8 @@ function initBookSwitcherAndStep1() {
     if (activeSelect) {
         activeSelect.addEventListener("change", () => {
             const val = activeSelect.value.trim();
-            selectActiveBook(val);
+            const selectedBook = currentArticlesList.find(book => book.id === val && isMainBook(book));
+            selectActiveBook(selectedBook ? getValidBookTitle(selectedBook) : val, selectedBook?.id || "");
         });
     }
 
@@ -2196,13 +2237,14 @@ function selectActiveBook(bookName, bookId = "") {
     const cleanTarget = normalizeStringClean(bookName);
     const bookCover = (bookId
         ? currentArticlesList.find(a => a.id === bookId && isMainBook(a))
-        : currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
+        : currentArticlesList.find(a => a.id === bookName && isMainBook(a)) ||
+          currentArticlesList.find(a => (a.type === "BOOK" || isMainBook(a)) && (
         normalizeStringClean(a.bookName) === cleanTarget ||
         normalizeStringClean(a.title) === cleanTarget
     )));
 
     activeBookName = bookCover ? (bookCover.bookName || bookCover.title) : bookName;
-    activeBookAuthor = bookCover ? (bookCover.author || "") : "";
+    activeBookAuthor = bookCover ? (bookCover.author || bookCover.authorName || "") : "";
     activeBookCoverDoc = bookCover || null;
 
     // Populate Step 1 fields
@@ -2239,11 +2281,19 @@ function selectActiveBook(bookName, bookId = "") {
     const apkUrlInput = document.getElementById("book-meta-apk-url");
     if (apkUrlInput) apkUrlInput.value = bookCover?.apkUrl || "";
 
-    if (bookCover?.imageUrl && previewImg && previewContainer && placeholder) {
-        previewImg.src = bookCover.imageUrl;
-        previewContainer.classList.remove("hidden");
-        placeholder.classList.add("hidden");
-        selectedBookCoverBase64 = bookCover.imageUrl;
+    const activeCoverUrl = bookCover ? getArticleImageUrl(bookCover) : "";
+    if (previewImg && previewContainer && placeholder) {
+        if (activeCoverUrl) {
+            previewImg.src = activeCoverUrl;
+            previewContainer.classList.remove("hidden");
+            placeholder.classList.add("hidden");
+            selectedBookCoverBase64 = activeCoverUrl;
+        } else {
+            previewImg.removeAttribute("src");
+            previewContainer.classList.add("hidden");
+            placeholder.classList.remove("hidden");
+            selectedBookCoverBase64 = "";
+        }
     }
 
     // Update Step 1 button to clarify editing active book
@@ -2262,8 +2312,8 @@ function selectActiveBook(bookName, bookId = "") {
 
     // Synchronize select dropdown
     const activeSelect = document.getElementById("bm-active-book-select");
-    if (activeSelect && activeSelect.value !== activeBookName) {
-        activeSelect.value = activeBookName;
+    if (activeSelect && activeSelect.value !== bookCover?.id) {
+        activeSelect.value = bookCover?.id || "";
     }
 
     // Filter chapters for this book
@@ -2331,33 +2381,15 @@ function initChapterWriter() {
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement("canvas");
-                    const maxDim = 800;
-                    let width = img.width;
-                    let height = img.height;
-                    if (width > height && width > maxDim) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    } else if (height > maxDim) {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(img, 0, 0, width, height);
-                    bmSelectedArticleImage = canvas.toDataURL("image/jpeg", 0.75);
+            compressAdminImage(file).then(compressed => {
+                    bmSelectedArticleImage = compressed;
                     if (previewImg) previewImg.src = bmSelectedArticleImage;
                     if (placeholder) placeholder.classList.add("hidden");
                     if (previewContainer) previewContainer.classList.remove("hidden");
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+            }).catch(error => {
+                console.error("[Admin] Chapter cover compression failed:", error);
+                showGlobalStatus("അധ്യായത്തിന്റെ ചിത്രം തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല.", "error");
+            });
         }
 
         fileInput.addEventListener("change", (e) => {
@@ -2751,7 +2783,7 @@ function initChapterWriter() {
                 if (!chIdList.includes(docRef.id)) {
                     existingChapters.push(docRef.id);
                     targetBookDoc.chapters = existingChapters;
-                    await updateBookDocument(targetBookDoc, {
+                    await updateDoc(getBookDocumentRef(targetBookDoc), {
                         chapters: existingChapters,
                         updatedAt: serverTimestamp()
                     });
@@ -2898,7 +2930,7 @@ function renderBookChaptersReorderList(chapters) {
                     #${idx + 1}
                 </span>
                 ${art.imageUrl ? `
-                    <img src="${art.imageUrl}" alt="Thumb" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-200">
+                    <img src="${art.imageUrl}" alt="Thumb" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-200" width="40" height="40" loading="lazy" data-nuqtha-cover="true">
                 ` : `
                     <span class="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-sm flex-shrink-0 border border-amber-200/60">📄</span>
                 `}
@@ -3026,7 +3058,7 @@ function renderBookChaptersReorderList(chapters) {
                     const existingChs = Array.isArray(activeBookCoverDoc.chapters) ? [...activeBookCoverDoc.chapters] : [];
                     const updatedChs = existingChs.filter(ch => (typeof ch === "string" ? ch : ch?.id) !== id);
                     activeBookCoverDoc.chapters = updatedChs;
-                    await updateBookDocument(activeBookCoverDoc, {
+                    await updateDoc(getBookDocumentRef(activeBookCoverDoc), {
                         chapters: updatedChs,
                         updatedAt: serverTimestamp()
                     });
@@ -3093,7 +3125,7 @@ async function saveAndApplyChapterOrder(showToast = true) {
         // Also update book doc with ordered chapters array
         if (activeBookCoverDoc && activeBookCoverDoc.id) {
             activeBookCoverDoc.chapters = chapterIds;
-            await updateBookDocument(activeBookCoverDoc, {
+            await updateDoc(getBookDocumentRef(activeBookCoverDoc), {
                 chapters: chapterIds,
                 updatedAt: serverTimestamp()
             });
@@ -3173,7 +3205,7 @@ function initBookAttachExistingArticles() {
                         if (id && !existingChs.includes(id)) existingChs.push(id);
                     }
                     activeBookCoverDoc.chapters = existingChs;
-                    await updateBookDocument(activeBookCoverDoc, {
+                    await updateDoc(getBookDocumentRef(activeBookCoverDoc), {
                         chapters: existingChs,
                         updatedAt: serverTimestamp()
                     });
@@ -3249,7 +3281,7 @@ function renderBookManagerCompactArticles(articles, activeBookParam) {
             <label class="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-200/60 hover:border-amber-300 transition cursor-pointer gap-2">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <input type="checkbox" class="bm-article-chk rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer" data-id="${art.id}" ${isBelong ? "checked" : ""}>
-                    ${art.imageUrl ? `<img src="${art.imageUrl}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">` : `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center text-xs flex-shrink-0">📄</span>`}
+                    ${art.imageUrl ? `<img src="${art.imageUrl}" alt="" class="w-8 h-8 rounded-lg object-cover flex-shrink-0" width="32" height="32" loading="lazy" data-nuqtha-cover="true">` : `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center text-xs flex-shrink-0">📄</span>`}
                     <div class="min-w-0">
                         <h5 class="text-xs font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">${art.title}</h5>
                         <p class="text-[10px] text-slate-400">${art.author || "NUQTHA"} • ${art.date || "Recent"}</p>
@@ -3387,7 +3419,8 @@ function initBookPresentationUpload() {
             };
 
             if (existingBook) {
-                await updateBookDocument(existingBook, payload);
+                await updateDoc(getBookDocumentRef(existingBook), payload);
+                Object.assign(existingBook, payload);
             }
 
             showGlobalStatus(`പ്രസന്റേഷൻ '${activeBookName}' ലേക്ക് വിജയകരമായി സേവ് ചെയ്തു! 📑`, "success");
@@ -3412,37 +3445,23 @@ function initBookPresentationUpload() {
 /* ═══════════ 7. ACTIVE BOOKS OVERVIEW, DEDICATED BOOKS TAB & DROPDOWN ═══════════ */
 function updateActiveBookOverview(articles) {
     const activeSelect = document.getElementById("bm-active-book-select");
-
-    // Discover all book names
-    const bookMap = {};
     const pool = (articles && articles.length > 0) ? articles : (currentArticlesList || []);
-
-    pool.forEach(art => {
-        if (isMainBook(art) && (art.bookName || art.title)) {
-            const name = (art.bookName || art.title).trim();
-            if (!bookMap[name]) bookMap[name] = { cover: art, chapters: 0 };
-        }
-    });
-
-    pool.forEach(art => {
-        if (!isMainBook(art) && (art.bookName || art.bookId)) {
-            const name = (art.bookName || "").trim();
-            if (name && bookMap[name]) {
-                bookMap[name].chapters++;
-            }
-        }
-    });
-
-    const bookNames = Object.keys(bookMap);
+    const books = dedupeAdminRecords(pool.filter(isBookCatalogRecord));
 
     if (activeSelect) {
         const cur = activeSelect.value;
         activeSelect.innerHTML = '<option value="">-- പുസ്തകം തിരഞ്ഞെടുക്കുക (Select Book to Manage) --</option>' + 
-            bookNames.map(name => `<option value="${name}">📚 ${name} (${bookMap[name].chapters} chapters)</option>`).join("");
-        if (cur && bookNames.includes(cur)) {
+            books.map(book => {
+                const title = getValidBookTitle(book);
+                const count = countBookChapters(book, pool);
+                return `<option value="${escapeAdminHtml(book.id)}">📚 ${escapeAdminHtml(title)} (${count} chapters)</option>`;
+            }).join("");
+        const activeBook = books.find(book => book.id === cur) ||
+            books.find(book => normalizeStringClean(getValidBookTitle(book)) === normalizeStringClean(activeBookName));
+        if (activeBook) {
+            activeSelect.value = activeBook.id;
+        } else if (cur && books.some(book => book.id === cur)) {
             activeSelect.value = cur;
-        } else if (activeBookName && bookNames.includes(activeBookName)) {
-            activeSelect.value = activeBookName;
         }
     }
 }
@@ -3457,17 +3476,6 @@ function updateBooksCounter(count) {
     if (totalEl) totalEl.textContent = `${total} Books`;
 }
 
-function countMissingFallbackItems(fallbackItems, databaseItems) {
-    const ids = new Set(databaseItems.map(item => String(item.id || "")));
-    const slugs = new Set(databaseItems.map(item => String(item.slug || "")));
-    const titles = new Set(databaseItems.map(item => normalizeStringClean(item.title || "")));
-    return fallbackItems.filter(item =>
-        !ids.has(String(item.id || "")) &&
-        (!item.slug || !slugs.has(String(item.slug))) &&
-        !titles.has(normalizeStringClean(item.title || ""))
-    ).length;
-}
-
 function renderAdminBooksTab(articles) {
     const gridEl = document.getElementById("bm-published-books-grid");
     const totalCounterEl = document.getElementById("bm-total-books-counter");
@@ -3475,19 +3483,7 @@ function renderAdminBooksTab(articles) {
     const tabBadgeEl = document.getElementById("tab-book-badge");
 
     const pool = Array.isArray(articles) ? articles : (currentArticlesList || []);
-    const rawBooks = pool.filter(isMainBook);
-
-    const books = [];
-    const seenIds = new Set();
-    const seenTitlesWithoutId = new Set();
-    for (const b of rawBooks) {
-        const id = String(b.id || "").trim();
-        const titleKey = normalizeStringClean(getValidBookTitle(b));
-        if (id ? seenIds.has(id) : seenTitlesWithoutId.has(titleKey)) continue;
-        if (id) seenIds.add(id);
-        else seenTitlesWithoutId.add(titleKey);
-        books.push(b);
-    }
+    const books = dedupeAdminRecords(pool.filter(isBookCatalogRecord));
 
     const totalBooks = books.length;
     if (totalCounterEl) totalCounterEl.textContent = `${totalBooks} Books`;
@@ -3513,13 +3509,20 @@ function renderAdminBooksTab(articles) {
         const safeTitle = escapeAdminHtml(bookTitle);
         const previewUrl = escapeAdminHtml(getStoryUrl(book));
         const chapterCount = countBookChapters(book, pool);
+        const coverImage = getArticleImageUrl(book);
+        const bookDate = book.date || book.publishDate || "";
+        const isPremium = book.isPremium === true ||
+            String(book.type || "").toLowerCase() === "premium" ||
+            String(book.bookType || "").toLowerCase() === "premium" ||
+            /premium/i.test(String(book.category || ""));
+        const price = Number(book.price) > 0 ? Number(book.price) : (isPremium ? 49 : 0);
         const isActive = activeBookCoverDoc && (activeBookCoverDoc.id === book.id || activeBookName === bookTitle);
 
         return `
             <div class="p-4 bg-white rounded-2xl border-2 ${isActive ? 'border-amber-500 bg-amber-50/20 ring-2 ring-amber-200' : 'border-[#ebdccb] hover:border-amber-300'} transition shadow-xs flex flex-col justify-between gap-3">
                 <div class="flex items-start gap-3">
                     <div class="w-16 h-22 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-amber-600 to-amber-900 border border-amber-200 shadow-xs flex items-center justify-center text-white">
-                        ${book.imageUrl ? `<img src="${escapeAdminHtml(book.imageUrl)}" alt="${safeTitle}" class="w-full h-full object-cover">` : `<span class="text-2xl">📚</span>`}
+                        ${coverImage ? `<img src="${escapeAdminHtml(coverImage)}" alt="${safeTitle}" class="w-full h-full object-cover" width="64" height="85" loading="lazy" data-nuqtha-cover="true">` : `<span class="text-2xl">📚</span>`}
                     </div>
                     <div class="flex-1 min-w-0 space-y-1">
                         <div class="flex items-center gap-1.5 flex-wrap">
@@ -3529,11 +3532,14 @@ function renderAdminBooksTab(articles) {
                             <span class="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-english">
                                 📖 ${chapterCount} Chapters
                             </span>
+                            <span class="text-[9px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full font-english">
+                                ${price > 0 ? `₹${escapeAdminHtml(price)} · PREMIUM` : "FREE"}
+                            </span>
                             ${isActive ? `<span class="text-[9px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md font-english">● ACTIVE</span>` : ''}
                         </div>
                         <h4 class="text-sm font-extrabold text-[#1e1b18] truncate leading-tight">${safeTitle}</h4>
-                        <p class="text-[11px] font-bold text-[#8c7a6b] truncate">✍️ ${escapeAdminHtml(book.author || 'Single Author')}</p>
-                        ${book.date ? `<p class="text-[10px] text-slate-400 font-english">📅 ${escapeAdminHtml(book.date)}</p>` : ''}
+                        <p class="text-[11px] font-bold text-[#8c7a6b] truncate">✍️ ${escapeAdminHtml(book.author || book.authorName || 'Single Author')}</p>
+                        ${bookDate ? `<p class="text-[10px] text-slate-400 font-english">📅 ${escapeAdminHtml(bookDate)}</p>` : ''}
                     </div>
                 </div>
 
@@ -3654,10 +3660,11 @@ window.deleteBookById = async function(bookId, bookTitle) {
             bookSlug: "",
             updatedAt: serverTimestamp()
         })));
-        await Promise.all([
-            deleteDoc(doc(db, "articles", bookId)),
-            deleteDoc(doc(db, "books", bookId))
-        ]);
+        const deleteBookWrites = [deleteDoc(doc(db, "books", bookId))];
+        if (book?.__adminCollection !== "books") {
+            deleteBookWrites.push(deleteDoc(doc(db, "articles", bookId)));
+        }
+        await Promise.all(deleteBookWrites);
 
         for (const chapter of linkedChapters) {
             chapter.bookId = "";
@@ -3679,7 +3686,7 @@ window.deleteBookById = async function(bookId, bookTitle) {
             resetBookManagerForm();
         }
 
-        const allBooks = currentArticlesList.filter(a => isMainBook(a));
+        const allBooks = dedupeAdminRecords(currentArticlesList.filter(isBookCatalogRecord));
         updateBooksCounter(allBooks.length);
         updateActiveBookOverview(currentArticlesList);
         renderAdminBooksTab(currentArticlesList);
@@ -3687,8 +3694,8 @@ window.deleteBookById = async function(bookId, bookTitle) {
 
         showGlobalStatus(`📚 '${cleanTitle}' വിജയകരമായി നീക്കം ചെയ്തു.`, "success");
     } catch (err) {
-        console.error("[BookManager] Delete book error:", err);
-        showGlobalStatus("പുസ്തകം നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
+        console.error("[BookManager] Delete book error:", err?.code || "", err?.message || err);
+        showGlobalStatus(getAdminWriteErrorMessage(err, "Book deletion"), "error");
     }
 };
 
@@ -3707,27 +3714,96 @@ window.manageBookFromPublished = function(bookName) {
 function listenToFirestoreArticles() {
     const listContainer = document.getElementById("admin-articles-list");
     const colRef = collection(db, "articles");
-    const booksColRef = collection(db, "books");
-    let latestArticleItems = null;
-    let latestBookItems = [];
+    const cacheKey = "nuqtha_cached_articles";
+    const cacheLimitBytes = 256 * 1024;
+    const cacheFields = [
+        "title", "bookTitle", "name", "author", "authorId", "date", "createdAt", "updatedAt",
+        "type", "category", "slug", "bookSlug", "bookId", "parentBookId", "bookName",
+        "playlistName", "volume", "issue", "order", "priority", "placement", "showOnTable",
+        "isBook", "isChapter", "isPremium", "price", "visible", "excerpt", "introduction",
+        "thumbnailUrl", "imageUrl", "ogImage", "coverUrl", "coverImage"
+    ];
+
+    function saveAdminArticleCache(items) {
+        try {
+            const lightweight = items.map(item => {
+                const cached = {
+                    id: String(item.id || ""),
+                    __adminCollection: item.__adminCollection === "books" ? "books" : "articles"
+                };
+                cacheFields.forEach(field => {
+                    const value = item[field];
+                    if (value === undefined || value === null) return;
+                    if (["imageUrl", "thumbnailUrl", "ogImage", "coverUrl", "coverImage"].includes(field)) {
+                        if (typeof value !== "string" || /^data:/i.test(value) || value.length > 2048) return;
+                    }
+                    if (field === "excerpt" || field === "introduction") {
+                        if (typeof value !== "string") return;
+                        cached[field] = value.slice(0, 300);
+                        return;
+                    }
+                    cached[field] = value;
+                });
+                if (Array.isArray(item.chapters)) {
+                    cached.chapters = item.chapters.slice(0, 100).map((chapter, index) => {
+                        if (typeof chapter === "string") return chapter;
+                        if (!chapter || typeof chapter !== "object") return null;
+                        return {
+                            id: chapter.id || chapter.articleId || chapter.chapterId || "",
+                            title: typeof chapter.title === "string" ? chapter.title.slice(0, 180) : "",
+                            order: Number.isFinite(Number(chapter.order)) ? Number(chapter.order) : index + 1
+                        };
+                    }).filter(Boolean);
+                }
+                return cached;
+            });
+            const serialized = JSON.stringify(lightweight);
+            if (serialized.length * 2 > cacheLimitBytes) {
+                sessionStorage.removeItem(cacheKey);
+                return;
+            }
+
+            let currentBytes = 0;
+            for (let index = 0; index < sessionStorage.length; index++) {
+                const key = sessionStorage.key(index);
+                if (key) currentBytes += (key.length + (sessionStorage.getItem(key) || "").length) * 2;
+            }
+            if (currentBytes + serialized.length * 2 > 2 * 1024 * 1024 && typeof window.clearVolatileStorage === "function") {
+                window.clearVolatileStorage(sessionStorage);
+            }
+            sessionStorage.setItem(cacheKey, serialized);
+        } catch (error) {
+            if (typeof window.clearVolatileStorage === "function") {
+                window.clearVolatileStorage(sessionStorage);
+            }
+            try {
+                const serialized = JSON.stringify(items.map(item => ({
+                    id: String(item.id || ""),
+                    __adminCollection: item.__adminCollection === "books" ? "books" : "articles",
+                    title: String(item.title || item.bookTitle || item.name || "").slice(0, 180),
+                    author: String(item.author || "").slice(0, 120),
+                    type: item.type || "",
+                    category: item.category || "",
+                    slug: item.slug || "",
+                    bookId: item.bookId || "",
+                    parentBookId: item.parentBookId || "",
+                    isBook: item.isBook === true,
+                    isChapter: item.isChapter === true
+                })));
+                if (serialized.length * 2 <= cacheLimitBytes) sessionStorage.setItem(cacheKey, serialized);
+            } catch (retryError) {
+                console.warn("[NUQTHA ADMIN] Offline article cache unavailable; live fetching remains enabled.", retryError?.name || "StorageError");
+            }
+        }
+    }
 
     function processArticlesData(rawItems, rawBookItems = []) {
         if (!Array.isArray(rawItems)) return;
 
-        const normalizedItems = rawItems.map(d => ({
+        const items = rawItems.map(d => ({
             ...normalizeArticleDoc(d, d?.id),
-            ...(d?._sourceCollection ? { _sourceCollection: d._sourceCollection } : {})
+            __adminCollection: d?.__adminCollection === "books" ? "books" : "articles"
         }));
-        const books = rawBookItems
-            .map(book => ({
-                ...normalizeArticleDoc({ ...book, type: "BOOK", isBook: true }, book.id),
-                ...book,
-                type: "BOOK",
-                isBook: true,
-                _sourceCollection: "books"
-            }))
-            .filter(isMainBook);
-        const items = mergeBookRecords(normalizedItems, books);
 
         items.sort((a, b) => {
             const getMillis = (item) => {
@@ -3740,40 +3816,19 @@ function listenToFirestoreArticles() {
 
         currentArticlesList = items;
 
-        // Persist to session cache for seamless offline fallback safely without quota overflow
-        try {
-            const lightweight = items.map(a => {
-                const copy = { ...a };
-                if (copy.content && copy.content.length > 500) {
-                    copy.content = copy.excerpt || copy.content.slice(0, 300);
-                }
-                if (copy.imageUrl && copy.imageUrl.startsWith("data:") && copy.imageUrl.length > 1000) {
-                    copy.imageUrl = "";
-                }
-                if (copy.thumbnailUrl && copy.thumbnailUrl.startsWith("data:") && copy.thumbnailUrl.length > 1000) {
-                    copy.thumbnailUrl = "";
-                }
-                if (copy.ogImage && copy.ogImage.startsWith("data:") && copy.ogImage.length > 1000) {
-                    copy.ogImage = "";
-                }
-                return copy;
-            });
-            sessionStorage.setItem("nuqtha_cached_articles", JSON.stringify(lightweight));
-        } catch (e) {
-            try { sessionStorage.removeItem("nuqtha_cached_articles"); } catch (_) {}
-        }
+        saveAdminArticleCache(items);
 
-        const standardArticles = items.filter(isPublishedArticle);
-        const allBooks = items.filter(a => isMainBook(a));
+        const standardArticles = dedupeAdminRecords(items.filter(isPublishedArticle));
+        const allBooks = dedupeAdminRecords(items.filter(isBookCatalogRecord));
 
-        console.log(`[NUQTHA ADMIN] processArticlesData: Total ${items.length} items -> ${allBooks.length} Books, ${standardArticles.length} Standard Articles.`);
+        console.debug(`[NUQTHA ADMIN] ${items.length} records loaded (${allBooks.length} books, ${standardArticles.length} articles).`);
 
         safeArticles = Array.isArray(standardArticles) ? standardArticles : [];
         if (typeof window !== "undefined") {
             window.safeArticles = safeArticles;
         }
 
-        updateArticleCounters(standardArticles.length + countMissingFallbackItems(FALLBACK_ARTICLE_ITEMS, items));
+        updateArticleCounters(standardArticles.length);
         updateBooksCounter(allBooks.length);
 
         renderAdminPublishedList(standardArticles);
@@ -3833,21 +3888,69 @@ function listenToFirestoreArticles() {
         }
     }
 
+    if (adminArticlesUnsubscribe) adminArticlesUnsubscribe();
+    if (adminBooksUnsubscribe) adminBooksUnsubscribe();
+    adminArticlesUnsubscribe = null;
+    adminBooksUnsubscribe = null;
+    const listenerGeneration = ++adminListenerGeneration;
+    let latestArticles = null;
+    let latestBooks = null;
+    const processSnapshots = () => {
+        if (listenerGeneration !== adminListenerGeneration || !latestArticles || !latestBooks) return;
+
+        const items = latestArticles.map(articleDoc => {
+            const raw = articleDoc.data() || {};
+            return normalizeArticleDoc({
+                ...raw,
+                title: raw.title || raw.bookTitle || raw.name,
+                id: articleDoc.id
+            }, articleDoc.id);
+        });
+        const seenIds = new Set(items.map(item => String(item.id || "")));
+        const bookItems = latestBooks.flatMap(bookDoc => {
+            const raw = bookDoc.data() || {};
+            const id = bookDoc.id;
+            if (seenIds.has(String(id))) return [];
+            const normalized = normalizeArticleDoc({
+                ...raw,
+                title: raw.title || raw.bookTitle || raw.bookName || raw.name,
+                type: isExplicitChapterRecord(raw) ? raw.type : (raw.type || "BOOK"),
+                isBook: isExplicitChapterRecord(raw) ? raw.isBook === true : true,
+                id
+            }, id);
+            if (!isMainBook(normalized)) return [];
+
+            const slug = normalizeStringClean(normalized.slug || normalized.bookSlug || "");
+            const articleBookMatch = slug && items.some(item =>
+                isBookCatalogRecord(item) &&
+                normalizeStringClean(item.slug || item.bookSlug || "") === slug
+            );
+            if (articleBookMatch) return [];
+            seenIds.add(String(id));
+            return [{ ...normalized, __adminCollection: "books" }];
+        });
+        processArticlesData([...items, ...bookItems]);
+    };
+
     try {
-        console.log("[NUQTHA ADMIN] Subscribing to Firestore 'articles' collection onSnapshot...");
-        onSnapshot(colRef, (querySnapshot) => {
-            console.log(`[NUQTHA ADMIN] onSnapshot received ${querySnapshot.docs.length} documents (fromCache: ${querySnapshot.metadata.fromCache})`);
-            latestArticleItems = querySnapshot.docs.map(articleDoc => {
-                const raw = articleDoc.data() || {};
-                return normalizeArticleDoc({
-                    ...raw,
-                    title: raw.title || raw.bookTitle || raw.name,
-                    id: articleDoc.id
-                }, articleDoc.id);
-            });
-            processArticlesData(latestArticleItems, latestBookItems);
+        console.log(`[NUQTHA ADMIN] Subscribing to Firestore collections 'articles' and 'books' in project '${firebaseConfig.projectId}'...`);
+
+        adminArticlesUnsubscribe = onSnapshot(colRef, (querySnapshot) => {
+            if (listenerGeneration !== adminListenerGeneration) return;
+            latestArticles = querySnapshot.docs;
+            processSnapshots();
         }, (err) => {
-            console.error("[NUQTHA ADMIN] Realtime onSnapshot listener failed:", err.code || "", err.message, err);
+            if (listenerGeneration !== adminListenerGeneration) return;
+            console.error("[NUQTHA ADMIN] Articles listener failed:", err.code || "", err.message || err);
+            reportLoadError(err);
+        });
+        adminBooksUnsubscribe = onSnapshot(collection(db, "books"), (querySnapshot) => {
+            if (listenerGeneration !== adminListenerGeneration) return;
+            latestBooks = querySnapshot.docs;
+            processSnapshots();
+        }, (err) => {
+            if (listenerGeneration !== adminListenerGeneration) return;
+            console.error("[NUQTHA ADMIN] Books listener failed:", err.code || "", err.message || err);
             reportLoadError(err);
         });
 
@@ -3868,20 +3971,13 @@ function listenToFirestoreArticles() {
             listContainer.innerHTML = '<p class="text-xs text-slate-400 p-4 text-center">ലേഖനങ്ങൾ വീണ്ടും ലോഡ് ചെയ്യുന്നു...</p>';
         }
         try {
-            const [snapshot, booksSnapshot] = await Promise.all([
+            const [articleSnapshot, bookSnapshot] = await Promise.all([
                 getDocs(colRef),
-                getDocs(booksColRef)
+                getDocs(collection(db, "books"))
             ]);
-            latestArticleItems = snapshot.docs.map(articleDoc => {
-                const raw = articleDoc.data() || {};
-                return normalizeArticleDoc({
-                    ...raw,
-                    title: raw.title || raw.bookTitle || raw.name,
-                    id: articleDoc.id
-                }, articleDoc.id);
-            });
-            latestBookItems = booksSnapshot.docs.map(bookDoc => ({ id: bookDoc.id, ...bookDoc.data() }));
-            processArticlesData(latestArticleItems, latestBookItems);
+            latestArticles = articleSnapshot.docs;
+            latestBooks = bookSnapshot.docs;
+            processSnapshots();
         } catch (error) {
             reportLoadError(error);
         }
@@ -3901,7 +3997,7 @@ export function renderAdminPublishedList(items) {
 
     // Exclude book cover documents but keep article documents attached to books.
     const sourceList = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
-    const articles = sourceList.filter(isPublishedArticle);
+    const articles = dedupeAdminRecords(sourceList.filter(isPublishedArticle));
     safeArticles = Array.isArray(articles) ? articles : [];
     updateArticleCounters(safeArticles.length);
     if (typeof window !== "undefined") {
@@ -3945,7 +4041,7 @@ export function renderAdminPublishedList(items) {
                 <div class="flex items-center gap-3">
                     <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-[#f7eddd] border border-[#ebdccb]">
                         ${(data.thumbnailUrl || data.ogImage || data.imageUrl) ? `
-                            <img src="${getArticleImageUrl(data)}" alt="${data.title || 'Article'} cover" class="w-full h-full object-cover">
+                            <img src="${getArticleImageUrl(data)}" alt="${data.title || 'Article'} cover" class="w-full h-full object-cover" width="400" height="300" loading="lazy" data-nuqtha-cover="true">
                         ` : `
                             <div class="w-full h-full flex items-center justify-center text-[#b4532c] text-xl" aria-hidden="true">📄</div>
                         `}
@@ -4122,7 +4218,7 @@ export function renderLayoutManagerList(items) {
                 <div class="flex items-center gap-3">
                     ${art.imageUrl ? `
                         <div class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border border-[#ebdccb]">
-                            <img src="${art.imageUrl}" alt="" class="w-full h-full object-cover">
+                            <img src="${art.imageUrl}" alt="" class="w-full h-full object-cover" width="400" height="300" loading="lazy" data-nuqtha-cover="true">
                         </div>
                     ` : ''}
                     <div class="flex-1 min-w-0">

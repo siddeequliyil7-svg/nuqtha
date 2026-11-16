@@ -14,11 +14,11 @@
     <meta property="og:url" content="https://nuqtha.vercel.app/article.html" />
     <meta property="og:title" content="NUQTHA | Article & Edition Reader" />
     <meta property="og:description" content="NUQTHA Malayalam Publishing Platform — Articles, Studies, History, and Book Editions." />
-    <meta property="og:image" content="https://nuqtha.vercel.app/og-cover.png" />
-    <meta property="og:image:secure_url" content="https://nuqtha.vercel.app/og-cover.png" />
-    <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:width" content="1920" />
-    <meta property="og:image:height" content="1080" />
+    <meta property="og:image" content="https://nuqtha.vercel.app/og-cover.svg" />
+    <meta property="og:image:secure_url" content="https://nuqtha.vercel.app/og-cover.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="NUQTHA Article & Edition Reader" />
 
     <!-- Twitter Card Meta Tags with Absolute Fallback URLs -->
@@ -26,10 +26,13 @@
     <meta name="twitter:url" content="https://nuqtha.vercel.app/article.html" />
     <meta name="twitter:title" content="NUQTHA | Article & Edition Reader" />
     <meta name="twitter:description" content="NUQTHA Malayalam Publishing Platform — Articles, Studies, History, and Book Editions." />
-    <meta name="twitter:image" content="https://nuqtha.vercel.app/og-cover.png" />
+    <meta name="twitter:image" content="https://nuqtha.vercel.app/og-cover.svg" />
     <!-- Google Fonts Preconnect & Load with display=swap -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@100..800&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800;900&family=Noto+Serif+Malayalam:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Razorpay Checkout Preconnect & Preload for Seamless iOS Safari Modal Checkout -->
@@ -38,7 +41,7 @@
     <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
 
     <meta name="color-scheme" content="light">
-    <link rel="stylesheet" href="./tailwind.css">
+    <link rel="stylesheet" href="/tailwind.css">
 
     <script>
         (function() {
@@ -54,18 +57,8 @@
             } catch (e) {}
         })();
     </script>
-    <script>
-        (function() {
-            try {
-                var reading = localStorage.getItem("nuqtha:reading-bg");
-                document.documentElement.dataset.reading = ["cream", "soft", "white"].includes(reading) ? reading : "soft";
-            } catch (e) {
-                document.documentElement.dataset.reading = "soft";
-            }
-        })();
-    </script>
-    <script type="module" src="site-config.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="/site-config.js"></script>
+    <link rel="stylesheet" href="/styles.css">
     <style>
         .reading-column,
         #article-content,
@@ -82,7 +75,7 @@
         .article-body p,
         #art-content p,
         .reading-p {
-            margin: 1.1em 0;
+            margin: 0.4em 0 !important;
             line-height: 1.9 !important;
             font-size: var(--article-font-size, 18px);
             color: var(--text, #1e1b18);
@@ -237,7 +230,7 @@
             box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.65);
         }
     </style>
-    <script type="module" src="./js/ui-safe.js"></script>
+    <script type="module" src="/js/ui-safe.js"></script>
 </head>
 <body class="bg-[var(--bg)] text-[var(--text)] antialiased selection:bg-[#b4532c] selection:text-white min-h-screen flex flex-col justify-between">
 
@@ -342,17 +335,17 @@
             </div>
 
             <!-- Hero Skeleton Card -->
-            <div class="book-edition-hero book-hero-card" aria-hidden="true">
+            <div class="book-v2-hero book-v2-skeleton" aria-hidden="true">
                 <!-- Top Row Skeleton -->
-                <div class="flex items-center justify-between mb-5 sm:mb-7">
+                <div class="book-v2-topline">
                     <div class="h-5 w-32 rounded-full skeleton-shimmer"></div>
                     <div class="h-6 w-20 rounded-full skeleton-shimmer"></div>
                 </div>
-                <div class="flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
-                    <div class="w-[60%] sm:w-[220px] md:w-[260px] flex-shrink-0 mx-auto md:mx-0">
-                        <div class="aspect-[3/4] rounded-2xl skeleton-shimmer border border-white/10"></div>
+                <div class="book-v2-layout">
+                    <div class="book-v2-cover-stage">
+                        <div class="book-v2-cover-skeleton skeleton-shimmer"></div>
                     </div>
-                    <div class="flex-1 w-full space-y-4">
+                    <div class="book-v2-copy">
                         <div class="h-9 w-3/4 rounded-xl skeleton-shimmer"></div>
                         <!-- Author row skeleton -->
                         <div class="flex items-center gap-3 mt-3">
@@ -425,7 +418,7 @@
 
             <!-- Optional Article Cover Image -->
             <div id="art-image-wrapper" class="hidden rounded-2xl sm:rounded-3xl overflow-hidden border border-[var(--border)] dark:border-white/10 shadow-sm">
-                <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px]" loading="eager" decoding="async">
+                <img id="art-image" src="" alt="" class="w-full h-auto object-cover max-h-[500px] aspect-[3/4]" width="1200" height="1600" loading="eager" decoding="async" data-nuqtha-cover="true">
             </div>
 
             <!-- Prominent Article Excerpt / Lead Intro Container -->
@@ -434,32 +427,30 @@
             </div>
 
             <!-- Social Share & Reading Controls Bar -->
-            <div id="art-share-bar" class="flex items-center justify-between gap-2 sm:gap-2.5 py-2 sm:py-2.5 my-1 sm:my-1.5 border-y border-[var(--border)]/60 dark:border-white/10 flex-wrap sm:flex-nowrap">
-                <div class="article-share-actions flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-0.5">
-                    <span class="article-share-label text-[10px] sm:text-[11px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-1 sm:mr-1.5 flex-shrink-0">SHARE:</span>
-                    <button onclick="shareArticlePage('whatsapp')" class="article-share-button w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white bg-[#25D366] hover:bg-[#20ba59] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#25D366]/25 flex-shrink-0 cursor-pointer" title="Share on WhatsApp" aria-label="Share on WhatsApp">
-                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+            <div id="art-share-bar" class="flex flex-nowrap items-center justify-between gap-1 py-2 sm:py-2.5 my-1 sm:my-1.5 border-y border-[var(--border)]/60 dark:border-white/10">
+                <div class="flex min-w-0 flex-nowrap items-center gap-1 py-0.5">
+                    <span class="text-[9px] sm:text-[10px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-0.5 flex-shrink-0">SHARE:</span>
+                    <button onclick="shareArticlePage('whatsapp')" class="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-white bg-[#25D366] hover:bg-[#20ba59] hover:scale-105 active:scale-95 transition-all shadow-sm shadow-[#25D366]/25 flex-shrink-0 cursor-pointer" title="Share on WhatsApp" aria-label="Share on WhatsApp">
+                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                     </button>
-                    <button onclick="shareArticlePage('telegram')" class="article-share-button w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white bg-[#229ED9] hover:bg-[#1e8ec3] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#229ED9]/25 flex-shrink-0 cursor-pointer" title="Share on Telegram" aria-label="Share on Telegram">
-                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.562 8.161c-.18.717-.962 4.084-1.362 5.411-.168.56-.457.747-.736.765-.607.039-1.069-.408-1.657-.793-.921-.603-1.442-.977-2.336-1.565-1.033-.679-.363-1.053.226-1.664.154-.16 2.83-2.593 2.882-2.816.006-.028.012-.135-.051-.191-.064-.056-.157-.037-.225-.022-.097.022-1.64 1.044-4.629 3.061-.438.301-.835.449-1.191.441-.393-.008-1.15-.222-1.712-.405-.69-.225-1.238-.344-1.19-.726.025-.199.301-.403.827-.613 3.246-1.413 5.412-2.345 6.498-2.797 3.097-1.292 3.741-1.516 4.161-1.523.092-.002.298.021.432.13.113.092.144.218.159.307.015.089.034.295.019.456z"/></svg>
+                    <button onclick="shareArticlePage('telegram')" class="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-white bg-[#229ED9] hover:bg-[#1e8ec3] hover:scale-105 active:scale-95 transition-all shadow-sm shadow-[#229ED9]/25 flex-shrink-0 cursor-pointer" title="Share on Telegram" aria-label="Share on Telegram">
+                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.562 8.161c-.18.717-.962 4.084-1.362 5.411-.168.56-.457.747-.736.765-.607.039-1.069-.408-1.657-.793-.921-.603-1.442-.977-2.336-1.565-1.033-.679-.363-1.053.226-1.664.154-.16 2.83-2.593 2.882-2.816.006-.028.012-.135-.051-.191-.064-.056-.157-.037-.225-.022-.097.022-1.64 1.044-4.629 3.061-.438.301-.835.449-1.191.441-.393-.008-1.15-.222-1.712-.405-.69-.225-1.238-.344-1.19-.726.025-.199.301-.403.827-.613 3.246-1.413 5.412-2.345 6.498-2.797 3.097-1.292 3.741-1.516 4.161-1.523.092-.002.298.021.432.13.113.092.144.218.159.307.015.089.034.295.019.456z"/></svg>
                     </button>
-                    <button onclick="shareArticlePage('facebook')" class="article-share-button w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white bg-[#1877F2] hover:bg-[#166fe5] hover:scale-110 active:scale-95 transition-all shadow-sm shadow-[#1877F2]/25 flex-shrink-0 cursor-pointer" title="Share on Facebook" aria-label="Share on Facebook">
-                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    <button onclick="shareArticlePage('facebook')" class="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-white bg-[#1877F2] hover:bg-[#166fe5] hover:scale-105 active:scale-95 transition-all shadow-sm shadow-[#1877F2]/25 flex-shrink-0 cursor-pointer" title="Share on Facebook" aria-label="Share on Facebook">
+                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                     </button>
-                    <button onclick="shareArticlePage('copy')" class="article-share-button w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-[var(--border)] dark:border-white/15 hover:scale-110 active:scale-95 transition-all shadow-sm flex-shrink-0 cursor-pointer" title="Copy Article Link" aria-label="Copy Article Link">
-                        <svg id="page-copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                        <svg id="page-copy-check" class="w-4 h-4 hidden text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    <button onclick="shareArticlePage('copy')" class="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-[var(--border)] dark:border-white/15 hover:scale-105 active:scale-95 transition-all shadow-sm flex-shrink-0 cursor-pointer" title="Copy Article Link" aria-label="Copy Article Link">
+                        <svg id="page-copy-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        <svg id="page-copy-check" class="w-3.5 h-3.5 hidden text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                         <span id="page-copy-label" class="sr-only">Copy Link</span>
                     </button>
                     <span id="page-copy-toast" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hidden flex-shrink-0">✓ Copied!</span>
                 </div>
 
                 <!-- Text Size Reading Toolbar -->
-                <div class="article-size-controls inline-flex items-center gap-1 sm:gap-1.5 bg-[#ebdccb]/40 dark:bg-white/10 px-2 sm:px-2.5 py-1 rounded-xl border border-[var(--border)] dark:border-white/15 text-xs select-none flex-shrink-0 ml-auto" title="Text Size / അക്ഷര വലിപ്പം">
-                    <span class="article-size-label text-[10px] sm:text-[11px] font-black uppercase font-english text-[#8c7a6b] dark:text-[#a0aec0] tracking-wider mr-0.5">SIZE:</span>
-                    <button type="button" class="article-size-button font-decrease-btn w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Decrease text size" title="Smaller (A-)">A-</button>
-                    <button type="button" class="article-size-value font-reset-btn px-1.5 h-6 sm:h-7 rounded-lg flex items-center justify-center font-bold text-[11px] sm:text-xs font-english text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-white/15 transition-all font-size-indicator cursor-pointer" title="Reset default size (18px)">18px</button>
-                    <button type="button" class="article-size-button font-increase-btn w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Increase text size" title="Larger (A+)">A+</button>
+                <div class="inline-flex items-center gap-1 bg-[#ebdccb]/40 dark:bg-white/10 p-1 rounded-xl border border-[var(--border)] dark:border-white/15 text-xs select-none flex-shrink-0" title="Text Size / അക്ഷര വലിപ്പം">
+                    <button type="button" class="font-decrease-btn w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Decrease text size" title="Smaller (A-)">A-</button>
+                    <button type="button" class="font-increase-btn w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Increase text size" title="Larger (A+)">A+</button>
                 </div>
             </div>
 
@@ -624,17 +615,15 @@
 
     <!-- Main Module Script -->
     <script type="module">
-        import { app, db, firebaseConfig, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "./firebase-config.js";
-        import { syncReadingBg } from "./reading-theme.js";
-        import { FALLBACK_ARTICLES } from "./fallback-data.js";
-        import { initHeaderAuthUI } from "./js/auth-ui.js";
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, cleanUrlPart, sanitizeCategory, getArticleImageUrl } from "./schema-validator.js";
-        import { getBookChapters, isArticleInBook, filterAndSortChapters } from "./js/book-data.js";
-        import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "./js/author-service.js";
-        import { categoryUrl, categoryTag } from "./js/category-link.js";
-        import { getArticleCategoryId, getCategories, getCachedCategoryName } from "./js/category-store.js";
-        import { trackReadingActivity } from "./js/analytics-tracker.js";
-        import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "./js/paywall-service.js";
+        import { app, db, firebaseConfig, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "/firebase-config.js";
+        import { FALLBACK_ARTICLES } from "/fallback-data.js";
+        import { initHeaderAuthUI } from "/js/auth-ui.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, getArticleImageUrl, cleanUrlPart, sanitizeCategory } from "/schema-validator.js";
+        import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, saveBookPageLightCache, saveBookChapterListCache, readBookChapterListCache } from "/js/book-data.js";
+        import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "/js/author-service.js";
+        import { categoryUrl, categoryTag } from "/js/category-link.js";
+        import { trackReadingActivity } from "/js/analytics-tracker.js";
+        import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "/js/paywall-service.js";
 
         void syncReadingBg();
 
@@ -886,15 +875,78 @@
 
         // Dynamic Image Preloader
         function preloadCoverImage(url) {
-            if (!url || url.includes("placeholder")) return;
-            const existing = document.querySelector(`link[rel="preload"][href="${url}"]`);
+            if (!url || /^data:/i.test(url) || url.includes("placeholder")) return;
+            const existing = Array.from(document.querySelectorAll('link[rel="preload"][as="image"]')).find(link => link.href === new URL(url, window.location.href).href);
             if (!existing) {
                 const link = document.createElement("link");
                 link.rel = "preload";
                 link.as = "image";
                 link.href = url;
+                link.fetchPriority = "high";
                 document.head.appendChild(link);
             }
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "").replace(/[&<>"']/g, char => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+            })[char]);
+        }
+
+        function renderBookLightCache(lightData, container, cachedChapters = []) {
+            if (!lightData || !container) return;
+            const title = escapeHtml(lightData.title || "NUQTHA Edition");
+            const author = escapeHtml(lightData.author || "NUQTHA");
+            const date = escapeHtml(lightData.date || "");
+            const intro = String(lightData.intro || "").trim().replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
+            const hasIntro = intro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
+            const cover = typeof lightData.coverUrl === "string" && !/^data:/i.test(lightData.coverUrl)
+                ? escapeHtml(lightData.coverUrl)
+                : "/cover-placeholder.svg";
+            const introMarkup = hasIntro
+                ? `<div class="book-v2-intro"><span class="book-v2-quote-mark" aria-hidden="true">&ldquo;</span><div id="book-intro-text" class="book-v2-intro-text">${escapeHtml(intro)}</div><button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button></div>`
+                : "";
+            const chapterRows = Array.isArray(cachedChapters) ? cachedChapters.map((chapter, index) => {
+                const chapterTitle = typeof chapter.title === "string" && chapter.title.trim()
+                    ? chapter.title.trim()
+                    : `അധ്യായം ${index + 1}`;
+                const chapterImage = typeof chapter.imageUrl === "string" && !/^data:/i.test(chapter.imageUrl)
+                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapter.imageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true"></div>`
+                    : `<div class="chapter-thumbnail chapter-thumbnail-empty" aria-hidden="true">📄</div>`;
+                return `<div class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">അധ്യായം ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></div>`;
+            }).join("") : "";
+
+            container.innerHTML = `
+                <article class="book-v2-hero book-light-cache" aria-labelledby="book-hero-title">
+                    <div class="book-v2-topline">
+                        <div class="book-v2-eyebrow"><span>പുസ്തകം</span><span aria-hidden="true">&middot;</span><span translate="no">BOOK</span></div>
+                    </div>
+                    <div class="book-v2-layout">
+                        <div class="book-v2-cover-stage">
+                            <div class="book-v2-circles" aria-hidden="true"><span></span><span></span></div>
+                            <div class="book-v2-perspective">
+                                <div class="book-v2-book" tabindex="0" role="img" aria-label="${title} cover">
+                                    <span class="book-v2-ribbon" aria-hidden="true"></span>
+                                    <span class="book-v2-spine" aria-hidden="true"></span>
+                                    <div class="book-v2-cover">
+                                        ${cover ? `<img src="${cover}" alt="${title} cover" class="book-v2-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" data-nuqtha-cover="true"><div class="book-v2-cover-fallback hidden" aria-hidden="true">📚</div>` : `<div class="book-v2-cover-fallback" aria-hidden="true">📚</div>`}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="book-v2-floor-shadow" aria-hidden="true"></div>
+                        </div>
+                        <div class="book-v2-copy">
+                            <h1 id="book-hero-title" class="book-v2-title">${title}</h1>
+                            <div class="book-v2-author-row"><span class="book-v2-avatar"><span>${escapeHtml(author.charAt(0) || "N")}</span></span><div><strong class="book-v2-author-name">${author}</strong><div class="book-v2-author-role">എഴുത്തുകാരൻ</div></div></div>
+                            <div class="book-v2-meta">${date ? `<span>${date}</span><span class="book-v2-meta-dot" aria-hidden="true"></span>` : ""}<span>${Math.max(0, Number(lightData.chapterCount) || 0)} അധ്യായങ്ങൾ</span></div>
+                            ${introMarkup}
+                        </div>
+                    </div>
+                </article>
+                <section class="book-light-chapter-skeleton" aria-label="Loading chapters" aria-busy="true">
+                    <div class="book-light-skeleton-title"></div>
+                    ${chapterRows || '<div class="book-light-skeleton-row"></div><div class="book-light-skeleton-row"></div>'}
+                </section>`;
         }
 
         // Helper to determine if an entity is a Book (or a book chapter)
@@ -1405,17 +1457,45 @@
             // 1. FAST CACHE PATH (Instant Paint in 0ms)
             let cachedBook = null;
             let cachedChapters = null;
+            let cachedLightBook = null;
             const cacheKey = articleId || targetIdentifier;
+            if (isBookRoute && pathBookSlug) {
+                try {
+                    const lightCacheText = sessionStorage.getItem(`nuqtha_cache_book_${pathBookSlug}_v2`);
+                    const parsedLightCache = lightCacheText ? JSON.parse(lightCacheText) : null;
+                    if (parsedLightCache && parsedLightCache.slug === pathBookSlug && !/^data:/i.test(parsedLightCache.coverUrl || "")) {
+                        cachedLightBook = parsedLightCache;
+                        cachedChapters = readBookChapterListCache(pathBookSlug);
+                    }
+                } catch (error) {
+                    console.warn("[Reader] Lightweight book cache could not be restored.", error);
+                }
+            }
             if (cacheKey) {
                 try {
                     const cachedBookStr = sessionStorage.getItem(`nuqtha_book_${cacheKey}`);
                     const cachedChaptersStr = sessionStorage.getItem(`nuqtha_book_articles_${cacheKey}`);
                     if (cachedBookStr) cachedBook = JSON.parse(cachedBookStr);
-                    if (cachedChaptersStr) cachedChapters = JSON.parse(cachedChaptersStr);
+                    if (cachedChaptersStr && !cachedLightBook) cachedChapters = JSON.parse(cachedChaptersStr);
                 } catch (e) {}
 
                 if (!cachedBook) {
                     cachedBook = searchLocalArticlesPool(cacheKey);
+                }
+
+                if (cachedLightBook) {
+                    cachedBook = {
+                        id: cachedLightBook.slug,
+                        slug: cachedLightBook.slug,
+                        title: cachedLightBook.title,
+                        author: cachedLightBook.author,
+                        date: cachedLightBook.date,
+                        imageUrl: cachedLightBook.coverUrl,
+                        introduction: cachedLightBook.intro,
+                        isBook: true,
+                        type: "BOOK",
+                        __lightCache: true
+                    };
                 }
 
                 if (cachedBook) {
@@ -1434,11 +1514,16 @@
                         if (articleViewEl) articleViewEl.classList.add("hidden");
                         if (bookContainerEl) {
                             bookContainerEl.classList.remove("hidden");
-                            const bookChaps = cachedChapters || cachedBook.chapters || [];
-                            await renderBookIndex(cachedBook, bookContainerEl, bookChaps);
+                            if (cachedLightBook) {
+                                renderBookLightCache(cachedLightBook, bookContainerEl, cachedChapters);
+                                if (cachedLightBook.coverUrl) preloadCoverImage(cachedLightBook.coverUrl);
+                            } else {
+                                const bookChaps = cachedChapters || cachedBook.chapters || [];
+                                await renderBookIndex(cachedBook, bookContainerEl, bookChaps);
+                            }
                         }
-                        if (cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
-                        initComments(cachedBook.id);
+                        if (!cachedLightBook && cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
+                        if (!cachedLightBook) initComments(cachedBook.id);
                     } else {
                         if (bookContainerEl) bookContainerEl.classList.add("hidden");
                         if (articleViewEl) articleViewEl.classList.remove("hidden");
@@ -1461,17 +1546,45 @@
             try {
                 let currentDoc = null;
                 let allArticles = [];
+                let earlyBookChaptersPromise = null;
 
                 const lookupId = articleId || targetIdentifier;
-                const [targetDocResult, allArticlesResult] = await Promise.allSettled([
-                    lookupId ? fetchTargetBySlugOrId(lookupId, controller.signal) : Promise.resolve(null),
-                    fetchLightweightArticles(controller.signal)
-                ]);
+                const targetDocPromise = lookupId
+                    ? fetchTargetBySlugOrId(lookupId, controller.signal)
+                    : Promise.resolve(null);
+                const allArticlesPromise = fetchLightweightArticles(controller.signal);
+                const [targetDocResult] = await Promise.allSettled([targetDocPromise]);
                 currentDoc = targetDocResult.status === "fulfilled" ? targetDocResult.value : null;
+
+                if (currentDoc && ((currentDoc.type || "").toUpperCase() === "BOOK" || currentDoc.isBook === true)) {
+                    earlyBookChaptersPromise = Promise.allSettled([
+                        getBookChapters(currentDoc.id, { articlesPool: [currentDoc], timeoutMs: 8000 })
+                    ]);
+                    const provisionalCover = currentDoc.imageUrl || currentDoc.coverUrl || currentDoc.coverImage ||
+                        currentDoc.image || currentDoc.thumbnailUrl || currentDoc.thumbnail || currentDoc.ogImage || "";
+                    const lightBook = {
+                        slug: pathBookSlug || currentDoc.slug || currentDoc.bookSlug || currentDoc.id,
+                        title: currentDoc.title || "",
+                        author: currentDoc.author || "",
+                        date: typeof currentDoc.date === "string" ? currentDoc.date : (currentDoc.date ? formatDateSafe(currentDoc.date) : ""),
+                        coverUrl: typeof provisionalCover === "string" && !/^data:/i.test(provisionalCover) ? provisionalCover : "",
+                        intro: currentDoc.introduction || currentDoc.intro || currentDoc.excerpt || "",
+                        chapterCount: 0
+                    };
+                    if (skeletonEl) skeletonEl.classList.add("hidden");
+                    if (articleViewEl) articleViewEl.classList.add("hidden");
+                    if (bookContainerEl) {
+                        bookContainerEl.classList.remove("hidden");
+                        renderBookLightCache(lightBook, bookContainerEl);
+                    }
+                    if (lightBook.coverUrl) preloadCoverImage(lightBook.coverUrl);
+                }
+
+                const [allArticlesResult] = await Promise.allSettled([allArticlesPromise]);
                 allArticles = allArticlesResult.status === "fulfilled" ? (allArticlesResult.value || []) : [];
 
                 if (!currentDoc) {
-                    currentDoc = cachedBook || searchLocalArticlesPool(lookupId);
+                    currentDoc = (cachedBook && !cachedBook.__lightCache ? cachedBook : null) || searchLocalArticlesPool(lookupId);
                 }
 
                 if (currentDoc && (currentDoc.type === "BOOK" || currentDoc.isBook === true || isBookEditionDoc(currentDoc)) &&
@@ -1632,14 +1745,6 @@
                 }
                 canonicalEl.setAttribute('href', window.location.origin + cleanUrl);
 
-                try {
-                    sessionStorage.setItem(`nuqtha_book_${articleId}`, JSON.stringify(currentDoc));
-                    if (currentDoc.slug) sessionStorage.setItem(`nuqtha_book_${currentDoc.slug}`, JSON.stringify(currentDoc));
-                    if (currentDoc.title) {
-                        sessionStorage.setItem(`nuqtha_book_${slugifyMalayalamRaw(currentDoc.title)}`, JSON.stringify(currentDoc));
-                        sessionStorage.setItem(`nuqtha_book_${slugifyText(currentDoc.title)}`, JSON.stringify(currentDoc));
-                    }
-                } catch (_) {}
                 if (currentDoc.imageUrl) preloadCoverImage(currentDoc.imageUrl);
 
                 if (skeletonEl) skeletonEl.classList.add("hidden");
@@ -1654,7 +1759,14 @@
 
                     let bookChapters = [];
                     try {
-                        const fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                        let fetched;
+                        if (earlyBookChaptersPromise) {
+                            const [earlyResult] = await earlyBookChaptersPromise;
+                            if (earlyResult.status === "rejected") throw earlyResult.reason;
+                            fetched = earlyResult.value;
+                        } else {
+                            fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                        }
                         bookChapters = Array.isArray(fetched) ? fetched : (fetched?.chapters || []);
                     } catch (chErr) {
                         console.warn("[Reader] Dynamic chapter resolution fallback:", chErr);
@@ -1665,14 +1777,11 @@
                         bookChapters = filterAndSortChapters(currentDoc, allArticles);
                     }
 
-                    try {
-                        sessionStorage.setItem(`nuqtha_book_articles_${articleId}`, JSON.stringify(bookChapters));
-                        if (currentDoc.slug) sessionStorage.setItem(`nuqtha_book_articles_${currentDoc.slug}`, JSON.stringify(bookChapters));
-                        if (currentDoc.title) {
-                            sessionStorage.setItem(`nuqtha_book_articles_${slugifyMalayalamRaw(currentDoc.title)}`, JSON.stringify(bookChapters));
-                            sessionStorage.setItem(`nuqtha_book_articles_${slugifyText(currentDoc.title)}`, JSON.stringify(bookChapters));
-                        }
-                    } catch (_) {}
+                    saveBookPageLightCache({
+                        ...currentDoc,
+                        slug: pathBookSlug || currentDoc.slug || currentDoc.bookSlug
+                    }, bookChapters.length);
+                    saveBookChapterListCache(pathBookSlug || currentDoc.slug || currentDoc.bookSlug || currentDoc.id, bookChapters);
                     await renderBookIndex(currentDoc, bookContainerEl, bookChapters);
                     renderRelatedBooks(currentDoc, allArticles);
                     initComments(currentDoc.id);
@@ -1732,7 +1841,8 @@
                         if (articleViewEl) articleViewEl.classList.add("hidden");
                         if (bookContainerEl) {
                             bookContainerEl.classList.remove("hidden");
-                            await renderBookIndex(localDoc, bookContainerEl, localDoc.chapters || []);
+                            if (cachedLightBook && localDoc.__lightCache) renderBookLightCache(cachedLightBook, bookContainerEl, cachedChapters);
+                            else await renderBookIndex(localDoc, bookContainerEl, localDoc.chapters || []);
                         }
                     } else {
                         if (bookContainerEl) bookContainerEl.classList.add("hidden");
@@ -1745,11 +1855,20 @@
             }
         }
 
-        // ═══════════ BOOK INTRODUCTION (DISPLAYED IN FULL) ═══════════
-        window.toggleBookIntro = function() {};
+        // ═══════════ BOOK INTRODUCTION TOGGLE ═══════════
+        window.toggleBookIntro = function() {
+            const intro = document.getElementById("book-intro-text");
+            const button = document.getElementById("book-intro-toggle");
+            if (!intro || !button) return;
+            const expanded = intro.classList.toggle("is-expanded");
+            button.setAttribute("aria-expanded", String(expanded));
+            button.textContent = expanded ? "കുറയ്ക്കുക" : "കൂടുതൽ വായിക്കുക";
+        };
 
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
         async function renderBookIndex(book, container, attachedArticles = []) {
+            if (!book || !container) return;
+            attachedArticles = filterAndSortChapters(book, Array.isArray(attachedArticles) ? attachedArticles : []);
             const errorContainerEl = document.getElementById("page-error-container");
             if (errorContainerEl) {
                 errorContainerEl.classList.add("hidden");
@@ -1771,9 +1890,12 @@
             const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "").trim();
             const bookCoverUrl = getArticleImageUrl(book, "");
             const cleanAuthor = (book.author || "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ").replace(/[*_#~`]/g, "").trim();
-            const rawIntro = (book.introduction || book.intro || book.excerpt || "").trim();
-            const hasIntro = rawIntro.replace(/[\s\.\,\-\_\#\*\~\`\:\;\"\'\(\)\!\?]/g, '').length > 0;
-            const dateStr = book.date || '28 Oct 2026';
+            const rawIntro = String(book.introduction || book.intro || book.excerpt || "").trim()
+                .replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
+            const hasIntro = rawIntro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
+            const dateStr = typeof book.date === "string" ? book.date.trim() : (book.date ? formatDateSafe(book.date) : "");
+            const chapterCount = countBookChapters(book, attachedArticles);
+            const coverUrl = getArticleImageUrl(book);
             const authorPhoto = (book.authorPhoto || book.authorAvatar || "").trim();
             const firstLetter = (cleanAuthor || 'N').trim().charAt(0);
             const authorId = (cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
@@ -1826,128 +1948,102 @@
                     </div>
 
                     <!-- ═══════════ BOOK HERO (FULL-WIDTH BAND) ═══════════ -->
-                    <article class="book-hero-card book-edition-hero" aria-labelledby="book-hero-title">
-                        <!-- Top Row: Eyebrow Left + Dual Pricing Pill Right -->
-                        <div class="book-hero-top-row flex items-center justify-between gap-3 mb-5 sm:mb-7">
-                            <div class="book-hero-eyebrow font-english" translate="no">
-                                <span class="font-['Noto_Sans_Malayalam'] font-bold">പുസ്തകം</span>
-                                <span class="opacity-50" aria-hidden="true">&middot;</span>
-                                <span class="tracking-widest font-black uppercase text-xs">BOOK</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                ${isFree ? `
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-black uppercase tracking-wider font-english" translate="no">
-                                        ₹0 • FREE (സൗജന്യം)
+                    <article class="book-v2-hero" aria-labelledby="book-hero-title">
+                        <div class="book-v2-topline">
+                            <div class="book-v2-eyebrow"><span>പുസ്തകം</span><span aria-hidden="true">&middot;</span><span translate="no">BOOK</span></div>
+                            <div class="book-v2-badges">
+                                ${isPremium ? `
+                                    <span class="book-v2-premium" translate="no">
+                                        <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m2 6 4 3 4-6 4 6 4-3-2 10H4L2 6Z"/><path d="M4 16h12"/></svg>
+                                        PREMIUM
                                     </span>
-                                ` : `
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-xs font-black uppercase tracking-wider font-english" translate="no">
-                                        ₹${price} • PREMIUM
-                                    </span>
-                                `}
-                                ${isUnlocked ? `
-                                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase font-english">
-                                    ✓ UNLOCKED
-                                </span>
                                 ` : ''}
+                                ${isUnlocked ? `<span class="book-v2-unlocked" translate="no">✓ UNLOCKED</span>` : ''}
                             </div>
                         </div>
 
-                        <div class="flex flex-col md:flex-row gap-6 sm:gap-8 lg:gap-10 items-center md:items-start">
-                            <!-- Left: Big Standing Pure-CSS 3D Cover Presentation -->
-                            <div class="book3d-wrapper">
-                                <!-- Two thin concentric circles behind -->
-                                <div class="book3d-concentric-circles" aria-hidden="true">
-                                    <div class="book3d-circle-outer"></div>
-                                    <div class="book3d-circle-inner"></div>
-                                </div>
-                                <div class="book3d" tabindex="0" role="img" aria-label="${cleanTitle} Cover">
-                                    <!-- Accent Bookmark Ribbon (Notched Bottom) -->
-                                    <div class="book3d-ribbon" aria-hidden="true"></div>
-                                    <div class="book3d-spine" aria-hidden="true"></div>
-                                    <div class="book3d-cover">
-                                        ${bookCoverUrl ? `
-                                            <img src="${bookCoverUrl}" alt="${cleanTitle} Cover" class="book3d-cover-img" width="300" height="400" loading="eager" decoding="async">
+                        <div class="book-v2-layout">
+                            <div class="book-v2-cover-stage">
+                                <div class="book-v2-circles" aria-hidden="true"><span></span><span></span></div>
+                                <div class="book-v2-perspective">
+                                    <div class="book-v2-book" tabindex="0" role="img" aria-label="${cleanTitle} cover">
+                                        <span class="book-v2-ribbon" aria-hidden="true"></span>
+                                        <span class="book-v2-spine" aria-hidden="true"></span>
+                                        <div class="book-v2-cover">
+                                        ${coverUrl ? `
+                                            <img src="${coverUrl}" alt="${cleanTitle} Cover" class="book-v2-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" data-nuqtha-cover="true">
+                                            <div class="book-v2-cover-fallback hidden" aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>
                                         ` : `
-                                            <div class="book3d-cover-fallback">
+                                            <div class="book-v2-cover-fallback">
                                                 <span class="text-4xl" aria-hidden="true">📚</span>
-                                                <span class="text-xs uppercase font-english font-bold notranslate" translate="no" style="color: var(--accent);">NUQTHA EDITION</span>
+                                                <span translate="no">NUQTHA EDITION</span>
                                             </div>
                                         `}
-                                        <div class="book3d-glare" aria-hidden="true"></div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="book3d-floor-shadow" aria-hidden="true"></div>
+                                <div class="book-v2-floor-shadow" aria-hidden="true"></div>
                             </div>
 
-                            <!-- Right: Title, Author Row, Meta Line, Pull-Quote Introduction -->
-                            <div class="flex-1 w-full space-y-4 text-left">
-                                <header class="space-y-3">
-                                    <!-- Book Title (36px desktop, 27px mobile, line-height 1.3) -->
-                                    <h1 id="book-hero-title" class="book-hero-title">
+                            <div class="book-v2-copy">
+                                <header class="book-v2-heading">
+                                    <h1 id="book-hero-title" class="book-v2-title">
                                         ${cleanTitle}
                                     </h1>
 
-                                    <!-- Author Row with 42px Circular Avatar -->
-                                    <div class="book-hero-author-row">
+                                    <div class="book-v2-author-row">
                                         <a href="${authorUrl}" class="book-hero-author-avatar-link flex-shrink-0" title="രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക">
-                                            <div class="book-hero-author-avatar">
+                                            <div class="book-v2-avatar">
                                                 ${authorPhoto ? `
-                                                    <img src="${authorPhoto}" alt="${cleanAuthor}" class="w-full h-full object-cover rounded-full" width="42" height="42">
+                                                    <img src="${authorPhoto}" alt="${cleanAuthor}" width="42" height="42">
                                                 ` : `
-                                                    <span class="book-hero-author-initial" aria-hidden="true">${firstLetter}</span>
+                                                    <span aria-hidden="true">${firstLetter}</span>
                                                 `}
                                             </div>
                                         </a>
                                         <div class="flex flex-col min-w-0">
-                                            <a href="${authorUrl}" class="book-hero-author-name hover:text-[var(--accent)] transition-colors truncate">
+                                            <a href="${authorUrl}" class="book-v2-author-name">
                                                 ${cleanAuthor}
                                             </a>
-                                            <span class="book-hero-author-role font-['Noto_Sans_Malayalam']">എഴുത്തുകാരൻ</span>
+                                            <span class="book-v2-author-role">എഴുത്തുകാരൻ</span>
                                         </div>
                                     </div>
 
-                                    <!-- One Meta Line: Date • Chapter Count with Small Accent Dot (No Chips) -->
-                                    <div class="book-hero-meta-line font-english">
-                                        <span>${dateStr}</span>
-                                        <span class="book-hero-meta-dot" aria-hidden="true"></span>
-                                        <span class="font-['Noto_Sans_Malayalam'] font-semibold">${attachedArticles.length} അധ്യായങ്ങൾ</span>
+                                    <div class="book-v2-meta">
+                                        ${dateStr ? `<span>${dateStr}</span><span class="book-v2-meta-dot" aria-hidden="true"></span>` : ''}
+                                        <span>${chapterCount} അധ്യായങ്ങൾ</span>
                                     </div>
                                 </header>
 
-                                <!-- Introduction as Pull-Quote (Full text displayed directly, no collapse / toggle button) -->
                                 ${hasIntro ? `
-                                    <div class="book-hero-pullquote">
-                                        <div class="book-hero-quote-mark" aria-hidden="true">&ldquo;</div>
-                                        <div id="book-intro-text" class="book-hero-intro-text">
+                                    <div class="book-v2-intro">
+                                        <div class="book-v2-quote-mark" aria-hidden="true">&ldquo;</div>
+                                        <div id="book-intro-text" class="book-v2-intro-text">
                                             ${rawIntro}
                                         </div>
-                                    </div>
-                                ` : ''}
-
-                                <!-- Dynamic Unlock / App Install Prompt if Locked -->
-                                ${isLocked ? `
-                                    <div class="mt-4 p-4 rounded-2xl ${isFree ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-amber-500/10 border border-amber-500/30'} space-y-3">
-                                        <div class="flex items-center justify-between flex-wrap gap-2">
-                                            <div class="space-y-0.5">
-                                                <p class="text-xs font-bold ${isFree ? 'text-emerald-950 dark:text-emerald-200' : 'text-amber-950 dark:text-amber-200'} font-['Noto_Sans_Malayalam']">
-                                                    ${isFree ? '📲 ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്ത് സൗജന്യമായി വായിക്കാം' : '🔒 പ്രീമിയം പുസ്തകം (Chapters Locked)'}
-                                                </p>
-                                                <p class="text-[11px] ${isFree ? 'text-emerald-800 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-400'} font-english">
-                                                    ${isFree ? 'Install NUQTHA Android App to read all chapters free (₹0)' : `One-time purchase: ₹${price} to unlock full book`}
-                                                </p>
-                                            </div>
-                                            <button id="hero-unlock-btn" class="px-5 py-2.5 rounded-full ${isFree ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-[#b4532c] hover:bg-[#923e1b]'} text-white font-bold text-xs sm:text-sm font-english transition shadow-md active:scale-95 cursor-pointer touch-target-44 flex items-center gap-2">
-                                                <span>${isFree ? '📲 Install App to Read Free (₹0)' : `⚡ Unlock Book (₹${price})`}</span>
-                                            </button>
-                                        </div>
+                                        <button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button>
                                     </div>
                                 ` : ''}
                             </div>
                         </div>
                     </article>
+                    ${isLocked ? `
+                        <div id="book-unlock-card" class="book-unlock-card ${isFree ? 'is-free' : ''}">
+                            <div class="book-unlock-copy">
+                                <span class="book-unlock-icon" aria-hidden="true">${isFree ? '↗' : '🔒'}</span>
+                                <div>
+                                    <p class="book-unlock-title">${isFree ? 'സൗജന്യ പുസ്തകം' : 'പ്രീമിയം പുസ്തകം'}</p>
+                                    <p class="book-unlock-description">${isFree ? 'ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്ത് വായിക്കാം' : `ഒറ്റത്തവണ പണമടയ്ക്കൽ: ₹${price}`}</p>
+                                </div>
+                            </div>
+                            <button id="hero-unlock-btn" type="button" class="book-unlock-button touch-target-44">
+                                ${isFree ? 'Install App to Read Free (₹0)' : `Unlock Book (₹${price})`}
+                            </button>
+                        </div>
+                    ` : ''}
 
                     <!-- Sequential Articles Section ("EDITION ARTICLES") -->
-                    <div id="edition-articles-section" class="space-y-4 pt-4">
+                    <div id="edition-articles-section" class="space-y-4 pt-2">
                         <div class="border-b border-[var(--border)] dark:border-white/10 pb-3 flex items-center justify-between flex-wrap gap-2">
                             <h3 class="text-sm sm:text-base font-black text-[var(--text)] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#b4532c] dark:bg-[#f87171]"></span>
@@ -2014,7 +2110,7 @@
 
             let lastScrollY = window.scrollY;
             window.addEventListener("scroll", () => {
-                const heroEl = document.querySelector(".book-edition-hero");
+                const heroEl = document.querySelector("#book-edition-container .book-v2-hero");
                 if (!heroEl) return;
                 const rect = heroEl.getBoundingClientRect();
                 // Show sticky bar once hero has scrolled out of view
@@ -2057,13 +2153,20 @@
 
             const currentBatch = articles.slice(0, visibleChapterCount);
             const readArticleIds = getReadArticleIds();
+            const unlockCard = document.getElementById("book-unlock-card");
+            const focusUnlockButton = () => {
+                if (!unlockCard) return;
+                unlockCard.scrollIntoView({ behavior: "smooth", block: "center" });
+                unlockCard.querySelector("button")?.focus({ preventScroll: true });
+            };
 
             listEl.innerHTML = currentBatch.map((art, idx) => {
-                const cleanArtTitle = (art.title || "അധ്യായം").replace(/[*_#~`]/g, "");
+                const chapterTitle = typeof art?.title === "string" ? art.title.trim() : "";
+                const cleanArtTitle = (chapterTitle || `അധ്യായം ${idx + 1}`).replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
-                const chapterImg = getArticleImageUrl(art, "");
-                let targetUrl = "#";
+                const chapterImg = getArticleImageUrl(art);
+                let targetUrl = isLocked ? "#book-unlock-card" : "#";
                 if (!isLocked) {
                     const bSlug = (parentBook?.slug || parentBook?.bookSlug || (parentBook?.title ? slugifyText(parentBook.title) : "") || parentBook?.id || "").toString().trim();
                     const cSlug = (art.slug && art.slug !== bSlug) ? art.slug : ((art.title ? slugifyText(art.title) : "") || art.id || "");
@@ -2090,12 +2193,13 @@
                 <a href="${targetUrl}" data-chapter-index="${idx}" data-article-id="${art.id}" data-locked="${isLocked ? 'true' : 'false'}" class="chapter-card-link group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isLocked ? 'cursor-pointer' : ''}">
                     <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${chapterImg ? `
-                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 aspect-[16/10] relative">
-                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
+                        <div class="chapter-thumbnail">
+                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true">
+                            ${isLocked ? `<div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-lg">🔒</div>` : ''}
                         </div>
                     ` : `
-                        <div class="w-full sm:w-44 md:w-48 h-36 sm:h-28 rounded-xl bg-[var(--reading-bg)] dark:bg-white/5 flex items-center justify-center text-2xl flex-shrink-0 border border-[var(--border)]/60 dark:border-white/10 text-[#b4532c] aspect-[16/10]">
-                            📄
+                        <div class="chapter-thumbnail chapter-thumbnail-empty">
+                            <span aria-hidden="true">${isLocked ? '🔒' : '📄'}</span>
                         </div>
                     `}
                     <div class="flex-1 min-w-0 space-y-1.5">
@@ -2103,15 +2207,11 @@
                             <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
                                 അധ്യായം ${idx + 1}
                             </span>
-                            ${isLocked ? `
-                                <span class="text-[9px] font-black uppercase text-amber-700 dark:text-amber-300 font-english bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                    🔒 LOCKED
-                                </span>
-                            ` : ''}
                         </div>
                         <h4 class="text-sm sm:text-base font-bold text-[var(--text)] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
                             ${cleanArtTitle}
                         </h4>
+                        <p class="chapter-author">${art.author || parentBook?.author || "NUQTHA"}</p>
                         ${cleanExcerpt ? `
                             <p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-1 leading-relaxed font-sans">
                                 ${cleanExcerpt}
@@ -2121,9 +2221,7 @@
                     </div>
                     <div class="flex items-center pr-2 text-[#b4532c] dark:text-[#f87171]">
                         ${isLocked ? `
-                            <span class="text-xs font-bold font-english text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
-                                Unlock &rarr;
-                            </span>
+                            <span class="chapter-lock-icon" aria-label="Locked chapter" title="Locked chapter">🔒</span>
                         ` : `
                             <span class="hidden sm:inline-block opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">&rarr;</span>
                         `}
@@ -2132,23 +2230,12 @@
                 `;
             }).join("");
 
-            // Wire paywall modal on locked chapter clicks
+            // Locked rows point to the single book-level unlock action.
             if (isLocked && parentBook) {
                 listEl.querySelectorAll('.chapter-card-link[data-locked="true"]').forEach(card => {
                     card.addEventListener("click", (e) => {
                         e.preventDefault();
-                        const targetChapterHref = card.getAttribute("href");
-                        showPaywallModal({
-                            book: parentBook,
-                            onUnlocked: () => {
-                                if (targetChapterHref && targetChapterHref !== "#") {
-                                    window.location.href = targetChapterHref;
-                                } else {
-                                    const bookContainerEl = document.getElementById("edition-view-container");
-                                    renderBookIndex(parentBook, bookContainerEl, articles);
-                                }
-                            }
-                        });
+                        focusUnlockButton();
                     });
                 });
             } else {
@@ -2216,8 +2303,8 @@
             grid.innerHTML = otherBooks.slice(0, 4).map(b => `
                 <a href="${getStoryUrl(b)}" class="group flex flex-col p-2.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition-all shadow-2xs hover:shadow-md">
                     <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 mb-2 border border-black/5 dark:border-white/10">
-                        ${getArticleImageUrl(b, "") ? `
-                            <img src="${getArticleImageUrl(b, "")}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+                        ${getArticleImageUrl(b) ? `
+                            <img src="${getArticleImageUrl(b)}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="300" height="400" loading="lazy" data-nuqtha-cover="true">
                         ` : `
                             <div class="w-full h-full flex items-center justify-center text-2xl">📚</div>
                         `}
@@ -2462,9 +2549,6 @@
 
             contentEl.style.setProperty("--article-font-size", effectiveSize);
             document.documentElement.style.setProperty("--article-font-size", effectiveSize);
-            document.querySelectorAll(".font-size-indicator, #font-size-indicator").forEach(el => {
-                el.textContent = effectiveSize;
-            });
             // Safe declaration and definition of contentStyle with fallback
             const contentStyleParts = [];
             if (article.contentColor && article.contentColor !== "#2b2118" && article.contentColor !== "#333333") {
@@ -2623,7 +2707,7 @@
                         const url = imgMatch[3];
                         return `
                             <figure class="article-image-wrap my-6">
-                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" loading="lazy">
+                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" width="1200" height="800" style="aspect-ratio:3/2;object-fit:contain;background:var(--surface)" loading="lazy">
                                 ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
                             </figure>
                         `;
@@ -2715,12 +2799,12 @@
             relatedGrid.innerHTML = topRelated.map(item => {
                 const cleanTitle = (item.title || "").replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (item.excerpt || (item.content ? item.content.substring(0, 100) : "")).replace(/[*_#~`]/g, "").trim();
-                const itemImg = item.thumbnailUrl || item.ogImage || item.imageUrl;
+                const itemImg = getArticleImageUrl(item);
                 return `
                     <div class="related-card group touch-target-44 cursor-pointer relative stretched-card-wrap" onclick="if(!event.target.closest('a')) window.location.href='${getStoryUrl(item)}'">
                         ${itemImg ? `
                             <div class="related-img-container">
-                                <img src="${itemImg}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+                                <img src="${itemImg}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="400" height="300" loading="lazy" data-nuqtha-cover="true">
                             </div>
                         ` : ''}
                         <div class="p-4 flex flex-col justify-between flex-1 gap-2">
@@ -3111,8 +3195,6 @@
         function setupFontSizeControls() {
             const decBtns = document.querySelectorAll(".font-decrease-btn, #font-decrease-btn");
             const incBtns = document.querySelectorAll(".font-increase-btn, #font-increase-btn");
-            const resetBtns = document.querySelectorAll(".font-reset-btn, #font-reset-btn");
-            const indicators = document.querySelectorAll(".font-size-indicator, #font-size-indicator");
             const contentEl = document.getElementById("art-content");
 
             const defaultSize = 18;
@@ -3134,11 +3216,6 @@
                 }
                 document.documentElement.style.setProperty("--article-font-size", `${currentSize}px`);
                 if (contentEl) contentEl.style.setProperty("--article-font-size", `${currentSize}px`);
-                indicators.forEach(ind => {
-                    if (ind) {
-                        ind.textContent = `${currentSize}px`;
-                    }
-                });
             }
 
             decBtns.forEach(btn => {
@@ -3146,15 +3223,6 @@
             });
             incBtns.forEach(btn => {
                 if (btn) btn.onclick = () => updateSize(currentSize + 1);
-            });
-            resetBtns.forEach(btn => {
-                if (btn) btn.onclick = () => updateSize(18);
-            });
-            indicators.forEach(ind => {
-                if (ind) {
-                    ind.onclick = () => updateSize(18);
-                    ind.title = "Reset default size (18px)";
-                }
             });
 
             updateSize(currentSize);

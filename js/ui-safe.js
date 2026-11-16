@@ -164,12 +164,17 @@ export function safeSetSessionStorage(key, value) {
     if (typeof window === "undefined" || !window.Storage || !Storage.prototype) return;
     try {
         const originalSetItem = Storage.prototype.setItem;
+        const originalRemoveItem = Storage.prototype.removeItem;
+        const quotaBypassedKeys = new WeakMap();
         Storage.prototype.setItem = function (key, value) {
+            const storageKey = String(key);
+            const bypassedKeys = quotaBypassedKeys.get(this);
+            if (bypassedKeys?.has(storageKey)) return;
             try {
                 originalSetItem.call(this, key, value);
             } catch (err) {
                 if (isQuotaExceededError(err)) {
-                    console.warn(`[NUQTHA Storage Guard] Quota exceeded on "${key}". Attempting cache recovery.`);
+                    console.warn(`[NUQTHA Storage Guard] Quota exceeded on "${storageKey}". Attempting cache recovery.`);
                     try {
                         clearVolatileStorage(this);
                         originalSetItem.call(this, key, value);
@@ -181,7 +186,13 @@ export function safeSetSessionStorage(key, value) {
                                 return;
                             } catch (_) {}
                         }
-                        // Gracefully bypass persistence
+                        let blocked = quotaBypassedKeys.get(this);
+                        if (!blocked) {
+                            blocked = new Set();
+                            quotaBypassedKeys.set(this, blocked);
+                        }
+                        blocked.add(storageKey);
+                        console.warn(`[NUQTHA Storage Guard] Skipping future cache writes for "${storageKey}" in this tab.`);
                         return;
                     }
                 }
@@ -192,6 +203,11 @@ export function safeSetSessionStorage(key, value) {
                     }
                 } catch (_) {}
             }
+        };
+        Storage.prototype.removeItem = function (key) {
+            const result = originalRemoveItem.call(this, key);
+            quotaBypassedKeys.get(this)?.delete(String(key));
+            return result;
         };
     } catch (e) {
         console.warn("[NUQTHA UI-Safe] Could not patch Storage.prototype.setItem:", e);

@@ -1,8 +1,7 @@
 // library.js (loaded lazily: only when the visitor opens the Library view)
 import { db, collection, getDocs, getDocsFromCache, query, where } from "./firebase-config.js";
-import { getStoryUrl, getArticleImageUrl } from "./schema-validator.js";
-import { getCachedAuthUser } from "./js/auth-system.js";
-import { openAuthModal } from "./js/auth-ui.js";
+import { getArticleImageUrl, getStoryUrl } from "./schema-validator.js";
+import { prefetchBookPage } from "./js/book-data.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
 
@@ -44,6 +43,10 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 const safeColor = (c, i) => (/^#[0-9a-f]{6}$/i.test(c || "") ? c : COLORS[i % COLORS.length]);
+const warmBookPage = (book) => {
+  const slug = book.slug || book.bookSlug || book.id;
+  prefetchBookPage({ ...book, slug: slug || book.slug || book.id }, book.contents?.length || 0);
+};
 
 /* ---------- data (cached for 5 min per session, resilient to 429 quota) ---------- */
 async function loadData() {
@@ -81,27 +84,22 @@ async function loadData() {
   books = bookSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, MAX_BOOKS)
       .map((b) => {
-        const articleRecord = articlesById.get(b.id) || articlesBySlug.get(b.slug);
-        const mergedBook = { ...(articleRecord || {}), ...b };
-        const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(b);
-        const contents = Array.isArray(b.contents) ? b.contents : Array.isArray(b.chapters) ? b.chapters : [];
         return {
-        ...mergedBook,
-        id: b.id,
-        title: b.title || articleRecord?.title,
-        author: b.author || articleRecord?.author,
-        pages: b.pages,
-        color: b.color,
-        description: b.description,
-        imageUrl: coverUrl,
-        slug: b.slug || articleRecord?.slug,
-        type: "BOOK",
-        isBook: true,
-        isChapter: false,
-        contents: contents.map((chapter) => typeof chapter === "string" ? chapter : chapter?.title || "").filter(Boolean)
-      };
+          id: b.id,
+          title: b.title,
+          author: b.author,
+          date: b.date,
+          pages: b.pages,
+          color: b.color,
+          description: b.description,
+          introduction: b.introduction || b.description,
+          imageUrl: getArticleImageUrl(b),
+          slug: b.slug,
+          contents: b.contents || b.chapters?.map(chapter => chapter.title || chapter) || []
+        };
       });
-  papers = articleRecords.filter((article) => article.showOnTable === true).slice(0, MAX_PAPERS).map((a) => {
+  papers = articleSnapshot.docs.slice(0, MAX_PAPERS).map((d) => {
+      const a = d.data();
       return {
         ...a,
         id: a.id,
@@ -128,10 +126,9 @@ async function loadData() {
       description: b.excerpt,
       imageUrl: getArticleImageUrl(b),
       slug: b.slug,
-      type: "BOOK",
-      isBook: true,
-      contents: (Array.isArray(b.chapters) ? b.chapters : Array.isArray(b.contents) ? b.contents : [])
-        .map(c => typeof c === "string" ? c : c?.title || "").filter(Boolean)
+      date: b.date,
+      introduction: b.introduction || b.description,
+      contents: (b.chapters || b.contents || []).map(c => typeof c === "string" ? c : c.title)
     }));
   }
 
@@ -272,7 +269,13 @@ function renderShelf(books) {
     el.style.setProperty("--w", 44 + ((h >> 3) % 14) + "px");
     el.setAttribute("aria-label", "Open book: " + b.title);
     el.innerHTML = `<span>${esc(b.title)}</span>`;
-    el.addEventListener("click", () => openLibraryItem(b));
+    el.addEventListener("pointerenter", () => warmBookPage(b), { once: true });
+    el.addEventListener("focusin", () => warmBookPage(b), { once: true });
+    el.addEventListener("touchstart", () => warmBookPage(b), { once: true, passive: true });
+    el.addEventListener("click", () => {
+      warmBookPage(b);
+      openItem(el, bookItem(b, i));
+    });
     row.appendChild(el);
   });
   const plank = document.createElement("div"); plank.className = "plank";
