@@ -616,6 +616,7 @@
     <!-- Main Module Script -->
     <script type="module">
         import { app, db, firebaseConfig, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "/firebase-config.js";
+        import { syncReadingBg } from "/reading-theme.js";
         import { FALLBACK_ARTICLES } from "/fallback-data.js";
         import { initHeaderAuthUI } from "/js/auth-ui.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, getArticleImageUrl, cleanUrlPart, sanitizeCategory } from "/schema-validator.js";
