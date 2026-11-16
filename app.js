@@ -1,5 +1,5 @@
 import { safeInit } from "./js/ui-safe.js";
-import { FALLBACK_ARTICLES, FALLBACK_BOOKS } from './fallback-data.js';
+import { FALLBACK_ARTICLES, FALLBACK_BOOKS, FALLBACK_ARTICLE_ITEMS } from './fallback-data.js';
 export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
 /**
  * NUQTHA — Frosted Glass Feed Engine
@@ -20,7 +20,7 @@ import { getArticleCategoryId, getCachedCategories, getCategories, slugifyCatego
 void syncReadingBg();
 
 /* ═══════════ Pre-bundled Fallback Data for 100% Uptime & Smooth Load ═══════════ */
-const CACHE_KEY = 'nuqtha_cached_articles_v8';
+const CACHE_KEY = 'nuqtha_cached_articles_v9';
 
 function safeCacheArticles(articles) {
     if (!Array.isArray(articles) || articles.length === 0) return;
@@ -83,7 +83,7 @@ try {
 
 // Pre-fill with normalized fallback articles so feed is NEVER empty, broken, or stuck on skeletons
 if (!Array.isArray(allArticles) || allArticles.length === 0) {
-    allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
+    allArticles = FALLBACK_ARTICLE_ITEMS.map(a => normalizeArticleDoc(a, a.id));
     safeCacheArticles(allArticles);
 }
 
@@ -383,7 +383,7 @@ function setupMoreDropdown() {
 function isBookEntity(article) {
     if (!article) return false;
     if (isChapterEntity(article)) return false;
-    const artType = (article.type || "").toUpperCase();
+    const artType = String(article.type || "").trim().toUpperCase();
     if (artType === "BOOK" || artType === "FREE" || artType === "PREMIUM" || article.isBook === true) return true;
     const category = String(article.category || "").trim().toLowerCase();
     if (category === "premium book" || category === "book" || category === "books") return true;
@@ -396,6 +396,23 @@ function isChapterEntity(article) {
         String(article.type || "").trim().toUpperCase() === "CHAPTER" ||
         String(article.category || "").trim().toLowerCase() === "chapter" ||
         (article.chapterIndex !== undefined && article.chapterIndex !== null);
+}
+
+function getBookCoverItems(items) {
+    if (!Array.isArray(items)) return [];
+    const chapterIds = getBookChapterIds(items);
+    const seenIds = new Set();
+    const seenSlugs = new Set();
+
+    return items.filter(book => {
+        if (!isBookEntity(book) || isChapterEntity(book) || chapterIds.has(book.id)) return false;
+        const id = String(book.id || "").trim();
+        const slug = String(book.slug || book.bookSlug || "").trim().toLowerCase();
+        if ((id && seenIds.has(id)) || (slug && seenSlugs.has(slug))) return false;
+        if (id) seenIds.add(id);
+        if (slug) seenSlugs.add(slug);
+        return true;
+    });
 }
 
 function updateMoreCategoriesMenu() {
@@ -881,10 +898,8 @@ export function initAppData(database = db) {
             return restoreFallbackFields(book, fallbacksById, bookData);
         });
 
-        const fallbackItems = [
-            ...FALLBACK_ARTICLES.filter(article => !FALLBACK_BOOKS.includes(article)),
-            ...FALLBACK_BOOKS
-        ];
+        const hasFirestoreContent = articlesSnapshot.docs.length > 0 || booksSnapshot.docs.length > 0;
+        const fallbackItems = hasFirestoreContent ? [] : FALLBACK_ARTICLE_ITEMS;
         const combined = fallbackItems.map(article => normalizeArticleDoc(article, article.id));
         rawArticlesList.forEach(article => {
             const existingIndex = combined.findIndex(item => item.id === article.id || (article.slug && item.slug === article.slug));
@@ -905,7 +920,7 @@ export function initAppData(database = db) {
     })().catch(error => {
         console.error("[NUQTHA App] Could not load articles and books.", error);
         if (allArticles.length === 0) {
-            allArticles = FALLBACK_ARTICLES.map(article => normalizeArticleDoc(article, article.id));
+            allArticles = FALLBACK_ARTICLE_ITEMS.map(article => normalizeArticleDoc(article, article.id));
         }
         renderFeed();
     });
@@ -1161,9 +1176,9 @@ function renderLazyHomeCategorySection(section, category, categoryArticles, used
 function renderHomeFeed(container) {
     // Distinguish book covers from standard articles
     const bookChapterIds = getBookChapterIds(allArticles);
-    const isChapter = a => isChapterEntity(a) || bookChapterIds.has(a.id);
-    const isBookCoverItem = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapter(a);
-    const bookCovers = allArticles.filter(isBookCoverItem);
+    const isChapter = article => isChapterEntity(article) || bookChapterIds.has(article.id);
+    const isBookCoverItem = article => isBookEntity(article) && !isChapter(article);
+    const bookCovers = getBookCoverItems(allArticles);
     // Regular articles: keep only genuine standalone articles (exclude book covers AND all book chapters)
     const regularArticles = allArticles.filter(a =>
         !isBookCoverItem(a) && !isChapter(a) &&
@@ -1173,7 +1188,7 @@ function renderHomeFeed(container) {
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) {
-            allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
+            allArticles = FALLBACK_ARTICLE_ITEMS.map(a => normalizeArticleDoc(a, a.id));
             renderHomeFeed(container);
             return;
         }
@@ -2619,12 +2634,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
 
 /* ═══════════ 2. BOOKS CATEGORY PAGE LAYOUT ═══════════ */
 function renderBooksCategoryFeed(container) {
-    const bookChapterIds = getBookChapterIds(allArticles);
-    const bookCovers = allArticles.filter(a =>
-        ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) &&
-        !isChapterEntity(a) &&
-        !bookChapterIds.has(a.id)
-    );
+    const bookCovers = getBookCoverItems(allArticles);
 
     let html = `
     <div class="category-filter-banner flex items-center justify-between p-4 mb-6 rounded-2xl bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10 shadow-xs">
