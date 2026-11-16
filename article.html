@@ -626,7 +626,7 @@
 
     <!-- Main Module Script -->
     <script type="module">
-        import { app, db, firebaseConfig, doc, getDoc, collection, getDocs, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "/firebase-config.js";
+        import { app, db, firebaseConfig, doc, getDoc, collection, getDocsFromCache, addDoc, serverTimestamp, query, where, limit, orderBy, onSnapshot } from "/firebase-config.js";
         import { syncReadingBg } from "/reading-theme.js";
         import { FALLBACK_ARTICLES } from "/fallback-data.js";
         import { initHeaderAuthUI } from "/js/auth-ui.js";
@@ -636,9 +636,31 @@
         import { categoryUrl, categoryTag } from "/js/category-link.js";
         import { getArticleCategoryId, getCachedCategoryName, getCategories } from "/js/category-store.js";
         import { trackReadingActivity } from "/js/analytics-tracker.js";
+        import { getDeferredImageAttributes, installLazyFirestoreImages } from "/js/public-image-loader.js";
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "/js/paywall-service.js";
 
         void syncReadingBg();
+        installLazyFirestoreImages();
+
+        function buildDeferredImageMarkup(item, source, alt, className, width, height) {
+            const deferredAttributes = getDeferredImageAttributes(item);
+            const deferInlineImage = /^data:image\//i.test(source || "") && deferredAttributes;
+            const imageUrl = deferInlineImage ? "" : (source || "");
+            if (!imageUrl && !deferredAttributes) return "";
+            const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
+            const styleAttribute = imageUrl
+                ? 'style="opacity:0;transition:opacity .25s ease;"'
+                : 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"';
+            return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" loading="lazy" decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
+        }
+
+        function stripInlineImageData(item) {
+            const clean = { ...(item || {}) };
+            for (const field of ["imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage"]) {
+                if (typeof clean[field] === "string" && /^data:image\//i.test(clean[field])) delete clean[field];
+            }
+            return clean;
+        }
 
         const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
         const FIRESTORE_API_KEY = encodeURIComponent(firebaseConfig.apiKey);
@@ -1302,18 +1324,26 @@
 
             // Read from local storage caches first
             const storedArticles = [];
+            const withoutInlineImages = item => {
+                if (!item || typeof item !== "object") return item;
+                const clean = { ...item };
+                for (const field of ["imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage"]) {
+                    if (typeof clean[field] === "string" && /^data:image\//i.test(clean[field])) delete clean[field];
+                }
+                return clean;
+            };
             try {
                 const s1 = sessionStorage.getItem("nuqtha_cached_articles_v7") || localStorage.getItem("nuqtha_cached_articles_v7");
                 if (s1) {
                     const parsed = JSON.parse(s1);
-                    if (Array.isArray(parsed) && parsed.length > 0) storedArticles.push(...parsed);
+                    if (Array.isArray(parsed) && parsed.length > 0) storedArticles.push(...parsed.map(withoutInlineImages));
                 }
             } catch (_) {}
             try {
                 const s2 = sessionStorage.getItem("nuqtha_all_articles") || localStorage.getItem("nuqtha_all_articles");
                 if (s2) {
                     const parsed = JSON.parse(s2);
-                    if (Array.isArray(parsed) && parsed.length > 0) storedArticles.push(...parsed);
+                    if (Array.isArray(parsed) && parsed.length > 0) storedArticles.push(...parsed.map(withoutInlineImages));
                 }
             } catch (_) {}
 
@@ -1328,8 +1358,10 @@
                 "date", "createdAt", "type", "category",
                 "order", "chapters", "transcription", "status",
                 "slug", "bookSlug", "isBook", "isPremium", "price",
-                "imageUrl", "coverUrl", "coverImage", "image",
-                "thumbnailUrl", "thumbnail", "ogImage"
+                "visible", "description", "introduction", "pages", "color",
+                "articleIds", "updatedAt", "chapterIndex", "bookType",
+                "intro", "summary", "leadTitle", "featuredTitle", "authorPhoto",
+                "accessType", "apkUrl", "fontSize"
             ];
             const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
             const articleDocsMap = new Map();
@@ -1367,6 +1399,8 @@
                                 }
                             }
                             const normalized = normalizeArticleDoc(data, docId);
+                            normalized._imageCollection = colName;
+                            normalized._imageDocId = docId;
                             if (colName === "books") {
                                 normalized.type = "BOOK";
                                 normalized.isBook = true;
@@ -1401,6 +1435,8 @@
                                 coverUrl,
                                 thumbnailUrl,
                                 ogImage: thumbnailUrl,
+                                _imageFallbackCollection: articleRecord ? "articles" : "",
+                                _imageFallbackDocId: articleRecord?.id || "",
                                 type: "BOOK",
                                 isBook: true,
                                 isChapter: false
@@ -1415,16 +1451,21 @@
                 console.warn("[Reader] Projected REST fetch notice:", err?.message || err);
             }
 
-            // Fallback: SDK getDocs (reads from local IndexedDB cache when network fails or 429)
+            // Offline fallback: use cached documents only; never refetch full list documents.
             try {
                 const [articlesSnap, booksSnap] = await Promise.all([
-                    getDocs(collection(db, "articles")).catch(() => ({ docs: [], forEach: () => {} })),
-                    getDocs(collection(db, "books")).catch(() => ({ docs: [], forEach: () => {} }))
+                    getDocsFromCache(collection(db, "articles")).catch(() => ({ docs: [], forEach: () => {} })),
+                    getDocsFromCache(collection(db, "books")).catch(() => ({ docs: [], forEach: () => {} }))
                 ]);
                 const articles = [];
-                articlesSnap.forEach(d => articles.push(normalizeArticleDoc(d.data(), d.id)));
+                articlesSnap.forEach(d => {
+                    const article = normalizeArticleDoc(stripInlineImageData(d.data()), d.id);
+                    article._imageCollection = "articles";
+                    article._imageDocId = d.id;
+                    articles.push(article);
+                });
                 booksSnap.forEach(d => {
-                    const bookData = d.data() || {};
+                    const bookData = stripInlineImageData(d.data());
                     const articleRecord = articles.find(article =>
                         article.id === d.id || (bookData.slug && article.slug === bookData.slug)
                     );
@@ -1436,6 +1477,10 @@
                         imageUrl: coverUrl,
                         thumbnailUrl
                     }, d.id);
+                    norm._imageCollection = "books";
+                    norm._imageDocId = d.id;
+                    norm._imageFallbackCollection = articleRecord ? "articles" : "";
+                    norm._imageFallbackDocId = articleRecord?.id || "";
                     norm.type = "BOOK";
                     norm.isBook = true;
                     norm.isChapter = false;
@@ -2183,7 +2228,8 @@
                 const cleanArtTitle = (chapterTitle || `അധ്യായം ${idx + 1}`).replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
-                const chapterImg = getArticleImageUrl(art);
+                const chapterImg = getArticleImageUrl(art, "");
+                const chapterImage = buildDeferredImageMarkup(art, chapterImg, cleanArtTitle, "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500", 400, 300);
                 let targetUrl = isLocked ? "#book-unlock-card" : "#";
                 if (!isLocked) {
                     const bSlug = (parentBook?.slug || parentBook?.bookSlug || (parentBook?.title ? slugifyText(parentBook.title) : "") || parentBook?.id || "").toString().trim();
@@ -2210,9 +2256,9 @@
                 return `
                 <a href="${targetUrl}" data-chapter-index="${idx}" data-article-id="${art.id}" data-locked="${isLocked ? 'true' : 'false'}" class="chapter-card-link group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isLocked ? 'cursor-pointer' : ''}">
                     <!-- Thumbnail with Fixed Aspect Ratio -->
-                    ${chapterImg ? `
+                    ${chapterImg || getDeferredImageAttributes(art) ? `
                         <div class="chapter-thumbnail">
-                            <img src="${chapterImg}" alt="${cleanArtTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true">
+                            ${chapterImage}
                             ${isLocked ? `<div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-lg">🔒</div>` : ''}
                         </div>
                     ` : `
@@ -2318,11 +2364,14 @@
             const otherBooks = allArticles.filter(a => a.type === "BOOK" && a.id !== currentBook.id);
             if (otherBooks.length === 0) return;
 
-            grid.innerHTML = otherBooks.slice(0, 4).map(b => `
+            grid.innerHTML = otherBooks.slice(0, 4).map(b => {
+                const imageUrl = getArticleImageUrl(b, "");
+                const imageMarkup = buildDeferredImageMarkup(b, imageUrl, b.title || "", "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500", 300, 400);
+                return `
                 <a href="${getStoryUrl(b)}" class="group flex flex-col p-2.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition-all shadow-2xs hover:shadow-md">
-                    <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 mb-2 border border-black/5 dark:border-white/10">
-                        ${getArticleImageUrl(b) ? `
-                            <img src="${getArticleImageUrl(b)}" alt="${b.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="300" height="400" loading="lazy" data-nuqtha-cover="true">
+                    <div class="relative aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-white/5 mb-2 border border-black/5 dark:border-white/10">
+                        ${imageUrl || getDeferredImageAttributes(b) ? `
+                            ${imageMarkup}
                         ` : `
                             <div class="w-full h-full flex items-center justify-center text-2xl">📚</div>
                         `}
@@ -2334,7 +2383,8 @@
                         ${b.volume ? 'Vol ' + b.volume : 'Edition'} &bull; ${b.date || 'Recent'}
                     </span>
                 </a>
-            `).join('');
+            `;
+            }).join('');
 
             section.classList.remove("hidden");
         }
@@ -2826,12 +2876,13 @@
             relatedGrid.innerHTML = topRelated.map(item => {
                 const cleanTitle = (item.title || "").replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (item.excerpt || (item.content ? item.content.substring(0, 100) : "")).replace(/[*_#~`]/g, "").trim();
-                const itemImg = getArticleImageUrl(item);
+                const itemImg = getArticleImageUrl(item, "");
+                const itemImageMarkup = buildDeferredImageMarkup(item, itemImg, cleanTitle, "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500", 400, 300);
                 return `
                     <div class="related-card group touch-target-44 cursor-pointer relative stretched-card-wrap" onclick="if(!event.target.closest('a')) window.location.href='${getStoryUrl(item)}'">
-                        ${itemImg ? `
-                            <div class="related-img-container">
-                                <img src="${itemImg}" alt="${cleanTitle}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" width="400" height="300" loading="lazy" data-nuqtha-cover="true">
+                        ${itemImg || getDeferredImageAttributes(item) ? `
+                            <div class="related-img-container relative">
+                                ${itemImageMarkup}
                             </div>
                         ` : ''}
                         <div class="p-4 flex flex-col justify-between flex-1 gap-2">

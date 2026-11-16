@@ -1,12 +1,12 @@
 // library.js (loaded lazily: only when the visitor opens the Library view)
-import { db, collection, getDocs, getDocsFromCache, query, where } from "./firebase-config.js";
+import { fetchPublicCollections } from "./js/public-image-loader.js";
 import { getArticleImageUrl, getStoryUrl } from "./schema-validator.js";
 import { prefetchBookPage } from "./js/book-data.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
 
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
-const CACHE_KEY = "nuqtha:library:v2", CACHE_MS = 5 * 60 * 1000;
+const CACHE_KEY = "nuqtha:library:v3", CACHE_MS = 5 * 60 * 1000;
 let pendingLibraryDestination = "";
 
 window.addEventListener("nuqtha_auth_changed", (event) => {
@@ -57,31 +57,10 @@ async function loadData() {
     console.warn("[Library] Could not restore the session cache.", error);
   }
 
-  let books = [];
-  let papers = [];
-
-  async function getCollectionDocs(ref, name) {
-    try {
-      return await getDocs(ref);
-    } catch (error) {
-      console.warn(`[Library] ${name} request failed; checking Firestore's local cache.`, error);
-      try {
-        return await getDocsFromCache(ref);
-      } catch (cacheError) {
-        console.warn(`[Library] ${name} is unavailable in the local cache.`, cacheError);
-        return { docs: [] };
-      }
-    }
-  }
-
-  const [bookSnapshot, articleSnapshot] = await Promise.all([
-    getCollectionDocs(query(collection(db, "books"), where("visible", "==", true)), "books"),
-    getCollectionDocs(collection(db, "articles"), "articles")
-  ]);
-  const articleRecords = articleSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-  const articlesById = new Map(articleRecords.map((article) => [article.id, article]));
-  const articlesBySlug = new Map(articleRecords.filter((article) => article.slug).map((article) => [article.slug, article]));
-  books = bookSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  const { books: allBooks, articles: allArticles } = await fetchPublicCollections();
+  const visibleBooks = allBooks.filter((book) => book.visible === true);
+  const articleRecords = allArticles;
+  let books = visibleBooks
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, MAX_BOOKS)
       .map((b) => {
         return {
@@ -98,8 +77,7 @@ async function loadData() {
           contents: b.contents || b.chapters?.map(chapter => chapter.title || chapter) || []
         };
       });
-  papers = articleSnapshot.docs.slice(0, MAX_PAPERS).map((d) => {
-      const a = d.data();
+  let papers = articleRecords.slice(0, MAX_PAPERS).map((a) => {
       return {
         ...a,
         id: a.id,
@@ -110,7 +88,7 @@ async function loadData() {
         slug: a.slug,
         bookSlug: a.bookSlug,
         isChapter: a.isChapter,
-        excerpt: a.excerpt || a.description || String(a.body || a.content || "").replace(/<[^>]*>/g, " ").slice(0, 220)
+        excerpt: a.excerpt || a.description || ""
       };
     });
 
