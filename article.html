@@ -902,9 +902,8 @@
             const date = escapeHtml(lightData.date || "");
             const intro = String(lightData.intro || "").trim().replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
             const hasIntro = intro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
-            const cover = typeof lightData.coverUrl === "string" && !/^data:/i.test(lightData.coverUrl)
-                ? escapeHtml(lightData.coverUrl)
-                : "/cover-placeholder.svg";
+            const coverUrl = getArticleImageUrl({ imageUrl: lightData.coverUrl }, "");
+            const cover = coverUrl ? escapeHtml(coverUrl) : "";
             const introMarkup = hasIntro
                 ? `<div class="book-v2-intro"><span class="book-v2-quote-mark" aria-hidden="true">&ldquo;</span><div id="book-intro-text" class="book-v2-intro-text">${escapeHtml(intro)}</div><button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button></div>`
                 : "";
@@ -912,8 +911,9 @@
                 const chapterTitle = typeof chapter.title === "string" && chapter.title.trim()
                     ? chapter.title.trim()
                     : `അധ്യായം ${index + 1}`;
-                const chapterImage = typeof chapter.imageUrl === "string" && !/^data:/i.test(chapter.imageUrl)
-                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapter.imageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true"></div>`
+                const chapterImageUrl = getArticleImageUrl(chapter, "");
+                const chapterImage = chapterImageUrl
+                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapterImageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true"></div>`
                     : `<div class="chapter-thumbnail chapter-thumbnail-empty" aria-hidden="true">📄</div>`;
                 return `<div class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">അധ്യായം ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></div>`;
             }).join("") : "";
@@ -1463,7 +1463,7 @@
             const cacheKey = articleId || targetIdentifier;
             if (isBookRoute && pathBookSlug) {
                 try {
-                    const lightCacheText = sessionStorage.getItem(`nuqtha_cache_book_${pathBookSlug}_v2`);
+                    const lightCacheText = sessionStorage.getItem(`nuqtha_cache_book_${pathBookSlug}_v3`);
                     const parsedLightCache = lightCacheText ? JSON.parse(lightCacheText) : null;
                     if (parsedLightCache && parsedLightCache.slug === pathBookSlug && !/^data:/i.test(parsedLightCache.coverUrl || "")) {
                         cachedLightBook = parsedLightCache;
@@ -1562,8 +1562,7 @@
                     earlyBookChaptersPromise = Promise.allSettled([
                         getBookChapters(currentDoc.id, { articlesPool: [currentDoc], timeoutMs: 8000 })
                     ]);
-                    const provisionalCover = currentDoc.imageUrl || currentDoc.coverUrl || currentDoc.coverImage ||
-                        currentDoc.image || currentDoc.thumbnailUrl || currentDoc.thumbnail || currentDoc.ogImage || "";
+                    const provisionalCover = getArticleImageUrl(currentDoc, "");
                     const lightBook = {
                         slug: pathBookSlug || currentDoc.slug || currentDoc.bookSlug || currentDoc.id,
                         title: currentDoc.title || "",
@@ -1747,7 +1746,8 @@
                 }
                 canonicalEl.setAttribute('href', window.location.origin + cleanUrl);
 
-                if (currentDoc.imageUrl) preloadCoverImage(currentDoc.imageUrl);
+                const currentCoverUrl = getArticleImageUrl(currentDoc, "");
+                if (currentCoverUrl) preloadCoverImage(currentCoverUrl);
 
                 if (skeletonEl) skeletonEl.classList.add("hidden");
                 if (errorContainerEl) {
@@ -1817,7 +1817,12 @@
                             const fullDoc = await fetchTargetDocument(currentDoc.id, controller.signal);
                             if (fullDoc && fullDoc.content) {
                                 currentDoc.content = fullDoc.content;
-                                if (fullDoc.imageUrl && !currentDoc.imageUrl) currentDoc.imageUrl = fullDoc.imageUrl;
+                                const fullCoverUrl = getArticleImageUrl(fullDoc, "");
+                                if (fullCoverUrl && !getArticleImageUrl(currentDoc, "")) {
+                                    currentDoc.imageUrl = fullCoverUrl;
+                                    currentDoc.coverImage = fullCoverUrl;
+                                    currentDoc.coverUrl = fullCoverUrl;
+                                }
                                 if (fullDoc.transcription && !currentDoc.transcription) currentDoc.transcription = fullDoc.transcription;
                             }
                         } catch (_) {}
@@ -2332,13 +2337,14 @@
             }
             window.currentActiveArticle = article;
             const storyUrl = getStoryUrl(article);
+            let articleImageUrl = getArticleImageUrl(article, "");
             document.title = `${article.title || "NUQTHA"} | NUQTHA`;
             if (window.NUQTHA_SITE_CONFIG?.updatePageMeta) {
                 window.NUQTHA_SITE_CONFIG.updatePageMeta({
                     path: storyUrl,
                     title: `${article.title || "NUQTHA"} | NUQTHA`,
                     description: article.excerpt || "NUQTHA Malayalam Publishing",
-                    imageUrl: article.thumbnailUrl || article.ogImage || article.imageUrl || "",
+                    imageUrl: articleImageUrl,
                     articleId: article.id
                 });
             }
@@ -2444,15 +2450,14 @@
             const dateEl = document.getElementById('art-date');
             if (dateEl) dateEl.textContent = dateStr || "Recent";
 
-            if (article.imageUrl && !article.imageUrl.includes("placeholder")) {
-                const img = document.getElementById('art-image');
-                if (img) {
-                    img.src = article.imageUrl;
-                    img.onerror = () => {
-                        document.getElementById('art-image-wrapper')?.classList.add('hidden');
-                    };
-                    document.getElementById('art-image-wrapper')?.classList.remove('hidden');
-                }
+            const articleImageEl = document.getElementById('art-image');
+            const articleImageWrapper = document.getElementById('art-image-wrapper');
+            if (articleImageEl && articleImageUrl) {
+                articleImageEl.src = articleImageUrl;
+                articleImageEl.onerror = () => articleImageWrapper?.classList.add('hidden');
+                articleImageWrapper?.classList.remove('hidden');
+            } else {
+                articleImageWrapper?.classList.add('hidden');
             }
 
             // Render Article Lead Excerpt / Intro
@@ -2565,7 +2570,16 @@
                     const fullDoc = await fetchTargetDocument(article.id);
                     if (fullDoc && fullDoc.content) {
                         article.content = fullDoc.content;
-                        if (fullDoc.imageUrl && !article.imageUrl) article.imageUrl = fullDoc.imageUrl;
+                        const fullCoverUrl = getArticleImageUrl(fullDoc, "");
+                        if (fullCoverUrl && !articleImageUrl) {
+                            article.imageUrl = fullCoverUrl;
+                            article.coverImage = fullCoverUrl;
+                            article.coverUrl = fullCoverUrl;
+                            articleImageUrl = fullCoverUrl;
+                            const imageEl = document.getElementById("art-image");
+                            if (imageEl) imageEl.src = fullCoverUrl;
+                            document.getElementById("art-image-wrapper")?.classList.remove("hidden");
+                        }
                         if (fullDoc.transcription && !article.transcription) article.transcription = fullDoc.transcription;
                     }
                 } catch (_) {}

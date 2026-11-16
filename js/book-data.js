@@ -5,19 +5,20 @@
  */
 
 import { fetchWithRetry, firebaseConfig, getFirebaseApiKey } from "../firebase-config.js";
+import { getArticleImageUrl } from "../schema-validator.js";
 
 const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
 const CHAPTER_LIST_FIELDS = [
     "title", "author", "date", "order", "priority", "createdAt", "isChapter",
     "bookId", "parentBookId", "bookName", "playlistName", "bookSlug", "type",
-    "category", "imageUrl", "thumbnailUrl", "ogImage", "excerpt", "transcription"
+    "category", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail",
+    "thumbnailUrl", "ogImage", "excerpt", "transcription"
 ];
 const prefetchedBookPages = new Set();
 
 export function getBookPageLightData(book, chapterCount = 0) {
     if (!book || typeof book !== "object") return null;
-    const cover = [book.imageUrl, book.coverUrl, book.coverImage, book.image, book.thumbnailUrl, book.thumbnail, book.ogImage]
-        .find(value => typeof value === "string" && value.trim())?.trim() || "";
+    const cover = getArticleImageUrl(book, "");
     if (/^data:/i.test(cover)) return null;
 
     let slug = String(book.slug || book.bookSlug || book.id || "").trim();
@@ -42,7 +43,7 @@ export function saveBookPageLightCache(book, chapterCount = 0) {
     try {
         const serialized = JSON.stringify(lightData);
         if (new Blob([serialized]).size >= 50 * 1024) return null;
-        sessionStorage.setItem(`nuqtha_cache_book_${lightData.slug}_v2`, serialized);
+        sessionStorage.setItem(`nuqtha_cache_book_${lightData.slug}_v3`, serialized);
         return lightData;
     } catch (error) {
         console.warn("[BookData] Could not save the lightweight book cache.", error);
@@ -54,8 +55,7 @@ export function saveBookChapterListCache(slug, chapters) {
     if (!slug || !Array.isArray(chapters)) return false;
     try {
         const safeChapters = chapters.filter(chapter => chapter && typeof chapter === "object" && chapter.id).map(chapter => {
-            const image = [chapter.thumbnailUrl, chapter.ogImage, chapter.imageUrl]
-                .find(value => typeof value === "string" && value.trim() && !/^data:/i.test(value)) || "";
+            const image = getArticleImageUrl(chapter, "");
             return {
                 id: String(chapter.id),
                 title: typeof chapter.title === "string" ? chapter.title : "",
@@ -67,7 +67,7 @@ export function saveBookChapterListCache(slug, chapters) {
         const serialized = JSON.stringify(safeChapters);
         if (new Blob([serialized]).size >= 50 * 1024) return false;
         const cleanSlug = decodeURIComponent(String(slug));
-        sessionStorage.setItem(`nuqtha_cache_book_chapters_${cleanSlug}_v1`, serialized);
+        sessionStorage.setItem(`nuqtha_cache_book_chapters_${cleanSlug}_v2`, serialized);
         return true;
     } catch (error) {
         console.warn("[BookData] Could not save the chapter-list prefetch.", error);
@@ -79,7 +79,7 @@ export function readBookChapterListCache(slug) {
     if (!slug) return [];
     try {
         const cleanSlug = decodeURIComponent(String(slug));
-        const stored = sessionStorage.getItem(`nuqtha_cache_book_chapters_${cleanSlug}_v1`);
+        const stored = sessionStorage.getItem(`nuqtha_cache_book_chapters_${cleanSlug}_v2`);
         const chapters = stored ? JSON.parse(stored) : [];
         return Array.isArray(chapters) ? chapters.filter(chapter =>
             chapter && typeof chapter.id === "string"
@@ -349,7 +349,7 @@ export async function getBookChapters(bookId, options = {}) {
                 const apiKey = getFirebaseApiKey();
                 // 1. Try books collection first
                 let bookRes = await fetchWithRetry(
-                    `${FIRESTORE_REST_BASE}/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "slug", "bookSlug", "imageUrl", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
+                    `${FIRESTORE_REST_BASE}/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
                     { signal: controller.signal },
                     2,
                     250
@@ -357,7 +357,7 @@ export async function getBookChapters(bookId, options = {}) {
                 // 2. Fallback to articles collection
                 if (!bookRes || !bookRes.ok) {
                     bookRes = await fetchWithRetry(
-                        `${FIRESTORE_REST_BASE}/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "slug", "bookSlug", "imageUrl", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
+                        `${FIRESTORE_REST_BASE}/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
                         { signal: controller.signal },
                         2,
                         250

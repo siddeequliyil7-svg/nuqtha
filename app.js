@@ -2272,8 +2272,8 @@ function buildBookCard(book, articles) {
     <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${book.id}">
         <!-- Cover Image Container (Vertical Magazine Style) -->
         <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
-            ${getArticleImageUrl(book) ? `
-                <img src="${getArticleImageUrl(book)}" alt="${cleanTitle} cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" width="600" height="800" loading="lazy" data-nuqtha-cover="true">
+            ${coverUrl ? `
+                <img src="${coverUrl}" alt="${cleanTitle} cover" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" width="600" height="800" loading="lazy" data-nuqtha-cover="true">
             ` : `
                 ${buildBookCoverPlaceholder(book)}
             `}

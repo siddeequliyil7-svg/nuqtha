@@ -7,6 +7,7 @@ import {
     sanitizePriority,
     sanitizeColor,
     sanitizeImageUrl,
+    getArticleImageUrl,
     parseTimestampMillis,
     formatDateSafe,
     normalizeArticleDoc,
@@ -174,6 +175,22 @@ describe("Schema Validator & Sanitizer Suite", () => {
 
             expect(normalized.imageUrl).to.equal(permanentCover);
             expect(normalized.thumbnailUrl).to.equal(permanentCover);
+        });
+
+        it("prefers a valid cover alias over a placeholder image field", () => {
+            const cover = "https://cdn.example.test/book-cover.webp";
+            const normalized = normalizeArticleDoc({
+                title: "Book with a placeholder image field",
+                imageUrl: "/cover-placeholder.svg",
+                coverImage: cover
+            });
+
+            expect(normalized.imageUrl).to.equal(cover);
+            expect(getArticleImageUrl({ imageUrl: "/cover-placeholder.svg", coverImage: cover }, "")).to.equal(cover);
+        });
+
+        it("returns an empty result when the caller explicitly disables image fallbacks", () => {
+            expect(getArticleImageUrl({ imageUrl: "/cover-placeholder.svg" }, "")).to.equal("");
         });
 
         it("preserves supported book relationship and order fields", () => {

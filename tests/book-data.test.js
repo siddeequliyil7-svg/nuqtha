@@ -1,5 +1,5 @@
 import { getBookArticleLinkFields, getBookChapters, getBookChapterIds, mergeBookRecords } from "../book-data.js";
-import { filterAndSortChapters, isArticleInBook } from "../js/book-data.js";
+import { filterAndSortChapters, getBookPageLightData, isArticleInBook } from "../js/book-data.js";
 
 const { describe, it } = window;
 const { expect } = window.chai;
@@ -75,5 +75,16 @@ describe("Book chapter relationships", () => {
             priority: 3,
             order: 3
         });
+    });
+
+    it("uses a real cover alias instead of a placeholder when building light book data", () => {
+        const coverUrl = "https://cdn.example.test/book-cover.webp";
+        const lightData = getBookPageLightData({
+            id: "book-1",
+            imageUrl: "/cover-placeholder.svg",
+            coverImage: coverUrl
+        });
+
+        expect(lightData.coverUrl).to.equal(coverUrl);
     });
 });
