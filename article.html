@@ -61,10 +61,9 @@
     <link rel="stylesheet" href="/styles.css">
     <style>
         .reading-column,
-        #article-content,
         #art-content,
         .article-body {
-            max-width: 720px !important;
+            max-width: 100% !important;
             margin-left: auto !important;
             margin-right: auto !important;
             text-align: left !important;
@@ -72,15 +71,25 @@
             word-break: normal !important;
             hyphens: auto !important;
         }
+        #article-content {
+            width: 100%;
+            max-width: 900px;
+            margin: 1.75rem auto;
+            padding: 2rem clamp(1.25rem, 3vw, 2.25rem);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            background: var(--reading-bg, var(--surface));
+            box-shadow: 0 12px 36px -24px rgba(48, 34, 20, 0.35);
+        }
         .article-body p,
         #art-content p,
         .reading-p {
-            margin: 0.4em 0 !important;
-            line-height: 1.9 !important;
+            margin: 0.85em 0 !important;
+            line-height: 1.75 !important;
             font-size: var(--article-font-size, 18px);
             color: var(--text, #1e1b18);
             font-family: 'Anek Malayalam', sans-serif !important;
-            letter-spacing: -0.01em;
+            letter-spacing: 0;
             text-align: left !important;
         }
         .article-title-text {
@@ -115,6 +124,14 @@
                 padding-left: 16px;
                 padding-right: 16px;
                 overflow-x: hidden;
+            }
+
+            #article-content {
+                margin-top: 1rem;
+                margin-bottom: 1rem;
+                padding-top: 1.25rem;
+                padding-bottom: 1.25rem;
+                border-radius: 1.125rem;
             }
 
             #art-share-bar {

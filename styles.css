@@ -624,6 +624,11 @@ body.home-page.dark-mode {
     flex-shrink: 0;
 }
 
+.more-dots-btn.hidden,
+.header-profile-btn.hidden {
+    display: none !important;
+}
+
 @media (min-width: 641px) {
     .more-dots-btn,
     .header-profile-btn {
@@ -2382,8 +2387,13 @@ body.dark-mode .playlist-preset-chip:hover {
     background-color: var(--surface) !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+    transform: translateX(100%);
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     box-shadow: -10px 0 35px rgba(0, 0, 0, 0.18);
+}
+
+#sidebar-drawer.drawer-open {
+    transform: translateX(0);
 }
 
 html.dark #sidebar-drawer,
@@ -4165,12 +4175,12 @@ html.dark {
 
 /* ═══════════ ARTICLE READING BODY TYPOGRAPHY & READING COLUMN ═══════════ */
 :root {
-    --article-font-size: 18px;
+    --article-font-size: 17px;
 }
 
 @media (max-width: 640px) {
     :root {
-        --article-font-size: 17px;
+        --article-font-size: 16px;
     }
 }
 
@@ -4179,12 +4189,12 @@ html.dark {
     transition: filter 0.25s ease;
 }
 
-/* 1. Centered Reading Column (Max-width 720px, left-aligned, safe wrap) */
+/* 1. Centered Reading Column (Max-width 860px, left-aligned, safe wrap) */
 .reading-column,
 #article-content,
 #art-content,
 .article-body {
-    max-width: 720px !important;
+    max-width: 860px !important;
     margin-left: auto !important;
     margin-right: auto !important;
     text-align: left !important;
@@ -4192,6 +4202,10 @@ html.dark {
     word-break: normal !important;
     hyphens: auto !important;
     font-size: var(--article-font-size, 18px);
+}
+
+#article-content {
+    max-width: 900px !important;
 }
 
 /* 2. Professional Typography & Malayalam Support */
@@ -4204,9 +4218,9 @@ html.dark {
     font-family: 'Anek Malayalam', sans-serif !important;
     font-size: var(--article-font-size, 18px);
     color: var(--text, #1e1b18);
-    margin: 1.1em 0;
-    line-height: 1.9 !important;
-    letter-spacing: -0.01em;
+    margin: 0.85em 0;
+    line-height: 1.75 !important;
+    letter-spacing: 0;
     text-align: left !important;
 }
 

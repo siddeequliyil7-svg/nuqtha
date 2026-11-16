@@ -547,14 +547,14 @@ export function updateHeaderUserUI(user) {
 
         const initialLetter = displayName.charAt(0).toUpperCase() || "";
 
-        if (user.avatar) {
-            if (userAvatarImg) {
-                userAvatarImg.src = user.avatar;
-                userAvatarImg.classList.remove("hidden");
-            }
-            if (userInitial) userInitial.classList.add("hidden");
-            if (userFallbackSvg) userFallbackSvg.classList.add("hidden");
+        if (userAvatarImg) userAvatarImg.classList.add("hidden");
+        if (userInitial) {
+            userInitial.textContent = initialLetter;
+            userInitial.classList.remove("hidden");
+        }
+        if (userFallbackSvg) userFallbackSvg.classList.add("hidden");
 
+        if (user.avatar) {
             if (dropAvatarImg) {
                 dropAvatarImg.src = user.avatar;
                 dropAvatarImg.classList.remove("hidden");
@@ -562,13 +562,6 @@ export function updateHeaderUserUI(user) {
             if (dropInitial) dropInitial.classList.add("hidden");
             if (dropFallbackSvg) dropFallbackSvg.classList.add("hidden");
         } else if (initialLetter) {
-            if (userAvatarImg) userAvatarImg.classList.add("hidden");
-            if (userInitial) {
-                userInitial.textContent = initialLetter;
-                userInitial.classList.remove("hidden");
-            }
-            if (userFallbackSvg) userFallbackSvg.classList.add("hidden");
-
             if (dropAvatarImg) dropAvatarImg.classList.add("hidden");
             if (dropInitial) {
                 dropInitial.textContent = initialLetter;
@@ -576,10 +569,6 @@ export function updateHeaderUserUI(user) {
             }
             if (dropFallbackSvg) dropFallbackSvg.classList.add("hidden");
         } else {
-            if (userAvatarImg) userAvatarImg.classList.add("hidden");
-            if (userInitial) userInitial.classList.add("hidden");
-            if (userFallbackSvg) userFallbackSvg.classList.remove("hidden");
-
             if (dropAvatarImg) dropAvatarImg.classList.add("hidden");
             if (dropInitial) dropInitial.classList.add("hidden");
             if (dropFallbackSvg) dropFallbackSvg.classList.remove("hidden");
