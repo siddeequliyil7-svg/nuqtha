@@ -1,5 +1,6 @@
 import { collection, db, firebaseConfig, getDocsFromCache } from "../firebase-config.js";
 import { getArticleImageUrl } from "../schema-validator.js";
+import { filterPublicCollections } from "./public-status.js";
 
 const REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
 const IMAGE_FIELDS = ["imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage"];
@@ -113,7 +114,10 @@ export async function fetchPublicCollections() {
         fetchCollectionWithCache("articles", controller.signal),
         fetchCollectionWithCache("books", controller.signal)
     ]).then(([articles, books]) => {
-        publicCollectionsCache = { articles, books };
+        publicCollectionsCache = {
+            ...filterPublicCollections(articles, books),
+            hasFirestoreContent: articles.length > 0 || books.length > 0
+        };
         return publicCollectionsCache;
     }).finally(() => {
         clearTimeout(timeout);

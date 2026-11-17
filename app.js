@@ -9,6 +9,7 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
 import { db, doc, getDoc } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl, sanitizeCategory } from "./schema-validator.js";
 import { fetchArticleSearchContent, fetchPublicCollections, getDeferredImageAttributes, installLazyFirestoreImages, stripListHeavyFields } from "./js/public-image-loader.js";
+import { filterPublicCollections, isPubliclyPublished } from "./js/public-status.js";
 import { syncReadingBg } from "./reading-theme.js";
 import { getBookChapterIds } from "./book-data.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
@@ -21,7 +22,7 @@ import { getArticleCategoryId, getCachedCategories, getCategories, slugifyCatego
 void syncReadingBg();
 
 /* ═══════════ Pre-bundled Fallback Data for 100% Uptime & Smooth Load ═══════════ */
-const CACHE_KEY = 'nuqtha_cached_articles_v10';
+const CACHE_KEY = 'nuqtha_cached_articles_v11';
 
 installLazyFirestoreImages();
 
@@ -72,12 +73,15 @@ function safeCacheArticles(articles) {
 }
 
 let allArticles = [];
+let hasFirestoreContent = false;
 try {
     // Purge outdated or corrupted cache keys
     sessionStorage.removeItem('nuqtha_cached_articles');
     localStorage.removeItem('nuqtha_cached_articles');
     sessionStorage.removeItem('nuqtha_cached_articles_v5');
     localStorage.removeItem('nuqtha_cached_articles_v5');
+    sessionStorage.removeItem('nuqtha_cached_articles_v10');
+    localStorage.removeItem('nuqtha_cached_articles_v10');
     sessionStorage.removeItem('nuqtha_cached_authors');
 
     const cachedArts = sessionStorage.getItem(CACHE_KEY);
@@ -93,7 +97,7 @@ try {
             );
             const hasNoOldAuthor = !parsed.some(a => (a.author || "").includes("അബൂബക്കർ"));
             if (hasNoAiStudio && hasNoOldAuthor) {
-                allArticles = parsed;
+                allArticles = parsed.filter(isPubliclyPublished);
             }
         }
     }
@@ -425,7 +429,7 @@ function getBookCoverItems(items) {
     const seenSlugs = new Set();
 
     return items.filter(book => {
-        if (!isBookEntity(book) || isChapterEntity(book) || chapterIds.has(book.id)) return false;
+        if (!isPubliclyPublished(book) || !isBookEntity(book) || isChapterEntity(book) || chapterIds.has(book.id)) return false;
         const id = String(book.id || "").trim();
         const slug = String(book.slug || book.bookSlug || "").trim().toLowerCase();
         if ((id && seenIds.has(id)) || (slug && seenSlugs.has(slug))) return false;
@@ -836,7 +840,7 @@ export function initAppData() {
                         (a.thumbnailUrl || "").includes("og-cover.png")
                     );
                     if (hasNoAiStudio) {
-                        allArticles = parsed;
+                        allArticles = parsed.filter(isPubliclyPublished);
                         renderFeed();
                     }
                 }
@@ -852,6 +856,7 @@ export function initAppData() {
                 return [];
             })
         ]);
+        hasFirestoreContent = publicLists.hasFirestoreContent === true;
         siteCategories = categories;
         siteCategoryById = new Map(categories.map(category => [category.slug, category]));
         const fallbacksById = new Map();
@@ -860,7 +865,8 @@ export function initAppData() {
             if (article.slug) fallbacksById.set(article.slug, article);
         });
 
-        const rawArticlesList = publicLists.articles.map(article => {
+        const publicRecords = filterPublicCollections(publicLists.articles, publicLists.books);
+        const rawArticlesList = publicRecords.articles.map(article => {
             const normalized = restoreFallbackFields(normalizeArticleDoc({
                 ...article,
                 title: sanitizeMalayalamText(article.title),
@@ -872,7 +878,7 @@ export function initAppData() {
             return { ...normalized, _imageCollection: "articles", _imageDocId: article.id };
         });
 
-        const rawBooksList = publicLists.books.map(bookData => {
+        const rawBooksList = publicRecords.books.map(bookData => {
             const articleRecord = rawArticlesList.find(article =>
                 article.id === bookData.id || (bookData.slug && article.slug === bookData.slug)
             );
@@ -898,7 +904,6 @@ export function initAppData() {
             return restoreFallbackFields(book, fallbacksById, bookData);
         });
 
-        const hasFirestoreContent = publicLists.articles.length > 0 || publicLists.books.length > 0;
         const fallbackItems = hasFirestoreContent ? [] : FALLBACK_ARTICLE_ITEMS;
         const combined = fallbackItems.map(article => normalizeArticleDoc(article, article.id));
         rawArticlesList.forEach(article => {
@@ -914,7 +919,7 @@ export function initAppData() {
             if (!exists) combined.push(book);
         });
 
-        allArticles = sortArticles(combined);
+        allArticles = sortArticles(combined.filter(isPubliclyPublished));
         safeCacheArticles(allArticles);
         renderFeed();
     })().catch(error => {
@@ -1223,6 +1228,10 @@ function renderHomeFeed(container) {
 
     if (regularArticles.length === 0 && bookCovers.length === 0) {
         if (allArticles.length === 0) {
+            if (hasFirestoreContent) {
+                renderEmpty("നിലവിൽ പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങളോ പുസ്തകങ്ങളോ ഇല്ല.");
+                return;
+            }
             allArticles = FALLBACK_ARTICLE_ITEMS.map(a => normalizeArticleDoc(a, a.id));
             renderHomeFeed(container);
             return;
@@ -1357,7 +1366,7 @@ function renderCategoryFeed(container, category) {
     const isBookCover = (a) => ((a.type || "").toUpperCase() === "BOOK" || (a.type || "").toLowerCase() === "free" || (a.type || "").toLowerCase() === "premium" || a.isBook === true) && !isChapter(a);
 
     const filtered = allArticles.filter(a => {
-        if (isBookCover(a) || isChapter(a)) return false;
+        if (!isPubliclyPublished(a) || isBookCover(a) || isChapter(a)) return false;
         return getArticleCategoryId(a) === targetNorm;
     });
 
@@ -2685,7 +2694,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
 
 /* ═══════════ 2. BOOKS CATEGORY PAGE LAYOUT ═══════════ */
 function renderBooksCategoryFeed(container) {
-    const bookCovers = getBookCoverItems(allArticles);
+    const bookCovers = getBookCoverItems(allArticles.filter(isPubliclyPublished));
 
     let html = `
     <div class="category-filter-banner flex items-center justify-between p-4 mb-6 rounded-2xl bg-white/70 dark:bg-[#12141d]/70 backdrop-blur-md border border-[#ebdccb] dark:border-white/10 shadow-xs">
@@ -2802,14 +2811,15 @@ export async function loadBooksToFrontend() {
 
   try {
     const { books } = await fetchPublicCollections();
+    const visibleBooks = books.filter(isPubliclyPublished);
     container.innerHTML = "";
 
-    if (books.length === 0) {
+    if (visibleBooks.length === 0) {
       container.innerHTML = "<p class='text-gray-500 py-6 text-center text-xs'>No books found.</p>";
       return;
     }
 
-    books.forEach((book) => {
+    visibleBooks.forEach((book) => {
       const isPremium = book.type === 'premium' || book.isPremium === true;
       const targetUrl = book.slug ? `/book/${encodeURIComponent(book.slug)}` : `/article.html?id=${encodeURIComponent(book.id)}`;
 

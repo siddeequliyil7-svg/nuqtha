@@ -40,6 +40,12 @@ function getRemoteImage(fields) {
     return "";
 }
 
+function isPubliclyPublished(fields = {}) {
+    if (!fields.status) return true;
+    const status = fields.status.stringValue;
+    return typeof status === "string" && status.trim().toLowerCase() === "published";
+}
+
 function slugifyText(str = "") {
     if (!str) return "";
     return String(str)
@@ -57,7 +63,7 @@ function slugifyText(str = "") {
         .replace(/^-+|-+$/g, "");
 }
 
-async function fetchArticle(idOrSlug, bookSlug = "") {
+async function fetchArticle(idOrSlug, bookSlug = "", includeDrafts = false) {
     if (!idOrSlug) return null;
     const cleanId = decodeURIComponent(idOrSlug).trim();
     const cleanNoPrefix = cleanId.replace(/^(?:story|book|article)[\/\\]+/gi, "").replace(/^\/+|\/+$/g, "");
@@ -77,6 +83,8 @@ async function fetchArticle(idOrSlug, bookSlug = "") {
     const collections = ["articles", "books"];
 
     // 1. Direct fetch by ID across articles and books
+    let directMatch = null;
+    let directDraft = null;
     for (const col of collections) {
         try {
             const docUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/${col}/${encodeURIComponent(cleanId)}?key=${FIRESTORE_API_KEY}`;
@@ -84,13 +92,19 @@ async function fetchArticle(idOrSlug, bookSlug = "") {
             if (res.ok) {
                 const data = await res.json();
                 if (data && data.fields) {
-                    return { id: cleanId, fields: data.fields, collection: col };
+                    const match = { id: cleanId, fields: data.fields, collection: col };
+                    if (isPubliclyPublished(data.fields)) directMatch = directMatch || match;
+                    else directDraft = directDraft || match;
                 }
             }
         } catch (_) {}
     }
+    if (directDraft) return includeDrafts ? directDraft : null;
+    if (directMatch) return directMatch;
 
     // 2. Structured query with IN filter for candidates across articles and books
+    let slugMatch = null;
+    let slugDraft = null;
     for (const col of collections) {
         try {
             const queryUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents:runQuery?key=${FIRESTORE_API_KEY}`;
@@ -121,13 +135,19 @@ async function fetchArticle(idOrSlug, bookSlug = "") {
                 const matched = Array.isArray(results) ? results.find(r => r && r.document)?.document : null;
                 if (matched) {
                     const docId = matched.name ? matched.name.split("/").pop() : cleanId;
-                    return { id: docId, fields: matched.fields || {}, collection: col };
+                    const match = { id: docId, fields: matched.fields || {}, collection: col };
+                    if (isPubliclyPublished(matched.fields || {})) slugMatch = slugMatch || match;
+                    else slugDraft = slugDraft || match;
                 }
             }
         } catch (_) {}
     }
+    if (slugDraft) return includeDrafts ? slugDraft : null;
+    if (slugMatch) return slugMatch;
 
     // 3. Scan recent documents across articles and books as fallback
+    let fallbackMatch = null;
+    let fallbackDraft = null;
     for (const col of collections) {
         try {
             const listUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/${col}?pageSize=100&key=${FIRESTORE_API_KEY}`;
@@ -144,16 +164,20 @@ async function fetchArticle(idOrSlug, bookSlug = "") {
                         const itemNoPrefix = itemSlug.split("/").pop();
 
                         if (
-                            candidateSlugs.includes(itemSlug) ||
-                            itemNoPrefix === cleanNoPrefix ||
-                            itemNoPrefix === targetSlug ||
-                            itemSlug.endsWith(`/${cleanNoPrefix}`) ||
-                            itemSlug.endsWith(`/${targetSlug}`) ||
-                            titleSlug === targetSlug ||
-                            docId === cleanId ||
-                            docId === cleanNoPrefix
+                            (
+                                candidateSlugs.includes(itemSlug) ||
+                                itemNoPrefix === cleanNoPrefix ||
+                                itemNoPrefix === targetSlug ||
+                                itemSlug.endsWith(`/${cleanNoPrefix}`) ||
+                                itemSlug.endsWith(`/${targetSlug}`) ||
+                                titleSlug === targetSlug ||
+                                docId === cleanId ||
+                                docId === cleanNoPrefix
+                            )
                         ) {
-                            return { id: docId, fields, collection: col };
+                            const match = { id: docId, fields, collection: col };
+                            if (isPubliclyPublished(fields)) fallbackMatch = fallbackMatch || match;
+                            else fallbackDraft = fallbackDraft || match;
                         }
                     }
                 }
@@ -161,7 +185,8 @@ async function fetchArticle(idOrSlug, bookSlug = "") {
         } catch (_) {}
     }
 
-    return null;
+    if (fallbackDraft) return includeDrafts ? fallbackDraft : null;
+    return fallbackMatch;
 }
 
 export default async function handler(req, res) {
@@ -209,7 +234,17 @@ export default async function handler(req, res) {
     let articleId = rawId;
 
     if (rawId) {
-        const article = await fetchArticle(rawId, bookSlug);
+        let article = await fetchArticle(rawId, bookSlug);
+
+        if (article?.fields) {
+            const linkedBookId = article.fields.bookId?.stringValue ||
+                article.fields.parentBookId?.stringValue ||
+                article.fields.bookName?.stringValue;
+            if (linkedBookId) {
+                const linkedBook = await fetchArticle(linkedBookId, "", true);
+                if (linkedBook?.fields && !isPubliclyPublished(linkedBook.fields)) article = null;
+            }
+        }
 
         if (article && article.fields) {
             articleId = article.id || rawId;
@@ -340,6 +375,6 @@ export default async function handler(req, res) {
     }
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=86400");
+    res.setHeader("Cache-Control", "no-store, max-age=0");
     return res.status(200).send(finalHtml);
 }

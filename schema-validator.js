@@ -490,9 +490,11 @@ export function validateAndSanitizeArticleForSave(raw) {
         throw new Error("ലേഖനത്തിന് സാധുവായ തലക്കെട്ട് (Title) നിർബന്ധമാണ് (കുറഞ്ഞത് 2 അക്ഷരങ്ങൾ).");
     }
 
-    // 2. Content validation (Required, min 5 chars, max 500k chars)
+    const status = sanitizeString(raw.status, 50, "published").trim().toLowerCase();
+
+    // Published articles need a complete body; drafts may be saved while still in progress.
     const content = sanitizeString(raw.content, 500000, "");
-    if (!content || content.length < 5) {
+    if (status !== "draft" && (!content || content.length < 5)) {
         throw new Error("ലേഖനത്തിന്റെ ഉള്ളടക്കം (Content) നിർബന്ധമാണ്.");
     }
 
@@ -532,7 +534,6 @@ export function validateAndSanitizeArticleForSave(raw) {
     const bookId = sanitizeString(raw.bookId, 120, "");
     const hasOrder = raw.order !== undefined && raw.order !== null && raw.order !== "" && !isNaN(raw.order);
     const order = hasOrder ? parseInt(raw.order, 10) : undefined;
-    const status = sanitizeString(raw.status, 50, "published");
     const volume = sanitizeString(raw.volume, 50, "");
     const issue = sanitizeString(raw.issue, 50, "");
     const leadTitle = sanitizeString(raw.leadTitle, 250, "");

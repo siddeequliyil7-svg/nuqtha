@@ -226,6 +226,7 @@
         import { initHeaderAuthUI } from "./js/auth-ui.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, getStoryUrl } from "./schema-validator.js";
+        import { isPubliclyPublished } from "./js/public-status.js";
         import { 
             PRIMARY_AUTHORS, 
             cleanMalayalamText, 
@@ -336,41 +337,47 @@
                     }
                 }
 
-                // 2. FETCH ARTICLES (session cache, Firestore, then persistent local cache)
+                // 2. FETCH ARTICLES (Firestore first, then filtered local caches)
                 let allArticles = [];
+                let cachedArticles = [];
+                let hasFirestoreArticles = false;
 
                 try {
-                    const cachedArticles = sessionStorage.getItem('nuqtha_all_articles');
-                    if (cachedArticles) {
-                        const parsed = JSON.parse(cachedArticles);
+                    const cached = sessionStorage.getItem('nuqtha_public_articles_v1');
+                    if (cached) {
+                        const parsed = JSON.parse(cached);
                         if (Array.isArray(parsed) && parsed.length > 0) {
-                            allArticles = parsed;
+                            cachedArticles = parsed.filter(isPubliclyPublished);
                         }
                     }
                 } catch (e) {}
 
-                if (allArticles.length === 0) {
+                try {
+                    const snap = await getDocs(collection(db, "articles"));
+                    hasFirestoreArticles = snap.docs.length > 0;
+                    allArticles = snap.docs
+                        .map(d => normalizeArticleDoc(d.data(), d.id))
+                        .filter(isPubliclyPublished);
+                } catch (error) {
+                    console.warn("[author.html] Firestore request failed; checking persistent local cache.", error);
                     try {
-                        const snap = await getDocs(collection(db, "articles"));
-                        allArticles = snap.docs.map(d => normalizeArticleDoc(d.data(), d.id));
-                    } catch (error) {
-                        console.warn("[author.html] Firestore request failed; checking persistent local cache.", error);
-                        try {
-                            const cachedSnapshot = await getDocsFromCache(collection(db, "articles"));
-                            allArticles = cachedSnapshot.docs.map(d => normalizeArticleDoc(d.data(), d.id));
-                        } catch (cacheError) {
-                            console.warn("[author.html] Articles are unavailable in persistent local cache.", cacheError);
-                        }
+                        const cachedSnapshot = await getDocsFromCache(collection(db, "articles"));
+                        allArticles = cachedSnapshot.docs
+                            .map(d => normalizeArticleDoc(d.data(), d.id))
+                            .filter(isPubliclyPublished);
+                    } catch (cacheError) {
+                        console.warn("[author.html] Articles are unavailable in persistent local cache.", cacheError);
+                        allArticles = cachedArticles;
                     }
                 }
 
-                if (allArticles.length === 0) {
+                if (allArticles.length === 0 && !hasFirestoreArticles) {
                     allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
                 }
 
                 if (allArticles.length > 0) {
                     try {
-                        sessionStorage.setItem('nuqtha_all_articles', JSON.stringify(allArticles));
+                        sessionStorage.setItem('nuqtha_public_articles_v1', JSON.stringify(allArticles));
                     } catch (e) {}
                 }
 

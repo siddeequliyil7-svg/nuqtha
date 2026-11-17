@@ -192,7 +192,7 @@
             </button>
             <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="published">
                 <span class="tab-icon">📑</span>
-                <span class="truncate">പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങൾ (Articles)</span>
+                <span class="truncate">ലേഖനങ്ങൾ (Articles)</span>
                 <span id="tab-published-badge" class="tab-badge">0</span>
             </button>
             <button type="button" class="admin-tab-btn flex-1 justify-center" data-tab="book">
@@ -589,9 +589,12 @@
                             <span>&rarr;</span>
                         </button>
 
-                        <button type="submit" class="submit-article-btn w-full sm:w-auto px-7 py-3.5 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
+                        <button type="submit" name="content-status" value="published" class="submit-article-btn w-full sm:w-auto px-7 py-3.5 bg-[#b4532c] hover:bg-[#923e1b] text-white rounded-xl font-bold uppercase tracking-wider text-xs font-english transition shadow-lg flex items-center justify-center gap-2">
                             <span>Publish Article to Firestore</span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </button>
+                        <button type="submit" name="content-status" value="draft" formnovalidate class="submit-article-btn w-full sm:w-auto px-7 py-3.5 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 rounded-xl font-bold uppercase tracking-wider text-xs font-english transition flex items-center justify-center gap-2">
+                            Save as Draft
                         </button>
                     </div>
 
@@ -638,10 +641,16 @@
                 <div class="bg-white p-6 md:p-8 rounded-3xl border border-[#ebdccb] shadow-sm space-y-4">
                     <div class="flex items-center justify-between border-b border-[#f0e6d6] pb-3 flex-wrap gap-2">
                         <div class="flex items-center gap-2">
-                            <h3 class="text-base font-extrabold text-[#1e1b18]">പ്രസിദ്ധീകരിച്ച പുസ്തകങ്ങൾ (Published Books)</h3>
+                            <h3 class="text-base font-extrabold text-[#1e1b18]">പുസ്തകങ്ങൾ (Books)</h3>
                             <span id="bm-total-books-counter" class="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-english">0 Books</span>
                         </div>
                         <p class="text-xs text-[#8c7a6b]">അധ്യായങ്ങൾ ക്രമീകരിക്കാനോ വിവരങ്ങൾ തിരുത്താനോ താഴെയുള്ള ബട്ടണുകൾ ഉപയോഗിക്കുക</p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2" role="group" aria-label="Filter books by publication status">
+                        <button type="button" class="admin-content-status-filter active" data-book-status-filter="published" aria-pressed="true">Published <span id="book-status-published-count" class="admin-content-status-count">0</span></button>
+                        <button type="button" class="admin-content-status-filter" data-book-status-filter="draft" aria-pressed="false">Drafts <span id="book-status-draft-count" class="admin-content-status-count">0</span></button>
+                        <button type="button" class="admin-content-status-filter" data-book-status-filter="all" aria-pressed="false">All</button>
                     </div>
 
                     <!-- Books Cards Grid -->
@@ -805,10 +814,15 @@
                             </div>
                         </div>
 
-                        <button type="button" id="publish-book-cover-btn" onclick="window.handleSaveBookStep1 && window.handleSaveBookStep1(event)" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button type="button" id="publish-book-cover-btn" data-status="published" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-2">
                             <span>സേവ് ചെയ്ത് അധ്യായങ്ങൾ ചേർക്കലിലേക്ക് കടക്കുക (Save & Continue to Step 2)</span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                         </button>
+                        <button type="button" id="save-book-draft-btn" data-status="draft" class="w-full py-3.5 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 rounded-2xl font-bold uppercase tracking-widest text-xs transition flex items-center justify-center gap-2">
+                            Save as Draft
+                        </button>
+                        </div>
                     </div>
 
                     <!-- ═══════════ STEP 2 & 3 CONTAINER (ACTIVATED ONLY AFTER SELECTING / SAVING BOOK) ═══════════ -->
@@ -1402,10 +1416,10 @@
                 <div class="border-b border-[#f0e6d6] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <div class="flex items-center gap-2.5">
-                            <h2 class="text-xl font-extrabold text-[#1e1b18]">പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങൾ (Published Live Articles)</h2>
+                            <h2 class="text-xl font-extrabold text-[#1e1b18]">ലേഖനങ്ങൾ (Articles)</h2>
                             <span id="article-count" class="text-xs font-black font-english text-[#b4532c] bg-[#b4532c]/10 px-3 py-0.5 rounded-full">0</span>
                         </div>
-                        <p class="text-xs text-[#8c7a6b] mt-0.5">തത്സമയം Firestore-ൽ ലഭ്യമായ ലേഖനങ്ങൾ എഡിറ്റ് ചെയ്യുകയോ നീക്കം ചെയ്യുകയോ ചെയ്യാം (പുസ്തകങ്ങൾ പ്രത്യേകമായി 'Books' ടാബിൽ ലഭ്യമാണ്)</p>
+                        <p class="text-xs text-[#8c7a6b] mt-0.5">പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങളും ഡ്രാഫ്റ്റുകളും ഇവിടെ മാനേജ് ചെയ്യാം (പുസ്തകങ്ങൾ 'Books' ടാബിൽ ലഭ്യമാണ്)</p>
                     </div>
 
                     <button type="button" onclick="window.switchAdminTab('create')" class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold rounded-xl shadow transition self-start sm:self-auto font-english">
@@ -1424,6 +1438,12 @@
                             <option value="ALL">എല്ലാ വിഭാഗങ്ങളും (All)</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2" role="group" aria-label="Filter articles by publication status">
+                    <button type="button" class="admin-content-status-filter active" data-article-status-filter="published" aria-pressed="true">Published <span id="article-status-published-count" class="admin-content-status-count">0</span></button>
+                    <button type="button" class="admin-content-status-filter" data-article-status-filter="draft" aria-pressed="false">Drafts <span id="article-status-draft-count" class="admin-content-status-count">0</span></button>
+                    <button type="button" class="admin-content-status-filter" data-article-status-filter="all" aria-pressed="false">All</button>
                 </div>
 
                 <!-- Articles Cards List -->

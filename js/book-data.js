@@ -6,12 +6,13 @@
 
 import { fetchWithRetry, firebaseConfig, getFirebaseApiKey } from "../firebase-config.js";
 import { getArticleImageUrl } from "../schema-validator.js";
+import { isPubliclyPublished } from "./public-status.js";
 
 const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
 const CHAPTER_LIST_FIELDS = [
     "title", "author", "date", "order", "priority", "createdAt", "isChapter",
     "bookId", "parentBookId", "bookName", "playlistName", "bookSlug", "type",
-    "category", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail",
+    "category", "status", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail",
     "thumbnailUrl", "ogImage", "excerpt", "transcription"
 ];
 const prefetchedBookPages = new Set();
@@ -29,6 +30,7 @@ export function getBookPageLightData(book, chapterCount = 0) {
         title: typeof book.title === "string" ? book.title : "",
         author: typeof book.author === "string" ? book.author : "",
         date: typeof book.date === "string" ? book.date : "",
+        status: book.status,
         coverUrl: cover,
         intro: typeof (book.introduction || book.intro || book.excerpt || book.description) === "string"
             ? (book.introduction || book.intro || book.excerpt || book.description)
@@ -43,7 +45,7 @@ export function saveBookPageLightCache(book, chapterCount = 0) {
     try {
         const serialized = JSON.stringify(lightData);
         if (new Blob([serialized]).size >= 50 * 1024) return null;
-        sessionStorage.setItem(`nuqtha_cache_book_${lightData.slug}_v3`, serialized);
+        sessionStorage.setItem(`nuqtha_cache_book_${lightData.slug}_v4`, serialized);
         return lightData;
     } catch (error) {
         console.warn("[BookData] Could not save the lightweight book cache.", error);
@@ -54,13 +56,16 @@ export function saveBookPageLightCache(book, chapterCount = 0) {
 export function saveBookChapterListCache(slug, chapters) {
     if (!slug || !Array.isArray(chapters)) return false;
     try {
-        const safeChapters = chapters.filter(chapter => chapter && typeof chapter === "object" && chapter.id).map(chapter => {
+        const safeChapters = chapters.filter(chapter =>
+            chapter && typeof chapter === "object" && chapter.id && isPubliclyPublished(chapter)
+        ).map(chapter => {
             const imageUrl = getArticleImageUrl(chapter, "");
             const image = /^data:/i.test(imageUrl) ? "" : imageUrl;
             return {
                 id: String(chapter.id),
                 title: typeof chapter.title === "string" ? chapter.title : "",
                 author: typeof chapter.author === "string" ? chapter.author : "",
+                status: chapter.status,
                 order: Number.isFinite(Number(chapter.order)) ? Number(chapter.order) : null,
                 imageUrl: image
             };
@@ -68,7 +73,7 @@ export function saveBookChapterListCache(slug, chapters) {
         const serialized = JSON.stringify(safeChapters);
         if (new Blob([serialized]).size >= 50 * 1024) return false;
         const cleanSlug = decodeURIComponent(String(slug));
-        sessionStorage.setItem(`nuqtha_cache_book_chapters_${cleanSlug}_v2`, serialized);
+        sessionStorage.setItem(`nuqtha_cache_book_chapters_${cleanSlug}_v3`, serialized);
         return true;
     } catch (error) {
         console.warn("[BookData] Could not save the chapter-list prefetch.", error);
@@ -80,10 +85,10 @@ export function readBookChapterListCache(slug) {
     if (!slug) return [];
     try {
         const cleanSlug = decodeURIComponent(String(slug));
-        const stored = sessionStorage.getItem(`nuqtha_cache_book_chapters_${cleanSlug}_v2`);
+        const stored = sessionStorage.getItem(`nuqtha_cache_book_chapters_${cleanSlug}_v3`);
         const chapters = stored ? JSON.parse(stored) : [];
         return Array.isArray(chapters) ? chapters.filter(chapter =>
-            chapter && typeof chapter.id === "string"
+            chapter && typeof chapter.id === "string" && isPubliclyPublished(chapter)
         ) : [];
     } catch (error) {
         console.warn("[BookData] Could not restore the chapter-list prefetch.", error);
@@ -350,7 +355,7 @@ export async function getBookChapters(bookId, options = {}) {
                 const apiKey = getFirebaseApiKey();
                 // 1. Try books collection first
                 let bookRes = await fetchWithRetry(
-                    `${FIRESTORE_REST_BASE}/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
+                    `${FIRESTORE_REST_BASE}/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "status", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
                     { signal: controller.signal },
                     2,
                     250
@@ -358,7 +363,7 @@ export async function getBookChapters(bookId, options = {}) {
                 // 2. Fallback to articles collection
                 if (!bookRes || !bookRes.ok) {
                     bookRes = await fetchWithRetry(
-                        `${FIRESTORE_REST_BASE}/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
+                        `${FIRESTORE_REST_BASE}/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "status", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
                         { signal: controller.signal },
                         2,
                         250

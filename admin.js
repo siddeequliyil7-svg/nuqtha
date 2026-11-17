@@ -363,6 +363,8 @@ if (typeof window !== "undefined") {
 
 let editingArticleId = null; // null = create mode, string = edit mode
 let currentArticlesList = [];
+let articleStatusFilter = "published";
+let bookStatusFilter = "published";
 let adminArticlesUnsubscribe = null;
 let adminBooksUnsubscribe = null;
 let adminListenerGeneration = 0;
@@ -388,6 +390,19 @@ let articleThumbnailChanged = false;
 let dragSrcChapterIndex = null;
 let pendingInlineBase64 = "";
 let compactArticlesDisplayLimit = 20;
+
+function getAdminContentStatus(record) {
+    const status = String(record?.status || "").trim().toLowerCase();
+    return status || "published";
+}
+
+function syncContentStatusFilters(selector, dataAttribute, activeStatus) {
+    document.querySelectorAll(selector).forEach(button => {
+        const isActive = button.dataset[dataAttribute] === activeStatus;
+        button.classList.toggle("active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+    });
+}
 
 function getBookCollectionName(book) {
     return book?._sourceCollection === "books" ? "books" : "articles";
@@ -757,7 +772,7 @@ function initArticleForm() {
     if (form) {
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
-            await handleFormSubmit();
+            await handleFormSubmit(e);
         });
     }
 
@@ -810,8 +825,8 @@ if (typeof window !== "undefined") {
     window.updateAdminExcerptUI = updateAdminExcerptUI;
 }
 
-async function handleFormSubmit() {
-    const submitBtns = document.querySelectorAll(".submit-article-btn");
+async function handleFormSubmit(event) {
+    const contentStatus = event?.submitter?.value === "draft" ? "draft" : "published";
     setSubmitButtonsLoading(true);
 
     try {
@@ -820,7 +835,9 @@ async function handleFormSubmit() {
         const rawCategoryId = document.getElementById("art-category")?.value || "";
         const categories = await getCategories();
         const selectedCategory = categories.find(category => category.slug === rawCategoryId);
-        if (!selectedCategory) throw new Error("Select an existing category before publishing.");
+        if (!selectedCategory && contentStatus === "published") {
+            throw new Error("Select an existing category before publishing.");
+        }
         const rawAuthor = document.getElementById("art-author")?.value || "";
         const authorId = window.currentUser?.uid || localStorage.getItem("nuqtha_admin_uid") || "admin";
         const rawTranscription = document.getElementById("art-transcription")?.value || "";
@@ -881,8 +898,8 @@ async function handleFormSubmit() {
         const sanitized = validateAndSanitizeArticleForSave({
             title: rawTitle,
             slug: articleSlug,
-            category: selectedCategory.slug,
-            categoryId: selectedCategory.slug,
+            category: selectedCategory?.slug || "GENERAL",
+            categoryId: selectedCategory?.slug || "",
             author: rawAuthor,
             authorId,
             transcription: rawTranscription,
@@ -902,6 +919,7 @@ async function handleFormSubmit() {
             bookSlug: resolvedBookSlug,
             tags: existingArticle?.tags || [],
             type: isBookCover ? "BOOK" : "ARTICLE",
+            status: contentStatus,
             date: new Date().toLocaleDateString("en-GB")
         });
 
@@ -950,6 +968,7 @@ async function handleFormSubmit() {
                 bookSlug: sanitized.bookSlug || resolvedBookSlug || "",
                 tags: sanitized.tags,
                 type: sanitized.type,
+                status: sanitized.status,
                 updatedAt: serverTimestamp()
             };
 
@@ -964,8 +983,12 @@ async function handleFormSubmit() {
             }
 
             await updateDoc(articleRef, updatePayload);
-            showGlobalStatus("ലേഖനം വിജയകരമായി എഡിറ്റ് ചെയ്ത് Firestore-ൽ അപ്‌ഡേറ്റ് ചെയ്തു! ✨", "success");
+            showGlobalStatus(contentStatus === "draft"
+                ? "ലേഖനത്തിലെ മാറ്റങ്ങൾ ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു."
+                : "ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! ✨", "success");
             exitEditMode();
+            articleStatusFilter = contentStatus;
+            syncContentStatusFilters("[data-article-status-filter]", "articleStatusFilter", articleStatusFilter);
             switchAdminTab("published");
         } else {
             // CREATE NEW ARTICLE IN FIRESTORE
@@ -981,8 +1004,12 @@ async function handleFormSubmit() {
                 updatedAt: serverTimestamp()
             });
 
-            showGlobalStatus("ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! (Live on NUQTHA) 🎉", "success");
+            showGlobalStatus(contentStatus === "draft"
+                ? "ലേഖനം ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു."
+                : "ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! (Live on NUQTHA) 🎉", "success");
             resetFormFields();
+            articleStatusFilter = contentStatus;
+            syncContentStatusFilters("[data-article-status-filter]", "articleStatusFilter", articleStatusFilter);
             switchAdminTab("published");
         }
     } catch (err) {
@@ -1008,9 +1035,14 @@ function setSubmitButtonsLoading(isLoading) {
             btn.innerHTML = `<span class="inline-block animate-spin mr-1">⏳</span> <span>പ്രോസസ്സ് ചെയ്യുന്നു...</span>`;
         } else {
             const isEdit = Boolean(editingArticleId);
-            btn.innerHTML = isEdit
-                ? `<span>Save & Update Article/Book</span><svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
-                : `<span>Publish to Firestore</span><svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+            const isDraft = btn.value === "draft";
+            if (isDraft) {
+                btn.innerHTML = "Save as Draft";
+            } else {
+                btn.innerHTML = isEdit
+                    ? `<span>Save & Publish Changes</span><svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
+                    : `<span>Publish to Firestore</span><svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+            }
         }
     });
 }
@@ -1879,6 +1911,7 @@ window.toggleBookPremiumFields = function(checked) {
 /* ═══════════ 2. BOOK SWITCHER & STEP 1 SAVING ═══════════ */
 async function handleSaveBookStep1(e) {
     if (e && e.preventDefault) e.preventDefault();
+    const contentStatus = e?.currentTarget?.dataset.status === "draft" ? "draft" : "published";
 
     // Clear previous inline errors
     const titleErrEl = document.getElementById("book-title-error");
@@ -1915,7 +1948,7 @@ async function handleSaveBookStep1(e) {
         nameInput?.classList.remove("border-rose-500", "focus:border-rose-600");
     }
 
-    if (!intro) {
+    if (!intro && contentStatus === "published") {
         if (introErrEl) {
             introErrEl.textContent = "ദയവായി പുസ്തകത്തിന്റെ ആമുഖം (Book Introduction) നൽകുക.";
             introErrEl.classList.remove("hidden");
@@ -1942,11 +1975,15 @@ async function handleSaveBookStep1(e) {
         ? existing.imageUrl || existing.coverUrl || existing.coverImage || existing.thumbnailUrl || existing.ogImage || existing.image
         : "") || "/cover-placeholder.svg";
 
-    const publishBtn = document.getElementById("publish-book-cover-btn");
-    if (publishBtn) {
-        publishBtn.disabled = true;
-        publishBtn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span><span>സേവ് ചെയ്യുന്നു...</span>`;
-    }
+    const saveButtons = [
+        document.getElementById("publish-book-cover-btn"),
+        document.getElementById("save-book-draft-btn")
+    ].filter(Boolean);
+    saveButtons.forEach(button => {
+        if (!button.dataset.defaultHtml) button.dataset.defaultHtml = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span><span>സേവ് ചെയ്യുന്നു...</span>`;
+    });
 
     try {
         const customBookSlugEl = document.getElementById("book-meta-slug");
@@ -1989,6 +2026,7 @@ async function handleSaveBookStep1(e) {
             placement: "AUTO",
             priority: 1,
             date: dateVal,
+            status: contentStatus,
             updatedAt: serverTimestamp()
         };
 
@@ -1997,7 +2035,9 @@ async function handleSaveBookStep1(e) {
             await updateDoc(getBookDocumentRef(existing), payload);
             savedDocId = existing.id;
             Object.assign(existing, payload);
-            showGlobalStatus(`✨ പുസ്തകം '${name}' വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!`, "success");
+            showGlobalStatus(contentStatus === "draft"
+                ? `📚 '${name}' ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു.`
+                : `✨ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
         } else {
             await setDoc(doc(db, "articles", targetBookId), {
                 ...payload,
@@ -2005,7 +2045,9 @@ async function handleSaveBookStep1(e) {
             });
             savedDocId = targetBookId;
             currentArticlesList.unshift({ id: savedDocId, ...payload });
-            showGlobalStatus(`📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
+            showGlobalStatus(contentStatus === "draft"
+                ? `📚 പുതിയ പുസ്തകം '${name}' ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു.`
+                : `📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
         }
 
         // Also save/sync to books collection (Section 2 & 3 sync)
@@ -2034,11 +2076,13 @@ async function handleSaveBookStep1(e) {
                 ogImage: storedCover,
                 date: dateVal,
                 visible: existing?.visible !== false,
+                status: contentStatus,
                 ...(Array.isArray(existing?.chapters) ? { chapters: existing.chapters } : {}),
                 updatedAt: serverTimestamp(),
             }, { merge: true });
         } catch (bkErr) {
-            console.warn("[Admin] Sync book to books collection note:", bkErr);
+            console.error("[Admin] Could not sync book status to books collection:", bkErr);
+            throw bkErr;
         }
 
         // Update author & name on active book session
@@ -2046,6 +2090,8 @@ async function handleSaveBookStep1(e) {
         activeBookAuthor = author;
 
         const allBooks = dedupeAdminRecords(currentArticlesList.filter(isBookCatalogRecord));
+        bookStatusFilter = contentStatus;
+        syncContentStatusFilters("[data-book-status-filter]", "bookStatusFilter", bookStatusFilter);
         updateBooksCounter(allBooks.length);
         updateActiveBookOverview(currentArticlesList);
         renderAdminBooksTab(currentArticlesList);
@@ -2064,10 +2110,10 @@ async function handleSaveBookStep1(e) {
         console.error("Save book error:", err?.code || "", err?.message || err);
         showGlobalStatus(getAdminWriteErrorMessage(err, "Book save"), "error");
     } finally {
-        if (publishBtn) {
-            publishBtn.disabled = false;
-            publishBtn.innerHTML = `<span>സേവ് ചെയ്ത് അധ്യായങ്ങൾ ചേർക്കലിലേക്ക് കടക്കുക (Save & Continue to Step 2)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
-        }
+        saveButtons.forEach(button => {
+            button.disabled = false;
+            button.innerHTML = button.dataset.defaultHtml || button.innerHTML;
+        });
     }
 }
 
@@ -2077,6 +2123,15 @@ function initBookSwitcherAndStep1() {
     const activeSelect = document.getElementById("bm-active-book-select");
     const newBookBtn = document.getElementById("bm-new-book-btn");
     const publishBtn = document.getElementById("publish-book-cover-btn");
+    const saveDraftBtn = document.getElementById("save-book-draft-btn");
+
+    document.querySelectorAll("[data-book-status-filter]").forEach(button => {
+        button.addEventListener("click", () => {
+            bookStatusFilter = button.dataset.bookStatusFilter || "published";
+            syncContentStatusFilters("[data-book-status-filter]", "bookStatusFilter", bookStatusFilter);
+            renderAdminBooksTab(currentArticlesList);
+        });
+    });
 
     if (activeSelect) {
         activeSelect.addEventListener("change", () => {
@@ -2140,6 +2195,9 @@ function initBookSwitcherAndStep1() {
 
     if (publishBtn) {
         publishBtn.addEventListener("click", handleSaveBookStep1);
+    }
+    if (saveDraftBtn) {
+        saveDraftBtn.addEventListener("click", handleSaveBookStep1);
     }
 }
 
@@ -3493,26 +3551,42 @@ function renderAdminBooksTab(articles) {
 
     const pool = Array.isArray(articles) ? articles : (currentArticlesList || []);
     const books = dedupeAdminRecords(pool.filter(isBookCatalogRecord));
+    const publishedBooks = books.filter(book => getAdminContentStatus(book) === "published").length;
+    const draftBooks = books.filter(book => getAdminContentStatus(book) === "draft").length;
 
     const totalBooks = books.length;
     if (totalCounterEl) totalCounterEl.textContent = `${totalBooks} Books`;
     if (badgeEl) badgeEl.textContent = `${totalBooks} Books`;
     if (tabBadgeEl) tabBadgeEl.textContent = String(totalBooks);
+    const publishedCountEl = document.getElementById("book-status-published-count");
+    const draftCountEl = document.getElementById("book-status-draft-count");
+    if (publishedCountEl) publishedCountEl.textContent = String(publishedBooks);
+    if (draftCountEl) draftCountEl.textContent = String(draftBooks);
+    syncContentStatusFilters("[data-book-status-filter]", "bookStatusFilter", bookStatusFilter);
 
     if (!gridEl) return;
 
-    if (books.length === 0) {
+    const visibleBooks = books.filter(book =>
+        bookStatusFilter === "all" || getAdminContentStatus(book) === bookStatusFilter
+    );
+
+    if (visibleBooks.length === 0) {
+        const emptyMessage = books.length === 0
+            ? "പുസ്തകങ്ങൾ ഒന്നും നിലവിൽ ചേർത്തിട്ടില്ല"
+            : bookStatusFilter === "draft"
+                ? "ഡ്രാഫ്റ്റ് പുസ്തകങ്ങളൊന്നും കണ്ടെത്തിയില്ല"
+                : "പ്രസിദ്ധീകരിച്ച പുസ്തകങ്ങളൊന്നും കണ്ടെത്തിയില്ല";
         gridEl.innerHTML = `
             <div class="col-span-full text-center py-12 px-4 bg-amber-50/40 rounded-2xl border-2 border-dashed border-amber-200 space-y-2">
                 <span class="text-3xl">📚</span>
-                <p class="text-xs font-bold text-amber-900">പുസ്തകങ്ങൾ ഒന്നും നിലവിൽ ചേർത്തിട്ടില്ല</p>
+                <p class="text-xs font-bold text-amber-900">${emptyMessage}</p>
                 <p class="text-[11px] text-amber-700">പുതിയ പുസ്തകം ചേർക്കാൻ മുകളിലെ '+ പുതിയ പുസ്തകം നിർമ്മിക്കുക' ക്ലിക്ക് ചെയ്യുക.</p>
             </div>
         `;
         return;
     }
 
-    gridEl.innerHTML = books.map(book => {
+    gridEl.innerHTML = visibleBooks.map(book => {
         const bookTitle = getValidBookTitle(book);
         const safeId = escapeAdminHtml(book.id);
         const safeTitle = escapeAdminHtml(bookTitle);
@@ -3526,6 +3600,10 @@ function renderAdminBooksTab(articles) {
             /premium/i.test(String(book.category || ""));
         const price = Number(book.price) > 0 ? Number(book.price) : (isPremium ? 49 : 0);
         const isActive = activeBookCoverDoc && (activeBookCoverDoc.id === book.id || activeBookName === bookTitle);
+        const status = getAdminContentStatus(book);
+        const statusBadge = status === "draft"
+            ? `<span class="text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full font-english">Draft</span>`
+            : `<span class="text-[9px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full font-english">${escapeAdminHtml(status)}</span>`;
 
         return `
             <div class="p-4 bg-white rounded-2xl border-2 ${isActive ? 'border-amber-500 bg-amber-50/20 ring-2 ring-amber-200' : 'border-[#ebdccb] hover:border-amber-300'} transition shadow-xs flex flex-col justify-between gap-3">
@@ -3535,6 +3613,7 @@ function renderAdminBooksTab(articles) {
                     </div>
                     <div class="flex-1 min-w-0 space-y-1">
                         <div class="flex items-center gap-1.5 flex-wrap">
+                            ${statusBadge}
                             <span class="text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md font-english">
                                 ${escapeAdminHtml(book.category || 'Premium Book')}
                             </span>
@@ -3727,7 +3806,7 @@ function listenToFirestoreArticles() {
     const cacheLimitBytes = 256 * 1024;
     const cacheFields = [
         "title", "bookTitle", "name", "author", "authorId", "date", "createdAt", "updatedAt",
-        "type", "category", "slug", "bookSlug", "bookId", "parentBookId", "bookName",
+        "type", "category", "status", "slug", "bookSlug", "bookId", "parentBookId", "bookName",
         "playlistName", "volume", "issue", "order", "priority", "placement", "showOnTable",
         "isBook", "isChapter", "isPremium", "price", "visible", "excerpt", "introduction",
         "thumbnailUrl", "imageUrl", "ogImage", "coverUrl", "coverImage"
@@ -3997,17 +4076,45 @@ export function renderAdminPublishedList(items) {
     // Exclude book cover documents but keep article documents attached to books.
     const sourceList = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
     const articles = dedupeAdminRecords(sourceList.filter(isPublishedArticle));
-    safeArticles = Array.isArray(articles) ? articles : [];
-    updateArticleCounters(safeArticles.length);
+    const publishedCount = articles.filter(article => getAdminContentStatus(article) === "published").length;
+    const draftCount = articles.filter(article => getAdminContentStatus(article) === "draft").length;
+    updateArticleCounters(articles.length);
+    const publishedCountEl = document.getElementById("article-status-published-count");
+    const draftCountEl = document.getElementById("article-status-draft-count");
+    if (publishedCountEl) publishedCountEl.textContent = String(publishedCount);
+    if (draftCountEl) draftCountEl.textContent = String(draftCount);
+    syncContentStatusFilters("[data-article-status-filter]", "articleStatusFilter", articleStatusFilter);
+
+    const queryText = document.getElementById("search-published-input")?.value.toLowerCase().trim() || "";
+    const category = document.getElementById("filter-published-category")?.value || "ALL";
+    const visibleArticles = articles.filter(article => {
+        const status = getAdminContentStatus(article);
+        const matchesStatus = articleStatusFilter === "all" || status === articleStatusFilter;
+        const matchesQuery = !queryText ||
+            String(article.title || "").toLowerCase().includes(queryText) ||
+            String(article.author || "").toLowerCase().includes(queryText) ||
+            String(article.transcription || "").toLowerCase().includes(queryText);
+        const matchesCategory = category === "ALL" || getArticleCategoryId(article) === category;
+        return matchesStatus && matchesQuery && matchesCategory;
+    });
+
+    safeArticles = visibleArticles;
     if (typeof window !== "undefined") {
         window.safeArticles = safeArticles;
     }
 
-    if (safeArticles.length === 0) {
+    if (visibleArticles.length === 0) {
+        const emptyMessage = articles.length === 0
+            ? "ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല"
+            : articleStatusFilter === "draft"
+                ? "ഡ്രാഫ്റ്റുകൾ ഒന്നും കണ്ടെത്തിയില്ല"
+                : articleStatusFilter === "published"
+                    ? "പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങളൊന്നും കണ്ടെത്തിയില്ല"
+                    : "തിരയലിൽ ലേഖനങ്ങൾ ഒന്നും കണ്ടെത്തിയില്ല";
         listContainer.innerHTML = `
             <div class="text-center py-12 px-4 bg-white/60 dark:bg-white/5 rounded-3xl border border-[#ebdccb] dark:border-white/10 space-y-3">
                 <div class="w-12 h-12 mx-auto rounded-full bg-[#b4532c]/10 text-[#b4532c] flex items-center justify-center text-xl">📄</div>
-                <h4 class="text-sm font-bold text-[#1e1b18] dark:text-[#f8fafc]">ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല</h4>
+                <h4 class="text-sm font-bold text-[#1e1b18] dark:text-[#f8fafc]">${emptyMessage}</h4>
                 <p class="text-xs text-[#8c7a6b] dark:text-[#94a3b8]">ആദ്യത്തെ ലേഖനം പ്രസിദ്ധീകരിക്കാൻ 'പുതിയ ലേഖനം' ടാബ് തുറക്കുക. (പുസ്തകങ്ങൾ കാണാൻ 'Books' ടാബ് സന്ദർശിക്കുക).</p>
                 <button type="button" onclick="window.switchAdminTab('create')" class="px-4 py-2 bg-[#b4532c] text-white text-xs font-bold rounded-xl shadow-sm hover:bg-[#923e1b] transition cursor-pointer">
                     + പുതിയ ലേഖനം എഴുതുക
@@ -4017,15 +4124,20 @@ export function renderAdminPublishedList(items) {
         return;
     }
 
-    listContainer.innerHTML = safeArticles.map(data => {
+    listContainer.innerHTML = visibleArticles.map(data => {
         const titleCol = data.titleColor || "#1e1b18";
         const placementLabel = data.placement === 'CAROUSEL' ? '🎠 CAROUSEL' : data.placement === 'FEED' ? '📰 FEED' : '⚡ AUTO';
         const priorityBadge = (data.priority !== undefined && data.priority !== null) ? `P${data.priority}` : '';
+        const status = getAdminContentStatus(data);
+        const statusBadge = status === "draft"
+            ? `<span class="text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md font-english">Draft</span>`
+            : `<span class="text-[9px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md font-english">${escapeAdminHtml(status)}</span>`;
 
         return `
             <div class="p-4 bg-white/90 dark:bg-[#12141d]/90 rounded-2xl border border-[#ebdccb] dark:border-white/10 hover:border-[#b4532c]/60 dark:hover:border-white/20 transition shadow-sm space-y-3">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex items-center gap-2 flex-wrap">
+                        ${statusBadge}
                         <span class="text-[10px] font-black text-[#b4532c] dark:text-[#f87171] uppercase font-english bg-[#b4532c]/10 px-2 py-0.5 rounded-md">
                             ${escapeAdminHtml(getAdminArticleCategoryName(data))}
                         </span>
@@ -4082,34 +4194,17 @@ window.renderAdminPublishedList = renderAdminPublishedList;
 function initPublishedSearchFilter() {
     const searchInput = document.getElementById("search-published-input");
     const categoryFilter = document.getElementById("filter-published-category");
+    const render = () => renderAdminPublishedList(currentArticlesList);
 
-    function applyFilter() {
-        const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
-        const cat = categoryFilter ? categoryFilter.value : "ALL";
-
-        const standardArticles = currentArticlesList.filter(isPublishedArticle);
-
-        const filtered = standardArticles.filter(art => {
-            const matchesQuery = !query || 
-                (art.title && art.title.toLowerCase().includes(query)) ||
-                (art.author && art.author.toLowerCase().includes(query)) ||
-                (art.transcription && art.transcription.toLowerCase().includes(query));
-
-            const matchesCategory = cat === "ALL" || getArticleCategoryId(art) === cat;
-
-            return matchesQuery && matchesCategory;
+    if (searchInput) searchInput.addEventListener("input", render);
+    if (categoryFilter) categoryFilter.addEventListener("change", render);
+    document.querySelectorAll("[data-article-status-filter]").forEach(button => {
+        button.addEventListener("click", () => {
+            articleStatusFilter = button.dataset.articleStatusFilter || "published";
+            syncContentStatusFilters("[data-article-status-filter]", "articleStatusFilter", articleStatusFilter);
+            render();
         });
-
-        safeArticles = Array.isArray(filtered) ? filtered : [];
-        if (typeof window !== "undefined") {
-            window.safeArticles = safeArticles;
-        }
-
-        renderAdminPublishedList(filtered);
-    }
-
-    if (searchInput) searchInput.addEventListener("input", applyFilter);
-    if (categoryFilter) categoryFilter.addEventListener("change", applyFilter);
+    });
 }
 
 

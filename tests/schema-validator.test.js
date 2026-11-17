@@ -329,6 +329,17 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(result.order).to.equal(1);
         });
 
+        it("allows an incomplete article body when saving as a draft", () => {
+            const result = validateAndSanitizeArticleForSave({
+                title: "Draft article",
+                status: "draft",
+                content: ""
+            });
+
+            expect(result.status).to.equal("draft");
+            expect(result.content).to.equal("");
+        });
+
         it("saves linked articles without inferring chapter status or requiring authorId", () => {
             const result = validateAndSanitizeArticleForSave({
                 title: "Book chapter",
