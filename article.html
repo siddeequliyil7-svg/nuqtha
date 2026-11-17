@@ -219,33 +219,67 @@
 
         /* Related Articles Cards */
         .related-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(235, 220, 203, 0.9);
-            border-radius: 18px;
-            overflow: hidden;
+            min-width: 0;
             text-decoration: none;
             display: flex;
             flex-direction: column;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 4px 18px -3px rgba(70, 35, 15, 0.07);
+            transition: transform 0.2s ease;
         }
         .related-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 16px 36px -6px rgba(70, 35, 15, 0.16);
-            border-color: rgba(180, 83, 44, 0.45);
-            background: #ffffff;
+            transform: translateY(-2px);
         }
-        .dark-mode .related-card {
-            background: rgba(18, 20, 29, 0.75);
-            border-color: rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 18px -3px rgba(0, 0, 0, 0.45);
+        .related-img-link {
+            display: block;
+            text-decoration: none;
         }
-        .dark-mode .related-card:hover {
-            background: rgba(26, 30, 43, 0.92);
-            border-color: rgba(255, 255, 255, 0.22);
-            box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.65);
+        .related-img-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            overflow: hidden;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #eee6dc, #d8c8b7);
+        }
+        .related-card-category::after {
+            display: none;
+        }
+        .related-img-container > img {
+            position: relative;
+            z-index: 1;
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .related-image-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #8c7a6b;
+            font-size: 1.5rem;
+        }
+        .related-card-content {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.55rem;
+            padding-top: 0.8rem;
+        }
+        .related-card-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            margin-top: auto;
+            padding-top: 0.35rem;
+            color: #8c7a6b;
+            font-size: 0.7rem;
+        }
+        html.dark .related-card-meta,
+        body.dark-mode .related-card-meta {
+            color: #a0aec0;
         }
     </style>
     <script type="module" src="/js/ui-safe.js"></script>
@@ -484,12 +518,9 @@
             <!-- Related Articles Section -->
             <section id="related-articles-section" class="pt-10 border-t border-[var(--border)] dark:border-white/10 hidden">
                 <div class="flex items-center justify-between mb-6">
-                    <div class="category-glass-badge">
-                        <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">RELATED · </span>
-                        <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[var(--text)] dark:text-[#f1f5f9]">കൂടുതൽ ലേഖനങ്ങൾ</span>
-                    </div>
+                    <h2 class="text-xl sm:text-2xl font-black text-[#b4532c] dark:text-[#f87171]">Related Articles <span class="font-['Noto_Sans_Malayalam'] text-base sm:text-lg">· കൂടുതൽ ലേഖനങ്ങൾ</span></h2>
                 </div>
-                <div id="related-articles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5"></div>
+                <div id="related-articles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8"></div>
             </section>
         </article>
 
@@ -656,9 +687,11 @@
             const imageUrl = deferInlineImage ? "" : (source || "");
             if (!imageUrl && !deferredAttributes) return "";
             const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
-            const styleAttribute = imageUrl
-                ? 'style="opacity:0;transition:opacity .25s ease;"'
-                : 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"';
+            const styleAttribute = deferredAttributes
+                ? (imageUrl
+                    ? 'style="opacity:0;transition:opacity .25s ease;"'
+                    : 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"')
+                : "";
             const priorityAttribute = loading === "eager" ? 'fetchpriority="high"' : "";
             return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" loading="${loading}" ${priorityAttribute} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
         }
@@ -2948,31 +2981,32 @@
             const topRelated = candidates.slice(0, 4);
 
             relatedGrid.innerHTML = topRelated.map(item => {
-                const cleanTitle = (item.title || "").replace(/[*_#~`]/g, "");
-                const cleanExcerpt = (item.excerpt || (item.content ? item.content.substring(0, 100) : "")).replace(/[*_#~`]/g, "").trim();
+                const cleanTitle = escapeHtml((item.title || "").replace(/[*_#~`]/g, ""));
+                const cleanExcerpt = escapeHtml((item.excerpt || (item.content ? item.content.substring(0, 100) : "")).replace(/[*_#~`]/g, "").trim());
                 const itemImg = getArticleImageUrl(item, "");
                 const itemImageMarkup = buildDeferredImageMarkup(item, itemImg, cleanTitle, "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500", 400, 300);
+                const author = escapeHtml(item.author || "NUQTHA");
+                const date = escapeHtml(item.date || "Recent");
                 return `
-                    <div class="related-card group touch-target-44 cursor-pointer relative stretched-card-wrap" onclick="if(!event.target.closest('a')) window.location.href='${getStoryUrl(item)}'">
-                        ${itemImg || getDeferredImageAttributes(item) ? `
-                            <div class="related-img-container relative">
+                    <article class="related-card group">
+                        <a href="${getStoryUrl(item)}" class="related-img-link" aria-label="${cleanTitle}">
+                            <div class="related-img-container">
                                 ${itemImageMarkup}
+                                <div class="related-image-placeholder" aria-hidden="true">▤</div>
                             </div>
-                        ` : ''}
-                        <div class="p-4 flex flex-col justify-between flex-1 gap-2">
-                            <div class="space-y-1">
-                                ${categoryTag(item.category, { className: 'text-[10px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english' })}
-                                <h4 class="text-sm font-bold line-clamp-2 text-[var(--text)] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
-                                    <a href="${getStoryUrl(item)}" class="stretched-card-link text-inherit">${cleanTitle}</a>
-                                </h4>
-                                ${cleanExcerpt ? `<p class="text-xs text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed">${cleanExcerpt}</p>` : ''}
-                            </div>
-                            <div class="pt-2 border-t border-[var(--border)]/60 dark:border-white/10 flex items-center justify-between text-[10px] text-[#8c7a6b] dark:text-[#94a3b8]">
-                                <span class="font-bold text-[var(--text)] dark:text-white">${item.author || "NUQTHA"}</span>
-                                <span>${item.date || "Recent"}</span>
+                        </a>
+                        <div class="related-card-content">
+                            ${categoryTag(item.category, { className: 'related-card-category text-[10px] font-black uppercase tracking-wide text-[#b4532c] dark:text-[#f87171] font-english' })}
+                            <h3 class="text-sm sm:text-base font-black leading-snug text-[var(--text)] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors font-['Anek_Malayalam']">
+                                <a href="${getStoryUrl(item)}" class="text-inherit">${cleanTitle}</a>
+                            </h3>
+                            ${cleanExcerpt ? `<p class="text-xs sm:text-sm text-[#5a4b41] dark:text-[#cbd5e1] line-clamp-2 leading-relaxed">${cleanExcerpt}</p>` : ''}
+                            <div class="related-card-meta">
+                                <span class="font-bold text-[var(--text)] dark:text-white">${author}</span>
+                                <time>${date}</time>
                             </div>
                         </div>
-                    </div>
+                    </article>
                 `;
             }).join("");
 
