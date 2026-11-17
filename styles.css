@@ -4049,8 +4049,9 @@ html.dark {
 
 .chapter-card-link { color: var(--book-hero-text); }
 .chapter-card-link .chapter-thumbnail {
-    flex: 0 0 auto;
-    width: min(100%, 240px);
+    flex: 0 0 clamp(88px, 24vw, 165px);
+    width: clamp(88px, 24vw, 165px);
+    max-width: 40%;
 }
 .chapter-thumbnail {
     position: relative;
