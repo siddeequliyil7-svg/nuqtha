@@ -9,7 +9,7 @@
     <link rel="canonical" href="https://nuqtha.vercel.app/article.html" />
 
     <!-- Open Graph (OG) Meta Tags with Absolute Fallback URLs -->
-    <meta property="og:site_name" content="NUQTHA - നുഖ്ത" />
+    <meta property="og:site_name" content="NUQTHA" />
     <meta property="og:type" content="article" />
     <meta property="og:url" content="https://nuqtha.vercel.app/article.html" />
     <meta property="og:title" content="NUQTHA | Article & Edition Reader" />
@@ -290,7 +290,7 @@
     <header class="sticky top-0 z-40 bg-[var(--bg)]/90 dark:bg-[#090a0f]/90 backdrop-blur-md border-b border-[var(--border)] dark:border-white/10 transition-colors">
         <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
             <!-- Clickable NUQTHA Brand Logo returning to Home -->
-            <a href="/" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20 touch-target-44" title="Return to Home Page / ഹോം പേജ്">
+            <a href="/" class="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl hover:bg-[#b4532c]/10 dark:hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-[#b4532c]/20 touch-target-44" title="Return to Home Page">
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-[#1d4ed8] to-[#3b82f6] shadow-sm flex items-center justify-center p-1.5 text-white flex-shrink-0 group-hover:scale-110 transition-transform">
                     <svg class="w-full h-full" viewBox="0 0 24 24" fill="currentColor"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z"/></svg>
                 </div>
@@ -301,13 +301,13 @@
 
                 <!-- Auth Container (Compact subtle circular silhouette when logged out, avatar when logged in) -->
                 <div id="header-auth-container" class="relative inline-block text-left">
-                    <button id="header-signin-btn" class="more-dots-btn header-profile-btn" title="Sign In / പ്രവേശിക്കുക" aria-label="Sign In">
+                    <button id="header-signin-btn" class="more-dots-btn header-profile-btn" title="Sign In" aria-label="Sign In">
                         <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#4a3c33] dark:text-[#cbbba9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                         </svg>
                     </button>
 
-                    <button id="header-user-btn" class="hidden more-dots-btn header-profile-btn cursor-pointer p-0 overflow-hidden" title="User Profile / പ്രൊഫൈൽ" aria-label="User Profile" aria-expanded="false" aria-haspopup="true">
+                    <button id="header-user-btn" class="hidden more-dots-btn header-profile-btn cursor-pointer p-0 overflow-hidden" title="User Profile" aria-label="User Profile" aria-expanded="false" aria-haspopup="true">
                         <div id="header-user-avatar" class="w-full h-full rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center text-xs font-bold overflow-hidden">
                             <img id="header-user-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
                             <span id="header-user-avatar-initial" class="hidden"></span>
@@ -329,7 +329,7 @@
                                     </svg>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p id="dropdown-user-name" class="text-sm font-bold text-[var(--text)] dark:text-white truncate">വായനക്കാരൻ</p>
+                                    <p id="dropdown-user-name" class="text-sm font-bold text-[var(--text)] dark:text-white truncate">Reader</p>
                                     <p id="dropdown-user-ident" class="text-[11px] text-[#8c7a6b] dark:text-slate-400 truncate"></p>
                                     <span id="dropdown-user-role-badge" class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-english bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                                         Reader
@@ -341,14 +341,14 @@
                             <button id="dropdown-saved-btn" class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text)] dark:text-white transition">
                                 <span class="flex items-center gap-2.5">
                                     <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
-                                    <span>സേവ് ചെയ്തവ (Saved)</span>
+                                    <span>Saved</span>
                                 </span>
                                 <span id="dropdown-saved-count" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold">0</span>
                             </button>
                             <a id="dropdown-admin-link" href="admin.html" class="hidden flex items-center justify-between px-4 py-2.5 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] transition">
                                 <span class="flex items-center gap-2.5">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                                    <span>അഡ്മിൻ പാനൽ (Admin)</span>
+                                    <span>Admin</span>
                                 </span>
                                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-[#b4532c]/10 text-[#b4532c] dark:text-[#f87171] font-mono">⚡</span>
                             </a>
@@ -356,7 +356,7 @@
                         <div class="border-t border-[var(--border)]/60 dark:border-white/10 pt-1">
                             <button id="dropdown-signout-btn" class="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs font-bold text-red-600 dark:text-red-400 transition text-left cursor-pointer">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                                <span>ലോഗൗട്ട് (Sign Out)</span>
+                                <span>Sign Out</span>
                             </button>
                         </div>
                     </div>
@@ -435,7 +435,7 @@
             <!-- Injected dynamically by renderBookIndex() -->
         </div>
 
-        <!-- ═══════════ 3. STANDARD ARTICLE VIEW CONTAINER (NEVER SHOWS "Date" / "ലോഡ് ചെയ്യുന്നു...") ═══════════ -->
+        <!-- ═══════════ 3. STANDARD ARTICLE VIEW CONTAINER (NO DATE OR LOADING PLACEHOLDER) ═══════════ -->
         <article id="standard-article-view" class="hidden space-y-3.5 sm:space-y-6 md:space-y-8 animate-fade-in">
             <div class="space-y-2 sm:space-y-3.5">
                 <div id="art-book-badge-container" class="hidden mb-1">
@@ -443,12 +443,12 @@
                         <span id="art-book-badge-text"></span>
                     </a>
                 </div>
-                <a id="art-category" href="#" class="category-badge font-english uppercase hover:opacity-80 transition cursor-pointer" title="ഈ വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക"></a>
+                <a id="art-category" href="#" class="category-badge font-english uppercase hover:opacity-80 transition cursor-pointer" title="View articles in this category"></a>
                 <h1 id="art-title" class="article-title-text text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--text)] dark:text-white tracking-tight leading-snug"></h1>
 
                 <!-- Author & Date Profile Bar -->
                 <div class="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-4 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 shadow-xs sm:shadow-sm my-2 sm:my-3.5">
-                    <a id="art-author-link" href="#" class="group/author inline-flex items-center gap-3 hover:opacity-95 transition cursor-pointer flex-1 touch-target-44" title="രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക">
+                    <a id="art-author-link" href="#" class="group/author inline-flex items-center gap-3 hover:opacity-95 transition cursor-pointer flex-1 touch-target-44" title="View author profile">
                         <div id="art-author-avatar" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-[#b4532c] to-[#d97706] text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-sm flex-shrink-0 group-hover/author:scale-105 transition-transform overflow-hidden">
                             N
                         </div>
@@ -457,7 +457,7 @@
                                 <span id="art-author" class="text-base sm:text-lg font-bold text-[var(--text)] dark:text-white font-['Anek_Malayalam'] tracking-wide group-hover/author:text-[#b4532c] dark:group-hover/author:text-[#f87171] group-hover/author:underline transition-colors"></span>
                             </div>
                             <div id="art-transcription-container" class="hidden flex items-center gap-2 flex-wrap text-xs font-semibold">
-                                <span class="text-[#8c7a6b] dark:text-[#a0aec0]">📝 കേട്ടെഴുത്ത്:</span>
+                                <span class="text-[#8c7a6b] dark:text-[#a0aec0]">📝 Transcription:</span>
                                 <span id="art-transcription" class="font-bold text-[var(--text)] dark:text-slate-200 font-['Anek_Malayalam']"></span>
                             </div>
                             <div class="text-xs font-medium text-[#7a6758] dark:text-[#94a3b8] font-english pt-0.5">
@@ -499,7 +499,7 @@
                 </div>
 
                 <!-- Text Size Reading Toolbar -->
-                <div class="inline-flex items-center gap-1 bg-[#ebdccb]/40 dark:bg-white/10 p-1 rounded-xl border border-[var(--border)] dark:border-white/15 text-xs select-none flex-shrink-0" title="Text Size / അക്ഷര വലിപ്പം">
+                <div class="inline-flex items-center gap-1 bg-[#ebdccb]/40 dark:bg-white/10 p-1 rounded-xl border border-[var(--border)] dark:border-white/15 text-xs select-none flex-shrink-0" title="Text Size">
                     <button type="button" class="font-decrease-btn w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Decrease text size" title="Smaller (A-)">A-</button>
                     <button type="button" class="font-increase-btn w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-white/80 dark:bg-white/10 text-[var(--text)] dark:text-white hover:bg-[#b4532c] hover:text-white border border-[var(--border)]/60 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95" aria-label="Increase text size" title="Larger (A+)">A+</button>
                 </div>
@@ -518,7 +518,7 @@
             <!-- Related Articles Section -->
             <section id="related-articles-section" class="pt-10 border-t border-[var(--border)] dark:border-white/10 hidden">
                 <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl sm:text-2xl font-black text-[#b4532c] dark:text-[#f87171]">Related Articles <span class="font-['Noto_Sans_Malayalam'] text-base sm:text-lg">· കൂടുതൽ ലേഖനങ്ങൾ</span></h2>
+                    <h2 class="text-xl sm:text-2xl font-black text-[#b4532c] dark:text-[#f87171]">Related Articles</h2>
                 </div>
                 <div id="related-articles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8"></div>
             </section>
@@ -527,12 +527,12 @@
         <!-- ═══════════ 4. ERROR STATE VIEW ═══════════ -->
         <div id="page-error-container" class="hidden"></div>
 
-        <!-- ═══════════ 5. RELATED EDITIONS ("More from NUQTHA / കൂടുതൽ പതിപ്പുകൾ") ═══════════ -->
+        <!-- ═══════════ 5. RELATED EDITIONS ═══════════ -->
         <section id="related-books-section" class="mt-12 pt-8 border-t border-[var(--border)] dark:border-white/10 hidden space-y-4">
             <div class="flex items-center justify-between">
                 <h3 class="text-sm sm:text-base font-black text-[var(--text)] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span>
-                    <span>MORE EDITIONS (കൂടുതൽ പുസ്തകങ്ങൾ)</span>
+                    <span>MORE EDITIONS</span>
                 </h3>
                 <a href="/#books" class="text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:underline font-english">View all &rarr;</a>
             </div>
@@ -543,12 +543,11 @@
         <section id="article-comments-section" class="mt-12 pt-8 sm:pt-10 border-t border-[var(--border)] dark:border-white/10 space-y-5">
             <div class="flex items-center justify-between flex-wrap gap-2">
                 <div class="category-glass-badge">
-                    <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">COMMENTS · </span>
-                    <span class="font-['Noto_Sans_Malayalam'] text-xs font-bold text-[var(--text)] dark:text-[#f1f5f9]">അഭിപ്രായങ്ങൾ</span>
+                    <span class="font-english text-xs font-black tracking-wider uppercase text-[#b4532c] dark:text-[#f87171]">COMMENTS</span>
                     <span id="comments-count-badge" class="ml-1 text-[11px] px-2 py-0.5 rounded-full bg-[#b4532c]/10 text-[#b4532c] dark:text-white font-bold">0</span>
                 </div>
                 <span class="text-xs text-[#8c7a6b] dark:text-[#a0aec0]">
-                    നിങ്ങളുടെ അഭിപ്രായം പങ്കുവെക്കൂ
+                    Share your thoughts
                 </span>
             </div>
 
@@ -561,7 +560,7 @@
                             💬
                         </div>
                         <div class="min-w-0">
-                            <p class="text-xs font-bold text-[var(--text)] dark:text-white leading-tight">അഭിപ്രായം രേഖപ്പെടുത്താം</p>
+                            <p class="text-xs font-bold text-[var(--text)] dark:text-white leading-tight">Share a comment</p>
                             <p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-english">Sign in with Google to post your thoughts</p>
                         </div>
                     </div>
@@ -604,17 +603,17 @@
 
                 <!-- Comment Textarea -->
                 <div class="relative">
-                    <textarea id="comment-text" rows="3" placeholder="ഈ പുസ്തകത്തെക്കുറിച്ചുള്ള നിങ്ങളുടെ അഭിപ്രായം ഇവിടെ എഴുതുക... (Write your thoughts here...)" class="w-full p-3.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[var(--border)] dark:border-white/10 text-xs sm:text-sm text-[var(--text)] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c] resize-y leading-relaxed font-sans"></textarea>
+                    <textarea id="comment-text" rows="3" placeholder="Write your thoughts here..." class="w-full p-3.5 rounded-xl bg-white/90 dark:bg-black/20 border border-[var(--border)] dark:border-white/10 text-xs sm:text-sm text-[var(--text)] dark:text-white placeholder-[#8c7a6b] focus:outline-none focus:border-[#b4532c] resize-y leading-relaxed font-sans"></textarea>
                 </div>
 
                 <!-- Action Bar -->
                 <div class="flex items-center justify-between pt-1 gap-2 flex-wrap">
                     <span id="comment-login-hint" class="text-[11px] text-[#8c7a6b] dark:text-[#94a3b8]">
-                        ലോഗിൻ ചെയ്ത് നേരിട്ട് അഭിപ്രായം പോസ്റ്റ് ചെയ്യാം
+                        Sign in to post a comment.
                     </span>
 
                     <div class="flex items-center gap-2 ml-auto">
-                        <span id="comment-success-toast" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hidden">✓ അഭിപ്രായം രേഖപ്പെടുത്തി!</span>
+                        <span id="comment-success-toast" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hidden">✓ Comment posted!</span>
                         <button type="button" id="comment-submit-btn" class="px-5 py-2.5 rounded-full bg-[#b4532c] hover:bg-[#923e1b] active:scale-95 text-white text-xs font-bold uppercase font-english transition shadow-sm inline-flex items-center gap-1.5 cursor-pointer touch-target-44">
                             <span>POST COMMENT</span>
                             <span>&rarr;</span>
@@ -643,7 +642,7 @@
                 <h4 id="sticky-bar-title" class="text-xs font-bold text-white truncate font-['Anek_Malayalam']">NUQTHA EDITION</h4>
             </div>
             <a id="sticky-bar-btn" href="#" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#b4532c] to-[#d97706] text-white text-xs font-bold font-english uppercase tracking-wider flex items-center gap-1.5 shadow-md flex-shrink-0 touch-target-44">
-                <span>തുടങ്ങുക</span>
+                <span>Continue</span>
                 <span>&rarr;</span>
             </a>
         </div>
@@ -651,7 +650,7 @@
 
     <!-- Bookmark Feedback Toast -->
     <div id="bookmark-toast" class="fixed top-20 right-4 z-50 px-4 py-2.5 rounded-2xl bg-[#12151f] text-white text-xs font-bold shadow-2xl border border-white/15 hidden transition-all">
-        <span id="bookmark-toast-text">✓ ലൈബ്രറിയിൽ സേവ് ചെയ്തു</span>
+        <span id="bookmark-toast-text">✓ Saved to your library</span>
     </div>
 
     <!-- Footer -->
@@ -680,6 +679,11 @@
 
         void syncReadingBg();
         installLazyFirestoreImages();
+
+        function getEnglishInitial(name) {
+            const transliterated = transliterateMalayalam(String(name || "").trim());
+            return transliterated.match(/[a-z0-9]/i)?.[0]?.toUpperCase() || "N";
+        }
 
         function buildDeferredImageMarkup(item, source, alt, className, width, height, loading = "lazy") {
             const deferredAttributes = getDeferredImageAttributes(item);
@@ -907,12 +911,12 @@
                 saved.splice(idx, 1);
                 if (btnText) btnText.textContent = "Save";
                 if (btnIcon) btnIcon.setAttribute("fill", "none");
-                if (toastText) toastText.textContent = "ലൈബ്രറിയിൽ നിന്ന് നീക്കം ചെയ്തു";
+                if (toastText) toastText.textContent = "Removed from your library";
             } else {
                 saved.push(articleId);
                 if (btnText) btnText.textContent = "Saved";
                 if (btnIcon) btnIcon.setAttribute("fill", "#f59e0b");
-                if (toastText) toastText.textContent = "✓ ലൈബ്രറിയിൽ സേവ് ചെയ്തു";
+                if (toastText) toastText.textContent = "✓ Saved to your library";
             }
             try {
                 localStorage.setItem("nuqtha_saved_books", JSON.stringify(saved));
@@ -938,10 +942,10 @@
             if (!el || !btn) return;
             if (el.classList.contains("line-clamp-4")) {
                 el.classList.remove("line-clamp-4");
-                btn.innerHTML = "ചുരുക്കുക (Show less) &uarr;";
+                btn.innerHTML = "Show less &uarr;";
             } else {
                 el.classList.add("line-clamp-4");
-                btn.innerHTML = "കൂടുതൽ വായിക്കുക (Read more) &darr;";
+                btn.innerHTML = "Read more &darr;";
             }
         };
 
@@ -978,23 +982,24 @@
                 ? buildDeferredImageMarkup(lightData, coverUrl, `${title} cover`, "book-v2-cover-img", 300, 400, "eager")
                 : "";
             const introMarkup = hasIntro
-                ? `<div class="book-v2-intro"><span class="book-v2-quote-mark" aria-hidden="true">&ldquo;</span><div id="book-intro-text" class="book-v2-intro-text">${escapeHtml(intro)}</div><button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button></div>`
+                ? `<div class="book-v2-intro"><span class="book-v2-quote-mark" aria-hidden="true">&ldquo;</span><div id="book-intro-text" class="book-v2-intro-text">${escapeHtml(intro)}</div><button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">Read more <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button></div>`
                 : "";
             const chapterRows = Array.isArray(cachedChapters) ? cachedChapters.filter(isPubliclyPublished).map((chapter, index) => {
                 const chapterTitle = typeof chapter.title === "string" && chapter.title.trim()
                     ? chapter.title.trim()
-                    : `അധ്യായം ${index + 1}`;
+                    : `Chapter ${index + 1}`;
                 const chapterImageUrl = getArticleImageUrl(chapter, "");
                 const chapterImage = chapterImageUrl
                     ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapterImageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true"></div>`
                     : `<div class="chapter-thumbnail chapter-thumbnail-empty" aria-hidden="true">📄</div>`;
-                return `<div class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">അധ്യായം ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></div>`;
+                return `<div class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">Chapter ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></div>`;
             }).join("") : "";
+            const authorInitial = getEnglishInitial(lightData.author);
 
             container.innerHTML = `
                 <article class="book-v2-hero book-light-cache" aria-labelledby="book-hero-title">
                     <div class="book-v2-topline">
-                        <div class="book-v2-eyebrow"><span>പുസ്തകം</span><span aria-hidden="true">&middot;</span><span translate="no">BOOK</span></div>
+                        <div class="book-v2-eyebrow"><span translate="no">BOOK</span></div>
                         ${isPremiumBook(lightData) ? "" : `<a id="book-download-app-btn" href="#" data-apk-link-placeholder="true" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition shadow-2xs touch-target-44" aria-label="Download App"><span>Download App</span></a>`}
                     </div>
                     <div class="book-v2-layout">
@@ -1013,14 +1018,14 @@
                         </div>
                         <div class="book-v2-copy">
                             <h1 id="book-hero-title" class="book-v2-title">${title}</h1>
-                            <div class="book-v2-author-row"><span class="book-v2-avatar"><span>${escapeHtml(author.charAt(0) || "N")}</span></span><div><strong class="book-v2-author-name">${author}</strong><div class="book-v2-author-role">എഴുത്തുകാരൻ</div></div></div>
-                            <div class="book-v2-meta">${date ? `<span>${date}</span><span class="book-v2-meta-dot" aria-hidden="true"></span>` : ""}<span>${Math.max(0, Number(lightData.chapterCount) || 0)} അധ്യായങ്ങൾ</span></div>
+                            <div class="book-v2-author-row"><span class="book-v2-avatar"><span>${authorInitial}</span></span><div><strong class="book-v2-author-name">${author}</strong><div class="book-v2-author-role">Author</div></div></div>
+                            <div class="book-v2-meta">${date ? `<span>${date}</span><span class="book-v2-meta-dot" aria-hidden="true"></span>` : ""}<span>${Math.max(0, Number(lightData.chapterCount) || 0)} Chapters</span></div>
                             ${introMarkup}
                         </div>
                     </div>
                 </article>
                 <section class="book-light-chapter-list" aria-label="Book chapters" aria-busy="${chapterRows ? "false" : "true"}">
-                    <div class="book-light-chapter-heading">പുസ്തകത്തിലെ അധ്യായങ്ങൾ</div>
+                    <div class="book-light-chapter-heading">Book Chapters</div>
                     ${chapterRows || '<div class="book-light-skeleton-row"></div><div class="book-light-skeleton-row"></div>'}
                 </section>`;
             container.querySelector("#book-download-app-btn")?.addEventListener("click", event => {
@@ -1544,7 +1549,7 @@
         // ═══════════ MAIN LOADING ORCHESTRATOR ═══════════
         async function loadArticle() {
             if (!articleId && !querySlug && !editionParam && !targetIdentifier) {
-                showErrorWithRetry("ലേഖനത്തിന്റെ ഐഡി നൽകിയിട്ടില്ല.");
+                showErrorWithRetry("The article ID is missing.");
                 return;
             }
 
@@ -1834,7 +1839,7 @@
                             currentDoc.type = "BOOK";
                         }
 
-                        // 3. Fallback for chapter URL mistakenly routed to /book/:chapterSlug (e.g. /book/ആമുഖം)
+                        // 3. Fallback for chapter URLs mistakenly routed to /book/:chapterSlug
                         if (!currentDoc) {
                             const matchedChapter = allArticles.find(a => 
                                 a.slug === targetBookSlug ||
@@ -1884,7 +1889,7 @@
                 }
 
                 if (!currentDoc) {
-                    showErrorWithRetry("ഈ ലേഖനം / പുസ്തകം കണ്ടെത്താനായില്ല അല്ലെങ്കിൽ നെറ്റ്‌വർക്ക് തകരാർ സംഭവിച്ചു.");
+                    showErrorWithRetry("This article or book could not be found. Please check your connection and try again.");
                     return;
                 }
 
@@ -2011,7 +2016,7 @@
                         await renderArticle(localDoc);
                     }
                 } else {
-                    showErrorWithRetry("വിവരങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു.");
+                    showErrorWithRetry("There was a problem loading this content.");
                 }
             }
         }
@@ -2023,7 +2028,7 @@
             if (!intro || !button) return;
             const expanded = intro.classList.toggle("is-expanded");
             button.setAttribute("aria-expanded", String(expanded));
-            button.textContent = expanded ? "കുറയ്ക്കുക" : "കൂടുതൽ വായിക്കുക";
+            button.textContent = expanded ? "Show less" : "Read more";
         };
 
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
@@ -2050,7 +2055,7 @@
             }
 
             const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "").trim();
-            const cleanAuthor = (book.author || "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ").replace(/[*_#~`]/g, "").trim();
+            const cleanAuthor = (book.author || "NUQTHA Editorial Team").replace(/[*_#~`]/g, "").trim();
             const rawIntro = String(book.introduction || book.intro || book.excerpt || "").trim()
                 .replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
             const hasIntro = rawIntro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
@@ -2062,7 +2067,7 @@
                 ? buildDeferredImageMarkup(book, coverUrl, `${cleanTitle} Cover`, "book-v2-cover-img", 300, 400, "eager")
                 : "";
             const authorPhoto = (book.authorPhoto || book.authorAvatar || "").trim();
-            const firstLetter = (cleanAuthor || 'N').trim().charAt(0);
+            const firstLetter = getEnglishInitial(cleanAuthor);
             const authorId = (cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
             const authorUrl = `author.html?id=${encodeURIComponent(authorId)}&name=${encodeURIComponent(cleanAuthor)}`;
 
@@ -2091,7 +2096,7 @@
                     <div class="flex items-center justify-between pb-1 flex-wrap gap-2 text-xs font-english">
                         <a href="${categoryUrl('BOOKS')}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[var(--border)] dark:border-white/10 font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-white dark:hover:bg-[#1c2030] transition shadow-2xs group touch-target-44">
                             <span class="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">&larr;</span>
-                            <span class="notranslate" translate="no">ALL EDITIONS (എല്ലാ പതിപ്പുകളും)</span>
+                            <span class="notranslate" translate="no">ALL EDITIONS</span>
                         </a>
 
                         <div class="flex items-center gap-2">
@@ -2116,7 +2121,7 @@
                     <!-- ═══════════ BOOK HERO (FULL-WIDTH BAND) ═══════════ -->
                     <article class="book-v2-hero" aria-labelledby="book-hero-title">
                         <div class="book-v2-topline">
-                            <div class="book-v2-eyebrow"><span>പുസ്തകം</span><span aria-hidden="true">&middot;</span><span translate="no">BOOK</span></div>
+                            <div class="book-v2-eyebrow"><span translate="no">BOOK</span></div>
                             <div class="book-v2-badges">
                                 ${isPremium ? `
                                     <span class="book-v2-premium" translate="no">
@@ -2158,7 +2163,7 @@
                                     </h1>
 
                                     <div class="book-v2-author-row">
-                                        <a href="${authorUrl}" class="book-hero-author-avatar-link flex-shrink-0" title="രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക">
+                                        <a href="${authorUrl}" class="book-hero-author-avatar-link flex-shrink-0" title="View author profile">
                                             <div class="book-v2-avatar">
                                                 ${authorPhoto ? `
                                                     <img src="${authorPhoto}" alt="${cleanAuthor}" width="42" height="42">
@@ -2171,13 +2176,13 @@
                                             <a href="${authorUrl}" class="book-v2-author-name">
                                                 ${cleanAuthor}
                                             </a>
-                                            <span class="book-v2-author-role">എഴുത്തുകാരൻ</span>
+                                            <span class="book-v2-author-role">Author</span>
                                         </div>
                                     </div>
 
                                     <div class="book-v2-meta">
                                         ${dateStr ? `<span>${dateStr}</span><span class="book-v2-meta-dot" aria-hidden="true"></span>` : ''}
-                                        <span>${chapterCount} അധ്യായങ്ങൾ</span>
+                                        <span>${chapterCount} Chapters</span>
                                     </div>
                                 </header>
 
@@ -2187,7 +2192,7 @@
                                         <div id="book-intro-text" class="book-v2-intro-text">
                                             ${rawIntro}
                                         </div>
-                                        <button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button>
+                                        <button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">Read more <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button>
                                     </div>
                                 ` : ''}
                             </div>
@@ -2198,8 +2203,8 @@
                             <div class="book-unlock-copy">
                                 <span class="book-unlock-icon" aria-hidden="true">${isFree ? '↗' : '🔒'}</span>
                                 <div>
-                                    <p class="book-unlock-title">${isFree ? 'സൗജന്യ പുസ്തകം' : 'പ്രീമിയം പുസ്തകം'}</p>
-                                    <p class="book-unlock-description">${isFree ? 'ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്ത് വായിക്കാം' : `ഒറ്റത്തവണ പണമടയ്ക്കൽ: ₹${price}`}</p>
+                                    <p class="book-unlock-title">${isFree ? 'Free book' : 'Premium book'}</p>
+                                    <p class="book-unlock-description">${isFree ? 'Install the app to read this book.' : `One-time payment: ₹${price}`}</p>
                                 </div>
                             </div>
                             <button id="hero-unlock-btn" type="button" class="book-unlock-button touch-target-44">
@@ -2213,10 +2218,10 @@
                         <div class="border-b border-[var(--border)] dark:border-white/10 pb-3 flex items-center justify-between flex-wrap gap-2">
                             <h3 class="text-sm sm:text-base font-black text-[var(--text)] dark:text-white uppercase font-english tracking-wider flex items-center gap-2">
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#b4532c] dark:bg-[#f87171]"></span>
-                                <span>പുസ്തകത്തിലെ അധ്യായങ്ങൾ (BOOK CHAPTERS & ARTICLES)</span>
+                                <span>BOOK CHAPTERS & ARTICLES</span>
                             </h3>
                             <span class="text-[11px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] font-english bg-white/70 dark:bg-white/5 px-2.5 py-1 rounded-full border border-[var(--border)]/60 dark:border-white/10">
-                                Sequential Reading &bull; അധ്യായങ്ങൾ
+                                Sequential Reading
                             </span>
                         </div>
 
@@ -2226,7 +2231,7 @@
                         <!-- Load More Button Container -->
                         <div id="book-load-more-container" class="pt-3 text-center hidden">
                             <button id="book-load-more-btn" class="px-6 py-3 rounded-full bg-white dark:bg-[#1a1e2e] border border-[var(--border)] dark:border-white/15 text-xs font-bold text-[#b4532c] dark:text-[#f87171] hover:bg-[#fff7ee] dark:hover:bg-[#22273a] shadow-2xs active:scale-95 transition-all cursor-pointer font-english touch-target-44">
-                                കൂടുതൽ അധ്യായങ്ങൾ കാണുക (Load More) ↓
+                                Show More ↓
                             </button>
                         </div>
                     </div>
@@ -2313,11 +2318,11 @@
                 listEl.innerHTML = `
                     <div class="p-8 sm:p-12 text-center rounded-2xl bg-white/60 dark:bg-white/5 border border-dashed border-[var(--border)] dark:border-white/10 space-y-2">
                         <span class="text-3xl">📖</span>
-                        <p class="text-xs sm:text-sm font-bold text-[var(--text)] dark:text-white font-['Noto_Sans_Malayalam']">
-                            ഈ പുസ്തകത്തിൽ ഇതുവരെ ലേഖനങ്ങളില്ല
+                        <p class="text-xs sm:text-sm font-bold text-[var(--text)] dark:text-white">
+                            No articles in this book yet
                         </p>
                         <p class="text-[11px] text-[#8c7a6b] dark:text-[#94a3b8]">
-                            അഡ്മിൻ ഡാഷ്‌ബോർഡിൽ നിന്ന് ലേഖനങ്ങൾ ഈ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യാവുന്നതാണ്.
+                            Articles can be added to this book from the admin dashboard.
                         </p>
                     </div>
                 `;
@@ -2336,7 +2341,7 @@
 
             listEl.innerHTML = currentBatch.map((art, idx) => {
                 const chapterTitle = typeof art?.title === "string" ? art.title.trim() : "";
-                const cleanArtTitle = (chapterTitle || `അധ്യായം ${idx + 1}`).replace(/[*_#~`]/g, "");
+                const cleanArtTitle = (chapterTitle || `Chapter ${idx + 1}`).replace(/[*_#~`]/g, "");
                 const cleanExcerpt = (art.excerpt || (art.content ? art.content.substring(0, 120) : "")).replace(/[*_#~`]/g, "").trim();
                 const isRead = readArticleIds.includes(art.id);
                 const chapterImg = getArticleImageUrl(art, "");
@@ -2380,7 +2385,7 @@
                     <div class="flex-1 min-w-0 space-y-1.5 break-words">
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
-                                അധ്യായം ${idx + 1}
+                                Chapter ${idx + 1}
                             </span>
                         </div>
                         <h4 class="text-sm sm:text-base font-bold text-[var(--text)] dark:text-white group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors leading-snug font-['Anek_Malayalam']">
@@ -2392,7 +2397,7 @@
                                 ${cleanExcerpt}
                             </p>
                         ` : ""}
-                        ${art.transcription ? `<p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${art.transcription}</p>` : ""}
+                        ${art.transcription ? `<p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8]">📝 Transcription: ${art.transcription}</p>` : ""}
                     </div>
                     <div class="flex shrink-0 items-center pr-1 sm:pr-2 text-[#b4532c] dark:text-[#f87171]">
                         ${isLocked ? `
@@ -2422,7 +2427,7 @@
                     loadMoreContainer.classList.remove("hidden");
                     const remaining = articles.length - visibleChapterCount;
                     if (loadMoreBtn) {
-                        loadMoreBtn.textContent = `കൂടുതൽ അധ്യായങ്ങൾ കാണുക (${remaining} ബാക്കി) ↓`;
+                        loadMoreBtn.textContent = `Show More (${remaining} remaining) ↓`;
                         loadMoreBtn.onclick = () => {
                             visibleChapterCount += 10;
                             renderPaginatedChapters(articles, lockOptions);
@@ -2501,7 +2506,7 @@
             section.classList.remove("hidden");
         }
 
-        // ═══════════ STANDARD ARTICLE RENDERER (NO "Date" / "ലോഡ് ചെയ്യുന്നു...") ═══════════
+        // ═══════════ STANDARD ARTICLE RENDERER (NO DATE OR LOADING PLACEHOLDER) ═══════════
         async function renderArticle(article, allArticles = []) {
             if (!article || !isPubliclyPublished(article)) return;
             allArticles = Array.isArray(allArticles) ? allArticles.filter(isPubliclyPublished) : [];
@@ -2545,7 +2550,7 @@
             }
             const titleEl = document.getElementById('art-title');
             if (titleEl) {
-                titleEl.textContent = article.title || "ലേഖനം";
+                titleEl.textContent = article.title || "Article";
                 if (article.titleColor) titleEl.style.color = article.titleColor;
             }
 
@@ -2557,11 +2562,11 @@
             const cleanAuthorSlug = slugifyAuthor(authorName);
             if (authorLink) {
                 authorLink.href = `author.html?id=${encodeURIComponent(cleanAuthorSlug)}&name=${encodeURIComponent(authorName)}`;
-                authorLink.title = `${authorName} - രചയിതാവിന്റെ പ്രൊഫൈൽ കാണുക`;
+                authorLink.title = `${authorName} - View author profile`;
             }
             const avatarEl = document.getElementById('art-author-avatar');
             if (avatarEl) {
-                avatarEl.textContent = authorName.charAt(0).toUpperCase() || "N";
+                avatarEl.textContent = getEnglishInitial(authorName);
                 getAuthorsMap(db).then(map => {
                     const photoUrl = getAuthorPhoto(authorName, map);
                     if (photoUrl) {
@@ -2577,8 +2582,8 @@
                 const setCategoryLabel = name => {
                     catEl.textContent = name;
                     catEl.href = categoryUrl(categoryId);
-                    catEl.setAttribute('aria-label', `${name} വിഭാഗത്തിലെ ലേഖനങ്ങൾ`);
-                    catEl.title = `${name} വിഭാഗത്തിലെ ലേഖനങ്ങൾ കാണുക`;
+                    catEl.setAttribute('aria-label', `View articles in the ${name} category`);
+                    catEl.title = `View articles in the ${name} category`;
                 };
                 setCategoryLabel(getCachedCategoryName(categoryId) || legacyName);
                 void getCategories().then(categories => {
@@ -2594,7 +2599,7 @@
             const bookBadgeText = document.getElementById('art-book-badge-text');
             if (bookBadgeContainer && article.bookName) {
                 if (bookBadgeText) {
-                    bookBadgeText.textContent = `📚 ${article.bookName}${article.priority ? ' • അധ്യായം ' + article.priority : ''}`;
+                    bookBadgeText.textContent = `📚 ${article.bookName}${article.priority ? ' • Chapter ' + article.priority : ''}`;
                 }
                 if (bookBadgeLink) {
                     bookBadgeLink.href = getStoryUrl({ id: article.bookId, title: article.bookName, bookName: article.bookName, type: "BOOK" });
@@ -2689,7 +2694,7 @@
                         <a href="${getStoryUrl(prevChapter)}" class="group flex items-center gap-3 p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition shadow-2xs">
                             <span class="text-lg text-[#b4532c] dark:text-[#f87171] group-hover:-translate-x-1 transition-transform">&larr;</span>
                             <div class="min-w-0 flex-1">
-                                <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] uppercase font-english">മുൻ അധ്യായം (Prev)</span>
+                                <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] uppercase font-english">Previous Chapter</span>
                                 <h5 class="text-xs font-bold text-[var(--text)] dark:text-white truncate font-['Anek_Malayalam'] group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors">${prevChapter.title}</h5>
                             </div>
                         </a>`;
@@ -2701,7 +2706,7 @@
                         navHtml += `
                         <a href="${getStoryUrl(nextChapter)}" class="group flex items-center justify-end text-right gap-3 p-3.5 rounded-2xl bg-white/80 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 transition shadow-2xs">
                             <div class="min-w-0 flex-1">
-                                <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] uppercase font-english">അടുത്ത അധ്യായം (Next)</span>
+                                <span class="text-[10px] font-bold text-[#8c7a6b] dark:text-[#94a3b8] uppercase font-english">Next Chapter</span>
                                 <h5 class="text-xs font-bold text-[var(--text)] dark:text-white truncate font-['Anek_Malayalam'] group-hover:text-[#b4532c] dark:group-hover:text-[#f87171] transition-colors">${nextChapter.title}</h5>
                             </div>
                             <span class="text-lg text-[#b4532c] dark:text-[#f87171] group-hover:translate-x-1 transition-transform">&rarr;</span>
@@ -2804,7 +2809,7 @@
                 const isAndroid = platform === "android";
                 const price = Number(parentBook.price) || 49;
                 const apkUrl = parentBook.apkUrl || "/nuqtha.apk";
-                const cleanParentTitle = (parentBook.title || "പ്രീമിയം പുസ്തകം").replace(/[*_#~`]/g, "");
+                const cleanParentTitle = (parentBook.title || "Premium book").replace(/[*_#~`]/g, "");
 
                 const firstP = rawParagraphs[0] ? rawParagraphs[0].replace(/\*\*(.*?)\*\*/g, '<strong class="font-black">$1</strong>').replace(/==(.*?)==/g, '<mark class="text-marker">$1</mark>') : (article.excerpt || "");
 
@@ -2822,23 +2827,23 @@
                         </div>
                         <div class="space-y-1">
                             <span class="inline-block px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 text-[10px] font-black uppercase font-english">
-                                PREMIUM CHAPTER &bull; പ്രീമിയം അധ്യായം
+                                PREMIUM CHAPTER
                             </span>
                             <h4 class="text-lg sm:text-xl font-black text-[var(--text)] dark:text-white font-['Anek_Malayalam']">
-                                ഈ അധ്യായം പൂർണ്ണമായി വായിക്കാൻ '${cleanParentTitle}' അൺലോക്ക് ചെയ്യുക
+                                Unlock '${cleanParentTitle}' to read this chapter in full.
                             </h4>
                             <p class="text-xs text-amber-900/90 dark:text-amber-300/90 font-['Noto_Sans_Malayalam']">
-                                ${isAndroid ? 'ആൻഡ്രോയിഡ് ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്തോ വെബ്സൈറ്റിൽ നേരിട്ടോ വായിക്കാം.' : 'മുഴുവൻ അധ്യായങ്ങളും ലഭ്യമാക്കാൻ ഇപ്പോൾ അൺലോക്ക് ചെയ്യുക.'}
+                                ${isAndroid ? 'Install the Android app or continue reading on the website.' : 'Unlock this book to access all chapters.'}
                             </p>
                         </div>
 
                         ${isAndroid ? `
                             <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
                                 <a href="${apkUrl}" download class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#00875A] hover:bg-[#007048] text-white font-bold text-xs sm:text-sm font-english transition shadow-md flex items-center justify-center gap-2 cursor-pointer touch-target-44">
-                                    <span>📲 Install App (ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യുക)</span>
+                                    <span>📲 Install App</span>
                                 </a>
                                 <button id="inline-pay-btn" class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#b4532c] hover:bg-[#923e1b] text-white font-bold text-xs sm:text-sm font-english transition shadow-md flex items-center justify-center gap-2 cursor-pointer touch-target-44">
-                                    <span>💳 UPI വഴി വാങ്ങുക (₹${price})</span>
+                                    <span>💳 Pay with UPI (₹${price})</span>
                                 </button>
                             </div>
                         ` : `
@@ -3028,14 +3033,14 @@
                 errorContainerEl.innerHTML = `
                     <div class="p-8 sm:p-12 text-center rounded-3xl bg-amber-50/90 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 space-y-4 max-w-lg mx-auto my-8">
                         <span class="text-4xl block">⚠️</span>
-                        <h3 class="font-bold text-base sm:text-lg font-['Anek_Malayalam']">${msg}</h3>
-                        <p class="text-xs text-amber-800/80 dark:text-amber-300/80">ദയവായി ഇന്റർനെറ്റ് കണക്ഷൻ പരിശോധിക്കുക അല്ലെങ്കിൽ അല്പം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കുക.</p>
+                        <h3 class="font-bold text-base sm:text-lg font-english">${msg}</h3>
+                        <p class="text-xs text-amber-800/80 dark:text-amber-300/80">Check your internet connection or try again in a moment.</p>
                         <div class="pt-2 flex items-center justify-center gap-3">
                             <button onclick="window.location.reload()" class="px-5 py-2.5 rounded-full bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold font-english transition shadow-sm active:scale-95 inline-flex items-center gap-1.5 cursor-pointer touch-target-44">
-                                <span>🔄 വീണ്ടും ശ്രമിക്കുക (Retry)</span>
+                                <span>🔄 Retry</span>
                             </button>
                             <a href="/" class="px-5 py-2.5 rounded-full bg-white dark:bg-white/10 hover:bg-amber-100 dark:hover:bg-white/15 text-[var(--text)] dark:text-white text-xs font-bold font-english transition border border-amber-300 dark:border-white/10 touch-target-44 inline-flex items-center">
-                                <span>ഹോം പേജ് (Home)</span>
+                                <span>Home</span>
                             </a>
                         </div>
                     </div>
@@ -3104,18 +3109,18 @@
                         userAvatarImg.classList.remove("hidden");
                         if (userAvatarFallback) userAvatarFallback.classList.add("hidden");
                     } else if (userAvatarFallback) {
-                        userAvatarFallback.textContent = user.name.charAt(0).toUpperCase();
+                        userAvatarFallback.textContent = getEnglishInitial(user.name);
                         userAvatarFallback.classList.remove("hidden");
                         if (userAvatarImg) userAvatarImg.classList.add("hidden");
                     }
-                    if (loginHint) loginHint.textContent = `ലോഗിൻ ചെയ്തിരിക്കുന്നു: ${user.name}`;
+                    if (loginHint) loginHint.textContent = `Signed in as ${user.name}`;
                 } else {
                     if (loggedOutView) loggedOutView.classList.remove("hidden");
                     if (loggedInView) {
                         loggedInView.classList.add("hidden");
                         loggedInView.classList.remove("flex");
                     }
-                    if (loginHint) loginHint.textContent = "ലോഗിൻ ചെയ്ത് നേരിട്ട് അഭിപ്രായം പോസ്റ്റ് ചെയ്യാം";
+                    if (loginHint) loginHint.textContent = "Sign in to post a comment.";
                 }
             }
 
@@ -3133,7 +3138,7 @@
                         onAuthStateChanged(auth, (firebaseUser) => {
                             if (firebaseUser) {
                                 const profile = {
-                                    name: firebaseUser.displayName || "വായനക്കാരൻ",
+                                    name: firebaseUser.displayName || "Reader",
                                     email: firebaseUser.email || "",
                                     avatar: firebaseUser.photoURL || "",
                                     uid: firebaseUser.uid
@@ -3173,7 +3178,7 @@
                     const result = await signInWithPopup(auth, provider);
                     if (result && result.user) {
                         const profile = {
-                            name: result.user.displayName || "വായനക്കാരൻ",
+                            name: result.user.displayName || "Reader",
                             email: result.user.email || "",
                             avatar: result.user.photoURL || "",
                             uid: result.user.uid
@@ -3194,9 +3199,9 @@
                                             err?.message?.includes("API key not valid") ||
                                             err?.message?.includes("identitytoolkit");
                     if (isKeyOrConfigErr) {
-                        alert("Google ലോഗിൻ സേവനം കോൺഫിഗർ ചെയ്തിട്ടില്ല അല്ലെങ്കിൽ API കീ സാധുവല്ല. പേര് നൽകി നിങ്ങൾക്ക് താഴെ നേരിട്ട് കമന്റ് രേഖപ്പെടുത്താം.");
+                        alert("Google sign-in is unavailable. You can enter your name and post a comment below.");
                     } else if (err?.code !== "auth/popup-closed-by-user" && err?.code !== "auth/cancelled-popup-request") {
-                        alert("ലോഗിൻ ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു. പേര് നൽകി നിങ്ങൾക്ക് നേരിട്ട് കമന്റ് രേഖപ്പെടുത്താം.");
+                        alert("Sign-in failed. You can enter your name and post a comment below.");
                     }
                     return null;
                 } finally {
@@ -3248,24 +3253,24 @@
                 if (!comments || comments.length === 0) {
                     commentsList.innerHTML = `
                         <div class="p-6 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8] rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-dashed border-[var(--border)] dark:border-white/10">
-                            ആദ്യത്തെ അഭിപ്രായം രേഖപ്പെടുത്തൂ (Be the first to share your thoughts)
+                            Be the first to share your thoughts.
                         </div>
                     `;
                     return;
                 }
 
                 commentsList.innerHTML = comments.map(c => {
-                    const cleanName = (c.name || "വായനക്കാരൻ").replace(/<[^>]*>?/gm, '');
-                    const initial = cleanName.trim().charAt(0).toUpperCase() || "W";
-                    let timeStr = "ഇപ്പോൾ";
+                    const cleanName = (c.name || "Reader").replace(/<[^>]*>?/gm, '');
+                    const initial = getEnglishInitial(cleanName) || "W";
+                    let timeStr = "Just now";
                     if (c.createdAt) {
                         try {
                             const ms = typeof c.createdAt === "number" ? c.createdAt : (c.createdAt.toMillis ? c.createdAt.toMillis() : Date.parse(c.createdAt));
                             if (ms) {
                                 const diffMin = Math.round((Date.now() - ms) / 60000);
-                                if (diffMin < 1) timeStr = "ഇപ്പോൾ";
-                                else if (diffMin < 60) timeStr = `${diffMin} മിനിറ്റ് മുൻപ്`;
-                                else if (diffMin < 1440) timeStr = `${Math.round(diffMin / 60)} മണിക്കൂർ മുൻപ്`;
+                                if (diffMin < 1) timeStr = "Just now";
+                                else if (diffMin < 60) timeStr = `${diffMin} min ago`;
+                                else if (diffMin < 1440) timeStr = `${Math.round(diffMin / 60)} hr ago`;
                                 else timeStr = new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
                             }
                         } catch {}

@@ -306,7 +306,7 @@ export async function mountLibrary(root) {
   root.innerHTML = `<div class="max-w-md mx-auto px-4 pt-4 pb-1 flex items-center justify-between">
     <button type="button" id="lib-back-btn" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-[#b4532c]/15 text-xs font-bold text-[#b4532c] dark:text-[#f87171] transition cursor-pointer font-english shadow-2xs">
       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-      <span>ലേഖനങ്ങളിലേക്ക് (Back to Articles)</span>
+      <span>Back to Articles</span>
     </button>
     <span class="text-[11px] font-bold text-[#8c7a6b] font-english uppercase tracking-wider">3D Library</span>
   </div>

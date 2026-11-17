@@ -223,7 +223,8 @@ function getBookDocumentCollection(book) {
 }
 
 function getBookDocumentRef(book) {
-    return doc(db, getBookDocumentCollection(book), book.id);
+    if (!book?.id) throw new Error("Cannot update a book without its Firestore document ID.");
+    return doc(db, getBookDocumentCollection(book), String(book.id));
 }
 
 "use strict";
@@ -404,12 +405,19 @@ function syncContentStatusFilters(selector, dataAttribute, activeStatus) {
     });
 }
 
-function getBookCollectionName(book) {
-    return book?._sourceCollection === "books" ? "books" : "articles";
-}
+function refreshAdminListsAfterSave() {
+    renderAdminPublishedList(currentArticlesList);
+    updateBooksCounter(dedupeAdminRecords(currentArticlesList.filter(isBookCatalogRecord)).length);
+    updateActiveBookOverview(currentArticlesList);
+    renderAdminBooksTab(currentArticlesList);
+    renderBookManagerCompactArticles(currentArticlesList, activeBookName);
+    renderLayoutManagerList(currentArticlesList);
 
-function updateBookDocument(book, data) {
-    return updateDoc(doc(db, getBookCollectionName(book), book.id), data);
+    try {
+        sessionStorage.removeItem("nuqtha_cached_articles");
+    } catch (error) {
+        console.warn("[NUQTHA ADMIN] Could not clear the stale article cache after save.", error?.name || "StorageError");
+    }
 }
 
 const ADMIN_PASSWORD = "admin768";
@@ -946,49 +954,38 @@ async function handleFormSubmit(event) {
             // UPDATE EXISTING ARTICLE IN FIRESTORE
             const articleRef = doc(db, "articles", editingArticleId);
             const updatePayload = {
-                title: sanitized.title,
-                slug: sanitized.slug || articleSlug,
-                category: sanitized.category,
-                categoryId: sanitized.categoryId,
-                author: sanitized.author,
-                authorId: sanitized.authorId || authorId,
-                transcription: sanitized.transcription || "",
+                ...sanitized,
+                category: sanitized.categoryId || sanitized.category,
                 hasCustomExcerpt: Boolean(typedExcerpt),
                 storedExcerpt: typedExcerpt,
                 excerpt: typedExcerpt,
-                content: sanitized.content,
-                titleColor: sanitized.titleColor,
-                contentColor: sanitized.contentColor,
-                fontSize: sanitized.fontSize,
-                placement: sanitized.placement,
-                priority: sanitized.priority,
-                bookName: sanitized.bookName,
-                bookId: sanitized.bookId || resolvedBookId || "",
-                parentBookId: sanitized.parentBookId || resolvedBookId || "",
-                bookSlug: sanitized.bookSlug || resolvedBookSlug || "",
-                tags: sanitized.tags,
-                type: sanitized.type,
-                status: sanitized.status,
+                imageUrl: storedCover,
+                coverImage: storedCover,
+                coverUrl: storedCover,
+                thumbnailUrl: storedThumbnail,
+                ogImage: storedThumbnail,
                 updatedAt: serverTimestamp()
             };
 
-            if (shouldPersistCover) {
-                updatePayload.imageUrl = storedCover;
-                updatePayload.coverImage = storedCover;
-                updatePayload.coverUrl = storedCover;
-            }
-            if (articleThumbnailChanged || /^data:/i.test(effectiveThumb)) {
-                updatePayload.thumbnailUrl = storedThumbnail;
-                updatePayload.ogImage = storedThumbnail;
-            }
-
             await updateDoc(articleRef, updatePayload);
+            const localIndex = currentArticlesList.findIndex(article => article.id === editingArticleId);
+            const previousRecord = localIndex === -1 ? { id: editingArticleId, __adminCollection: "articles" } : currentArticlesList[localIndex];
+            const updatedRecord = {
+                ...previousRecord,
+                ...updatePayload,
+                id: editingArticleId,
+                __adminCollection: "articles",
+                updatedAt: new Date()
+            };
+            if (localIndex === -1) currentArticlesList.unshift(updatedRecord);
+            else currentArticlesList[localIndex] = updatedRecord;
+            articleStatusFilter = contentStatus;
+            syncContentStatusFilters("[data-article-status-filter]", "articleStatusFilter", articleStatusFilter);
+            refreshAdminListsAfterSave();
             showGlobalStatus(contentStatus === "draft"
                 ? "ലേഖനത്തിലെ മാറ്റങ്ങൾ ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു."
                 : "ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! ✨", "success");
             exitEditMode();
-            articleStatusFilter = contentStatus;
-            syncContentStatusFilters("[data-article-status-filter]", "articleStatusFilter", articleStatusFilter);
             switchAdminTab("published");
         } else {
             // CREATE NEW ARTICLE IN FIRESTORE
@@ -2034,7 +2031,7 @@ async function handleSaveBookStep1(e) {
         if (existing) {
             await updateDoc(getBookDocumentRef(existing), payload);
             savedDocId = existing.id;
-            Object.assign(existing, payload);
+            Object.assign(existing, payload, { updatedAt: new Date() });
             showGlobalStatus(contentStatus === "draft"
                 ? `📚 '${name}' ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു.`
                 : `✨ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
@@ -2044,7 +2041,7 @@ async function handleSaveBookStep1(e) {
                 createdAt: serverTimestamp()
             });
             savedDocId = targetBookId;
-            currentArticlesList.unshift({ id: savedDocId, ...payload });
+            currentArticlesList.unshift({ id: savedDocId, __adminCollection: "articles", ...payload, updatedAt: new Date() });
             showGlobalStatus(contentStatus === "draft"
                 ? `📚 പുതിയ പുസ്തകം '${name}' ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു.`
                 : `📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
@@ -2085,6 +2082,18 @@ async function handleSaveBookStep1(e) {
             throw bkErr;
         }
 
+        if (existing) {
+            const existingIndex = currentArticlesList.findIndex(article => article.id === savedDocId);
+            if (existingIndex === -1) {
+                currentArticlesList.unshift({
+                    ...existing,
+                    id: savedDocId,
+                    __adminCollection: getBookDocumentCollection(existing),
+                    updatedAt: new Date()
+                });
+            }
+        }
+
         // Update author & name on active book session
         activeBookName = name;
         activeBookAuthor = author;
@@ -2095,6 +2104,7 @@ async function handleSaveBookStep1(e) {
         updateBooksCounter(allBooks.length);
         updateActiveBookOverview(currentArticlesList);
         renderAdminBooksTab(currentArticlesList);
+        renderAdminPublishedList(currentArticlesList);
         selectActiveBook(name);
 
         // Instantly reveal and scroll smoothly to Step 2
@@ -2785,9 +2795,16 @@ function initChapterWriter() {
                     updatedAt: serverTimestamp()
                 });
 
-                const updatedArt = { id: editingChapterId, ...sanitized };
+                const updatedArt = {
+                    ...(currentArticlesList.find(article => article.id === editingChapterId) || {}),
+                    ...sanitized,
+                    id: editingChapterId,
+                    __adminCollection: "articles",
+                    updatedAt: new Date()
+                };
                 const cIndex = currentArticlesList.findIndex(a => a.id === editingChapterId);
                 if (cIndex !== -1) currentArticlesList[cIndex] = updatedArt;
+                else currentArticlesList.unshift(updatedArt);
 
                 activeBookChapters = filterAndSortChapters(targetBookDoc, currentArticlesList);
                 renderBookChaptersReorderList(activeBookChapters);
