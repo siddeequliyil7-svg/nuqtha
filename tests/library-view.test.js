@@ -42,7 +42,7 @@ assert.ok(libJs.includes('type: "BOOK"') && libJs.includes("isBook: true"), "lib
 assert.ok(libJs.includes('MAX_BOOKS = 6'), "library.js must limit to MAX_BOOKS = 6");
 assert.ok(libJs.includes('MAX_PAPERS = 5'), "library.js must limit to MAX_PAPERS = 5");
 assert.ok(libJs.includes('sessionStorage.getItem(CACHE_KEY)'), "library.js must cache data in sessionStorage");
-assert.ok(libJs.includes('nuqtha:library:v4'), "library.js must version cached book routes and article metadata");
+assert.ok(libJs.includes('nuqtha:library:v5'), "library.js must version cached book routes and article metadata");
 assert.ok(libJs.includes('navigator.deviceMemory') && libJs.includes('navigator.hardwareConcurrency'), "library.js must check deviceMemory and hardwareConcurrency for low-end device optimization");
 assert.ok(libJs.includes('esc ='), "library.js must escape all Firestore text via esc()");
 assert.ok(libJs.includes('from "./firebase-config.js"'), "library.js must import db from ./firebase-config.js");

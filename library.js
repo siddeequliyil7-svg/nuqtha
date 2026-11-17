@@ -1,12 +1,12 @@
 // library.js (loaded lazily: only when the visitor opens the Library view)
 import { fetchPublicCollections } from "./js/public-image-loader.js";
 import { getArticleImageUrl, getStoryUrl } from "./schema-validator.js";
-import { prefetchBookPage } from "./js/book-data.js";
+import { filterAndSortChapters, prefetchBookPage, saveBookChapterListCache } from "./js/book-data.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
 
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
-const CACHE_KEY = "nuqtha:library:v4", CACHE_MS = 5 * 60 * 1000;
+const CACHE_KEY = "nuqtha:library:v5", CACHE_MS = 5 * 60 * 1000;
 let pendingLibraryDestination = "";
 
 window.addEventListener("nuqtha_auth_changed", (event) => {
@@ -60,6 +60,10 @@ async function loadData() {
   const { books: allBooks, articles: allArticles } = await fetchPublicCollections();
   const visibleBooks = allBooks.filter((book) => book.visible === true);
   const articleRecords = allArticles;
+  visibleBooks.forEach((book) => {
+    const slug = book.slug || book.bookSlug || book.id;
+    if (slug) saveBookChapterListCache(slug, filterAndSortChapters(book, articleRecords));
+  });
   let books = visibleBooks
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, MAX_BOOKS)
       .map((b) => {

@@ -326,6 +326,7 @@ export function countBookChapters(bookDoc, allArticles) {
  * @param {object} [options.db] - Optional Firestore instance
  * @param {number} [options.timeoutMs=10000] - Timeout in milliseconds (default 10s)
  * @param {Array}  [options.articlesPool] - Pre-fetched array of articles if available
+ * @param {boolean} [options.skipBookFetch] - Avoid rereading a complete book document supplied in the pool
  * @returns {Promise<{ book: object, chapters: Array<object> }>}
  */
 export async function getBookChapters(bookId, options = {}) {
@@ -385,8 +386,7 @@ export async function getBookChapters(bookId, options = {}) {
                 return runQueryRes.json();
             }));
 
-        // Fetch or complete the book document while the chapter query runs.
-        if (!bookDoc || !Array.isArray(bookDoc.chapters) || bookDoc.chapters.length === 0) {
+        if (!bookDoc || (!options.skipBookFetch && !hasEmbeddedChapterList)) {
             try {
                 const apiKey = getFirebaseApiKey();
                 // 1. Try books collection first

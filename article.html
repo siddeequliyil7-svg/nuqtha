@@ -984,8 +984,8 @@
                         </div>
                     </div>
                 </article>
-                <section class="book-light-chapter-skeleton" aria-label="Loading chapters" aria-busy="true">
-                    <div class="book-light-skeleton-title"></div>
+                <section class="book-light-chapter-list" aria-label="Book chapters" aria-busy="${chapterRows ? "false" : "true"}">
+                    <div class="book-light-chapter-heading">പുസ്തകത്തിലെ അധ്യായങ്ങൾ</div>
                     ${chapterRows || '<div class="book-light-skeleton-row"></div><div class="book-light-skeleton-row"></div>'}
                 </section>`;
         }
@@ -1617,6 +1617,8 @@
                 let currentDoc = null;
                 let allArticles = [];
                 let earlyBookChaptersPromise = null;
+                let earlyBookRenderPromise = null;
+                let earlyBookRendered = false;
 
                 const lookupId = articleId || targetIdentifier;
                 const targetDocPromise = lookupId
@@ -1632,7 +1634,11 @@
 
                 if (currentDoc && ((currentDoc.type || "").toUpperCase() === "BOOK" || currentDoc.isBook === true)) {
                     earlyBookChaptersPromise = Promise.allSettled([
-                        getBookChapters(currentDoc.id, { articlesPool: [currentDoc], timeoutMs: 8000 })
+                        getBookChapters(currentDoc.id, {
+                            articlesPool: [currentDoc],
+                            timeoutMs: 8000,
+                            skipBookFetch: true
+                        })
                     ]);
                     const provisionalCover = getArticleImageUrl(currentDoc, "");
                     const lightBook = {
@@ -1641,6 +1647,10 @@
                         author: currentDoc.author || "",
                         date: typeof currentDoc.date === "string" ? currentDoc.date : (currentDoc.date ? formatDateSafe(currentDoc.date) : ""),
                         coverUrl: typeof provisionalCover === "string" && !/^data:/i.test(provisionalCover) ? provisionalCover : "",
+                        _imageCollection: currentDoc._imageCollection || "",
+                        _imageDocId: currentDoc._imageDocId || "",
+                        _imageFallbackCollection: currentDoc._imageFallbackCollection || "",
+                        _imageFallbackDocId: currentDoc._imageFallbackDocId || "",
                         intro: currentDoc.introduction || currentDoc.intro || currentDoc.excerpt || "",
                         chapterCount: 0
                     };
@@ -1651,6 +1661,29 @@
                         renderBookLightCache(lightBook, bookContainerEl);
                     }
                     if (lightBook.coverUrl) preloadCoverImage(lightBook.coverUrl);
+
+                    earlyBookRenderPromise = earlyBookChaptersPromise.then(async ([earlyResult]) => {
+                        if (earlyResult.status !== "fulfilled") return null;
+                        const chapters = (Array.isArray(earlyResult.value)
+                            ? earlyResult.value
+                            : (earlyResult.value?.chapters || [])).filter(isPubliclyPublished);
+                        if (chapters.length && bookContainerEl) {
+                            saveBookPageLightCache({
+                                ...currentDoc,
+                                slug: pathBookSlug || currentDoc.slug || currentDoc.bookSlug
+                            }, chapters.length);
+                            saveBookChapterListCache(
+                                pathBookSlug || currentDoc.slug || currentDoc.bookSlug || currentDoc.id,
+                                chapters
+                            );
+                            await renderBookIndex(currentDoc, bookContainerEl, chapters);
+                            earlyBookRendered = true;
+                        }
+                        return chapters;
+                    }).catch(error => {
+                        console.warn("[Reader] Early book chapter rendering failed.", error);
+                        return null;
+                    });
                 }
 
                 const [allArticlesResult] = await Promise.allSettled([allArticlesPromise]);
@@ -1837,19 +1870,15 @@
 
                     let bookChapters = [];
                     try {
-                        let fetched;
-                        if (earlyBookChaptersPromise) {
-                            const [earlyResult] = await earlyBookChaptersPromise;
-                            if (earlyResult.status === "rejected") throw earlyResult.reason;
-                            fetched = earlyResult.value;
+                        if (earlyBookRenderPromise) {
+                            bookChapters = await earlyBookRenderPromise || [];
                         } else {
-                            fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                            const fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                            bookChapters = (Array.isArray(fetched) ? fetched : (fetched?.chapters || []))
+                                .filter(isPubliclyPublished);
                         }
-                        bookChapters = (Array.isArray(fetched) ? fetched : (fetched?.chapters || []))
-                            .filter(isPubliclyPublished);
                     } catch (chErr) {
                         console.warn("[Reader] Dynamic chapter resolution fallback:", chErr);
-                        bookChapters = filterAndSortChapters(currentDoc, allArticles);
                     }
 
                     if (!bookChapters || bookChapters.length === 0) {
@@ -1861,7 +1890,7 @@
                         slug: pathBookSlug || currentDoc.slug || currentDoc.bookSlug
                     }, bookChapters.length);
                     saveBookChapterListCache(pathBookSlug || currentDoc.slug || currentDoc.bookSlug || currentDoc.id, bookChapters);
-                    await renderBookIndex(currentDoc, bookContainerEl, bookChapters);
+                    if (!earlyBookRendered) await renderBookIndex(currentDoc, bookContainerEl, bookChapters);
                     renderRelatedBooks(currentDoc, allArticles);
                     initComments(currentDoc.id);
 
@@ -1950,7 +1979,7 @@
         };
 
         // ═══════════ POLISHED MOBILE-FIRST BOOK EDITION VIEW ═══════════
-        async function renderBookIndex(book, container, attachedArticles = []) {
+        async function renderBookIndex(book, container, attachedArticles = [], verifiedUnlocked) {
             if (!book || !container || !isPubliclyPublished(book)) return;
             attachedArticles = filterAndSortChapters(book, Array.isArray(attachedArticles) ? attachedArticles : [])
                 .filter(isPubliclyPublished);
@@ -2003,7 +2032,13 @@
             const isFree = !isPremium || price === 0;
 
             // Access & Unlock Verification (checks Admin, Login state, App Install for Free books, and Purchases for Paid books)
-            const isUnlocked = await isUserUnlockedForBook(book);
+            const accessCheck = typeof verifiedUnlocked === "boolean"
+                ? null
+                : isUserUnlockedForBook(book).catch(error => {
+                    console.warn("[Reader] Book access verification failed.", error);
+                    return false;
+                });
+            const isUnlocked = verifiedUnlocked === true;
             const isLocked = !isUnlocked;
             const platform = getDevicePlatform();
             const isAndroid = platform === "android";
@@ -2143,7 +2178,7 @@
                         </div>
 
                         <!-- Sequential Chapter Feed -->
-                        <div id="book-articles-list" class="space-y-3"></div>
+                        <div id="book-articles-list" class="flex flex-col w-full min-w-0 gap-3"></div>
 
                         <!-- Load More Button Container -->
                         <div id="book-load-more-container" class="pt-3 text-center hidden">
@@ -2163,7 +2198,7 @@
                         showPaywallModal({
                             book,
                             onUnlocked: () => {
-                                renderBookIndex(book, container, attachedArticles);
+                                renderBookIndex(book, container, attachedArticles, true);
                             }
                         });
                     });
@@ -2182,6 +2217,15 @@
             try {
                 trackReadingActivity(book);
             } catch (_) {}
+
+            if (accessCheck) {
+                accessCheck.then(unlocked => {
+                    if (unlocked && container.isConnected) {
+                        renderBookIndex(book, container, attachedArticles, true)
+                            .catch(error => console.warn("[Reader] Could not update unlocked book access.", error));
+                    }
+                });
+            }
         }
 
         // ═══════════ MOBILE STICKY CONTINUE BAR ═══════════
@@ -2279,7 +2323,7 @@
                 }
 
                 return `
-                <a href="${targetUrl}" data-chapter-index="${idx}" data-article-id="${art.id}" data-locked="${isLocked ? 'true' : 'false'}" class="chapter-card-link group flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isLocked ? 'cursor-pointer' : ''}">
+                <a href="${targetUrl}" data-chapter-index="${idx}" data-article-id="${art.id}" data-locked="${isLocked ? 'true' : 'false'}" class="chapter-card-link group flex w-full min-w-0 flex-col items-stretch gap-3.5 p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#151722]/90 hover:bg-[#fff9f2] dark:hover:bg-[#1a1c28] border border-[var(--border)] dark:border-white/10 hover:border-[#b4532c]/50 dark:hover:border-[#f87171]/50 shadow-2xs hover:shadow-md transition-all duration-300 touch-target-44 ${isLocked ? 'cursor-pointer' : ''}">
                     <!-- Thumbnail with Fixed Aspect Ratio -->
                     ${chapterImg || getDeferredImageAttributes(art) ? `
                         <div class="chapter-thumbnail">
@@ -2291,7 +2335,7 @@
                             <span aria-hidden="true">${isLocked ? '🔒' : '📄'}</span>
                         </div>
                     `}
-                    <div class="flex-1 min-w-0 space-y-1.5">
+                    <div class="w-full min-w-0 space-y-1.5 break-words">
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="text-[9px] font-black uppercase text-[#b4532c] dark:text-[#f87171] font-english bg-[#b4532c]/10 dark:bg-[#f87171]/15 px-2 py-0.5 rounded-md">
                                 അധ്യായം ${idx + 1}
@@ -2308,7 +2352,7 @@
                         ` : ""}
                         ${art.transcription ? `<p class="text-[10px] text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${art.transcription}</p>` : ""}
                     </div>
-                    <div class="flex items-center pr-2 text-[#b4532c] dark:text-[#f87171]">
+                    <div class="flex w-full items-center justify-end text-[#b4532c] dark:text-[#f87171]">
                         ${isLocked ? `
                             <span class="chapter-lock-icon" aria-label="Locked chapter" title="Locked chapter">🔒</span>
                         ` : `

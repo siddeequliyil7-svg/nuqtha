@@ -4048,6 +4048,10 @@ html.dark {
 .book-unlock-button:hover { filter: brightness(.92); }
 
 .chapter-card-link { color: var(--book-hero-text); }
+.chapter-card-link .chapter-thumbnail {
+    flex: 0 0 auto;
+    width: min(100%, 240px);
+}
 .chapter-thumbnail {
     position: relative;
     flex: 0 0 185px;
@@ -4078,6 +4082,19 @@ html.dark {
     .chapter-thumbnail { flex-basis: auto; width: 100%; max-width: none; }
 }
 .book-light-chapter-skeleton { display: grid; gap: 12px; margin-top: 20px; }
+.book-light-chapter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+    margin-top: 20px;
+}
+.book-light-chapter-heading {
+    color: var(--book-hero-text);
+    font-size: .95rem;
+    font-weight: 800;
+}
 .book-light-skeleton-title,
 .book-light-skeleton-row {
     border: 1px solid var(--book-hero-border);
@@ -4091,12 +4108,15 @@ html.dark {
 .book-light-chapter-row {
     display: flex;
     align-items: center;
+    width: 100%;
+    min-width: 0;
     gap: 14px;
     padding: 12px;
     border: 1px solid var(--book-hero-border);
     border-radius: 16px;
     background: var(--book-hero-surface);
 }
+.book-light-chapter-row > div:last-child { flex: 1 1 auto; min-width: 0; }
 .book-light-chapter-row h4 { margin: 4px 0; color: var(--book-hero-text); font-size: .95rem; font-weight: 800; }
 .book-light-chapter-number { color: var(--book-hero-accent); font-size: .68rem; font-weight: 800; }
 @media (max-width: 767px) {

@@ -1,5 +1,5 @@
 import { getBookArticleLinkFields, getBookChapters, getBookChapterIds, mergeBookRecords } from "../book-data.js";
-import { filterAndSortChapters, getBookPageLightData, getRelatedBooks, isArticleInBook } from "../js/book-data.js";
+import { filterAndSortChapters, getBookChapters as fetchBookChapters, getBookPageLightData, getRelatedBooks, isArticleInBook } from "../js/book-data.js";
 
 const { describe, it } = window;
 const { expect } = window.chai;
@@ -90,6 +90,27 @@ describe("Book chapter relationships", () => {
         expect(lightData.coverUrl).to.equal(coverUrl);
         expect(lightData._imageCollection).to.equal("books");
         expect(lightData._imageDocId).to.equal("book-1");
+    });
+
+    it("skips the redundant book-document request when book metadata is supplied", async () => {
+        const originalFetch = window.fetch;
+        const requests = [];
+        window.fetch = async url => {
+            requests.push(String(url));
+            return { ok: true, status: 200, json: async () => [] };
+        };
+
+        try {
+            const result = await fetchBookChapters("book-1", {
+                articlesPool: [{ id: "book-1", title: "Book", type: "BOOK" }],
+                skipBookFetch: true
+            });
+            expect(result.chapters).to.deep.equal([]);
+            expect(requests).to.have.length(2);
+            expect(requests.every(url => url.includes(":runQuery"))).to.equal(true);
+        } finally {
+            window.fetch = originalFetch;
+        }
     });
 
     it("excludes the current book and deduplicates related book records by ID, slug, or title", () => {
