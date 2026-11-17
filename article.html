@@ -63,7 +63,7 @@
         .reading-column,
         #art-content,
         .article-body {
-            max-width: 100% !important;
+            max-width: 760px !important;
             margin-left: auto !important;
             margin-right: auto !important;
             text-align: left !important;
@@ -73,19 +73,19 @@
         }
         #article-content {
             width: 100%;
-            max-width: 900px;
-            margin: 1.75rem auto;
-            padding: 2rem clamp(1.25rem, 3vw, 2.25rem);
-            border: 1px solid var(--border);
-            border-radius: 1.5rem;
-            background: var(--reading-bg, var(--surface));
-            box-shadow: 0 12px 36px -24px rgba(48, 34, 20, 0.35);
+            max-width: 760px;
+            margin: 1.5rem auto;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
         }
         .article-body p,
         #art-content p,
         .reading-p {
-            margin: 0.85em 0 !important;
-            line-height: 1.75 !important;
+            margin: 0 0 1.15em !important;
+            line-height: 1.8 !important;
             font-size: var(--article-font-size, 18px);
             color: var(--text, #1e1b18);
             font-family: 'Anek Malayalam', sans-serif !important;
@@ -129,8 +129,7 @@
         }
 
         @media (max-width: 640px) {
-            #standard-article-view,
-            #article-content {
+            #standard-article-view {
                 padding-left: 16px;
                 padding-right: 16px;
                 overflow-x: hidden;
@@ -139,9 +138,6 @@
             #article-content {
                 margin-top: 1rem;
                 margin-bottom: 1rem;
-                padding-top: 1.25rem;
-                padding-bottom: 1.25rem;
-                border-radius: 1.125rem;
             }
 
             #art-share-bar {
@@ -477,7 +473,7 @@
 
             <!-- Full Article Body -->
             <div id="article-content">
-                <div id="art-content" class="article-body font-sans text-lg pt-1.5 sm:pt-4 leading-relaxed"></div>
+                <div id="art-content" class="article-body"></div>
             </div>
 
             <!-- Chapter Prev / Next Navigation Row for Book Chapters -->
@@ -2618,7 +2614,7 @@
             try {
                 savedUserFontSize = localStorage.getItem("nuqtha_reader_size_v2") || sessionStorage.getItem("nuqtha_reader_size_v2");
             } catch (_) {}
-            const defaultSize = 18;
+            const defaultSize = window.matchMedia("(max-width: 640px)").matches ? 16 : 18;
             let currentReaderSize = savedUserFontSize ? parseInt(savedUserFontSize, 10) : defaultSize;
             if (isNaN(currentReaderSize) || currentReaderSize < 15 || currentReaderSize > 26) {
                 currentReaderSize = defaultSize;
@@ -3285,7 +3281,7 @@
             const incBtns = document.querySelectorAll(".font-increase-btn, #font-increase-btn");
             const contentEl = document.getElementById("art-content");
 
-            const defaultSize = 18;
+            const defaultSize = window.matchMedia("(max-width: 640px)").matches ? 16 : 18;
             let saved = null;
             try {
                 saved = localStorage.getItem("nuqtha_reader_size_v2") || sessionStorage.getItem("nuqtha_reader_size_v2");

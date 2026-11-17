@@ -4073,6 +4073,10 @@ html.dark {
     :root {
         --article-font-size: 16px;
     }
+
+    #article-content {
+        --article-font-size: 16px;
+    }
 }
 
 #article-content,
@@ -4096,7 +4100,20 @@ html.dark {
 }
 
 #article-content {
-    max-width: 900px !important;
+    width: 100%;
+    max-width: 760px !important;
+    --article-font-size: 18px;
+    box-sizing: border-box;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+#article-content #art-content {
+    max-width: 760px !important;
+    background: transparent;
 }
 
 /* 2. Professional Typography & Malayalam Support */
@@ -4113,6 +4130,32 @@ html.dark {
     line-height: 1.75 !important;
     letter-spacing: 0;
     text-align: left !important;
+}
+
+.article-body p,
+#article-content #art-content p {
+    margin: 0 0 1.15em !important;
+    line-height: 1.8 !important;
+}
+
+#article-content .article-h2 {
+    margin: 1.65em 0 0.55em !important;
+    padding: 0;
+    border: 0;
+    font-size: 1.35rem;
+    font-weight: 700 !important;
+    line-height: 1.4;
+}
+
+#article-content .article-h3 {
+    margin: 1.35em 0 0.45em !important;
+    font-size: 1.15rem;
+    font-weight: 700 !important;
+    line-height: 1.4;
+}
+
+#article-content .article-body > :last-child {
+    margin-bottom: 0 !important;
 }
 
 /* 3. Dark Mode Contrast (WCAG AA 11.5:1 ratio) */
@@ -4178,11 +4221,15 @@ body.dark-mode #art-content strong {
 /* Mobile Side Padding & Overflow Control */
 @media (max-width: 640px) {
     #standard-article-view,
-    #article-content,
     .reading-column {
         padding-left: 16px;
         padding-right: 16px;
         overflow-x: hidden;
+    }
+
+    #article-content {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
     }
 }
 
