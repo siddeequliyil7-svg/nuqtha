@@ -644,7 +644,8 @@
         import { filterPublicCollections, isPubliclyPublished } from "/js/public-status.js";
         import { trackReadingActivity } from "/js/analytics-tracker.js";
         import { getDeferredImageAttributes, installLazyFirestoreImages } from "/js/public-image-loader.js";
-        import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, triggerRazorpayPayment, renderAndroidAppBanner, getDevicePlatform } from "/js/paywall-service.js";
+        import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, getDevicePlatform } from "/js/paywall-service.js";
+        import { isPremiumBook, showPremiumBookUnavailableModal } from "/js/book-notice.js";
 
         void syncReadingBg();
         installLazyFirestoreImages();
@@ -961,6 +962,7 @@
                 <article class="book-v2-hero book-light-cache" aria-labelledby="book-hero-title">
                     <div class="book-v2-topline">
                         <div class="book-v2-eyebrow"><span>പുസ്തകം</span><span aria-hidden="true">&middot;</span><span translate="no">BOOK</span></div>
+                        ${isPremiumBook(lightData) ? "" : `<a id="book-download-app-btn" href="#" data-apk-link-placeholder="true" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition shadow-2xs touch-target-44" aria-label="Download App"><span>Download App</span></a>`}
                     </div>
                     <div class="book-v2-layout">
                         <div class="book-v2-cover-stage">
@@ -988,6 +990,9 @@
                     <div class="book-light-chapter-heading">പുസ്തകത്തിലെ അധ്യായങ്ങൾ</div>
                     ${chapterRows || '<div class="book-light-skeleton-row"></div><div class="book-light-skeleton-row"></div>'}
                 </section>`;
+            container.querySelector("#book-download-app-btn")?.addEventListener("click", event => {
+                event.preventDefault();
+            });
         }
 
         // Helper to determine if an entity is a Book (or a book chapter)
@@ -1522,7 +1527,7 @@
             const cacheKey = articleId || targetIdentifier;
             if (isBookRoute && pathBookSlug) {
                 try {
-                    const lightCacheText = sessionStorage.getItem(`nuqtha_cache_book_${pathBookSlug}_v4`);
+                    const lightCacheText = sessionStorage.getItem(`nuqtha_cache_book_${pathBookSlug}_v5`);
                     const parsedLightCache = lightCacheText ? JSON.parse(lightCacheText) : null;
                     if (parsedLightCache && parsedLightCache.slug === pathBookSlug &&
                         isPubliclyPublished(parsedLightCache) && !/^data:/i.test(parsedLightCache.coverUrl || "")) {
@@ -1555,6 +1560,11 @@
                         author: cachedLightBook.author,
                         date: cachedLightBook.date,
                         status: cachedLightBook.status,
+                        type: cachedLightBook.type,
+                        bookType: cachedLightBook.bookType,
+                        category: cachedLightBook.category,
+                        isPremium: cachedLightBook.isPremium,
+                        price: cachedLightBook.price,
                         imageUrl: cachedLightBook.coverUrl,
                         _imageCollection: cachedLightBook._imageCollection,
                         _imageDocId: cachedLightBook._imageDocId,
@@ -1646,6 +1656,11 @@
                         title: currentDoc.title || "",
                         author: currentDoc.author || "",
                         date: typeof currentDoc.date === "string" ? currentDoc.date : (currentDoc.date ? formatDateSafe(currentDoc.date) : ""),
+                        type: currentDoc.type || "",
+                        bookType: currentDoc.bookType || "",
+                        category: currentDoc.category || "",
+                        isPremium: currentDoc.isPremium === true,
+                        price: currentDoc.price,
                         coverUrl: typeof provisionalCover === "string" && !/^data:/i.test(provisionalCover) ? provisionalCover : "",
                         _imageCollection: currentDoc._imageCollection || "",
                         _imageDocId: currentDoc._imageDocId || "",
@@ -2018,14 +2033,7 @@
             const authorId = (cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
             const authorUrl = `author.html?id=${encodeURIComponent(authorId)}&name=${encodeURIComponent(cleanAuthor)}`;
 
-            const isPremium = Boolean(
-                book && (
-                    book.isPremium === true ||
-                    book.category === 'Premium Book' ||
-                    (typeof book.category === 'string' && book.category.toLowerCase().includes('premium')) ||
-                    (Array.isArray(book.tags) && book.tags.some(t => String(t).toLowerCase().includes('premium')))
-                )
-            );
+            const isPremium = isPremiumBook(book);
 
             const rawPrice = Number(book.price);
             const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
@@ -2040,10 +2048,6 @@
                 });
             const isUnlocked = verifiedUnlocked === true;
             const isLocked = !isUnlocked;
-            const platform = getDevicePlatform();
-            const isAndroid = platform === "android";
-            const apkUrl = book.apkUrl || "/nuqtha.apk";
-
             // Bookmark status
             const savedBookIds = getSavedBookIds();
             const isBookmarked = savedBookIds.includes(book.id);
@@ -2058,6 +2062,12 @@
                         </a>
 
                         <div class="flex items-center gap-2">
+                            ${isFree ? `
+                                <a id="book-download-app-btn" href="#" data-apk-link-placeholder="true" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition shadow-2xs touch-target-44" aria-label="Download App">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2Zm7-18-5 5h3v7h4V7h3l-5-5Z"/></svg>
+                                    <span>Download App</span>
+                                </a>
+                            ` : ""}
                             <button id="book-bookmark-btn" onclick="toggleBookBookmark()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-[#151724] border border-[var(--border)] dark:border-white/10 font-bold text-slate-700 dark:text-slate-200 hover:text-[#b4532c] dark:hover:text-[#f87171] transition shadow-2xs cursor-pointer touch-target-44" aria-label="${isBookmarked ? 'Remove bookmark' : 'Bookmark this book'}">
                                 <svg id="bookmark-icon" class="w-4 h-4 text-amber-500" fill="${isBookmarked ? '#f59e0b' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
                                 <span id="bookmark-text">${isBookmarked ? 'Saved' : 'Save'}</span>
@@ -2190,6 +2200,10 @@
                 </div>
             `;
 
+            container.querySelector("#book-download-app-btn")?.addEventListener("click", event => {
+                event.preventDefault();
+            });
+
             // Wire Hero Unlock button if locked
             if (isLocked) {
                 const heroUnlockBtn = container.querySelector("#hero-unlock-btn");
@@ -2203,11 +2217,6 @@
                         });
                     });
                 }
-            } else if (!isPremium && isAndroid) {
-                // Subtle non-intrusive App Banner for Android users on Free Books
-                setTimeout(() => {
-                    renderAndroidAppBanner(document.getElementById("edition-articles-section"), apkUrl);
-                }, 50);
             }
 
             // Render chapters with lock state
@@ -2493,7 +2502,7 @@
 
             let isChapterLocked = false;
             if (parentBook) {
-                const parentIsPremium = Boolean(parentBook.isPremium === true || parentBook.category === "Premium Book" || (typeof parentBook.category === "string" && parentBook.category.toLowerCase().includes("premium")));
+                const parentIsPremium = isPremiumBook(parentBook);
                 if (parentIsPremium) {
                     const purchased = await isBookPurchased(parentBook.id);
                     if (!purchased) {
@@ -2812,14 +2821,7 @@
 
                 const inlinePayBtn = contentEl.querySelector("#inline-pay-btn");
                 if (inlinePayBtn) {
-                    inlinePayBtn.addEventListener("click", () => {
-                        triggerRazorpayPayment({
-                            book: parentBook,
-                            onSuccess: () => {
-                                renderArticle(article, allArticles);
-                            }
-                        });
-                    });
+                    inlinePayBtn.addEventListener("click", showPremiumBookUnavailableModal);
                 }
                 return;
             }

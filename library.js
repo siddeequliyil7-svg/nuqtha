@@ -1,6 +1,9 @@
 // library.js (loaded lazily: only when the visitor opens the Library view)
 import { fetchPublicCollections } from "./js/public-image-loader.js";
 import { getArticleImageUrl, getStoryUrl } from "./schema-validator.js";
+import { getCachedAuthUser, checkIsAdminUser } from "./js/auth-system.js";
+import { openAuthModal } from "./js/auth-ui.js";
+import { isPremiumBook, showPremiumBookUnavailableModal } from "./js/book-notice.js";
 import { filterAndSortChapters, prefetchBookPage, saveBookChapterListCache } from "./js/book-data.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
@@ -76,6 +79,13 @@ async function loadData() {
           color: b.color,
           description: b.description,
           introduction: b.introduction || b.description,
+          category: b.category || "",
+          type: b.type || "BOOK",
+          isBook: true,
+          isPremium: b.isPremium === true,
+          bookType: b.bookType || "",
+          price: b.price,
+          tags: b.tags || [],
           imageUrl: getArticleImageUrl(b, ""),
           _imageCollection: b._imageCollection || "",
           _imageDocId: b._imageDocId || "",
@@ -231,7 +241,16 @@ function openLibraryItem(item) {
     console.error("[Library] Refusing to navigate to an external item URL.", destination.href);
     return;
   }
-  if (getCachedAuthUser()) {
+  const activeUser = getCachedAuthUser();
+  const isAdmin = activeUser && (
+    checkIsAdminUser(activeUser) ||
+    (activeUser.email || "").toLowerCase().trim() === "sayyidsalman314@gmail.com"
+  );
+  if (item?.isBook === true && isPremiumBook(item) && !isAdmin) {
+    showPremiumBookUnavailableModal();
+    return;
+  }
+  if (activeUser) {
     window.location.assign(destination.href);
     return;
   }

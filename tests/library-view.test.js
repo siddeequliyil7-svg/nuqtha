@@ -31,14 +31,16 @@ console.log("Test 2: Verifying library.js logic, caching, and low-end phone opti
 const libJs = fs.readFileSync("nuqtha/library.js", "utf8");
 
 assert.ok(libJs.includes("export async function mountLibrary"), "library.js must export mountLibrary");
-assert.ok(libJs.includes('import { getCachedAuthUser } from "./js/auth-system.js"'), "library item navigation must check authentication");
+assert.ok(libJs.includes('import { getCachedAuthUser, checkIsAdminUser } from "./js/auth-system.js"'), "library item navigation must check authentication and preserve admin access");
 assert.ok(libJs.includes('import { openAuthModal } from "./js/auth-ui.js"'), "library item navigation must use the existing login modal");
+assert.ok(libJs.includes('import { isPremiumBook, showPremiumBookUnavailableModal } from "./js/book-notice.js"'), "premium books must show the unavailable notice without opening login or checkout");
 assert.ok(libJs.includes('window.addEventListener("nuqtha_auth_changed"'), "library item navigation must resume after successful sign-in");
 assert.ok(libJs.includes('window.addEventListener("nuqtha:auth-modal-closed"'), "library item navigation must clear abandoned login requests");
 assert.ok(libJs.includes("openLibraryItem(b)"), "book clicks must open the book's actual destination");
+assert.ok(libJs.includes("item?.isBook === true && isPremiumBook(item)"), "paid shelf books must show the unavailable notice before navigation");
 assert.ok(libJs.includes('p.addEventListener("click", () => openLibraryItem(a))'), "article clicks must open the article's actual destination");
 assert.ok(libJs.includes('window.location.assign(destination.href)'), "authenticated library item clicks must navigate to their actual page");
-assert.ok(libJs.includes('type: "BOOK"') && libJs.includes("isBook: true"), "library book records must retain book routing and paywall semantics");
+assert.ok(libJs.includes('type: b.type || "BOOK"') && libJs.includes("isBook: true"), "library book records must retain book routing and paywall semantics");
 assert.ok(libJs.includes('MAX_BOOKS = 6'), "library.js must limit to MAX_BOOKS = 6");
 assert.ok(libJs.includes('MAX_PAPERS = 5'), "library.js must limit to MAX_PAPERS = 5");
 assert.ok(libJs.includes('sessionStorage.getItem(CACHE_KEY)'), "library.js must cache data in sessionStorage");

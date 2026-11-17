@@ -6,6 +6,7 @@
 
 import { fetchWithRetry, firebaseConfig, getFirebaseApiKey } from "../firebase-config.js";
 import { getArticleImageUrl } from "../schema-validator.js";
+import { isPremiumBook } from "./book-notice.js";
 import { isPubliclyPublished } from "./public-status.js";
 
 const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
@@ -31,6 +32,11 @@ export function getBookPageLightData(book, chapterCount = 0) {
         author: typeof book.author === "string" ? book.author : "",
         date: typeof book.date === "string" ? book.date : "",
         status: book.status,
+        type: typeof book.type === "string" ? book.type : "",
+        bookType: typeof book.bookType === "string" ? book.bookType : "",
+        category: typeof book.category === "string" ? book.category : "",
+        isPremium: isPremiumBook(book),
+        price: Number.isFinite(Number(book.price)) ? Number(book.price) : null,
         coverUrl: cover,
         _imageCollection: book._imageCollection || "",
         _imageDocId: book._imageDocId || "",
@@ -49,7 +55,7 @@ export function saveBookPageLightCache(book, chapterCount = 0) {
     try {
         const serialized = JSON.stringify(lightData);
         if (new Blob([serialized]).size >= 50 * 1024) return null;
-        sessionStorage.setItem(`nuqtha_cache_book_${lightData.slug}_v4`, serialized);
+        sessionStorage.setItem(`nuqtha_cache_book_${lightData.slug}_v5`, serialized);
         return lightData;
     } catch (error) {
         console.warn("[BookData] Could not save the lightweight book cache.", error);

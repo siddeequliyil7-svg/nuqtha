@@ -4071,6 +4071,43 @@ html.dark {
 .chapter-author { margin: 0; color: var(--book-hero-muted); font-size: .72rem; }
 .chapter-lock-icon { font-size: .85rem; }
 
+.book-unavailable-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    width: min(92vw, 480px);
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
+    padding: 24px;
+    overflow-y: auto;
+    border: 1px solid var(--border, #ebdccb);
+    border-radius: 24px;
+    background: var(--surface, #fff);
+    color: var(--text, #241711);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+}
+.book-unavailable-dialog::backdrop {
+    background: rgba(15, 23, 42, .62);
+    backdrop-filter: blur(4px);
+}
+.book-unavailable-dialog-title { margin: 0 0 12px; font-size: 1.15rem; font-weight: 800; }
+.book-unavailable-dialog-message { margin: 0; line-height: 1.65; overflow-wrap: anywhere; }
+.book-unavailable-dialog-close {
+    display: block;
+    min-width: 100px;
+    min-height: 44px;
+    margin: 20px 0 0 auto;
+    padding: 9px 18px;
+    border: 0;
+    border-radius: 999px;
+    background: #b4532c;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+}
+.book-unavailable-dialog-close:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
+
 @media (max-width: 767px) {
     .book-v2-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
     .book-v2-cover-stage { min-height: 300px; }

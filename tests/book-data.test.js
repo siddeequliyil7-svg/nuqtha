@@ -83,11 +83,17 @@ describe("Book chapter relationships", () => {
             id: "book-1",
             imageUrl: "/cover-placeholder.svg",
             coverImage: coverUrl,
+            category: "Premium Book",
+            price: "49",
+            isPremium: true,
             _imageCollection: "books",
             _imageDocId: "book-1"
         });
 
         expect(lightData.coverUrl).to.equal(coverUrl);
+        expect(lightData.category).to.equal("Premium Book");
+        expect(lightData.price).to.equal(49);
+        expect(lightData.isPremium).to.equal(true);
         expect(lightData._imageCollection).to.equal("books");
         expect(lightData._imageDocId).to.equal("book-1");
     });

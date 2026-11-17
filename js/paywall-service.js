@@ -11,6 +11,7 @@
 
 import { getCachedAuthUser, checkIsAdminUser, signInWithGoogle } from "./auth-system.js";
 import { openAuthModal } from "./auth-ui.js";
+import { isPremiumBook, showPremiumBookUnavailableModal } from "./book-notice.js";
 
 // Default APK download URL if not specifically configured on the book doc
 export const DEFAULT_APK_URL = "/nuqtha.apk";
@@ -136,11 +137,7 @@ export async function isUserUnlockedForBook(book) {
     const activeUser = getCachedAuthUser();
     if (isUserAdmin(activeUser)) return true;
 
-    const isPremium = Boolean(
-        book.isPremium === true ||
-        book.category === 'Premium Book' ||
-        (typeof book.category === 'string' && book.category.toLowerCase().includes('premium'))
-    );
+    const isPremium = isPremiumBook(book);
     const price = isPremium ? (Number(book.price) || 49) : 0;
     const isFree = !isPremium || price === 0;
 
@@ -361,11 +358,9 @@ export function triggerRazorpayPayment({ book, user, onSuccess, onFailure }) {
  * Displays the device-specific Paywall & App Installation Modal
  * 
  * Rules:
- * 1. User MUST be logged in for both Free and Paid books. If not logged in, prompt Login first.
- * 2. Admin (sayyidsalman314@gmail.com / admin role) bypasses all locks immediately.
- * 3. Free Books (price === 0 / isFree): Display price as '₹0 (Free)'. Prompt App installation with 3-step guide.
- *    Once APK is downloaded or user continues, free reading is fully unlocked.
- * 4. Paid Books (price > 0): Display actual price '₹[price]'. Provide App installation and Razorpay UPI checkout.
+ * 1. Admin (sayyidsalman314@gmail.com / admin role) bypasses all locks immediately.
+ * 2. Paid books show an availability notice until payment setup is ready.
+ * 3. Free books require login and app-install confirmation before reading.
  */
 export function showPaywallModal({ book, onUnlocked }) {
     if (!book) return;
@@ -375,6 +370,11 @@ export function showPaywallModal({ book, onUnlocked }) {
     if (isUserAdmin(activeUser)) {
         console.log(`[Paywall] Admin bypass granted for ${activeUser?.email || activeUser?.uid}`);
         if (typeof onUnlocked === "function") onUnlocked();
+        return;
+    }
+
+    if (isPremiumBook(book)) {
+        showPremiumBookUnavailableModal();
         return;
     }
 
@@ -395,11 +395,7 @@ export function showPaywallModal({ book, onUnlocked }) {
 
     const platform = getDevicePlatform();
     const isAndroid = platform === "android";
-    const isPremium = Boolean(
-        book.isPremium === true ||
-        book.category === 'Premium Book' ||
-        (typeof book.category === 'string' && book.category.toLowerCase().includes('premium'))
-    );
+    const isPremium = isPremiumBook(book);
     const rawPrice = Number(book.price);
     const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
     const isFree = !isPremium || price === 0;
