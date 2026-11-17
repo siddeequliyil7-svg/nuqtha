@@ -533,7 +533,7 @@ export function validateAndSanitizeArticleForSave(raw) {
     const bookName = sanitizeString(raw.bookName || raw.playlistName, 120, "");
     const bookId = sanitizeString(raw.bookId, 120, "");
     const hasOrder = raw.order !== undefined && raw.order !== null && raw.order !== "" && !isNaN(raw.order);
-    const order = hasOrder ? parseInt(raw.order, 10) : undefined;
+    const order = hasOrder ? parseInt(raw.order, 10) : priority;
     const volume = sanitizeString(raw.volume, 50, "");
     const issue = sanitizeString(raw.issue, 50, "");
     const leadTitle = sanitizeString(raw.leadTitle, 250, "");

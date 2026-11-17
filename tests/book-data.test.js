@@ -60,7 +60,8 @@ describe("Book chapter relationships", () => {
 
         expect(merged).to.have.length(3);
         expect(merged[0].title).to.equal("Article Book");
-        expect(merged[1]).to.include({
+        expect(merged[1].id).to.equal("article-by-slug");
+        expect(merged[2]).to.include({
             id: "book-2",
             type: "BOOK",
             isBook: true,

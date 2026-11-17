@@ -9,6 +9,7 @@ const IMAGE_DB_NAME = "nuqtha-image-cache";
 const IMAGE_DB_VERSION = 1;
 const IMAGE_STORE_NAME = "images";
 const activeObjectUrls = new Map();
+const imageSourcePromises = new Map();
 const queue = [];
 let activeRequests = 0;
 let imageDatabasePromise;
@@ -220,15 +221,36 @@ async function getObjectUrl(key, dataUrl) {
     return url;
 }
 
-async function fetchImageFromDocument(collectionName, documentId) {
+function fetchImageFromDocument(collectionName, documentId) {
     if (!collectionName || !documentId) return "";
-    const mask = IMAGE_FIELDS.map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&");
-    const url = `${REST_BASE}/${encodeURIComponent(collectionName)}/${encodeURIComponent(documentId)}?key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Firestore image read failed (${response.status}).`);
-    const document = await response.json();
-    const fields = decodeFields(document.fields || {});
-    return getArticleImageUrl(fields, "");
+    const cacheKey = `${collectionName}:${documentId}`;
+    if (imageSourcePromises.has(cacheKey)) return imageSourcePromises.get(cacheKey);
+
+    const imageRequest = (async () => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        try {
+            const mask = IMAGE_FIELDS.map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&");
+            const url = `${REST_BASE}/${encodeURIComponent(collectionName)}/${encodeURIComponent(documentId)}?key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}`;
+            const response = await fetch(url, { signal: controller.signal });
+            if (!response.ok) throw new Error(`Firestore image read failed (${response.status}).`);
+            const document = await response.json();
+            return getArticleImageUrl(decodeFields(document.fields || {}), "");
+        } finally {
+            clearTimeout(timeout);
+        }
+    })();
+
+    imageSourcePromises.set(cacheKey, imageRequest);
+    imageRequest.then(
+        () => {
+            if (imageSourcePromises.get(cacheKey) === imageRequest) imageSourcePromises.delete(cacheKey);
+        },
+        () => {
+            if (imageSourcePromises.get(cacheKey) === imageRequest) imageSourcePromises.delete(cacheKey);
+        }
+    );
+    return imageRequest;
 }
 
 async function fetchImageField(image) {
@@ -287,6 +309,22 @@ function revealImage(image, source) {
     image.src = source;
 }
 
+function enqueueImage(image) {
+    if (!image?.isConnected || image.dataset.nuqthaImageQueued === "true") return;
+    image.dataset.nuqthaImageQueued = "true";
+    image.loading = "eager";
+    observer?.unobserve(image);
+    queue.push(image);
+    processNext();
+}
+
+function isNearViewport(image) {
+    const rect = image.getBoundingClientRect();
+    const margin = 300;
+    return rect.width > 0 && rect.height > 0 &&
+        rect.bottom >= -margin && rect.top <= window.innerHeight + margin;
+}
+
 function processNext() {
     while (activeRequests < MAX_ACTIVE_REQUESTS && queue.length) {
         const image = queue.shift();
@@ -332,7 +370,9 @@ function observeImage(image) {
         }
         return;
     }
-    if (observer) observer.observe(image);
+    if (!observer) return;
+    observer.observe(image);
+    if (image.loading === "eager" || isNearViewport(image)) enqueueImage(image);
 }
 
 function scanImages(node) {
@@ -347,10 +387,8 @@ export function installLazyFirestoreImages() {
         observer = new IntersectionObserver(entries => {
             entries.forEach(entry => {
                 if (!entry.isIntersecting) return;
-                observer.unobserve(entry.target);
-                queue.push(entry.target);
+                enqueueImage(entry.target);
             });
-            processNext();
         }, { rootMargin: "300px" });
     } else {
         observer = {
