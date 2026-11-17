@@ -1,5 +1,5 @@
 import { getBookArticleLinkFields, getBookChapters, getBookChapterIds, mergeBookRecords } from "../book-data.js";
-import { filterAndSortChapters, getBookPageLightData, isArticleInBook } from "../js/book-data.js";
+import { filterAndSortChapters, getBookPageLightData, getRelatedBooks, isArticleInBook } from "../js/book-data.js";
 
 const { describe, it } = window;
 const { expect } = window.chai;
@@ -82,9 +82,29 @@ describe("Book chapter relationships", () => {
         const lightData = getBookPageLightData({
             id: "book-1",
             imageUrl: "/cover-placeholder.svg",
-            coverImage: coverUrl
+            coverImage: coverUrl,
+            _imageCollection: "books",
+            _imageDocId: "book-1"
         });
 
         expect(lightData.coverUrl).to.equal(coverUrl);
+        expect(lightData._imageCollection).to.equal("books");
+        expect(lightData._imageDocId).to.equal("book-1");
+    });
+
+    it("excludes the current book and deduplicates related book records by ID, slug, or title", () => {
+        const currentBook = { id: "book-1", title: "Current Book", slug: "current-book", type: "BOOK" };
+        const related = getRelatedBooks(currentBook, [
+            currentBook,
+            { id: "duplicate-id", title: "Same by slug", slug: "current-book", type: "BOOK" },
+            { id: "book-2", title: "Another Book", slug: "another-book", type: "FREE" },
+            { id: "book-2", title: "Another Edition", slug: "different-slug", type: "BOOK" },
+            { id: "duplicate-title", title: "Another Book", slug: "another-edition", type: "BOOK" },
+            { id: "book-3", title: "Draft Book", type: "BOOK", status: "draft" },
+            { id: "book-4", title: "A Chapter", type: "CHAPTER", isChapter: true },
+            { id: "book-5", title: "Chapter-like Book", type: "BOOK", isChapter: true }
+        ]);
+
+        expect(related.map(book => book.id)).to.deep.equal(["book-2"]);
     });
 });

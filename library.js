@@ -6,7 +6,7 @@ import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
 import "./library.css";
 
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
-const CACHE_KEY = "nuqtha:library:v3", CACHE_MS = 5 * 60 * 1000;
+const CACHE_KEY = "nuqtha:library:v4", CACHE_MS = 5 * 60 * 1000;
 let pendingLibraryDestination = "";
 
 window.addEventListener("nuqtha_auth_changed", (event) => {
@@ -72,7 +72,11 @@ async function loadData() {
           color: b.color,
           description: b.description,
           introduction: b.introduction || b.description,
-          imageUrl: getArticleImageUrl(b),
+          imageUrl: getArticleImageUrl(b, ""),
+          _imageCollection: b._imageCollection || "",
+          _imageDocId: b._imageDocId || "",
+          _imageFallbackCollection: b._imageFallbackCollection || "",
+          _imageFallbackDocId: b._imageFallbackDocId || "",
           slug: b.slug,
           contents: b.contents || b.chapters?.map(chapter => chapter.title || chapter) || []
         };
@@ -102,7 +106,7 @@ async function loadData() {
       pages: 180 + (i * 25),
       color: COLORS[i % COLORS.length],
       description: b.excerpt,
-      imageUrl: getArticleImageUrl(b),
+      imageUrl: getArticleImageUrl(b, ""),
       slug: b.slug,
       date: b.date,
       introduction: b.introduction || b.description,
@@ -252,7 +256,7 @@ function renderShelf(books) {
     el.addEventListener("touchstart", () => warmBookPage(b), { once: true, passive: true });
     el.addEventListener("click", () => {
       warmBookPage(b);
-      openItem(el, bookItem(b, i));
+      openLibraryItem(b);
     });
     row.appendChild(el);
   });

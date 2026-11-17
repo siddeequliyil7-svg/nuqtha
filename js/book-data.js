@@ -32,6 +32,10 @@ export function getBookPageLightData(book, chapterCount = 0) {
         date: typeof book.date === "string" ? book.date : "",
         status: book.status,
         coverUrl: cover,
+        _imageCollection: book._imageCollection || "",
+        _imageDocId: book._imageDocId || "",
+        _imageFallbackCollection: book._imageFallbackCollection || "",
+        _imageFallbackDocId: book._imageFallbackDocId || "",
         intro: typeof (book.introduction || book.intro || book.excerpt || book.description) === "string"
             ? (book.introduction || book.intro || book.excerpt || book.description)
             : "",
@@ -142,6 +146,17 @@ export function normalizeBookKey(s) {
         .replace(/\s+/g, " ");
 }
 
+function isBookRecord(item) {
+    const type = String(item?.type || "").toUpperCase();
+    const category = normalizeBookKey(item?.category);
+    const isChapter = item?.isChapter === true || type === "CHAPTER" ||
+        category === "chapter" || (item?.chapterIndex !== undefined && item?.chapterIndex !== null);
+    return !isChapter && (
+        type === "BOOK" || type === "FREE" || type === "PREMIUM" ||
+        item?.isBook === true || category === "book" || category === "books" || category === "premium book"
+    );
+}
+
 /**
  * Returns true if an article belongs to the target book doc.
  * Supports:
@@ -152,13 +167,7 @@ export function normalizeBookKey(s) {
 export function isArticleInBook(article, targetBook) {
     if (!article || !targetBook) return false;
     if (article.id && targetBook.id && article.id === targetBook.id) return false;
-    const aType = (article.type || "").toUpperCase();
-    const category = normalizeBookKey(article.category);
-    const isBookRecord = aType === "BOOK" || aType === "FREE" || aType === "PREMIUM" ||
-        article.isBook === true || category === "book" || category === "books" || category === "premium book";
-    const isExplicitChapter = article.isChapter === true || aType === "CHAPTER" ||
-        category === "chapter" || (article.chapterIndex !== undefined && article.chapterIndex !== null);
-    if (isBookRecord && !isExplicitChapter) return false;
+    if (isBookRecord(article)) return false;
 
     // Check chapters array on targetBook doc if present
     if (Array.isArray(targetBook.chapters)) {
@@ -184,6 +193,33 @@ export function isArticleInBook(article, targetBook) {
     if (articleBookNames.some(name => (bName && name === bName) || (bTitle && name === bTitle))) return true;
 
     return false;
+}
+
+export function getRelatedBooks(currentBook, books = [], limit = 4) {
+    if (!currentBook || !Array.isArray(books) || limit <= 0) return [];
+
+    const identityKeys = book => {
+        const id = normalizeBookKey(book?.id);
+        const slug = normalizeBookKey(book?.slug || book?.bookSlug);
+        const title = normalizeBookKey(book?.title || book?.bookName);
+        return [
+            id && `id:${id}`,
+            slug && `slug:${slug}`,
+            title && `title:${title}`
+        ].filter(Boolean);
+    };
+
+    const seenKeys = new Set(identityKeys(currentBook));
+    const related = [];
+    for (const book of books) {
+        if (!book || !isBookRecord(book) || !isPubliclyPublished(book)) continue;
+        const keys = identityKeys(book);
+        if (keys.some(key => seenKeys.has(key))) continue;
+        keys.forEach(key => seenKeys.add(key));
+        related.push(book);
+        if (related.length >= limit) break;
+    }
+    return related;
 }
 
 /**

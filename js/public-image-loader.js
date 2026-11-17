@@ -232,24 +232,58 @@ async function fetchImageFromDocument(collectionName, documentId) {
 }
 
 async function fetchImageField(image) {
-    const source = await fetchImageFromDocument(
-        image.dataset.nuqthaImageCollection,
-        image.dataset.nuqthaImageDoc
-    );
-    if (source) return source;
+    try {
+        const source = await fetchImageFromDocument(
+            image.dataset.nuqthaImageCollection,
+            image.dataset.nuqthaImageDoc
+        );
+        if (source) return source;
+    } catch (error) {
+        if (!image.dataset.nuqthaImageFallbackCollection || !image.dataset.nuqthaImageFallbackDoc) throw error;
+        console.warn("[NUQTHA Images] Primary cover source failed; trying its fallback document.", error);
+    }
     return fetchImageFromDocument(
         image.dataset.nuqthaImageFallbackCollection,
         image.dataset.nuqthaImageFallbackDoc
     );
 }
 
+function showImagePlaceholder(image) {
+    const placeholder = image.parentElement?.querySelector("[data-nuqtha-image-placeholder]");
+    if (!placeholder) return;
+    placeholder.hidden = false;
+    placeholder.classList.remove("hidden");
+}
+
+function hideImagePlaceholder(image) {
+    const placeholder = image.parentElement?.querySelector("[data-nuqtha-image-placeholder]");
+    if (!placeholder) return;
+    placeholder.hidden = true;
+    placeholder.classList.add("hidden");
+}
+
+function handleImageError(image) {
+    showImagePlaceholder(image);
+    if (image.dataset.nuqthaImageFallbackAttempted === "true" ||
+        !image.dataset.nuqthaImageFallbackCollection || !image.dataset.nuqthaImageFallbackDoc) return;
+    image.dataset.nuqthaImageFallbackAttempted = "true";
+    fetchImageFromDocument(
+        image.dataset.nuqthaImageFallbackCollection,
+        image.dataset.nuqthaImageFallbackDoc
+    ).then(source => {
+        if (source && image.isConnected) image.src = source;
+    }).catch(error => {
+        console.warn("[NUQTHA Images] Could not load the fallback image.", error);
+    });
+}
+
 function revealImage(image, source) {
     image.addEventListener("load", () => {
         image.classList.add("nuqtha-image-loaded");
         image.style.opacity = "1";
-        const placeholder = image.parentElement?.querySelector("[data-nuqtha-image-placeholder]");
-        if (placeholder) placeholder.hidden = true;
+        hideImagePlaceholder(image);
     }, { once: true });
+    image.addEventListener("error", () => handleImageError(image), { once: true });
     image.src = source;
 }
 
@@ -261,7 +295,10 @@ function processNext() {
         (async () => {
             try {
                 const source = await fetchImageField(image);
-                if (!source || !image.isConnected) return;
+                if (!source || !image.isConnected) {
+                    if (image.isConnected) showImagePlaceholder(image);
+                    return;
+                }
                 let resolvedSource = source;
                 if (/^data:image\//i.test(source)) {
                     const key = `${image.dataset.nuqthaImageCollection}:${image.dataset.nuqthaImageDoc}:${image.dataset.nuqthaImageUpdated || ""}`;
@@ -270,6 +307,7 @@ function processNext() {
                 if (image.isConnected) revealImage(image, resolvedSource);
             } catch (error) {
                 console.warn("[NUQTHA Images] Could not load a card image.", error);
+                if (image.isConnected) showImagePlaceholder(image);
             } finally {
                 activeRequests -= 1;
                 processNext();
@@ -285,11 +323,13 @@ function observeImage(image) {
         const reveal = () => {
             image.classList.add("nuqtha-image-loaded");
             image.style.opacity = "1";
-            const placeholder = image.parentElement?.querySelector("[data-nuqtha-image-placeholder]");
-            if (placeholder) placeholder.hidden = true;
+            hideImagePlaceholder(image);
         };
         if (image.complete && image.naturalWidth > 0) reveal();
-        else image.addEventListener("load", reveal, { once: true });
+        else {
+            image.addEventListener("load", reveal, { once: true });
+            image.addEventListener("error", () => handleImageError(image), { once: true });
+        }
         return;
     }
     if (observer) observer.observe(image);

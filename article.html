@@ -637,7 +637,7 @@
         import { FALLBACK_ARTICLES } from "/fallback-data.js";
         import { initHeaderAuthUI } from "/js/auth-ui.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, getArticleImageUrl, cleanUrlPart, sanitizeCategory } from "/schema-validator.js";
-        import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, saveBookPageLightCache, saveBookChapterListCache, readBookChapterListCache } from "/js/book-data.js";
+        import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, getRelatedBooks, saveBookPageLightCache, saveBookChapterListCache, readBookChapterListCache } from "/js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "/js/author-service.js";
         import { categoryUrl, categoryTag } from "/js/category-link.js";
         import { getArticleCategoryId, getCachedCategoryName, getCategories } from "/js/category-store.js";
@@ -649,7 +649,7 @@
         void syncReadingBg();
         installLazyFirestoreImages();
 
-        function buildDeferredImageMarkup(item, source, alt, className, width, height) {
+        function buildDeferredImageMarkup(item, source, alt, className, width, height, loading = "lazy") {
             const deferredAttributes = getDeferredImageAttributes(item);
             const deferInlineImage = /^data:image\//i.test(source || "") && deferredAttributes;
             const imageUrl = deferInlineImage ? "" : (source || "");
@@ -658,7 +658,8 @@
             const styleAttribute = imageUrl
                 ? 'style="opacity:0;transition:opacity .25s ease;"'
                 : 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"';
-            return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" loading="lazy" decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
+            const priorityAttribute = loading === "eager" ? 'fetchpriority="high"' : "";
+            return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" loading="${loading}" ${priorityAttribute} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
         }
 
         function stripInlineImageData(item) {
@@ -938,7 +939,10 @@
             const intro = String(lightData.intro || "").trim().replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
             const hasIntro = intro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
             const coverUrl = getArticleImageUrl({ imageUrl: lightData.coverUrl }, "");
-            const cover = coverUrl ? escapeHtml(coverUrl) : "";
+            const hasCover = Boolean(coverUrl || getDeferredImageAttributes(lightData));
+            const coverMarkup = hasCover
+                ? buildDeferredImageMarkup(lightData, coverUrl, `${title} cover`, "book-v2-cover-img", 300, 400, "eager")
+                : "";
             const introMarkup = hasIntro
                 ? `<div class="book-v2-intro"><span class="book-v2-quote-mark" aria-hidden="true">&ldquo;</span><div id="book-intro-text" class="book-v2-intro-text">${escapeHtml(intro)}</div><button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">കൂടുതൽ വായിക്കുക <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button></div>`
                 : "";
@@ -966,7 +970,7 @@
                                     <span class="book-v2-ribbon" aria-hidden="true"></span>
                                     <span class="book-v2-spine" aria-hidden="true"></span>
                                     <div class="book-v2-cover">
-                                        ${cover ? `<img src="${cover}" alt="${title} cover" class="book-v2-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" data-nuqtha-cover="true"><div class="book-v2-cover-fallback hidden" aria-hidden="true">📚</div>` : `<div class="book-v2-cover-fallback" aria-hidden="true">📚</div>`}
+                                        ${hasCover ? `${coverMarkup}<div class="book-v2-cover-fallback hidden" data-nuqtha-image-placeholder aria-hidden="true">📚</div>` : `<div class="book-v2-cover-fallback" aria-hidden="true">📚</div>`}
                                     </div>
                                 </div>
                             </div>
@@ -1089,6 +1093,8 @@
                                     }
                                 }
                                 const normalized = normalizeArticleDoc(data, cleanId);
+                                normalized._imageCollection = col;
+                                normalized._imageDocId = cleanId;
                                 if (col === "books") {
                                     normalized.type = "BOOK";
                                     normalized.isBook = true;
@@ -1110,6 +1116,8 @@
                     const docSnap = await getDoc(docRef);
                     if (docSnap.exists()) {
                         const normalized = normalizeArticleDoc(docSnap.data(), docSnap.id);
+                        normalized._imageCollection = col;
+                        normalized._imageDocId = docSnap.id;
                         if (col === "books") {
                             normalized.type = "BOOK";
                             normalized.isBook = true;
@@ -1212,6 +1220,8 @@
                                 }
                             }
                             const normalized = normalizeArticleDoc(data, docId);
+                            normalized._imageCollection = col;
+                            normalized._imageDocId = docId;
                             if (col === "books") {
                                 normalized.type = "BOOK";
                                 normalized.isBook = true;
@@ -1276,6 +1286,8 @@
                                     }
                                 }
                                 const normalized = normalizeArticleDoc(data, docId);
+                                normalized._imageCollection = col;
+                                normalized._imageDocId = docId;
                                 if (col === "books") {
                                     normalized.type = "BOOK";
                                     normalized.isBook = true;
@@ -1544,6 +1556,10 @@
                         date: cachedLightBook.date,
                         status: cachedLightBook.status,
                         imageUrl: cachedLightBook.coverUrl,
+                        _imageCollection: cachedLightBook._imageCollection,
+                        _imageDocId: cachedLightBook._imageDocId,
+                        _imageFallbackCollection: cachedLightBook._imageFallbackCollection,
+                        _imageFallbackDocId: cachedLightBook._imageFallbackDocId,
                         introduction: cachedLightBook.intro,
                         isBook: true,
                         type: "BOOK",
@@ -1957,14 +1973,17 @@
             }
 
             const cleanTitle = (book.title || "Untitled Edition").replace(/[*_#~`]/g, "").trim();
-            const bookCoverUrl = getArticleImageUrl(book, "");
             const cleanAuthor = (book.author || "സയ്യിദ് സൽമാൻ അദനി കരിപ്പൂർ").replace(/[*_#~`]/g, "").trim();
             const rawIntro = String(book.introduction || book.intro || book.excerpt || "").trim()
                 .replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
             const hasIntro = rawIntro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
             const dateStr = typeof book.date === "string" ? book.date.trim() : (book.date ? formatDateSafe(book.date) : "");
             const chapterCount = countBookChapters(book, attachedArticles);
-            const coverUrl = getArticleImageUrl(book);
+            const coverUrl = getArticleImageUrl(book, "");
+            const hasCover = Boolean(coverUrl || getDeferredImageAttributes(book));
+            const coverMarkup = hasCover
+                ? buildDeferredImageMarkup(book, coverUrl, `${cleanTitle} Cover`, "book-v2-cover-img", 300, 400, "eager")
+                : "";
             const authorPhoto = (book.authorPhoto || book.authorAvatar || "").trim();
             const firstLetter = (cleanAuthor || 'N').trim().charAt(0);
             const authorId = (cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
@@ -2039,9 +2058,9 @@
                                         <span class="book-v2-ribbon" aria-hidden="true"></span>
                                         <span class="book-v2-spine" aria-hidden="true"></span>
                                         <div class="book-v2-cover">
-                                        ${coverUrl ? `
-                                            <img src="${coverUrl}" alt="${cleanTitle} Cover" class="book-v2-cover-img" width="300" height="400" loading="eager" fetchpriority="high" decoding="async" data-nuqtha-cover="true">
-                                            <div class="book-v2-cover-fallback hidden" aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>
+                                        ${hasCover ? `
+                                            ${coverMarkup}
+                                            <div class="book-v2-cover-fallback hidden" data-nuqtha-image-placeholder aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>
                                         ` : `
                                             <div class="book-v2-cover-fallback">
                                                 <span class="text-4xl" aria-hidden="true">📚</span>
@@ -2368,10 +2387,10 @@
             const grid = document.getElementById("related-books-grid");
             if (!section || !grid) return;
 
-            const otherBooks = allArticles.filter(a => a.type === "BOOK" && a.id !== currentBook.id);
+            const otherBooks = getRelatedBooks(currentBook, allArticles);
             if (otherBooks.length === 0) return;
 
-            grid.innerHTML = otherBooks.slice(0, 4).map(b => {
+            grid.innerHTML = otherBooks.map(b => {
                 const imageUrl = getArticleImageUrl(b, "");
                 const imageMarkup = buildDeferredImageMarkup(b, imageUrl, b.title || "", "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500", 300, 400);
                 return `
