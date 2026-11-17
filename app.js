@@ -592,32 +592,16 @@ function setupSidebarDrawer() {
     if (!drawer) return;
     let previousBodyOverflow = "";
     let isOpen = false;
-    const desktopQuery = window.matchMedia("(min-width: 1024px)");
     setDrawerCurrentLink([...drawer.querySelectorAll(".drawer-nav-item")]
         .find(item => (item.dataset.category || "").toUpperCase() === currentCategory) || null);
 
-    function syncDrawerViewport() {
-        if (desktopQuery.matches) {
-            isOpen = false;
-            drawer.classList.remove("drawer-open");
-            drawer.setAttribute("role", "complementary");
-            drawer.setAttribute("aria-modal", "false");
-            drawer.setAttribute("aria-hidden", "false");
-            drawer.inert = false;
-            if (backdrop) backdrop.classList.remove("backdrop-active");
-            document.body.style.overflow = previousBodyOverflow;
-            if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "false");
-            return;
-        }
-
-        drawer.setAttribute("role", "dialog");
-        drawer.setAttribute("aria-modal", "true");
-        drawer.setAttribute("aria-hidden", isOpen ? "false" : "true");
-        drawer.inert = !isOpen;
-    }
+    drawer.setAttribute("role", "dialog");
+    drawer.setAttribute("aria-modal", "true");
+    drawer.setAttribute("aria-hidden", "true");
+    drawer.inert = true;
 
     function openDrawer() {
-        if (isOpen || desktopQuery.matches) return;
+        if (isOpen) return;
         isOpen = true;
         previousBodyOverflow = document.body.style.overflow;
         drawer.inert = false;
@@ -630,7 +614,7 @@ function setupSidebarDrawer() {
     }
 
     function closeDrawer() {
-        if (!isOpen || desktopQuery.matches) return;
+        if (!isOpen) return;
         isOpen = false;
         drawer.classList.remove("drawer-open");
         if (backdrop) backdrop.classList.remove("backdrop-active");
@@ -647,12 +631,6 @@ function setupSidebarDrawer() {
     if (toggleBtn) toggleBtn.addEventListener("click", openDrawer);
     if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
     if (backdrop) backdrop.addEventListener("click", closeDrawer);
-    if (typeof desktopQuery.addEventListener === "function") {
-        desktopQuery.addEventListener("change", syncDrawerViewport);
-    } else {
-        desktopQuery.addListener(syncDrawerViewport);
-    }
-    syncDrawerViewport();
 
     drawer.addEventListener("click", event => {
         const link = event.target.closest("a");
@@ -1137,29 +1115,24 @@ function renderSearchFeed(container, query) {
 }
 
 function getCachedHomeCategoryArticleIds(categoryId, categoryArticles, usedIds) {
-    const cacheKey = `nuqtha:home-category:${categoryId}`;
+    const cacheKey = `nuqtha:home-category:v2:${categoryId}`;
     const articleById = new Map(categoryArticles.map(article => [article.id, article]));
+    const availableIds = categoryArticles
+        .filter(article => !usedIds.has(article.id))
+        .map(article => article.id);
     try {
         const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
         if (cached && Date.now() - cached.savedAt < 5 * 60 * 1000 && Array.isArray(cached.ids)) {
-            const ids = cached.ids.filter(id => articleById.has(id));
-            if (ids.length > 0) return ids.slice(0, 6);
+            const ids = cached.ids.filter(id => articleById.has(id) && !usedIds.has(id));
+            const cachedIds = new Set(ids);
+            ids.push(...availableIds.filter(id => !cachedIds.has(id)));
+            if (ids.length > 0) return ids;
         }
     } catch (error) {
         console.warn("[NUQTHA App] Could not read a home category cache entry.", error);
     }
 
-    const selected = categoryArticles.filter(article => !usedIds.has(article.id)).slice(0, 6);
-    if (selected.length < 6) {
-        const selectedIds = new Set(selected.map(article => article.id));
-        categoryArticles.forEach(article => {
-            if (selected.length < 6 && !selectedIds.has(article.id)) {
-                selected.push(article);
-                selectedIds.add(article.id);
-            }
-        });
-    }
-    const ids = selected.map(article => article.id);
+    const ids = availableIds;
     try {
         sessionStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), ids }));
     } catch (error) {
@@ -1178,20 +1151,60 @@ function renderLazyHomeCategorySection(section, category, categoryArticles, used
 
     const theme = getCategoryTheme();
     const [featuredArt, ...subsequentArticles] = selected;
+    const initialGridArticles = subsequentArticles.slice(0, 4);
+    const remainingArticles = subsequentArticles.slice(4);
+    const gridId = `home-category-grid-${String(category.slug).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
     section.innerHTML = `
-        ${buildCategorySectionHeader(category.slug, true, false, theme)}
+        ${buildCategorySectionHeader(category.slug, false, false, theme)}
         <div class="category-featured-wrapper mt-3 mb-3 sm:mb-4">
             ${buildCategoryFeaturedCard(featuredArt, theme)}
         </div>
-        ${subsequentArticles.length ? `
-            <div class="category-cards-list space-y-2.5 sm:space-y-3">
-                ${subsequentArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
+        ${initialGridArticles.length ? `
+            <div id="${gridId}" class="home-category-grid">
+                ${initialGridArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
+            </div>
+        ` : ""}
+        ${remainingArticles.length ? `
+            <template class="home-category-more-template">
+                ${remainingArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
+            </template>
+            <div class="home-category-show-more-wrap">
+                <button type="button" class="home-category-show-more" data-category="${escapeHtml(category.slug)}" aria-controls="${gridId}">
+                    <span>Show More</span>
+                    <span aria-hidden="true">&darr;</span>
+                </button>
             </div>
         ` : ""}
     `;
     section.dataset.loaded = "true";
     attachShowMoreListeners();
+    attachHomeCategoryLoadMoreListeners(section);
     attachCardListeners();
+}
+
+function attachHomeCategoryLoadMoreListeners(root = document) {
+    root.querySelectorAll(".home-category-show-more:not([data-listener])").forEach(button => {
+        button.dataset.listener = "true";
+        button.addEventListener("click", () => {
+            const section = button.closest("[data-home-category-section]");
+            const grid = section?.querySelector(".home-category-grid");
+            const template = section?.querySelector(".home-category-more-template");
+            if (!grid || !template) {
+                console.error("[NUQTHA App] Could not load more category articles: section markup is incomplete.");
+                return;
+            }
+
+            for (let count = 0; count < 4 && template.content.firstElementChild; count += 1) {
+                grid.appendChild(template.content.firstElementChild);
+            }
+            attachCardListeners();
+
+            if (!template.content.firstElementChild) {
+                template.remove();
+                button.remove();
+            }
+        });
+    });
 }
 
 /* ─── HOME FEED: Scrolling Carousel + Hero Featured + Dedicated Books + Category Feeds ─── */
@@ -1306,7 +1319,7 @@ function renderHomeFeed(container) {
         const theme = getCategoryTheme();
         html += `
             <section class="category-section-block category-section-${category.slug} mt-7 sm:mt-9 p-4 sm:p-5 rounded-3xl border ${theme.sectionBorder} bg-gradient-to-b ${theme.bgTint}" data-home-category-section="${escapeHtml(category.slug)}">
-                ${buildCategorySectionHeader(category.slug, true, false, theme)}
+                ${buildCategorySectionHeader(category.slug, false, false, theme)}
                 <div class="home-category-content min-h-[8rem]"></div>
             </section>
         `;
@@ -2343,6 +2356,9 @@ function buildBookCard(book, articles) {
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
 function attachCardListeners() {
     document.querySelectorAll(".featured-article-card, .category-featured-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card, .premium-book-card").forEach(card => {
+        if (card.dataset.cardListenersAttached === "true") return;
+        card.dataset.cardListenersAttached = "true";
+
         const warmBookPage = () => {
             const art = allArticles.find(a => a.id === card.dataset.id);
             if (!art || !isBookEntity(art)) return;
