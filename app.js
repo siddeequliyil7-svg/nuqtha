@@ -851,7 +851,7 @@ export function initAppData() {
 
         const [publicLists, categories] = await Promise.all([
             fetchPublicCollections(),
-            getCategories().catch(error => {
+            getCategories({ forceRefresh: true }).catch(error => {
                 console.error("[NUQTHA App] Could not load Firestore categories.", error);
                 return [];
             })
@@ -1119,16 +1119,14 @@ function renderSearchFeed(container, query) {
     if (emptyResetBtn) emptyResetBtn.addEventListener("click", () => clearSearch(true));
 }
 
-function getCachedHomeCategoryArticleIds(categoryId, categoryArticles, usedIds) {
-    const cacheKey = `nuqtha:home-category:v2:${categoryId}`;
+function getCachedHomeCategoryArticleIds(categoryId, categoryArticles) {
+    const cacheKey = `nuqtha:home-category:v3:${categoryId}`;
     const articleById = new Map(categoryArticles.map(article => [article.id, article]));
-    const availableIds = categoryArticles
-        .filter(article => !usedIds.has(article.id))
-        .map(article => article.id);
+    const availableIds = categoryArticles.map(article => article.id);
     try {
         const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
         if (cached && Date.now() - cached.savedAt < 5 * 60 * 1000 && Array.isArray(cached.ids)) {
-            const ids = cached.ids.filter(id => articleById.has(id) && !usedIds.has(id));
+            const ids = cached.ids.filter(id => articleById.has(id));
             const cachedIds = new Set(ids);
             ids.push(...availableIds.filter(id => !cachedIds.has(id)));
             if (ids.length > 0) return ids;
@@ -1146,18 +1144,25 @@ function getCachedHomeCategoryArticleIds(categoryId, categoryArticles, usedIds) 
     return ids;
 }
 
-function renderLazyHomeCategorySection(section, category, categoryArticles, usedIds) {
-    const ids = getCachedHomeCategoryArticleIds(category.slug, categoryArticles, usedIds);
+function renderLazyHomeCategorySection(section, category, categoryArticles) {
+    const ids = getCachedHomeCategoryArticleIds(category.slug, categoryArticles);
     const selected = ids.map(id => categoryArticles.find(article => article.id === id)).filter(Boolean);
     if (selected.length === 0) {
-        section.remove();
+        const theme = getCategoryTheme();
+        section.innerHTML = `
+            ${buildCategorySectionHeader(category.slug, false, false, theme)}
+            <p class="home-category-empty py-4 text-sm text-[#8c7a6b] dark:text-[#94a3b8] font-['Noto_Sans_Malayalam']">
+                ഈ വിഭാഗത്തിൽ പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങളില്ല.
+            </p>
+        `;
+        section.dataset.loaded = "true";
         return;
     }
 
     const theme = getCategoryTheme();
     const [featuredArt, ...subsequentArticles] = selected;
-    const initialGridArticles = subsequentArticles.slice(0, 4);
-    const remainingArticles = subsequentArticles.slice(4);
+    const initialGridArticles = subsequentArticles.slice(0, 2);
+    const remainingArticles = subsequentArticles.slice(2);
     const gridId = `home-category-grid-${String(category.slug).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
     section.innerHTML = `
         ${buildCategorySectionHeader(category.slug, false, false, theme)}
@@ -1226,7 +1231,8 @@ function renderHomeFeed(container) {
         siteCategoryById.get(getArticleCategoryId(a))?.visible !== false
     );
 
-    if (regularArticles.length === 0 && bookCovers.length === 0) {
+    const visibleCategories = getVisibleCategories(regularArticles);
+    if (regularArticles.length === 0 && bookCovers.length === 0 && visibleCategories.length === 0) {
         if (allArticles.length === 0) {
             if (hasFirestoreContent) {
                 renderEmpty("നിലവിൽ പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങളോ പുസ്തകങ്ങളോ ഇല്ല.");
@@ -1237,12 +1243,6 @@ function renderHomeFeed(container) {
             return;
         }
         renderEmpty("ലേഖനങ്ങൾ ഒന്നും ചേർത്തിട്ടില്ല. Admin-ൽ നിന്ന് പുതിയ ലേഖനങ്ങൾ പബ്ലിഷ് ചെയ്യാം.");
-        return;
-    }
-
-    if (regularArticles.length === 0 && bookCovers.length > 0) {
-        container.innerHTML = buildBookShowcaseSection(bookCovers, allArticles);
-        attachShowMoreListeners();
         return;
     }
 
@@ -1261,8 +1261,6 @@ function renderHomeFeed(container) {
 
     // Determine Hero Article strictly from regular standalone articles
     let heroArticle = null;
-    let usedIds = new Set();
-
     if (explicitHero.length > 0) {
         heroArticle = explicitHero[0];
     } else if (autoArticles.length > 0) {
@@ -1288,8 +1286,6 @@ function renderHomeFeed(container) {
     }).slice(0, 10);
 
     // Track used IDs for subsequent sections
-    swipeArticles.forEach(a => usedIds.add(a.id));
-
     let html = '';
 
     // ═══════════════════════════════════════════════════════════
@@ -1304,7 +1300,6 @@ function renderHomeFeed(container) {
     // ═══════════════════════════════════════════════════════════
     if (heroArticle) {
         html += buildFeaturedCard(heroArticle);
-        usedIds.add(heroArticle.id);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1321,8 +1316,7 @@ function renderHomeFeed(container) {
         if (!categoryGroups.has(categoryId)) categoryGroups.set(categoryId, []);
         categoryGroups.get(categoryId).push(article);
     });
-    const orderedCategories = getVisibleCategories(regularArticles)
-        .filter(category => categoryGroups.has(category.slug));
+    const orderedCategories = visibleCategories;
     const lazySections = [];
     orderedCategories.forEach(category => {
         const theme = getCategoryTheme();
@@ -1334,7 +1328,7 @@ function renderHomeFeed(container) {
         `;
         lazySections.push({
             category,
-            articles: categoryGroups.get(category.slug).sort(comparePriority)
+            articles: (categoryGroups.get(category.slug) || []).sort(comparePriority)
         });
     });
     container.innerHTML = html;
@@ -1345,7 +1339,7 @@ function renderHomeFeed(container) {
                 if (!entry.isIntersecting) return;
                 observer.unobserve(entry.target);
                 const item = pendingSections.get(entry.target.dataset.homeCategorySection);
-                if (item) renderLazyHomeCategorySection(entry.target, item.category, item.articles, usedIds);
+                if (item) renderLazyHomeCategorySection(entry.target, item.category, item.articles);
             });
         }, { rootMargin: "300px 0px" })
         : null;
@@ -1354,7 +1348,7 @@ function renderHomeFeed(container) {
             .find(item => item.dataset.homeCategorySection === slug);
         if (!section) return;
         if (observer) observer.observe(section);
-        else renderLazyHomeCategorySection(section, item.category, item.articles, usedIds);
+        else renderLazyHomeCategorySection(section, item.category, item.articles);
     });
     attachShowMoreListeners();
 }
@@ -1744,8 +1738,8 @@ function buildCategoryFeaturedCard(art, theme = null) {
                 </p>
                 ` : ''}
 
-                <!-- Author & CTA Row -->
-                <div class="flex items-center justify-between pt-3 border-t border-[#ebdccb]/60 dark:border-white/10 gap-2 flex-wrap">
+                <!-- Author Row -->
+                <div class="flex items-center justify-start pt-3 border-t border-[#ebdccb]/60 dark:border-white/10 gap-2 flex-wrap">
                     <div class="flex items-center gap-2.5">
                         <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center flex-shrink-0 overflow-hidden">
                             ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy" decoding="async">` : authorInitial}
@@ -1758,10 +1752,6 @@ function buildCategoryFeaturedCard(art, theme = null) {
                         </div>
                     </div>
 
-                    <div class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold font-english text-white shadow-sm transition-all group-hover:shadow-md" style="background-color: ${t.color};">
-                        <span>വായിക്കുക</span>
-                        <span class="text-xs">&rarr;</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1773,8 +1763,6 @@ function buildCategoryFeaturedCard(art, theme = null) {
 function buildFeaturedCard(art) {
     if (!art) return "";
     const dateStr = art.date || formatDate(art.createdAt);
-    const words = (art.content || "").length;
-    const readMin = Math.max(1, Math.round(words / 400));
     const cleanTitle = stripMarkdown(art.title);
     const rawPreview = art.excerpt || (art.content ? art.content.substring(0, 160) : "");
     const cleanPreview = stripMarkdown(rawPreview);
@@ -1809,7 +1797,7 @@ function buildFeaturedCard(art) {
 
             <!-- Content Details Area -->
             <div class="featured-card-body p-6 sm:p-8 space-y-4">
-                <!-- Category Pill & Date / Read Time Row -->
+                <!-- Category Pill & Date Row -->
                 <div class="flex items-center justify-between gap-3 flex-wrap">
                     ${categoryTag(art.category, { variant: 'featured-pill' })}
                     <span class="text-xs text-[#8c7a6b] dark:text-[#a0aec0] font-medium font-['Noto_Sans_Malayalam']">
@@ -1827,8 +1815,8 @@ function buildFeaturedCard(art) {
                     ${preview}
                 </p>
 
-                <!-- Bottom Row: Author profile & Sleek 'വായിക്കുക →' Button -->
-                <div class="featured-bottom-row flex items-center justify-between pt-4 border-t border-[#ebdccb]/60 dark:border-white/10 gap-3">
+                <!-- Bottom Row: Author profile -->
+                <div class="featured-bottom-row flex items-center justify-start pt-4 border-t border-[#ebdccb]/60 dark:border-white/10 gap-3">
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center overflow-hidden flex-shrink-0">
                             ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy" decoding="async">` : authorInitial}
@@ -1839,11 +1827,6 @@ function buildFeaturedCard(art) {
                             </span>
                             ${art.transcription ? `<span class="text-[11px] font-semibold text-[#8c7a6b] dark:text-[#cbd5e1] font-['Noto_Sans_Malayalam']">📝 കേട്ടെഴുത്ത്: ${art.transcription}</span>` : ''}
                         </div>
-                    </div>
-
-                    <div class="featured-read-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#b4532c] text-white text-xs sm:text-sm font-bold shadow-md hover:bg-[#923e1b] transition-all group-hover:shadow-lg">
-                        <span>വായിക്കുക</span>
-                        <span class="text-base">&rarr;</span>
                     </div>
                 </div>
             </div>
@@ -1856,8 +1839,6 @@ function buildFeaturedCard(art) {
 function buildCompactRecentCard(art, theme = null) {
     if (!art) return "";
     const dateStr = art.date || formatDate(art.createdAt);
-    const words = (art.content || "").length;
-    const readMin = Math.max(1, Math.round(words / 400));
     const cleanTitle = stripMarkdown(art.title);
     const titleStyle = art.titleColor ? `style="color: ${art.titleColor};"` : '';
 
@@ -1936,7 +1917,6 @@ function buildBannerCarousel(articles) {
                 '<div class="banner-slide-meta flex items-center gap-2">' +
                     '<span class="font-bold text-[#1e1b18] dark:text-white">' + authorName + '</span>' +
                     '<span>· ' + dateStr + '</span>' +
-                    '<span class="banner-read-btn">വായിക്കുക &rarr;</span>' +
                 '</div>' +
             '</a>' +
         '</div>';
