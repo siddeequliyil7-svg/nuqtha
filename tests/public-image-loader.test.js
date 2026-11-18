@@ -1,9 +1,33 @@
-import { installLazyFirestoreImages } from "../js/public-image-loader.js";
+import { fetchPublicCollections, installLazyFirestoreImages } from "../js/public-image-loader.js";
 
 const { describe, it } = window;
 const { expect } = window.chai;
 
 describe("Deferred public images", () => {
+    it("queries only published article and book records", async () => {
+        const originalFetch = window.fetch;
+        const queries = [];
+        window.fetch = async (input, options = {}) => {
+            if (!String(input).includes(":runQuery")) return originalFetch(input, options);
+            const body = JSON.parse(options.body);
+            queries.push(body.structuredQuery);
+            return { ok: true, json: async () => [] };
+        };
+
+        try {
+            const collections = await fetchPublicCollections();
+            expect(collections.articles).to.deep.equal([]);
+            expect(collections.books).to.deep.equal([]);
+            expect(queries).to.have.length(2);
+            queries.forEach(query => {
+                expect(query.where.fieldFilter.field.fieldPath).to.equal("status");
+                expect(query.where.fieldFilter.value.stringValue).to.equal("published");
+            });
+        } finally {
+            window.fetch = originalFetch;
+        }
+    });
+
     it("loads visible covers even when IntersectionObserver does not notify", function(done) {
         this.timeout(5000);
         const originalFetch = window.fetch;

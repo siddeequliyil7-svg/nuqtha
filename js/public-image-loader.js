@@ -57,17 +57,35 @@ export function stripListHeavyFields(value) {
 }
 
 async function fetchCollection(collectionName, signal) {
-    const mask = listFields.map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&");
     const documents = [];
-    let pageToken = "";
+    let offset = 0;
+    const pageSize = 1000;
 
-    do {
-        const token = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "";
-        const response = await fetch(`${REST_BASE}/${encodeURIComponent(collectionName)}?pageSize=100&key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}${token}`, { signal });
+    while (true) {
+        const structuredQuery = {
+            from: [{ collectionId: collectionName }],
+            select: { fields: listFields.map(fieldPath => ({ fieldPath })) },
+            where: {
+                fieldFilter: {
+                    field: { fieldPath: "status" },
+                    op: "EQUAL",
+                    value: { stringValue: "published" }
+                }
+            },
+            limit: pageSize,
+            offset
+        };
+        const response = await fetch(`${REST_BASE}:runQuery?key=${encodeURIComponent(firebaseConfig.apiKey)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ structuredQuery }),
+            signal
+        });
         if (!response.ok) throw new Error(`Firestore list read failed (${response.status}) for ${collectionName}.`);
-        const result = await response.json();
+        const results = await response.json();
+        const pageDocuments = (results || []).map(result => result.document).filter(Boolean);
 
-        for (const document of result.documents || []) {
+        for (const document of pageDocuments) {
             const id = document.name.split("/").pop();
             const data = stripListHeavyFields(decodeFields(document.fields || {}));
             documents.push({
@@ -77,8 +95,9 @@ async function fetchCollection(collectionName, signal) {
                 _imageDocId: id
             });
         }
-        pageToken = result.nextPageToken || "";
-    } while (pageToken);
+        offset += pageDocuments.length;
+        if (pageDocuments.length < pageSize) break;
+    }
 
     return documents;
 }
@@ -128,25 +147,44 @@ export async function fetchPublicCollections() {
 }
 
 export async function fetchArticleSearchContent() {
-    const mask = ["content", "body"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&");
     const results = new Map();
-    let pageToken = "";
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
+    let offset = 0;
+    const pageSize = 1000;
 
     try {
-        do {
-            const token = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "";
-            const response = await fetch(`${REST_BASE}/articles?pageSize=100&key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}${token}`, { signal: controller.signal });
+        while (true) {
+            const response = await fetch(`${REST_BASE}:runQuery?key=${encodeURIComponent(firebaseConfig.apiKey)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    structuredQuery: {
+                        from: [{ collectionId: "articles" }],
+                        select: { fields: ["content", "body"].map(fieldPath => ({ fieldPath })) },
+                        where: {
+                            fieldFilter: {
+                                field: { fieldPath: "status" },
+                                op: "EQUAL",
+                                value: { stringValue: "published" }
+                            }
+                        },
+                        limit: pageSize,
+                        offset
+                    }
+                }),
+                signal: controller.signal
+            });
             if (!response.ok) throw new Error(`Firestore article search read failed (${response.status}).`);
-            const result = await response.json();
-            for (const document of result.documents || []) {
+            const pageDocuments = (await response.json() || []).map(result => result.document).filter(Boolean);
+            for (const document of pageDocuments) {
                 const id = document.name.split("/").pop();
                 const fields = decodeFields(document.fields || {});
                 results.set(id, fields.content || fields.body || "");
             }
-            pageToken = result.nextPageToken || "";
-        } while (pageToken);
+            offset += pageDocuments.length;
+            if (pageDocuments.length < pageSize) break;
+        }
 
         return results;
     } finally {

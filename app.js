@@ -139,7 +139,7 @@ function getVisibleCategories(articles = allArticles) {
     const byId = new Map(siteCategories.map(category => [category.slug, category]));
     const knownIds = new Set(byId.keys());
     articles.forEach(article => {
-        if (isBookEntity(article) || isChapterEntity(article) || String(article.status || "published").toLowerCase() !== "published") return;
+        if (isBookEntity(article) || isChapterEntity(article) || !isPubliclyPublished(article)) return;
         const slug = getArticleCategoryId(article);
         if (!slug || knownIds.has(slug)) return;
         const name = String(article.category || "").trim() || slug;
@@ -1227,7 +1227,7 @@ function renderHomeFeed(container) {
     // Regular articles: keep only genuine standalone articles (exclude book covers AND all book chapters)
     const regularArticles = allArticles.filter(a =>
         !isBookCoverItem(a) && !isChapter(a) &&
-        String(a.status || "published").toLowerCase() === "published" &&
+        isPubliclyPublished(a) &&
         siteCategoryById.get(getArticleCategoryId(a))?.visible !== false
     );
 

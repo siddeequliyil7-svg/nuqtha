@@ -222,7 +222,7 @@
 
     <!-- Firebase Script -->
     <script type="module">
-        import { db, doc, getDoc, collection, getDocs, getDocsFromCache } from "./firebase-config.js";
+        import { db, doc, getDoc, collection, getDocs, getDocsFromCache, query, where } from "./firebase-config.js";
         import { initHeaderAuthUI } from "./js/auth-ui.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, getStoryUrl } from "./schema-validator.js";
@@ -353,7 +353,7 @@
                 } catch (e) {}
 
                 try {
-                    const snap = await getDocs(collection(db, "articles"));
+                    const snap = await getDocs(query(collection(db, "articles"), where("status", "==", "published")));
                     hasFirestoreArticles = snap.docs.length > 0;
                     allArticles = snap.docs
                         .map(d => normalizeArticleDoc(d.data(), d.id))
@@ -361,7 +361,7 @@
                 } catch (error) {
                     console.warn("[author.html] Firestore request failed; checking persistent local cache.", error);
                     try {
-                        const cachedSnapshot = await getDocsFromCache(collection(db, "articles"));
+                        const cachedSnapshot = await getDocsFromCache(query(collection(db, "articles"), where("status", "==", "published")));
                         allArticles = cachedSnapshot.docs
                             .map(d => normalizeArticleDoc(d.data(), d.id))
                             .filter(isPubliclyPublished);

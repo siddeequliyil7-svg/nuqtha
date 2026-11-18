@@ -1,4 +1,5 @@
-import { db, doc, getDoc, setDoc } from "./firebase-config.js";
+import { db, doc, getDoc } from "./firebase-config.js";
+import { setDoc } from "./js/admin-write-guard.js";
 
 const OPTIONS = [
     ["cream", "Cream (old look)", "#FAF6F0"],

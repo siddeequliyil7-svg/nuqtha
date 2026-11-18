@@ -23,7 +23,7 @@ import {
   orderBy,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { resolveFirebaseProjectId } from "./js/firebase-project.js";
 
 /**
@@ -88,7 +88,55 @@ try {
 export const db = firestoreDb;
 export const storage = getStorage(app);
 
-export async function uploadImageDataUrl(image, path) {
+function createStoragePath(path) {
+  const cleanPath = String(path || "").trim();
+  if (!cleanPath || cleanPath.startsWith("/") || cleanPath.includes("..")) {
+    throw new Error("A valid Firebase Storage path is required.");
+  }
+  return `${cleanPath}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function uploadBlobToStorage(blob, path, options = {}) {
+  if (blob.size > (options.maxBytes || 25 * 1024 * 1024)) {
+    throw new Error("The selected file exceeds the upload size limit.");
+  }
+  const contentType = options.contentType || blob.type || "application/octet-stream";
+  if (Array.isArray(options.allowedTypes) && !options.allowedTypes.includes(contentType)) {
+    throw new Error(`Unsupported file type: ${contentType || "unknown"}.`);
+  }
+
+  const imageRef = ref(storage, createStoragePath(path));
+  const task = uploadBytesResumable(imageRef, blob, {
+    contentType,
+    cacheControl: options.cacheControl || "public, max-age=31536000, immutable"
+  });
+
+  return new Promise((resolve, reject) => {
+    task.on("state_changed", snapshot => {
+      if (typeof options.onProgress === "function") {
+        options.onProgress({
+          percent: snapshot.totalBytes ? (snapshot.bytesTransferred / snapshot.totalBytes) * 100 : 0,
+          message: "Uploading..."
+        });
+      }
+    }, reject, async () => {
+      try {
+        resolve(await getDownloadURL(task.snapshot.ref));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
+export async function uploadFile(file, path, options = {}) {
+  if (!file || typeof file.size !== "number" || typeof file.type !== "string") {
+    throw new Error("Choose a valid file before uploading.");
+  }
+  return uploadBlobToStorage(file, path, options);
+}
+
+export async function uploadImageDataUrl(image, path, options = {}) {
   if (typeof image !== "string" || !image.trim()) return "";
   const imageUrl = image.trim();
   if (/^(blob:|file:)/i.test(imageUrl)) {
@@ -98,16 +146,18 @@ export async function uploadImageDataUrl(image, path) {
     if (/^https?:\/\//i.test(imageUrl) || imageUrl.startsWith("/")) return imageUrl;
     throw new Error("Cover image must be an uploaded image, HTTPS URL, or site-relative asset.");
   }
+  if (!/^data:image\/(?:jpeg|png|webp|gif|avif);base64,/i.test(imageUrl)) {
+    throw new Error("The cover image data is not a supported image format.");
+  }
   const response = await fetch(imageUrl);
   if (!response.ok) throw new Error(`Could not prepare image for upload (HTTP ${response.status}).`);
   const blob = await response.blob();
-  const uniquePath = `${path}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  const imageRef = ref(storage, uniquePath);
-  await uploadBytes(imageRef, blob, {
-    contentType: blob.type || "image/jpeg",
-    cacheControl: "public, max-age=31536000, immutable"
+  return uploadBlobToStorage(blob, path, {
+    ...options,
+    maxBytes: options.maxBytes || 12 * 1024 * 1024,
+    allowedTypes: options.allowedTypes || ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"],
+    contentType: blob.type || imageUrl.slice(5, imageUrl.indexOf(";"))
   });
-  return getDownloadURL(imageRef);
 }
 
 /**

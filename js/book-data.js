@@ -373,10 +373,24 @@ export async function getBookChapters(bookId, options = {}) {
                                 select: { fields: CHAPTER_LIST_FIELDS.map(fieldPath => ({ fieldPath })) },
                                 from: [{ collectionId: "articles" }],
                                 where: {
-                                    fieldFilter: {
-                                        field: { fieldPath },
-                                        op: "EQUAL",
-                                        value: { stringValue: bookDoc?.id || bookId }
+                                    compositeFilter: {
+                                        op: "AND",
+                                        filters: [
+                                            {
+                                                fieldFilter: {
+                                                    field: { fieldPath },
+                                                    op: "EQUAL",
+                                                    value: { stringValue: bookDoc?.id || bookId }
+                                                }
+                                            },
+                                            {
+                                                fieldFilter: {
+                                                    field: { fieldPath: "status" },
+                                                    op: "EQUAL",
+                                                    value: { stringValue: "published" }
+                                                }
+                                            }
+                                        ]
                                     }
                                 }
                             }

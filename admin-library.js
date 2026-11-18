@@ -1,6 +1,6 @@
 // admin-library.js : self-contained "Library" panel for your admin page.
 // Usage: import { initLibraryAdmin } from "./admin-library.js"; initLibraryAdmin(document.getElementById("library-admin"));
-import { db, collection, getDocs, getDocsFromCache, doc } from "./firebase-config.js";
+import { db, collection, getDocs, getDocsFromCache, doc, serverTimestamp } from "./firebase-config.js";
 import { addDoc, setDoc, updateDoc, deleteDoc, getAdminWriteErrorMessage } from "./js/admin-write-guard.js";
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
 const $ = (r, s) => r.querySelector(s);
@@ -373,6 +373,8 @@ export async function initLibraryAdmin(root) {
       description: field("description").value.trim(),
       contents: field("contents").value.split("\n").map((x) => x.trim()).filter(Boolean),
       visible,
+      status: visible ? "published" : "draft",
+      publishedAt: visible ? serverTimestamp() : null,
     };
     try {
       bkStatus.textContent = "Saving...";
@@ -605,7 +607,9 @@ export async function initLibraryAdmin(root) {
       order: books.length + 1,
       description: String(b?.description || "").trim(),
       contents: Array.isArray(b?.chapters) ? b.chapters.filter(Boolean) : [],
-      visible: true
+      visible: true,
+      status: "published",
+      publishedAt: serverTimestamp()
     };
     try {
       bkStatus.textContent = `"${b.title}" ഷെൽഫിലേക്ക് ചേർക്കുന്നു...`;

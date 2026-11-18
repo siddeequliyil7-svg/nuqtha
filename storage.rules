@@ -1,0 +1,44 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isApprovedAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          'sayyidsalman314@gmail.com',
+          'aboobakersiddeequliyil@gmail.com',
+          'admin@nuqtha.com',
+          'nuqtha.editor@gmail.com'
+        ];
+    }
+
+    function isPublishedDocument(collectionName, documentId) {
+      let documentPath = /databases/(default)/documents/$(collectionName)/$(documentId);
+      return firestore.exists(documentPath)
+        && firestore.get(documentPath).data.status == 'published';
+    }
+
+    match /articles/{articleId}/{fileName} {
+      allow read: if isApprovedAdmin() || isPublishedDocument('articles', articleId);
+      allow write: if isApprovedAdmin()
+        && request.resource.size <= 25 * 1024 * 1024
+        && request.resource.contentType.matches('^(image/.*|application/pdf|application/vnd\\.ms-powerpoint|application/vnd\\.openxmlformats-officedocument\\.presentationml\\.presentation|application/vnd\\.apple\\.keynote)$');
+    }
+
+    match /books/{bookId}/{fileName} {
+      allow read: if isApprovedAdmin()
+        || isPublishedDocument('articles', bookId)
+        || isPublishedDocument('books', bookId);
+      allow write: if isApprovedAdmin()
+        && request.resource.size <= 25 * 1024 * 1024
+        && request.resource.contentType.matches('^(image/.*|application/pdf|application/vnd\\.ms-powerpoint|application/vnd\\.openxmlformats-officedocument\\.presentationml\\.presentation|application/vnd\\.apple\\.keynote)$');
+    }
+
+    match /authors/{authorId}/{fileName} {
+      allow read: if true;
+      allow write: if isApprovedAdmin()
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('^image/(jpeg|png|webp|gif)$');
+    }
+  }
+}
