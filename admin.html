@@ -46,8 +46,8 @@
                 </div>
                 <div>
                     <span class="text-xs font-black tracking-widest uppercase font-english text-[#b4532c] block">NUQTHA Security</span>
-                    <h2 class="text-xl sm:text-2xl font-black text-[#1e1b18] tracking-tight">അഡ്മിൻ പ്രവേശനം</h2>
-                    <p class="text-xs text-[#8c7a6b] mt-1 font-['Noto_Sans_Malayalam']">പ്രസിദ്ധീകരണ പാനലിലേക്ക് പ്രവേശിക്കാൻ പാസ്‌വേഡ് നൽകുക.</p>
+                    <h2 class="text-xl sm:text-2xl font-black text-[#1e1b18] tracking-tight">Admin Sign In</h2>
+                    <p class="text-xs text-[#8c7a6b] mt-1">Sign in with an approved Google account to manage and save content.</p>
                 </div>
             </div>
 
@@ -56,18 +56,18 @@
                 <div class="flex items-start gap-2.5">
                     <span class="text-lg">⚠️</span>
                     <div>
-                        <h4 class="text-xs font-black text-amber-900 uppercase font-english">Unauthorized Access (അഡ്മിൻ അനുമതിയില്ല)</h4>
-                        <p id="admin-unauthorized-msg" class="text-xs text-amber-800 font-['Anek_Malayalam'] mt-0.5 leading-relaxed">
-                            നിങ്ങൾ സാധാരണ വായനക്കാരനായി ലോഗിൻ ചെയ്തിരിക്കുന്നു. ഈ പാനൽ അഡ്മിൻമാർക്ക് മാത്രമുള്ളതാണ്.
+                        <h4 class="text-xs font-black text-amber-900 uppercase font-english">Admin Access Required</h4>
+                        <p id="admin-unauthorized-msg" class="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                            Sign in with an approved, verified Google account to continue.
                         </p>
                     </div>
                 </div>
                 <div class="flex gap-2 pt-1">
                     <a href="index.html" class="flex-1 py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold text-center transition">
-                        ← ഹോം പേജ്
+                        ← Home
                     </a>
                     <button type="button" id="admin-switch-btn" class="flex-1 py-2 px-3 rounded-xl bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 text-xs font-bold text-center transition">
-                        അഡ്മിൻ ലോഗിൻ
+                        Use another account
                     </button>
                 </div>
             </div>
@@ -81,54 +81,21 @@
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                     </svg>
-                    <span>Google വഴി അഡ്മിൻ പ്രവേശനം</span>
+                    <span>Sign in with Google</span>
                 </button>
-                <div class="flex items-center gap-3">
-                    <div class="h-px bg-[#ebdccb] flex-1"></div>
-                    <span class="text-[10px] text-[#8c7a6b] font-bold uppercase tracking-wider font-english">OR PASSWORD</span>
-                    <div class="h-px bg-[#ebdccb] flex-1"></div>
-                </div>
+                <p class="text-[11px] leading-relaxed text-[#8c7a6b]">
+                    Firestore saves require an authenticated admin account. A local password cannot authorize changes.
+                </p>
+                <a class="inline-block text-[11px] font-bold text-[#b4532c] hover:underline" href="https://console.firebase.google.com/project/nuqtha-c0900/authentication/settings" target="_blank" rel="noopener noreferrer">
+                    Firebase authorized domain settings
+                </a>
+                <div id="admin-login-error" role="alert" aria-live="polite" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold text-center"></div>
             </div>
-
-            <!-- Form -->
-            <form id="admin-login-form" class="space-y-4 pt-1">
-                <div class="space-y-1.5 text-left">
-                    <label for="admin-password-input" class="text-xs font-bold uppercase tracking-wider text-[#5a4b41] font-english block">
-                        Admin Password
-                    </label>
-                    <div class="relative">
-                        <input 
-                            type="password" 
-                            id="admin-password-input" 
-                            autocomplete="current-password"
-                            required
-                            placeholder="പാസ്‌വേഡ് നൽകുക (Password)" 
-                            class="w-full px-4 py-3 rounded-2xl border border-[#ebdccb] focus:border-[#b4532c] focus:ring-2 focus:ring-[#b4532c]/20 outline-none text-sm transition bg-white/90 pr-10"
-                        />
-                        <button type="button" id="toggle-pw-visibility" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition p-1" title="Toggle password visibility">
-                            <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Error Box -->
-                <div id="admin-login-error" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold text-center">
-                    തെറ്റായ പാസ്‌വേഡ്! ദയവായി വീണ്ടും ശ്രമിക്കുക.
-                </div>
-
-                <button 
-                    type="submit" 
-                    class="w-full py-3.5 px-6 rounded-2xl bg-[#b4532c] hover:bg-[#923e1b] text-white text-sm font-bold shadow-lg shadow-[#b4532c]/25 hover:shadow-xl transition flex items-center justify-center gap-2 font-english uppercase tracking-wider"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
-                    <span>Unlock Dashboard</span>
-                </button>
-            </form>
 
             <div class="pt-2 border-t border-[#ebdccb]">
                 <a href="index.html" class="inline-flex items-center gap-1.5 text-xs font-bold text-[#8c7a6b] hover:text-[#b4532c] transition font-english">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                    <span>ഹോം പേജിലേക്ക് മടങ്ങുക (Return to Home)</span>
+                    <span>Return to Home</span>
                 </a>
             </div>
         </div>

@@ -6,12 +6,12 @@ import { initLibraryAdmin } from "./admin-library.js";
 import { initCategoryAdmin } from "./admin-categories.js";
 import { initReadingBgAdmin } from "./admin-reading-bg.js";
 import {
-    checkIsAdminUser, 
-    initAuthStateListener, 
-    signInWithGoogle, 
-    signOutUser, 
-    getCachedAuthUser, 
-    ADMIN_SESSION_KEY
+    APPROVED_ADMIN_EMAILS,
+    loadFirebaseAuth,
+    mapFirebaseUser,
+    safeSaveAuthUser,
+    signInWithGoogle,
+    signOutUser
 } from "./js/auth-system.js";
 import { addDoc, setDoc, updateDoc, deleteDoc, uploadImageDataUrl, getAdminWriteErrorMessage } from "./js/admin-write-guard.js";
 
@@ -420,8 +420,6 @@ function refreshAdminListsAfterSave() {
     }
 }
 
-const ADMIN_PASSWORD = "admin768";
-const AUTH_STORAGE_KEY = "nuqtha_admin_authenticated";
 let isDashboardInitialized = false;
 
 function initAdminDashboard() {
@@ -507,15 +505,39 @@ function initPlaylistPresets() {
 function initAdminSecurity() {
     const authBarrier = document.getElementById("admin-auth-barrier");
     const mainWrapper = document.getElementById("admin-main-wrapper");
-    const loginForm = document.getElementById("admin-login-form");
-    const passwordInput = document.getElementById("admin-password-input");
     const errorBox = document.getElementById("admin-login-error");
-    const togglePwBtn = document.getElementById("toggle-pw-visibility");
     const logoutBtn = document.getElementById("admin-logout-btn");
     const googleAdminBtn = document.getElementById("admin-google-signin-btn");
     const unauthorizedNotice = document.getElementById("admin-unauthorized-notice");
     const unauthorizedMsg = document.getElementById("admin-unauthorized-msg");
     const switchBtn = document.getElementById("admin-switch-btn");
+
+    function clearDashboardSession() {
+        try {
+            sessionStorage.removeItem("nuqtha_admin_authenticated");
+            sessionStorage.removeItem("nuqtha_admin_auth");
+        } catch (error) {
+            console.warn("[Admin Auth] Could not clear a stale dashboard session.", error?.name || "StorageError");
+        }
+    }
+
+    function isApprovedFirebaseAdmin(user) {
+        const email = String(user?.email || "").trim().toLowerCase();
+        return Boolean(user?.emailVerified && APPROVED_ADMIN_EMAILS.some(approved =>
+            String(approved).trim().toLowerCase() === email
+        ));
+    }
+
+    function getLoginErrorMessage(error) {
+        if (error?.code === "auth/unauthorized-domain") {
+            return `Google sign-in is blocked for "${window.location.hostname}". Add this exact hostname in Firebase Console under Authentication > Settings > Authorized domains, then reload this page.`;
+        }
+        if (error?.code === "auth/operation-not-allowed") {
+            return "Google sign-in is disabled for this Firebase project. Enable the Google provider in Firebase Console under Authentication > Sign-in method.";
+        }
+        const message = String(error?.message || error || "Unknown error.");
+        return `Google sign-in failed${error?.code ? ` (${error.code})` : ""}: ${message}`;
+    }
 
     function unlock() {
         if (authBarrier) authBarrier.classList.add("hidden");
@@ -524,60 +546,54 @@ function initAdminSecurity() {
     }
 
     function lock(unauthorizedUser = null) {
+        clearDashboardSession();
         if (authBarrier) authBarrier.classList.remove("hidden");
         if (mainWrapper) mainWrapper.classList.add("hidden");
 
         if (unauthorizedUser) {
             if (unauthorizedNotice) unauthorizedNotice.classList.remove("hidden");
             if (unauthorizedMsg) {
-                unauthorizedMsg.textContent = `നിങ്ങൾ വായനക്കാരനായി (${unauthorizedUser.email || unauthorizedUser.phoneNumber || unauthorizedUser.name}) ലോഗിൻ ചെയ്തിരിക്കുന്നു. ഈ പ്രസിദ്ധീകരണ പാനലിലേക്ക് പ്രവേശനാനുമതിയില്ല.`;
+                const email = String(unauthorizedUser.email || "").trim().toLowerCase();
+                const isApprovedEmail = APPROVED_ADMIN_EMAILS.some(approved =>
+                    String(approved).trim().toLowerCase() === email
+                );
+                const reason = isApprovedEmail && !unauthorizedUser.emailVerified
+                    ? "This account's email is not verified. Verify it and sign in again."
+                    : "This account is not an approved admin. Use an approved, verified Google account.";
+                unauthorizedMsg.textContent = `The signed-in account (${unauthorizedUser.email || unauthorizedUser.phoneNumber || unauthorizedUser.name}) cannot access admin: ${reason}`;
             }
         } else {
             if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
-        }
-
-        if (passwordInput) {
-            passwordInput.value = "";
         }
     }
 
     if (switchBtn) {
         switchBtn.addEventListener("click", () => {
             if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
-            if (passwordInput) passwordInput.focus();
         });
     }
 
-    function evaluateSession(user) {
-        const hasSession = sessionStorage.getItem(AUTH_STORAGE_KEY) === "true" || sessionStorage.getItem(ADMIN_SESSION_KEY) === "true";
-        if (hasSession) {
-            unlock();
-            return;
-        }
+    clearDashboardSession();
+    lock();
 
-        if (user) {
-            if (checkIsAdminUser(user)) {
-                try {
-                    sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
-                    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
-                } catch (_) {}
-                unlock();
-            } else {
-                // User is signed in, but NOT an admin
-                lock(user);
+    loadFirebaseAuth().then(({ auth, onAuthStateChanged }) => {
+        onAuthStateChanged(auth, firebaseUser => {
+            if (!firebaseUser) {
+                lock();
+                return;
             }
-        } else {
-            lock(null);
+
+            const profile = mapFirebaseUser(firebaseUser);
+            safeSaveAuthUser(profile);
+            if (isApprovedFirebaseAdmin(firebaseUser)) unlock();
+            else lock(profile);
+        });
+    }).catch(error => {
+        console.error("[Admin Auth] Firebase authentication could not initialize:", error);
+        if (errorBox) {
+            errorBox.textContent = getLoginErrorMessage(error);
+            errorBox.classList.remove("hidden");
         }
-    }
-
-    // Initial check using cached user
-    const cachedUser = getCachedAuthUser();
-    evaluateSession(cachedUser);
-
-    // Live auth listener
-    initAuthStateListener((firebaseUser) => {
-        evaluateSession(firebaseUser);
     });
 
     // Google Admin Sign-In
@@ -589,9 +605,7 @@ function initAdminSecurity() {
                 if (errorBox) errorBox.classList.add("hidden");
 
                 const profile = await signInWithGoogle();
-                if (checkIsAdminUser(profile)) {
-                    sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
-                    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+                if (isApprovedFirebaseAdmin(profile)) {
                     unlock();
                 } else {
                     lock(profile);
@@ -600,7 +614,7 @@ function initAdminSecurity() {
                 console.warn("[Admin Auth] Google sign-in error:", err);
                 if (err?.code !== "auth/popup-closed-by-user") {
                     if (errorBox) {
-                        errorBox.textContent = "Google ലോഗിൻ പരാജയപ്പെട്ടു: " + (err.message || "");
+                        errorBox.textContent = getLoginErrorMessage(err);
                         errorBox.classList.remove("hidden");
                     }
                 }
@@ -611,46 +625,9 @@ function initAdminSecurity() {
         });
     }
 
-    // Password Form
-    if (loginForm) {
-        loginForm.addEventListener("submit", (e) => {
-            e.preventDefault();
-            const val = (passwordInput?.value || "").trim();
-            if (val === ADMIN_PASSWORD) {
-                try {
-                    sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
-                    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
-                } catch (_) {}
-                if (errorBox) errorBox.classList.add("hidden");
-                if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
-                unlock();
-            } else {
-                if (errorBox) {
-                    errorBox.textContent = "തെറ്റായ പാസ്‌വേഡ്! (Incorrect Password)";
-                    errorBox.classList.remove("hidden");
-                }
-                if (passwordInput) {
-                    passwordInput.classList.add("border-red-500", "ring-2", "ring-red-400");
-                    passwordInput.select();
-                    setTimeout(() => {
-                        passwordInput.classList.remove("border-red-500", "ring-2", "ring-red-400");
-                    }, 2500);
-                }
-            }
-        });
-    }
-
-    if (togglePwBtn && passwordInput) {
-        togglePwBtn.addEventListener("click", () => {
-            const isPassword = passwordInput.type === "password";
-            passwordInput.type = isPassword ? "text" : "password";
-        });
-    }
-
     if (logoutBtn) {
         logoutBtn.addEventListener("click", async () => {
-            sessionStorage.removeItem(AUTH_STORAGE_KEY);
-            sessionStorage.removeItem(ADMIN_SESSION_KEY);
+            clearDashboardSession();
             await signOutUser();
             window.location.reload();
         });

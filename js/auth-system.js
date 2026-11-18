@@ -61,6 +61,7 @@ export function mapFirebaseUser(user) {
         email: email,
         phoneNumber: phone,
         avatar: user.photoURL || "",
+        emailVerified: user.emailVerified === true,
         role: isAdmin ? "admin" : "reader",
         isAdmin: isAdmin,
         providerId: user.providerData && user.providerData[0] ? user.providerData[0].providerId : "firebase"
