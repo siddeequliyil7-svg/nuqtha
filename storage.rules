@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isApprovedAdmin() {
+      return signedIn() && request.auth.token.email_verified == true &&
+        request.auth.token.email in [
+          'sayyidsalman314@gmail.com',
+          'aboobakersiddeequliyil@gmail.com',
+          'admin@nuqtha.com',
+          'nuqtha.editor@gmail.com'
+        ];
+    }
+
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if isApprovedAdmin() &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+  }
+}

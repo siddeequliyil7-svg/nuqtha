@@ -415,6 +415,9 @@ function refreshAdminListsAfterSave() {
 
     try {
         sessionStorage.removeItem("nuqtha_cached_articles");
+        sessionStorage.removeItem("nuqtha_cached_articles_v11");
+        sessionStorage.removeItem("nuqtha:library:v1");
+        localStorage.removeItem("nuqtha_cached_articles");
     } catch (error) {
         console.warn("[NUQTHA ADMIN] Could not clear the stale article cache after save.", error?.name || "StorageError");
     }
@@ -989,6 +992,19 @@ async function handleFormSubmit(event) {
             switchAdminTab("published");
         } else {
             // CREATE NEW ARTICLE IN FIRESTORE
+            const newArticleRecord = {
+                ...sanitized,
+                id: targetArticleId,
+                __adminCollection: "articles",
+                category: sanitized.categoryId,
+                hasCustomExcerpt: Boolean(typedExcerpt),
+                storedExcerpt: typedExcerpt,
+                excerpt: typedExcerpt,
+                thumbnailUrl: storedThumbnail,
+                ogImage: storedThumbnail,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
             await setDoc(doc(db, "articles", targetArticleId), {
                 ...sanitized,
                 category: sanitized.categoryId,
@@ -1000,6 +1016,8 @@ async function handleFormSubmit(event) {
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
+            currentArticlesList.unshift(newArticleRecord);
+            refreshAdminListsAfterSave();
 
             showGlobalStatus(contentStatus === "draft"
                 ? "ലേഖനം ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു."
@@ -4405,7 +4423,14 @@ window.saveArticleLayoutQuick = async function(articleId) {
             updatedAt: serverTimestamp()
         });
 
-        showGlobalStatus(`ലേഔട്ട് വിജയകരമായി മാറ്റി! (${newPlacement}, Priority: ${newPriority})`, "success");
+        const localRecord = currentArticlesList.find(article => article.id === articleId);
+        if (localRecord) {
+            localRecord.placement = newPlacement;
+            localRecord.priority = newPriority;
+        }
+        refreshAdminListsAfterSave();
+
+        showGlobalStatus(`ലേഔട്ട് വിജയകരയായി മാറ്റി! (${newPlacement}, Priority: ${newPriority})`, "success");
     } catch (err) {
         console.error("Error saving quick layout:", err);
         showGlobalStatus("ലേഔട്ട് അപ്‌ഡേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
@@ -4519,6 +4544,7 @@ function initAuthorManager() {
                 photoUrl,
                 bio,
                 slug,
+                createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
 
@@ -5099,7 +5125,8 @@ function initMoreMenuManager() {
         }
     }
 
-    function moveMenuItem(id, direction) {
+    async function moveMenuItem(id, direction) {
+        const previous = adminMenuItemsList.map(item => ({ ...item }));
         const sorted = [...adminMenuItemsList].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
         const idx = sorted.findIndex(i => i.id === id);
         if (idx === -1) return;
@@ -5116,7 +5143,11 @@ function initMoreMenuManager() {
 
         adminMenuItemsList = sorted;
         renderMenuList();
-        persistMenuItems(adminMenuItemsList);
+        const success = await persistMenuItems(adminMenuItemsList);
+        if (!success) {
+            adminMenuItemsList = previous;
+            renderMenuList();
+        }
     }
 
     function editMenuItem(id) {
@@ -5142,6 +5173,7 @@ function initMoreMenuManager() {
 
         if (!confirm(`"${item.label}" എന്ന ലിങ്ക് More മെനുവിൽ നിന്നും നീക്കം ചെയ്യണോ?`)) return;
 
+        const previous = adminMenuItemsList.map(item => ({ ...item }));
         adminMenuItemsList = adminMenuItemsList.filter(i => i.id !== id);
         adminMenuItemsList.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)).forEach((item, i) => {
             item.order = i + 1;
@@ -5151,6 +5183,9 @@ function initMoreMenuManager() {
         const success = await persistMenuItems(adminMenuItemsList);
         if (success) {
             showGlobalStatus("ലിങ്ക് വിജയകരമായി നീക്കം ചെയ്തു.", "success");
+        } else {
+            adminMenuItemsList = previous;
+            renderMenuList();
         }
     }
 
@@ -5177,6 +5212,7 @@ function initMoreMenuManager() {
         saveBtn.disabled = true;
         saveBtn.classList.add("opacity-60");
 
+        const previous = adminMenuItemsList.map(item => ({ ...item }));
         try {
             if (editId) {
                 const existing = adminMenuItemsList.find(i => i.id === editId);
@@ -5205,6 +5241,9 @@ function initMoreMenuManager() {
             if (success) {
                 showGlobalStatus(editId ? "ലിങ്ക് വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു." : "പുതിയ ലിങ്ക് ചേർത്തു. ✨", "success");
                 resetForm();
+            } else {
+                adminMenuItemsList = previous;
+                renderMenuList();
             }
         } finally {
             saveBtn.disabled = false;
