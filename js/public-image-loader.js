@@ -105,8 +105,8 @@ async function fetchCollectionWithCache(collectionName) {
                 };
             });
             return { records, available: true };
-        } catch (cacheError) {
-            console.info(`[NUQTHA Data] No cached ${collectionName} records are available.`, cacheError?.message || cacheError);
+        } catch (_) {
+            console.info(`[NUQTHA Data] No cached ${collectionName} records are available.`);
             return { records: [], available: false };
         }
     }

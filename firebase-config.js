@@ -66,7 +66,6 @@ let firestoreDb;
 try {
   firestoreDb = initializeFirestore(app, {
     experimentalAutoDetectLongPolling: true,
-    useFetchStreams: false,
     localCache: persistentLocalCache({
       cacheSizeBytes: 20 * 1024 * 1024,
       tabManager: persistentMultipleTabManager()
@@ -77,7 +76,6 @@ try {
   try {
     firestoreDb = initializeFirestore(app, {
       experimentalAutoDetectLongPolling: true,
-      useFetchStreams: false,
       localCache: memoryLocalCache()
     });
   } catch (memoryError) {
