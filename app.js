@@ -2142,6 +2142,11 @@ function setupCarousel() {
     const cards = Array.from(track.querySelectorAll('.carousel-card'));
     if (cards.length === 0) return;
 
+    if (track.__nuqthaCarouselTimer) {
+        clearInterval(track.__nuqthaCarouselTimer);
+        track.__nuqthaCarouselTimer = null;
+    }
+
     // Staggered entrance via IntersectionObserver
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -2189,18 +2194,25 @@ function setupCarousel() {
         );
     }
 
-    if (prevBtn) prevBtn.addEventListener('click', () => track && track.scrollBy({ left: -getCardStride() * 2, behavior: 'smooth' }));
-    if (nextBtn) nextBtn.addEventListener('click', () => track && track.scrollBy({ left: getCardStride() * 2, behavior: 'smooth' }));
+    if (prevBtn) prevBtn.addEventListener('click', () => {
+        if (!track) return;
+        track.scrollBy({ left: -getCardStride(), behavior: 'smooth' });
+        startAutoScroll();
+    });
+    if (nextBtn) nextBtn.addEventListener('click', () => {
+        if (!track) return;
+        track.scrollBy({ left: getCardStride(), behavior: 'smooth' });
+        startAutoScroll();
+    });
     if (track) track.addEventListener('scroll', updateDots, { passive: true });
 
-    // Auto-scroll every 3 seconds (3000ms) with smooth step
-    let autoScrollInterval = null;
-    const AUTO_INTERVAL = 3000;
+    // Auto-scroll every 2 seconds (2000ms) with smooth step
+    const AUTO_INTERVAL = 2000;
 
     function startAutoScroll() {
         stopAutoScroll();
         if (cards.length <= 1) return;
-        autoScrollInterval = setInterval(() => {
+        track.__nuqthaCarouselTimer = setInterval(() => {
             const stride = getCardStride();
             const maxScroll = track.scrollWidth - track.clientWidth;
             if (track.scrollLeft >= maxScroll - 10) {
@@ -2213,9 +2225,9 @@ function setupCarousel() {
     }
 
     function stopAutoScroll() {
-        if (autoScrollInterval) {
-            clearInterval(autoScrollInterval);
-            autoScrollInterval = null;
+        if (track.__nuqthaCarouselTimer) {
+            clearInterval(track.__nuqthaCarouselTimer);
+            track.__nuqthaCarouselTimer = null;
         }
     }
 

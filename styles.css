@@ -1436,7 +1436,7 @@ body.dark-mode .text-marker {
     scroll-snap-align: start;
     background: rgba(255, 255, 255, 0.76);
     border: 1px solid rgba(235, 220, 203, 0.9);
-    border-radius: 8px;
+    border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 8px 24px -6px rgba(70, 35, 15, 0.09);
     cursor: pointer;
@@ -1461,6 +1461,7 @@ body.dark-mode .text-marker {
     height: auto;
     object-fit: cover;
     display: block;
+    border-radius: 12px 12px 0 0;
 }
 
 .carousel-card-img-placeholder {
@@ -1471,6 +1472,7 @@ body.dark-mode .text-marker {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    border-radius: 12px 12px 0 0;
 }
 
 /* Card Body */
