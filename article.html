@@ -1381,14 +1381,17 @@
                 }
             }
 
+            // Slugs are resolved by the indexed slug query above. Only probe
+            // document paths when the URL explicitly supplied an article ID.
+            if (!articleId || querySlug || identifier !== articleId) {
+                return localHit || null;
+            }
+
             // 2. Direct document ID lookup in both collections (deduplicated)
             const idsToTry = Array.from(new Set([cleanDecoded, cleanRaw, decodedId])).filter(Boolean);
             for (const tryId of idsToTry) {
-                const isLikelyDocId = /^[A-Za-z0-9_-]{15,30}$/.test(tryId) && !tryId.includes("--");
-                if (isLikelyDocId || idsToTry.length === 1) {
-                    const direct = await fetchTargetDocument(tryId, signal);
-                    if (direct) return direct;
-                }
+                const direct = await fetchTargetDocument(tryId, signal);
+                if (direct) return direct;
             }
 
             return localHit || null;

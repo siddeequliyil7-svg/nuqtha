@@ -66,6 +66,7 @@ export async function syncUserProfileToFirestore(user) {
 let currentSession = {
     historyDocId: null,
     articleId: null,
+    pageViewWriteDenied: false,
     engagedTimer: null,
     scrollListener: null,
     hasEngaged: false,
@@ -81,7 +82,8 @@ export async function trackReadingActivity(article) {
     const targetArticleId = String(article.id || article.slug || article.title);
 
     // If already tracked this exact article session in this window load, do not duplicate
-    if (currentSession.articleId === targetArticleId && currentSession.historyDocId) {
+    if (currentSession.articleId === targetArticleId &&
+        (currentSession.historyDocId || currentSession.pageViewWriteDenied)) {
         return;
     }
 
@@ -146,7 +148,16 @@ export async function trackReadingActivity(article) {
             window.__currentTrackedArticleId = targetArticleId;
         }
     } catch (err) {
-        console.warn("[Analytics] Error logging Stage 1 Page View:", err);
+        const code = String(err?.code || "").toLowerCase();
+        const message = String(err?.message || "").toLowerCase();
+        const permissionDenied = code === "permission-denied" ||
+            code.endsWith("/permission-denied") ||
+            message.includes("missing or insufficient permissions");
+        if (permissionDenied) {
+            currentSession.pageViewWriteDenied = true;
+        } else {
+            console.warn("[Analytics] Error logging Stage 1 Page View:", err);
+        }
         return;
     }
 
@@ -218,6 +229,7 @@ function cleanupCurrentSession() {
     }
     currentSession.historyDocId = null;
     currentSession.articleId = null;
+    currentSession.pageViewWriteDenied = false;
     currentSession.hasEngaged = false;
     currentSession.hasFullRead = false;
 }
