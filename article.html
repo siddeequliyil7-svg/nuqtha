@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <base href="/">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#A8512C">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="NUQTHA">
     <title>NUQTHA | Article & Edition Reader</title>
     <meta name="description" content="NUQTHA Malayalam Publishing Platform — Articles, Studies, History, and Book Editions." />
     <link rel="canonical" href="https://nuqtha.vercel.app/article.html" />
@@ -676,6 +682,12 @@
         import { getDeferredImageAttributes, installLazyFirestoreImages } from "/js/public-image-loader.js";
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, getDevicePlatform } from "/js/paywall-service.js";
         import { isPremiumBook, showPremiumBookUnavailableModal } from "/js/book-notice.js";
+        import { initInstall, isWebView, offerInstall } from "/src/install.js";
+
+        if ("serviceWorker" in navigator && !isWebView()) {
+            addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+        }
+        initInstall();
 
         void syncReadingBg();
         installLazyFirestoreImages();
@@ -2076,6 +2088,7 @@
             const rawPrice = Number(book.price);
             const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
             const isFree = !isPremium || price === 0;
+            if (isFree) offerInstall("book");
 
             // Access & Unlock Verification (checks Admin, Login state, App Install for Free books, and Purchases for Paid books)
             const accessCheck = typeof verifiedUnlocked === "boolean"

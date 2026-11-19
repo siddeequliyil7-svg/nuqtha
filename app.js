@@ -18,6 +18,12 @@ import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-servic
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
 import { getArticleCategoryId, getCachedCategories, getCategories, slugifyCategory } from "./js/category-store.js";
+import { initInstall, isWebView, offerInstall } from "./src/install.js";
+
+if ("serviceWorker" in navigator && !isWebView()) {
+    addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+}
+initInstall();
 
 void syncReadingBg();
 
@@ -2379,6 +2385,11 @@ function attachCardListeners() {
 
 function openBookIndex(book) {
     if (book) {
+        const rawPrice = Number(book.price);
+        const isPremium = book.isPremium === true || String(book.accessType || "").toLowerCase() === "premium" || String(book.type || "").toLowerCase() === "premium";
+        const isFree = !isPremium && (!Number.isFinite(rawPrice) || rawPrice <= 0);
+        if (isFree) offerInstall("book");
+
         const storyPath = getStoryUrl(book);
         const routeSlug = storyPath.split("/").filter(Boolean).pop();
         const chapters = filterAndSortChapters(book, allArticles);

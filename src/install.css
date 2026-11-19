@@ -1,0 +1,24 @@
+.pwa-card {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 90;
+  width: min(92vw, 420px);
+  padding: 1rem 1.1rem;
+  border-radius: 16px;
+  background: var(--surface, #fff);
+  color: var(--text, #2c221e);
+  border: 1px solid var(--line, #eadfd2);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .35);
+  transform: translate(-50%, 140%);
+  opacity: 0;
+  transition: transform .3s ease, opacity .3s ease;
+}
+.pwa-card.on { transform: translate(-50%, 0); opacity: 1; }
+.pwa-card strong { display: block; margin-bottom: .2rem; }
+.pwa-card p { margin: 0 0 .8rem; font-size: .9rem; line-height: 1.5; color: var(--muted, #6f5d53); }
+.pwa-row { display: flex; justify-content: flex-end; gap: .5rem; }
+.pwa-row button { min-height: 44px; padding: 0 1.1rem; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; }
+.pwa-later { background: transparent; border: 1px solid var(--line, #eadfd2); color: inherit; }
+.pwa-go { background: var(--accent, #a8512c); border: 0; color: var(--accent-ink, #fff); }
+@media (prefers-reduced-motion: reduce) { .pwa-card { transition: none; } }
