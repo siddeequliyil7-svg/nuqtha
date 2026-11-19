@@ -95,24 +95,27 @@ export function isAuthorMatch(artAuthor, targetIdentifier) {
 }
 
 let cachedAuthorsMap = null;
+let cachedAuthorsMapExpiresAt = 0;
+const AUTHOR_CACHE_TTL = 5 * 60 * 1000;
+const AUTHOR_CACHE_KEY = 'nuqtha_cached_authors';
 
 /**
  * Fetches all author profiles from Firestore (with SDK + REST fallback & 3.5s timeout).
  * Populates cache and returns a map keyed by slug and normalized name.
  */
 export async function getAuthorsMap(db) {
-    if (cachedAuthorsMap && Object.keys(cachedAuthorsMap).length > 0) {
+    if (cachedAuthorsMap && Object.keys(cachedAuthorsMap).length > 0 && Date.now() < cachedAuthorsMapExpiresAt) {
         return cachedAuthorsMap;
     }
 
     try {
-        const stored = sessionStorage.getItem('nuqtha_cached_authors');
+        const stored = sessionStorage.getItem(AUTHOR_CACHE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-                cachedAuthorsMap = parsed;
-                // Fetch network in background to refresh
-                fetchAuthorsNetwork(db).catch(() => {});
+            const cachedData = parsed.authors && parsed.savedAt ? parsed : { authors: parsed, savedAt: 0 };
+            if (cachedData.authors && typeof cachedData.authors === 'object' && Object.keys(cachedData.authors).length > 0 && Date.now() - Number(cachedData.savedAt) < AUTHOR_CACHE_TTL) {
+                cachedAuthorsMap = cachedData.authors;
+                cachedAuthorsMapExpiresAt = Number(cachedData.savedAt) + AUTHOR_CACHE_TTL;
                 return cachedAuthorsMap;
             }
         }
@@ -178,8 +181,9 @@ async function fetchAuthorsNetwork(db) {
     });
 
     cachedAuthorsMap = authors;
+    cachedAuthorsMapExpiresAt = Date.now() + AUTHOR_CACHE_TTL;
     try {
-        sessionStorage.setItem('nuqtha_cached_authors', JSON.stringify(authors));
+        sessionStorage.setItem(AUTHOR_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), authors }));
     } catch (e) {}
 
     return authors;
@@ -207,6 +211,15 @@ export function findAuthorInMap(authorName, authorsMap) {
 /**
  * Retrieves an author's photoUrl if available.
  */
+export function findAuthorById(authorId, authorsMap) {
+    if (!authorId || !authorsMap) return null;
+    const cleanId = String(authorId).trim();
+    if (authorsMap[cleanId]) return authorsMap[cleanId];
+    const slug = slugifyAuthor(cleanId);
+    if (authorsMap[slug]) return authorsMap[slug];
+    return Object.values(authorsMap).find(profile => profile && String(profile.id || "") === cleanId) || null;
+}
+
 export function getAuthorPhoto(authorName, authorsMap) {
     const profile = findAuthorInMap(authorName, authorsMap);
     return (profile && profile.photoUrl) ? profile.photoUrl : "";

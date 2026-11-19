@@ -1380,8 +1380,6 @@ body.dark-mode .text-marker {
     height: 32px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.9);
     display: flex;
     align-items: center;
@@ -1398,28 +1396,19 @@ body.dark-mode .text-marker {
     color: white;
     border-color: var(--terracotta);
     box-shadow: 0 4px 14px rgba(180, 83, 44, 0.32);
-    transform: scale(1.08);
 }
 
-/* Scroll Wrapper — clips content & adds subtle edge fade */
+/* Scroll wrapper: transparent, with no edge fade */
 .carousel-scroll-wrapper {
     position: relative;
     overflow: hidden;
     margin: 0 -4px;
     padding: 4px;
+    background: transparent;
 }
 
 .carousel-scroll-wrapper::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 8px;
-    width: 36px;
-    background: linear-gradient(to right, transparent, var(--bg-cream));
-    pointer-events: none;
-    z-index: 2;
-    transition: opacity 0.3s ease;
+    content: none;
 }
 
 /* Scroll Track with Butter-Smooth Snap & Peek Effect */
@@ -1439,61 +1428,44 @@ body.dark-mode .text-marker {
     display: none;
 }
 
-/* Individual Card — Glassmorphic & Peekable */
+/* Individual Card — Equal-height, no active-slide scaling */
 .carousel-card {
-    flex: 0 0 280px;
-    width: 280px;
-    max-width: 82vw;
+    flex: 0 0 82%;
+    width: 82%;
+    height: 320px;
     scroll-snap-align: start;
     background: rgba(255, 255, 255, 0.76);
-    backdrop-filter: blur(20px) saturate(170%);
-    -webkit-backdrop-filter: blur(20px) saturate(170%);
-    border: 1px solid rgba(255, 255, 255, 0.9);
-    border-radius: 20px;
+    border: 1px solid rgba(235, 220, 203, 0.9);
+    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 8px 24px -6px rgba(70, 35, 15, 0.09),
-                inset 0 1px 1px rgba(255, 255, 255, 0.95);
+    box-shadow: 0 8px 24px -6px rgba(70, 35, 15, 0.09);
     cursor: pointer;
     text-decoration: none;
     display: flex;
     flex-direction: column;
-    opacity: 0;
-    transform: translateY(16px);
-    transition: opacity 0.45s ease,
-                transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.28s ease,
-                background 0.28s ease;
-}
-
-/* Triggered by IntersectionObserver: Smooth Slide-Up & Fade Entry */
-.carousel-card.carousel-visible {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
+    transition: box-shadow 0.28s ease, background 0.28s ease;
 }
 
+.carousel-card.carousel-visible,
 .carousel-card.carousel-visible:hover {
-    transform: translateY(-6px) scale(1.015);
-    box-shadow: 0 18px 40px -8px rgba(70, 35, 15, 0.18),
-                inset 0 1px 1px rgba(255, 255, 255, 0.95);
-    background: rgba(255, 255, 255, 0.92);
+    opacity: 1;
+    transform: none;
 }
 
 /* Card Image */
 .carousel-card-img {
     width: 100%;
-    height: 145px;
+    aspect-ratio: 16 / 9;
+    height: auto;
     object-fit: cover;
     display: block;
-    transition: transform 0.5s ease;
-}
-
-.carousel-card.carousel-visible:hover .carousel-card-img {
-    transform: scale(1.06);
 }
 
 .carousel-card-img-placeholder {
     width: 100%;
-    height: 145px;
+    aspect-ratio: 16 / 9;
     background: linear-gradient(135deg, #b8542c 0%, #803113 100%);
     display: flex;
     align-items: center;
@@ -1523,7 +1495,9 @@ body.dark-mode .text-marker {
 .carousel-card-title {
     font-size: 13.5px;
     font-weight: 800;
-    line-height: 1.45;
+    line-height: 1.5;
+    min-height: 3em;
+    max-height: 3em;
     color: var(--text-primary);
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -1542,9 +1516,15 @@ body.dark-mode .text-marker {
     font-size: 10.5px;
     color: #8c7a6b;
     font-family: 'Plus Jakarta Sans', sans-serif;
-    margin-top: 4px;
-    padding-top: 8px;
+    margin-top: 0;
+    padding-top: 6px;
     border-top: 1px solid rgba(235, 220, 203, 0.65);
+}
+
+.carousel-card-meta:last-child {
+    margin-top: auto;
+    border-top: 0;
+    padding-top: 4px;
 }
 
 /* Dot Indicators */
@@ -1577,14 +1557,9 @@ body.dark-mode .text-marker {
 
 .carousel-dot:hover:not(.active) {
     background: rgba(180, 83, 44, 0.5);
-    transform: scale(1.2);
 }
 
 /* ─── Dark Mode ─── */
-body.dark-mode .carousel-scroll-wrapper::after {
-    background: linear-gradient(to right, transparent, #090a0f);
-}
-
 body.dark-mode .carousel-card {
     background: rgba(18, 20, 29, 0.72);
     border-color: rgba(255, 255, 255, 0.1);
@@ -1634,19 +1609,17 @@ body.dark-mode .carousel-dot.active {
 }
 
 /* ─── Responsive ─── */
-@media (min-width: 480px) {
+@media (min-width: 641px) {
     .carousel-card {
-        flex: 0 0 240px;
+        flex-basis: calc((100% - 14px) / 2);
+        width: calc((100% - 14px) / 2);
     }
 }
 
-@media (min-width: 641px) {
+@media (min-width: 1024px) {
     .carousel-card {
-        flex: 0 0 260px;
-    }
-    .carousel-card-img,
-    .carousel-card-img-placeholder {
-        height: 145px;
+        flex-basis: calc((100% - 42px) / 4);
+        width: calc((100% - 42px) / 4);
     }
 }
 
@@ -3995,12 +3968,15 @@ html.dark {
 .book-v2-copy { display: grid; align-content: center; gap: clamp(18px, 2.4vw, 28px); min-width: 0; }
 .book-v2-heading { display: grid; gap: 18px; }
 .book-v2-title { margin: 0; color: var(--book-hero-text); font-family: 'Anek Malayalam', sans-serif; font-size: clamp(27px, 3vw, 36px); font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
-.book-v2-author-row { display: flex; align-items: center; gap: 12px; min-height: 48px; }
+.book-v2-author-row { display: flex; align-items: center; gap: 12px; min-height: 48px; max-width: 520px; }
 .book-hero-author-avatar-link { display: inline-flex; flex: 0 0 auto; border-radius: 50%; }
 .book-v2-avatar { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; overflow: hidden; border: 1px solid var(--book-hero-border); border-radius: 50%; background: var(--book-hero-accent-soft); color: var(--book-hero-text); font-size: 1.05rem; font-weight: 800; line-height: 1; }
 .book-v2-avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .book-v2-author-name { display: block; max-width: 100%; overflow: hidden; color: var(--book-hero-text); font-size: .95rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .book-v2-author-role { color: var(--book-hero-muted); font-size: .78rem; }
+.book-v2-author-bio { display: -webkit-box; max-width: 420px; margin: 2px 0 0; overflow: hidden; color: var(--book-hero-muted); font-size: .78rem; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+.book-v2-author-profile-link { margin-top: 2px; color: var(--book-hero-accent); font-size: .72rem; font-weight: 800; }
+.book-v2-author-profile-placeholder { width: 96px; height: 11px; border-radius: 6px; background: color-mix(in srgb, var(--book-hero-muted) 18%, transparent); }
 .book-v2-author-name:focus-visible,
 .book-v2-author-row a:focus-visible,
 .book-v2-intro-toggle:focus-visible { outline: 3px solid var(--book-hero-accent); outline-offset: 4px; border-radius: 4px; }

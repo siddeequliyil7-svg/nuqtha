@@ -674,7 +674,7 @@
         import { initHeaderAuthUI } from "/js/auth-ui.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, getArticleImageUrl, cleanUrlPart, sanitizeCategory } from "/schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, getRelatedBooks, saveBookPageLightCache, saveBookChapterListCache, readBookChapterListCache } from "/js/book-data.js";
-        import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "/js/author-service.js";
+        import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam, findAuthorById, findAuthorInMap } from "/js/author-service.js";
         import { categoryUrl, categoryTag } from "/js/category-link.js";
         import { getArticleCategoryId, getCachedCategoryName, getCategories } from "/js/category-store.js";
         import { filterPublicCollections, isPubliclyPublished } from "/js/public-status.js";
@@ -2080,7 +2080,7 @@
                 : "";
             const authorPhoto = (book.authorPhoto || book.authorAvatar || "").trim();
             const firstLetter = getEnglishInitial(cleanAuthor);
-            const authorId = (cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
+            const authorId = String(book.authorId || book.author?.id || '').trim() || slugifyAuthor(cleanAuthor);
             const authorUrl = `author.html?id=${encodeURIComponent(authorId)}&name=${encodeURIComponent(cleanAuthor)}`;
 
             const isPremium = isPremiumBook(book);
@@ -2175,23 +2175,17 @@
                                         ${cleanTitle}
                                     </h1>
 
-                                    <div class="book-v2-author-row">
-                                        <a href="${authorUrl}" class="book-hero-author-avatar-link flex-shrink-0" title="View author profile">
-                                            <div class="book-v2-avatar">
-                                                ${authorPhoto ? `
-                                                    <img src="${authorPhoto}" alt="${cleanAuthor}" width="42" height="42">
-                                                ` : `
-                                                    <span aria-hidden="true">${firstLetter}</span>
-                                                `}
-                                            </div>
-                                        </a>
-                                        <div class="flex flex-col min-w-0">
-                                            <a href="${authorUrl}" class="book-v2-author-name">
-                                                ${cleanAuthor}
-                                            </a>
-                                            <span class="book-v2-author-role">Author</span>
+                                    <a id="book-author-profile-link" href="${authorUrl}" class="book-v2-author-row" title="View author profile">
+                                        <div id="book-author-avatar" class="book-v2-avatar">
+                                            <span class="book-v2-author-profile-placeholder" aria-hidden="true"></span>
                                         </div>
-                                    </div>
+                                        <div class="flex flex-col min-w-0">
+                                            <span id="book-author-name" class="book-v2-author-name"></span>
+                                            <span class="book-v2-author-role">Author</span>
+                                            <p id="book-author-bio" class="book-v2-author-bio"></p>
+                                            <span class="book-v2-author-profile-link">View profile</span>
+                                        </div>
+                                    </a>
 
                                     <div class="book-v2-meta">
                                         ${dateStr ? `<span>${dateStr}</span><span class="book-v2-meta-dot" aria-hidden="true"></span>` : ''}
@@ -2250,6 +2244,50 @@
                     </div>
                 </div>
             `;
+
+            const authorProfileLink = container.querySelector("#book-author-profile-link");
+            const authorNameEl = container.querySelector("#book-author-name");
+            const authorBioEl = container.querySelector("#book-author-bio");
+            const authorAvatarEl = container.querySelector("#book-author-avatar");
+            void getAuthorsMap(db).then(map => {
+                const profile = findAuthorById(authorId, map) || findAuthorInMap(cleanAuthor, map);
+                const profileName = profile?.name || cleanAuthor;
+                const profileBio = profile?.bio || "";
+                const profilePhoto = profile?.photoUrl || authorPhoto;
+                const profileId = profile?.id || authorId;
+
+                if (authorProfileLink) {
+                    authorProfileLink.href = `author.html?id=${encodeURIComponent(profileId)}&name=${encodeURIComponent(profileName)}`;
+                }
+                if (authorNameEl) authorNameEl.textContent = profileName;
+                if (authorBioEl) authorBioEl.textContent = profileBio;
+                if (authorAvatarEl) {
+                    if (profilePhoto) {
+                        const img = document.createElement("img");
+                        img.src = profilePhoto;
+                        img.alt = "";
+                        img.width = 42;
+                        img.height = 42;
+                        img.loading = "lazy";
+                        img.decoding = "async";
+                        authorAvatarEl.replaceChildren(img);
+                    } else {
+                        const initial = document.createElement("span");
+                        initial.setAttribute("aria-hidden", "true");
+                        initial.textContent = getEnglishInitial(profileName);
+                        authorAvatarEl.replaceChildren(initial);
+                    }
+                }
+            }).catch(() => {
+                if (authorNameEl) authorNameEl.textContent = cleanAuthor;
+                if (authorBioEl) authorBioEl.textContent = "";
+                if (authorAvatarEl) {
+                    const initial = document.createElement("span");
+                    initial.setAttribute("aria-hidden", "true");
+                    initial.textContent = firstLetter;
+                    authorAvatarEl.replaceChildren(initial);
+                }
+            });
 
             container.querySelector("#book-download-app-btn")?.addEventListener("click", event => {
                 event.preventDefault();

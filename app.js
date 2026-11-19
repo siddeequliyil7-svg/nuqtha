@@ -1981,7 +1981,7 @@ function buildCarouselCard(art, index = 0) {
     const imgHtml = hasCardImage ? cardImg + imagePlaceholder : imagePlaceholder + cardImg;
 
     return '<div class="carousel-card relative cursor-pointer stretched-card-wrap" data-id="' + art.id + '">' +
-        '<div class="relative w-full h-[145px] overflow-hidden flex-shrink-0">' + imgHtml + '</div>' +
+        '<div class="relative w-full overflow-hidden flex-shrink-0 aspect-[16/9]">' + imgHtml + '</div>' +
         '<div class="carousel-card-body">' +
             categoryTag(art.category, { variant: 'carousel' }) +
             '<h4 class="carousel-card-title" ' + titleStyle + '><a href="' + getStoryUrl(art) + '" class="stretched-card-link text-inherit">' + cleanTitle + '</a></h4>' +
@@ -2143,9 +2143,9 @@ function setupCarousel() {
         });
     }, { threshold: 0.1, rootMargin: '0px 0px -20px 0px' });
 
-    cards.forEach((card, i) => {
-        card.style.transitionDelay = `${i * 65}ms`;
-        observer.observe(card);
+    cards.forEach((card) => {
+        card.classList.add('carousel-visible');
+        observer.unobserve(card);
     });
 
     if (dotsContainer) {
