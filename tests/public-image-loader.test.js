@@ -4,14 +4,22 @@ const { describe, it } = window;
 const { expect } = window.chai;
 
 describe("Deferred public images", () => {
-    it("loads visible covers even when IntersectionObserver does not notify", function(done) {
+    it("loads covers after they intersect the viewport", function(done) {
         this.timeout(5000);
         const originalFetch = window.fetch;
         const originalIntersectionObserver = window.IntersectionObserver;
         const pixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/z3sAAAAASUVORK5CYII=";
+        let imageObserver;
 
         window.IntersectionObserver = class {
-            observe() {}
+            constructor(callback) {
+                this.callback = callback;
+                this.targets = [];
+                imageObserver = this;
+            }
+            observe(target) {
+                this.targets.push(target);
+            }
             unobserve() {}
         };
         window.fetch = (input, options) => {
@@ -39,6 +47,11 @@ describe("Deferred public images", () => {
             container.append(image);
             return image;
         });
+        const directImage = document.createElement("img");
+        directImage.src = pixel;
+        directImage.loading = "lazy";
+        directImage.dataset.nuqthaCover = "true";
+        container.append(directImage);
         document.body.append(container);
 
         const timeout = setTimeout(() => finish(new Error(`Cover did not load: ${images.map(image => JSON.stringify({
@@ -69,5 +82,14 @@ describe("Deferred public images", () => {
         }, { once: true }));
 
         installLazyFirestoreImages();
+        setTimeout(() => {
+            try {
+                expect(images.every(image => image.dataset.nuqthaImageQueued !== "true")).to.equal(true);
+                expect(directImage.loading).to.equal("lazy");
+                imageObserver.callback(imageObserver.targets.map(target => ({ target, isIntersecting: true })));
+            } catch (error) {
+                finish(error);
+            }
+        }, 0);
     });
 });

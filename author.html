@@ -533,8 +533,8 @@
                 <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300" onclick="if(!event.target.closest('a')) window.location.href='${getStoryUrl(art)}'">
                     <div class="flex items-center p-3.5 sm:p-4 gap-3.5 w-full stretched-card-wrap">
                         <div class="compact-thumbnail-wrap relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#b8542c] to-[#803113]">
-                            <div data-nuqtha-image-placeholder class="absolute inset-0 flex items-center justify-center bg-[#f7eddd] text-[#b4532c] ${useDeferredImage ? "" : "hidden"}" aria-hidden="true">📖</div>
-                            <img ${imageSrc ? `src="${escapedImageSrc}"` : ""} ${useDeferredImage ? deferredImageAttributes : ""} alt="${escapedTitle}" class="relative z-10 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" width="400" height="400" loading="eager" decoding="async" data-nuqtha-cover="true">
+                            <div data-nuqtha-image-placeholder class="absolute inset-0 flex items-center justify-center bg-[#f7eddd] text-[#b4532c]" aria-hidden="true">📖</div>
+                            <img ${imageSrc ? `src="${escapedImageSrc}"` : ""} ${useDeferredImage ? deferredImageAttributes : ""} alt="${escapedTitle}" class="relative z-10 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" width="400" height="400" loading="lazy" decoding="async" data-nuqtha-cover="true">
                         </div>
                         <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
                             ${categoryTag(art.category, { variant: 'bracket' })}

@@ -169,7 +169,6 @@ if (typeof window !== "undefined" && !window.__NUQTHA_IMG_RETRY_INSTALLED__) {
 }
 
 export {
-  app,
   collection,
   getDocs,
   getDocsFromCache,

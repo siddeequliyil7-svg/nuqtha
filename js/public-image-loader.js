@@ -4,7 +4,7 @@ import { filterPublicCollections } from "./public-status.js";
 
 const REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
 const IMAGE_FIELDS = ["imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage"];
-const MAX_ACTIVE_REQUESTS = 10;
+const MAX_ACTIVE_REQUESTS = 6;
 const IMAGE_DB_NAME = "nuqtha-image-cache";
 const IMAGE_DB_VERSION = 1;
 const IMAGE_STORE_NAME = "images";
@@ -18,6 +18,7 @@ let activeRequests = 0;
 let imageDatabasePromise;
 let observer;
 let mutationObserver;
+let imageLoaderInstalled = false;
 let publicCollectionsPromise;
 let publicCollectionsCache;
 
@@ -262,13 +263,13 @@ function fetchImageFromDocument(collectionName, documentId) {
         const timeout = setTimeout(() => controller.abort(), 2500);
         try {
             const mask = IMAGE_FIELDS.map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&");
-            const url = `${REST_BASE}/${encodeURIComponent(collectionName)}/${encodeURIComponent(documentId)}?key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}`;
-            const response = await fetch(url, { signal: controller.signal });
+            const requestUrl = `${REST_BASE}/${encodeURIComponent(collectionName)}/${encodeURIComponent(documentId)}?key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}`;
+            const response = await fetch(requestUrl, { signal: controller.signal });
             if (!response.ok) throw new Error(`Firestore image read failed (${response.status}).`);
             const document = await response.json();
-            const url = getArticleImageUrl(decodeFields(document.fields || {}), "");
-            writeResolvedImageUrl(cacheKey, url);
-            return url;
+            const imageUrl = getArticleImageUrl(decodeFields(document.fields || {}), "");
+            writeResolvedImageUrl(cacheKey, imageUrl);
+            return imageUrl;
         } finally {
             clearTimeout(timeout);
         }
@@ -306,20 +307,37 @@ async function fetchImageField(image) {
 }
 
 function showImagePlaceholder(image) {
-    const placeholder = image.parentElement?.querySelector("[data-nuqtha-image-placeholder]");
-    if (!placeholder) return;
+    const parent = image.parentElement;
+    const placeholder = parent?.querySelector("[data-nuqtha-image-placeholder]");
+    if (!placeholder) {
+        if (parent) {
+            if (parent.dataset.nuqthaImageFallbackBackgroundSet !== "true") {
+                parent.dataset.nuqthaImageFallbackBackground = parent.style.backgroundColor;
+                parent.dataset.nuqthaImageFallbackBackgroundSet = "true";
+            }
+            parent.style.backgroundColor = "var(--surface)";
+        }
+        return;
+    }
     placeholder.hidden = false;
     placeholder.classList.remove("hidden");
 }
 
 function hideImagePlaceholder(image) {
-    const placeholder = image.parentElement?.querySelector("[data-nuqtha-image-placeholder]");
-    if (!placeholder) return;
-    placeholder.hidden = true;
-    placeholder.classList.add("hidden");
+    const parent = image.parentElement;
+    const placeholder = parent?.querySelector("[data-nuqtha-image-placeholder]");
+    if (placeholder) {
+        placeholder.hidden = true;
+        placeholder.classList.add("hidden");
+    } else if (parent?.dataset.nuqthaImageFallbackBackgroundSet === "true") {
+        parent.style.backgroundColor = parent.dataset.nuqthaImageFallbackBackground || "";
+        delete parent.dataset.nuqthaImageFallbackBackground;
+        delete parent.dataset.nuqthaImageFallbackBackgroundSet;
+    }
 }
 
 function handleImageError(image) {
+    image.style.visibility = "hidden";
     showImagePlaceholder(image);
     if (image.dataset.nuqthaImageFallbackAttempted === "true" ||
         !image.dataset.nuqthaImageFallbackCollection || !image.dataset.nuqthaImageFallbackDoc) return;
@@ -328,7 +346,15 @@ function handleImageError(image) {
         image.dataset.nuqthaImageFallbackCollection,
         image.dataset.nuqthaImageFallbackDoc
     ).then(source => {
-        if (source && image.isConnected) image.src = source;
+        if (!source || !image.isConnected) return;
+        image.addEventListener("load", () => {
+            image.style.visibility = "";
+            image.classList.add("nuqtha-image-loaded");
+            image.style.opacity = "1";
+            hideImagePlaceholder(image);
+        }, { once: true });
+        image.addEventListener("error", () => handleImageError(image), { once: true });
+        image.src = source;
     }).catch(error => {
         console.warn("[NUQTHA Images] Could not load the fallback image.", error);
     });
@@ -336,6 +362,7 @@ function handleImageError(image) {
 
 function revealImage(image, source) {
     image.addEventListener("load", () => {
+        image.style.visibility = "";
         image.classList.add("nuqtha-image-loaded");
         image.style.opacity = "1";
         hideImagePlaceholder(image);
@@ -351,13 +378,6 @@ function enqueueImage(image) {
     observer?.unobserve(image);
     queue.push(image);
     processNext();
-}
-
-function isNearViewport(image) {
-    const rect = image.getBoundingClientRect();
-    const margin = 300;
-    return rect.width > 0 && rect.height > 0 &&
-        rect.bottom >= -margin && rect.top <= window.innerHeight + margin;
 }
 
 function processNext() {
@@ -388,45 +408,59 @@ function processNext() {
 
 function observeImage(image) {
     if (image.dataset.nuqthaImageObserved === "true") return;
+    const hasSource = Boolean(image.getAttribute("src")?.trim());
+    const hasDocument = Boolean(image.dataset.nuqthaImageCollection && image.dataset.nuqthaImageDoc);
+    if (!hasSource && !hasDocument) return;
     image.dataset.nuqthaImageObserved = "true";
-    if (image.hasAttribute("src")) {
-        image.loading = "eager";
+    if (hasSource) {
         image.decoding = "async";
         const reveal = () => {
+            image.style.visibility = "";
             image.classList.add("nuqtha-image-loaded");
             image.style.opacity = "1";
             hideImagePlaceholder(image);
         };
-        if (image.complete && image.naturalWidth > 0) reveal();
+        if (image.complete) {
+            if (image.naturalWidth > 0) reveal();
+            else handleImageError(image);
+        }
         else {
             image.addEventListener("load", reveal, { once: true });
             image.addEventListener("error", () => handleImageError(image), { once: true });
         }
         return;
     }
-    image.loading = "eager";
+    image.loading = "lazy";
     image.decoding = "async";
-    enqueueImage(image);
+    if (observer) observer.observe(image);
+    else enqueueImage(image);
 }
 
 function scanImages(node) {
     if (!(node instanceof Element)) return;
-    if (node.matches("img[data-nuqtha-image-doc]")) observeImage(node);
-    node.querySelectorAll("img[data-nuqtha-image-doc]").forEach(observeImage);
+    if (node.matches("img[data-nuqtha-image-doc], img[data-nuqtha-cover='true']")) observeImage(node);
+    node.querySelectorAll("img[data-nuqtha-image-doc], img[data-nuqtha-cover='true']").forEach(observeImage);
 }
 
 export function installLazyFirestoreImages() {
-    if (observer || typeof window === "undefined") return;
-    observer = {
-        observe() {},
-        unobserve() {}
-    };
+    if (imageLoaderInstalled || typeof window === "undefined") return;
+    imageLoaderInstalled = true;
+    if ("IntersectionObserver" in window) {
+        observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) enqueueImage(entry.target);
+            });
+        }, { rootMargin: "300px 0px" });
+    }
 
     const start = () => {
         scanImages(document.body);
         if ("MutationObserver" in window) {
             mutationObserver = new MutationObserver(records => {
-                records.forEach(record => record.addedNodes.forEach(scanImages));
+                records.forEach(record => {
+                    if (record.type === "attributes") scanImages(record.target);
+                    else record.addedNodes.forEach(scanImages);
+                });
                 const attachedKeys = new Set(Array.from(document.querySelectorAll("img[data-nuqtha-image-doc]"), image =>
                     `${image.dataset.nuqthaImageCollection}:${image.dataset.nuqthaImageDoc}:${image.dataset.nuqthaImageUpdated || ""}`
                 ));
@@ -437,7 +471,12 @@ export function installLazyFirestoreImages() {
                     }
                 }
             });
-            if (document.body) mutationObserver.observe(document.body, { childList: true, subtree: true });
+            if (document.body) mutationObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ["src", "data-nuqtha-image-collection", "data-nuqtha-image-doc"]
+            });
         }
     };
     if (document.body) start();
@@ -448,20 +487,14 @@ const warmedImageUrls = new Set();
 
 export function warmImageUrls(items) {
     if (!(typeof window !== "undefined") || !Array.isArray(items)) return;
-    const seen = new Set();
-    let warmedCount = 0;
     for (const item of items) {
         for (const field of IMAGE_FIELDS) {
             const source = typeof item?.[field] === "string" ? item[field].trim() : "";
-            if (!/^https?:\/\//i.test(source) || seen.has(source) || warmedImageUrls.has(source)) continue;
-            seen.add(source);
+            if (!/^https?:\/\//i.test(source) || warmedImageUrls.has(source)) continue;
             warmedImageUrls.add(source);
-            warmedCount += 1;
-
-            if (warmedCount <= 8) {
-                const existingPreload = Array.from(document.querySelectorAll('link[rel="preload"][as="image"]'))
-                    .some(link => link.href === source);
-                if (existingPreload) continue;
+            const existingPreload = Array.from(document.querySelectorAll('link[rel="preload"][as="image"]'))
+                .some(link => link.href === source);
+            if (!existingPreload) {
                 const preload = document.createElement("link");
                 preload.rel = "preload";
                 preload.as = "image";
@@ -469,13 +502,7 @@ export function warmImageUrls(items) {
                 preload.fetchPriority = "high";
                 document.head.appendChild(preload);
             }
-
-            const image = new Image();
-            image.decoding = "async";
-            image.loading = "eager";
-            image.fetchPriority = warmedCount <= 4 ? "high" : "low";
-            image.src = source;
-            if (typeof image.decode === "function") image.decode().catch(() => {});
+            return;
         }
     }
 }

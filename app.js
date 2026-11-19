@@ -8,7 +8,7 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
  */
 import { db, doc, getDoc } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl, sanitizeCategory } from "./schema-validator.js";
-import { fetchArticleSearchContent, fetchPublicCollections, getDeferredImageAttributes, installLazyFirestoreImages, stripListHeavyFields, warmImageUrls } from "./js/public-image-loader.js";
+import { fetchArticleSearchContent, fetchPublicCollections, getDeferredImageAttributes, installLazyFirestoreImages, stripListHeavyFields } from "./js/public-image-loader.js";
 import { filterPublicCollections, isPubliclyPublished } from "./js/public-status.js";
 import { syncReadingBg } from "./reading-theme.js";
 import { getBookChapterIds } from "./book-data.js";
@@ -41,7 +41,7 @@ const HOME_CACHE_FINGERPRINT_KEY = 'nuqtha:home-cache-fingerprint';
 
 installLazyFirestoreImages();
 
-function buildCardImageMarkup(item, className, alt, width, height, eager = false) {
+function buildCardImageMarkup(item, className, alt, width, height, eager = false, priority = false) {
     const rawUrl = getArticleImageUrl(item, "");
     const deferredAttributes = /^https?:\/\//i.test(rawUrl) || /^\/[^/]/.test(rawUrl)
         ? ""
@@ -51,9 +51,10 @@ function buildCardImageMarkup(item, className, alt, width, height, eager = false
     if (!imageUrl && !deferredAttributes) return "";
 
     const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
-    const styleAttribute = imageUrl ? '' : 'style="position:absolute;inset:0;"';
-    const priority = 'loading="eager" fetchpriority="high"';
-    return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" ${priority} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
+    const styleAttribute = `style="background-color:var(--surface);${imageUrl ? "" : "position:absolute;inset:0;"}"`;
+    const loading = eager ? 'loading="eager"' : 'loading="lazy"';
+    const fetchPriority = eager && priority ? 'fetchpriority="high"' : '';
+    return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" ${loading} ${fetchPriority} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
 }
 
 function hasImmediateCardImage(item) {
@@ -124,7 +125,6 @@ try {
                 if (allArticles.length === 0) {
                     allArticles = FALLBACK_ARTICLE_ITEMS.map(article => normalizeArticleDoc(article, article.id));
                 }
-                warmImageUrls(allArticles);
             }
         }
     }
@@ -133,7 +133,6 @@ try {
 // Pre-fill with normalized fallback articles so feed is NEVER empty, broken, or stuck on skeletons
 if (!Array.isArray(allArticles) || allArticles.length === 0) {
     allArticles = FALLBACK_ARTICLE_ITEMS.map(a => normalizeArticleDoc(a, a.id));
-    warmImageUrls(allArticles);
     safeCacheArticles(allArticles);
 }
 
@@ -231,6 +230,60 @@ export function sanitizeMalayalamText(str) {
 }
 
 let currentSearchQuery = "";
+let pendingHomeScrollY = null;
+let homeDataLoading = false;
+
+function isHomeDocument() {
+    return location.pathname === "/" || location.pathname.endsWith("/index.html");
+}
+
+function saveHomeScrollPosition(category = currentCategory) {
+    if (!isHomeDocument()) return;
+
+    const scrollY = Math.max(0, Math.round(window.scrollY || window.pageYOffset || 0));
+    try {
+        sessionStorage.setItem(HOME_SCROLL_KEY, String(scrollY));
+    } catch (_) {}
+
+    const state = history.state && typeof history.state === "object" ? history.state : {};
+    if (state.nuqthaHomeScrollY !== scrollY || state.nuqthaCategory !== category) {
+        try {
+            history.replaceState({
+                ...state,
+                nuqthaCategory: category,
+                nuqthaHomeScrollY: scrollY
+            }, "", location.href);
+        } catch (error) {
+            console.warn("[NUQTHA Navigation] Could not save homepage history state.", error);
+        }
+    }
+}
+
+function getSavedHomeScrollPosition() {
+    const stateScrollY = Number(history.state?.nuqthaHomeScrollY);
+    if (Number.isFinite(stateScrollY) && stateScrollY >= 0) return stateScrollY;
+
+    try {
+        const storedScrollY = Number(sessionStorage.getItem(HOME_SCROLL_KEY));
+        if (Number.isFinite(storedScrollY) && storedScrollY >= 0) return storedScrollY;
+    } catch (_) {}
+    return null;
+}
+
+function restoreHomeScrollPosition(scrollY) {
+    const target = Number(scrollY);
+    if (!Number.isFinite(target) || target < 0) return;
+
+    pendingHomeScrollY = target;
+    requestAnimationFrame(() => {
+        if (pendingHomeScrollY !== target) return;
+        window.scrollTo({ top: target, behavior: "auto" });
+        if (!homeDataLoading && Math.abs(window.scrollY - target) < 1) {
+            pendingHomeScrollY = null;
+            try { sessionStorage.removeItem(HOME_SCROLL_KEY); } catch (_) {}
+        }
+    });
+}
 
 function initApp() {
     setupThemeToggle();
@@ -252,15 +305,13 @@ function initApp() {
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 
 window.addEventListener("pagehide", () => {
-    if (location.pathname === "/" || location.pathname.endsWith("/index.html")) {
-        try { sessionStorage.setItem(HOME_SCROLL_KEY, String(window.scrollY)); } catch (_) {}
-    }
+    saveHomeScrollPosition();
 });
 
 window.addEventListener("pageshow", (event) => {
-    if (!event.persisted) return;
-    const restoredScroll = Number(sessionStorage.getItem(HOME_SCROLL_KEY)) || 0;
-    requestAnimationFrame(() => window.scrollTo({ top: restoredScroll, behavior: "auto" }));
+    const navigationType = performance.getEntriesByType?.("navigation")?.[0]?.type;
+    if (!event.persisted && navigationType !== "back_forward") return;
+    restoreHomeScrollPosition(getSavedHomeScrollPosition() ?? 0);
 });
 
 if (document.readyState === "loading") {
@@ -505,7 +556,7 @@ function updateMoreCategoriesMenu() {
 
 function setupGlobalCategoryBadges() {
     document.addEventListener("click", (e) => {
-        const badge = e.target.closest(".category-glass-badge, .category-badge-pill, .carousel-card-cat, [data-badge-category], .category-pill-link, .show-more-pill, .articles-dropdown-item");
+        const badge = e.target.closest(".category-glass-badge, .category-badge-pill, .carousel-card-cat, [data-badge-category], .category-pill-link, .show-more-pill");
         if (badge) {
             const cat = badge.dataset.badgeCategory || badge.dataset.category;
             if (cat) {
@@ -517,38 +568,54 @@ function setupGlobalCategoryBadges() {
     });
 }
 
-function checkUrlCategory() {
+function checkUrlCategory(event) {
     const params = new URLSearchParams(window.location.search);
     const viewParam = params.get('view');
     const catParam = params.get('category') || params.get('cat');
     const hash = window.location.hash.replace(/^#/, '').trim();
 
-    if (viewParam === 'saved' || hash.toLowerCase() === 'saved') {
-        switchToCategory('SAVED');
+    if (viewParam === "library" || hash.toLowerCase() === "library") {
+        window.showNuqthaView?.("library");
+        if (event) restoreHomeScrollPosition(getSavedHomeScrollPosition() ?? 0);
         return;
     }
 
-    let targetCat = catParam || '';
-    if (!targetCat && hash && hash !== 'home') {
-        const hashClean = hash.replace(/^category=/, '').trim();
-        targetCat = hashClean;
+    const wasLibraryVisible = document.getElementById("feed")?.hidden === true;
+    if (wasLibraryVisible) window.showNuqthaView?.("articles");
+
+    let targetCategory = "ALL";
+    if (viewParam === "saved" || hash.toLowerCase() === "saved") {
+        targetCategory = "SAVED";
+    } else {
+        let targetCat = catParam || '';
+        if (!targetCat && hash && hash.toLowerCase() !== 'home') {
+            const hashClean = hash.replace(/^category=/, '').trim();
+            targetCat = hashClean;
+        }
+
+        if (targetCat) {
+            let decoded = targetCat;
+            try { decoded = decodeURIComponent(targetCat); } catch (_) {}
+            const norm = normalizeCategoryName(decoded);
+            const upper = norm ? norm.toUpperCase() : '';
+            if (upper === 'BOOK' || upper === 'BOOKS') {
+                targetCategory = "BOOKS";
+            } else if (upper) {
+                targetCategory = upper;
+            } else {
+                return;
+            }
+        }
     }
 
-    if (targetCat) {
-        let decoded = targetCat;
-        try { decoded = decodeURIComponent(targetCat); } catch (_) {}
-        const norm = normalizeCategoryName(decoded);
-        const upper = norm ? norm.toUpperCase() : '';
-        if (upper === 'BOOK' || upper === 'BOOKS') {
-            switchToCategory('BOOKS');
-        } else if (upper) {
-            switchToCategory(upper);
-        }
-    } else if (!hash || hash === 'home') {
-        if (currentCategory !== 'ALL') {
-            switchToCategory('ALL');
-        }
+    if (targetCategory !== currentCategory || wasLibraryVisible) {
+        switchToCategory(targetCategory, {
+            historyMode: "none",
+            render: Boolean(event),
+            scroll: false
+        });
     }
+    if (event) restoreHomeScrollPosition(getSavedHomeScrollPosition() ?? 0);
 }
 
 window.addEventListener('hashchange', checkUrlCategory);
@@ -602,7 +669,7 @@ function setupThemeToggle() {
 updatePageMeta();
 
 function setupCategoryNav() {
-    const links = document.querySelectorAll("#category-nav .nav-category-link:not(#more-categories-btn)");
+    const links = document.querySelectorAll("#category-nav .nav-category-link:not(#more-categories-btn):not(#nav-books-link)");
     links.forEach(link => {
         if (!link) return;
         link.addEventListener("click", (e) => {
@@ -623,8 +690,6 @@ function setupHomeLink() {
             document.getElementById("more-categories-dropdown")?.classList.add("hidden");
             document.getElementById("sidebar-close-btn")?.click();
             switchToCategory("ALL");
-            const restoredScroll = Number(sessionStorage.getItem(HOME_SCROLL_KEY)) || 0;
-            window.scrollTo({ top: restoredScroll, behavior: "smooth" });
         });
     });
 }
@@ -742,17 +807,10 @@ function setupLibraryView() {
 
         if (isLib) {
             setDrawerCurrentLink(drawerLibLink);
-            if (window.location.hash !== "#library") {
-                history.replaceState(null, null, "#library");
-            }
             if (!mounted) {
                 mounted = true;
                 const { mountLibrary } = await import("./library.js");
                 mountLibrary(lib);
-            }
-        } else {
-            if (window.location.hash === "#library") {
-                history.replaceState(null, null, "#home");
             }
         }
     }
@@ -762,6 +820,25 @@ function setupLibraryView() {
             setDrawerCurrentLink(drawerLibLink);
             const closeBtn = document.getElementById("sidebar-close-btn");
             if (closeBtn) closeBtn.click();
+            const url = new URL(window.location.href);
+            url.searchParams.delete("category");
+            url.searchParams.delete("cat");
+            if (url.searchParams.get("view") === "saved") url.searchParams.delete("view");
+            url.hash = "library";
+            const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+            if (`${location.pathname}${location.search}${location.hash}` !== nextUrl) {
+                saveHomeScrollPosition();
+                const state = history.state && typeof history.state === "object" ? history.state : {};
+                try {
+                    history.pushState({
+                        ...state,
+                        nuqthaView: "library",
+                        nuqthaHomeScrollY: 0
+                    }, "", nextUrl);
+                } catch (error) {
+                    console.error("[NUQTHA Navigation] Could not add Library to browser history.", error);
+                }
+            }
             showView("library");
             lib.scrollIntoView({ behavior: "smooth" });
         });
@@ -869,6 +946,7 @@ function restoreFallbackFields(article, fallbacksById, rawArticle = {}) {
 export function initAppData() {
     if (appDataPromise) return appDataPromise;
 
+    homeDataLoading = true;
     appDataPromise = (async () => {
         try {
             const cached = sessionStorage.getItem(CACHE_KEY);
@@ -883,7 +961,6 @@ export function initAppData() {
                     );
                     if (hasNoAiStudio) {
                         allArticles = parsed.map(record => normalizeArticleDoc(record, record.id)).filter(isPubliclyPublished);
-                        warmImageUrls(allArticles);
                     }
                 }
             }
@@ -976,8 +1053,6 @@ export function initAppData() {
             if (newest) localStorage.setItem("nuqtha:last-seen-content", String(newest.updatedAt || newest.createdAt || Date.now()));
           }
         } catch {}
-        warmImageUrls(allArticles);
-        requestAnimationFrame(() => warmImageUrls(allArticles));
         safeCacheArticles(allArticles);
         if (cacheFingerprint !== previousFingerprint) {
             try { sessionStorage.setItem(HOME_CACHE_FINGERPRINT_KEY, cacheFingerprint); } catch (_) {}
@@ -994,6 +1069,9 @@ export function initAppData() {
         }
         renderFeed();
         appDataPromise = null;
+    }).finally(() => {
+        homeDataLoading = false;
+        if (pendingHomeScrollY !== null) restoreHomeScrollPosition(pendingHomeScrollY);
     });
 
     return appDataPromise;
@@ -1069,6 +1147,7 @@ function renderFeed() {
     attachCardListeners();
     attachShowMoreListeners();
     setupCarousel();
+    if (pendingHomeScrollY !== null) restoreHomeScrollPosition(pendingHomeScrollY);
 }
 
 /* ═══════════ Saved Articles Library Feed ═══════════ */
@@ -1365,7 +1444,7 @@ function renderHomeFeed(container) {
     // 2. HERO FEATURED MAIN CARD (DIRECTLY BELOW CAROUSEL)
     // ═══════════════════════════════════════════════════════════
     if (heroArticle) {
-        html += buildFeaturedCard(heroArticle);
+        html += buildFeaturedCard(heroArticle, true, true);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1543,7 +1622,8 @@ function attachBookShelfListeners() {
     };
 }
 
-function switchToCategory(cat) {
+function switchToCategory(cat, { historyMode = "push", render = true, scroll = true } = {}) {
+    const previousCategory = currentCategory;
     if (typeof window.showNuqthaView === "function") {
         window.showNuqthaView("articles");
     }
@@ -1577,30 +1657,58 @@ function switchToCategory(cat) {
         }
     });
 
-    // Update page title & URL hash
+    // Keep browser-history routing separate from URL-driven restoration.
     if (upper === "ALL") {
         document.title = "NUQTHA | മലയാളം ഇ-മാഗസിൻ";
-        if (window.location.hash && window.location.hash !== "#home") {
-            try {
-                history.pushState(null, "", window.location.pathname + window.location.search);
-            } catch (_) {}
-        }
     } else {
         const catName = isBook ? "Books" : categoryLabel(upper);
         document.title = `${catName} | NUQTHA`;
-        const slug = isBook ? "books" : categorySlug(norm);
-        const newHash = "#" + slug;
-        if (window.location.hash !== newHash) {
-            try {
-                history.pushState(null, "", newHash);
-            } catch (_) {}
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("category");
+    url.searchParams.delete("cat");
+    if (url.searchParams.get("view") === "saved" || url.searchParams.get("view") === "library") {
+        url.searchParams.delete("view");
+    }
+    url.hash = upper === "ALL" ? "" : upper === "SAVED" ? "saved" : isBook ? "books" : categorySlug(norm);
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    const currentUrl = `${location.pathname}${location.search}${location.hash}`;
+    const state = history.state && typeof history.state === "object" ? history.state : {};
+    const nextState = {
+        ...state,
+        nuqthaCategory: upper,
+        nuqthaView: "articles",
+        nuqthaHomeScrollY: historyMode === "push" ? 0 : (state.nuqthaHomeScrollY ?? window.scrollY)
+    };
+
+    if (historyMode === "push" && nextUrl !== currentUrl) {
+        pendingHomeScrollY = null;
+        saveHomeScrollPosition(previousCategory);
+        try {
+            history.pushState({
+                ...(history.state && typeof history.state === "object" ? history.state : {}),
+                nuqthaCategory: upper,
+                nuqthaView: "articles",
+                nuqthaHomeScrollY: 0
+            }, "", nextUrl);
+        } catch (error) {
+            console.error("[NUQTHA Navigation] Could not add category to browser history.", error);
+        }
+    } else if (historyMode === "replace" || (historyMode !== "none" && nextUrl === currentUrl &&
+        (state.nuqthaCategory !== upper || state.nuqthaView !== "articles"))) {
+        try {
+            history.replaceState(nextState, "", nextUrl);
+        } catch (error) {
+            console.error("[NUQTHA Navigation] Could not update category in browser history.", error);
         }
     }
 
-    renderFeed();
-    // Scroll to top of feed
-    const feedEl = document.getElementById("feed-container");
-    if (feedEl) feedEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (render) renderFeed();
+    if (scroll) {
+        const feedEl = document.getElementById("feed-container");
+        if (feedEl) feedEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 }
 
 window.switchToCategory = switchToCategory;
@@ -1688,7 +1796,7 @@ function formatRichContent(rawText, contentStyle = "") {
                 const url = imgMatch[3];
                 return `
                     <figure class="article-image-wrap my-6">
-                        <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block" loading="eager" decoding="async">
+                        <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block" width="1200" height="800" loading="lazy" decoding="async">
                         ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
                     </figure>
                 `;
@@ -1790,7 +1898,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
                 <div class="flex items-center justify-start pt-3 border-t border-[#ebdccb]/60 dark:border-white/10 gap-2 flex-wrap">
                     <div class="flex items-center gap-2.5">
                         <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="eager" decoding="async">` : authorInitial}
+                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy" decoding="async">` : authorInitial}
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
@@ -1808,7 +1916,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
 }
 
 /* ═══════════ 1. Featured Article Card (Reference Design) ═══════════ */
-function buildFeaturedCard(art) {
+function buildFeaturedCard(art, eagerImage = false, prioritizeImage = false) {
     if (!art) return "";
     const dateStr = art.date || formatDate(art.createdAt);
     const cleanTitle = stripMarkdown(art.title);
@@ -1822,7 +1930,7 @@ function buildFeaturedCard(art) {
     const authorInitial = authorName.trim().charAt(0) || "N";
     const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
     const categoryMalayalam = categoryLabel(art.category);
-    const featuredImage = buildCardImageMarkup(art, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 1200, 750);
+    const featuredImage = buildCardImageMarkup(art, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 1200, 750, eagerImage, prioritizeImage);
     const hasFeaturedImage = hasImmediateCardImage(art);
 
     return `
@@ -1857,7 +1965,7 @@ function buildFeaturedCard(art) {
                 <div class="featured-bottom-row flex items-center justify-start pt-4 border-t border-[#ebdccb]/60 dark:border-white/10 gap-3">
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center overflow-hidden flex-shrink-0">
-                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="eager" decoding="async">` : authorInitial}
+                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy" decoding="async">` : authorInitial}
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
@@ -1906,7 +2014,7 @@ function buildCompactRecentCard(art, theme = null) {
 
                 <div class="flex items-center gap-1.5 text-[11px] sm:text-xs flex-wrap font-['Noto_Sans_Malayalam']">
                     <div class="w-5 h-5 rounded-full overflow-hidden bg-[#ebdccb]/80 dark:bg-white/10 flex items-center justify-center text-[9px] font-bold text-[#7a4124] dark:text-[#f8fafc] flex-shrink-0">
-                        ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="eager" decoding="async">` : authorInitial}
+                        ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy" decoding="async">` : authorInitial}
                     </div>
                     <span class="font-bold text-[#1e1b18] dark:text-white">${authorName}</span>
                     ${art.transcription ? `<span class="text-[#8c7a6b] dark:text-[#a0aec0]">(📝 ${art.transcription})</span>` : ''}
@@ -2382,6 +2490,40 @@ function buildBookCard(book, articles) {
 }
 
 /* ═══════════ Attach Click → Direct Navigation ═══════════ */
+function syncHomeHistoryToCurrentCategory() {
+    const url = new URL(window.location.href);
+    if (url.hash === "#library" || url.searchParams.get("view") === "library") return;
+    saveHomeScrollPosition();
+    url.searchParams.delete("category");
+    url.searchParams.delete("cat");
+    if (currentCategory !== "SAVED" && url.searchParams.get("view") === "saved") {
+        url.searchParams.delete("view");
+    }
+
+    const hash = currentCategory === "ALL"
+        ? ""
+        : currentCategory === "SAVED"
+            ? "saved"
+            : categorySlug(currentCategory);
+    url.hash = hash;
+
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    const state = history.state && typeof history.state === "object" ? history.state : {};
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== nextUrl ||
+        state.nuqthaCategory !== currentCategory || state.nuqthaView !== "articles") {
+        try {
+            history.replaceState({
+                ...state,
+                nuqthaCategory: currentCategory,
+                nuqthaView: "articles",
+                nuqthaHomeScrollY: Math.max(0, Math.round(window.scrollY || window.pageYOffset || 0))
+            }, "", nextUrl);
+        } catch (error) {
+            console.error("[NUQTHA Navigation] Could not preserve the homepage history entry.", error);
+        }
+    }
+}
+
 function attachCardListeners() {
     document.querySelectorAll(".featured-article-card, .category-featured-card, .compact-recent-card, .carousel-card, .playlist-item-row, .article-glass-card, .book-glass-card, .premium-book-card").forEach(card => {
         if (card.dataset.cardListenersAttached === "true") return;
@@ -2401,10 +2543,20 @@ function attachCardListeners() {
         card.addEventListener("touchstart", warmBookPage, { once: true, passive: true });
         card.addEventListener("click", function (e) {
             warmBookPage();
+            const storyLink = e.target.closest("a[href]");
+            const followsInCurrentTab = storyLink && e.button === 0 &&
+                !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey &&
+                storyLink.target.toLowerCase() !== "_blank" && !storyLink.hasAttribute("download");
+            if (followsInCurrentTab && /^\/(?:story|book)\//.test(new URL(storyLink.href, window.location.href).pathname)) {
+                syncHomeHistoryToCurrentCategory();
+                return;
+            }
+
             // Direct navigation to article.html
             const id = this.dataset.id;
             const art = allArticles.find(a => a.id === id);
             if (id && !e.target.closest("button") && !e.target.closest("a")) {
+                syncHomeHistoryToCurrentCategory();
                 if (art && ((art.type || "").toUpperCase() === "BOOK" || art.isBook === true)) {
                     // Open Book index page/modal
                     openBookIndex(art);

@@ -487,7 +487,7 @@
 
             <!-- Optional Article Cover Image -->
             <div id="art-image-wrapper" class="hidden rounded-2xl sm:rounded-3xl overflow-hidden border border-[var(--border)] dark:border-white/10 shadow-sm">
-                <img id="art-image" src="" alt="" class="article-cover-image w-full object-cover rounded-2xl" width="1200" height="675" loading="eager" decoding="async" data-nuqtha-cover="true">
+                <img id="art-image" alt="" class="article-cover-image w-full object-cover rounded-2xl" width="1200" height="675" loading="eager" fetchpriority="high" decoding="async" data-nuqtha-cover="true">
             </div>
 
             <!-- Prominent Article Excerpt / Lead Intro Container -->
@@ -691,7 +691,7 @@
         import { getArticleCategoryId, getCachedCategoryName, getCategories } from "/js/category-store.js";
         import { filterPublicCollections, isPubliclyPublished } from "/js/public-status.js";
         import { trackReadingActivity } from "/js/analytics-tracker.js";
-        import { getDeferredImageAttributes, installLazyFirestoreImages, warmImageUrls } from "/js/public-image-loader.js";
+        import { getDeferredImageAttributes, installLazyFirestoreImages } from "/js/public-image-loader.js";
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, getDevicePlatform } from "/js/paywall-service.js";
         import { isPremiumBook, showPremiumBookUnavailableModal } from "/js/book-notice.js";
         import { initInstall, isWebView, offerInstall, installNow, syncInstallItems } from "/src/install.js";
@@ -714,7 +714,7 @@
             return transliterated.match(/[a-z0-9]/i)?.[0]?.toUpperCase() || "N";
         }
 
-        function buildDeferredImageMarkup(item, source, alt, className, width, height, loading = "eager") {
+        function buildDeferredImageMarkup(item, source, alt, className, width, height, loading = "lazy") {
             const deferredAttributes = /^https?:\/\//i.test(source || "") || /^\/[^/]/.test(source || "")
                 ? ""
                 : getDeferredImageAttributes(item);
@@ -722,11 +722,7 @@
             const imageUrl = deferInlineImage ? "" : (source || "");
             if (!imageUrl && !deferredAttributes) return "";
             const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
-            const styleAttribute = deferredAttributes
-                ? (imageUrl
-                    ? ''
-                    : 'style="position:absolute;inset:0;"')
-                : "";
+            const styleAttribute = `style="background-color:var(--surface);${deferredAttributes && !imageUrl ? "position:absolute;inset:0;" : ""}"`;
             const priorityAttribute = loading === "eager" ? 'fetchpriority="high"' : "";
             return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" loading="${loading}" ${priorityAttribute} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
         }
@@ -885,8 +881,6 @@
 
             pools.push(...getOfflineArticles());
             pools.push(...FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id)));
-            warmImageUrls(pools);
-
             return pools.find(a =>
                 isPubliclyPublished(a) && (
                 a.id === identifier ||
@@ -1023,7 +1017,7 @@
                     : `Chapter ${index + 1}`;
                 const chapterImageUrl = getArticleImageUrl(chapter, "");
                 const chapterImage = chapterImageUrl
-                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapterImageUrl)}" alt="" width="400" height="300" loading="eager" decoding="async" data-nuqtha-cover="true"></div>`
+                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapterImageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true"></div>`
                     : `<div class="chapter-thumbnail chapter-thumbnail-empty" aria-hidden="true">📄</div>`;
                 return `<div class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">Chapter ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></div>`;
             }).join("") : "";
@@ -3029,7 +3023,7 @@
                         const url = imgMatch[3];
                         return `
                             <figure class="article-image-wrap my-6">
-                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" width="1200" height="800" style="aspect-ratio:3/2;object-fit:contain;background:var(--surface)" loading="eager" decoding="async">
+                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" width="1200" height="800" style="aspect-ratio:3/2;object-fit:contain;background:var(--surface)" loading="lazy" decoding="async">
                                 ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
                             </figure>
                         `;
