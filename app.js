@@ -19,11 +19,17 @@ import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
 import { getArticleCategoryId, getCachedCategories, getCategories, slugifyCategory } from "./js/category-store.js";
 import { initInstall, isWebView, offerInstall, installNow, syncInstallItems } from "./src/install.js";
+import "./src/app-experience.css";
+import { initAppExperience, checkLatestContent, requestNotificationPermission } from "./src/app-experience.js";
 
 if ("serviceWorker" in navigator && !isWebView()) {
     addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
 }
 initInstall();
+initAppExperience();
+if (typeof window.Notification !== "undefined") {
+    window.requestNUQTHANotifications = requestNotificationPermission;
+}
 syncInstallItems();
 document.querySelectorAll("[data-install]").forEach((element) => {
     element.addEventListener("click", async (event) => {
@@ -944,6 +950,13 @@ export function initAppData() {
         });
 
         allArticles = sortArticles(combined.filter(isPubliclyPublished));
+        checkLatestContent(allArticles);
+        try {
+          if (!localStorage.getItem("nuqtha:last-seen-content") && allArticles.length) {
+            const newest = [...allArticles].sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))[0];
+            if (newest) localStorage.setItem("nuqtha:last-seen-content", String(newest.updatedAt || newest.createdAt || Date.now()));
+          }
+        } catch {}
         warmImageUrls(allArticles);
         requestAnimationFrame(() => warmImageUrls(allArticles));
         safeCacheArticles(allArticles);

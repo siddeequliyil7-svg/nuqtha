@@ -52,7 +52,7 @@ export const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 
 // Silence Firestore internal transient connection log messages
 setLogLevel("silent");

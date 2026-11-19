@@ -689,11 +689,15 @@
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, getDevicePlatform } from "/js/paywall-service.js";
         import { isPremiumBook, showPremiumBookUnavailableModal } from "/js/book-notice.js";
         import { initInstall, isWebView, offerInstall, installNow, syncInstallItems } from "/src/install.js";
+        import "/src/app-experience.css";
+        import { initAppExperience, checkLatestContent, getOfflineArticles, cacheArticlesOffline } from "/src/app-experience.js";
 
         if ("serviceWorker" in navigator && !isWebView()) {
             addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
         }
         initInstall();
+        initAppExperience();
+        checkLatestContent(allArticles || getOfflineArticles());
         syncInstallItems();
         document.querySelectorAll("[data-install]").forEach((element) => {
             element.addEventListener("click", async (event) => {
@@ -877,6 +881,7 @@
                 }
             } catch (_) {}
 
+            pools.push(...getOfflineArticles());
             pools.push(...FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id)));
             warmImageUrls(pools);
 
@@ -1654,6 +1659,18 @@
                         errorContainerEl.innerHTML = "";
                     }
                     if ((cachedBook.type || "").toUpperCase() === "BOOK" || cachedBook.isBook === true) {
+                        if (!navigator.onLine) {
+                            if (articleViewEl) articleViewEl.classList.add("hidden");
+                            if (bookContainerEl) {
+                                bookContainerEl.classList.remove("hidden");
+                                bookContainerEl.innerHTML = `
+                                    <div class="max-w-xl mx-auto my-8 p-6 rounded-2xl border border-[#ebdccb] bg-[#fff8ee] text-center">
+                                        <strong class="block text-[#a8512c] mb-2">Books require an internet connection</strong>
+                                        <p class="text-sm text-[#6f5d53]">This book is not available offline. Reconnect and reopen NUQTHA to continue reading.</p>
+                                    </div>`;
+                            }
+                            return;
+                        }
                         if (articleViewEl) articleViewEl.classList.add("hidden");
                         if (bookContainerEl) {
                             bookContainerEl.classList.remove("hidden");
@@ -1707,6 +1724,18 @@
                 }
 
                 if (currentDoc && ((currentDoc.type || "").toUpperCase() === "BOOK" || currentDoc.isBook === true)) {
+                    if (!navigator.onLine) {
+                        if (articleViewEl) articleViewEl.classList.add("hidden");
+                        if (bookContainerEl) {
+                            bookContainerEl.classList.remove("hidden");
+                            bookContainerEl.innerHTML = `
+                                <div class="max-w-xl mx-auto my-8 p-6 rounded-2xl border border-[#ebdccb] bg-[#fff8ee] text-center">
+                                    <strong class="block text-[#a8512c] mb-2">Books require an internet connection</strong>
+                                    <p class="text-sm text-[#6f5d53]">This book is not available offline. Reconnect and reopen NUQTHA to continue reading.</p>
+                                </div>`;
+                        }
+                        return;
+                    }
                     earlyBookChaptersPromise = Promise.allSettled([
                         getBookChapters(currentDoc.id, {
                             articlesPool: [currentDoc],
@@ -1934,6 +1963,8 @@
                 }
                 canonicalEl.setAttribute('href', window.location.origin + cleanUrl);
 
+                cacheArticlesOffline([currentDoc]);
+
                 const currentCoverUrl = getArticleImageUrl(currentDoc, "");
                 if (currentCoverUrl) {
                     preloadCoverImage(currentCoverUrl);
@@ -1951,6 +1982,18 @@
                 }
 
                 if ((currentDoc.type || "").toUpperCase() === "BOOK" || currentDoc.isBook === true) {
+                    if (!navigator.onLine) {
+                        if (articleViewEl) articleViewEl.classList.add("hidden");
+                        if (bookContainerEl) {
+                            bookContainerEl.classList.remove("hidden");
+                            bookContainerEl.innerHTML = `
+                                <div class="max-w-xl mx-auto my-8 p-6 rounded-2xl border border-[#ebdccb] bg-[#fff8ee] text-center">
+                                    <strong class="block text-[#a8512c] mb-2">Books require an internet connection</strong>
+                                    <p class="text-sm text-[#6f5d53]">This book is not available offline. Reconnect and reopen NUQTHA to continue reading.</p>
+                                </div>`;
+                        }
+                        return;
+                    }
                     if (articleViewEl) articleViewEl.classList.add("hidden");
                     if (bookContainerEl) bookContainerEl.classList.remove("hidden");
 
