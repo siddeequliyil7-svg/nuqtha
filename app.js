@@ -31,16 +31,6 @@ if (typeof window.Notification !== "undefined") {
     window.requestNUQTHANotifications = requestNotificationPermission;
 }
 syncInstallItems();
-document.querySelectorAll("[data-install]").forEach((element) => {
-    element.addEventListener("click", async (event) => {
-        event.preventDefault();
-        const drawer = element.closest("#sidebar-drawer");
-        if (drawer) {
-            document.getElementById("sidebar-close-btn")?.click();
-        }
-        await installNow();
-    });
-});
 
 void syncReadingBg();
 

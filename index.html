@@ -8,6 +8,12 @@
     <meta name="theme-color" content="#A8512C">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <meta name="mobile-web-app-capable" content="yes">
+    <script>
+        window.addEventListener("beforeinstallprompt", function(event) {
+            event.preventDefault();
+            window.deferredPrompt = event;
+        }, { passive: false });
+    </script>
     <meta name="apple-mobile-web-app-title" content="NUQTHA">
     <title>NUQTHA - നുഖ്ത | Malayalam Publishing Platform</title>
     <meta name="description" content="A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher." />

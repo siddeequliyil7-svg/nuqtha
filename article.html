@@ -9,6 +9,12 @@
     <meta name="theme-color" content="#A8512C">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <meta name="mobile-web-app-capable" content="yes">
+    <script>
+        window.addEventListener("beforeinstallprompt", function(event) {
+            event.preventDefault();
+            window.deferredPrompt = event;
+        }, { passive: false });
+    </script>
     <meta name="apple-mobile-web-app-title" content="NUQTHA">
     <title>NUQTHA | Article & Edition Reader</title>
     <meta name="description" content="NUQTHA Malayalam Publishing Platform — Articles, Studies, History, and Book Editions." />
@@ -699,12 +705,6 @@
         initAppExperience();
         checkLatestContent(allArticles || getOfflineArticles());
         syncInstallItems();
-        document.querySelectorAll("[data-install]").forEach((element) => {
-            element.addEventListener("click", async (event) => {
-                event.preventDefault();
-                await installNow();
-            });
-        });
 
         void syncReadingBg();
         installLazyFirestoreImages();

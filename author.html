@@ -4,6 +4,12 @@
     <meta charset="utf-8">
     <base href="/">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        window.addEventListener("beforeinstallprompt", function(event) {
+            event.preventDefault();
+            window.deferredPrompt = event;
+        }, { passive: false });
+    </script>
     <meta name="mobile-web-app-capable" content="yes">
     <title>Author Profile - NUQTHA</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23b4532c'/></svg>">
@@ -240,12 +246,6 @@
         }
         initInstall();
         syncInstallItems();
-        document.querySelectorAll("[data-install]").forEach((element) => {
-            element.addEventListener("click", async (event) => {
-                event.preventDefault();
-                await installNow();
-            });
-        });
         import { initHeaderAuthUI } from "./js/auth-ui.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
         import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, getStoryUrl } from "./schema-validator.js";

@@ -16,7 +16,20 @@ let card = null;
 let toastTimer = null;
 let toastDismissTimer = null;
 let installInitialized = false;
+let delegatedClickInitialized = false;
 const TOAST_SESSION_KEY = "nuqtha:install-toast-shown";
+
+if (typeof window !== "undefined") {
+  if (!window.__NUQTHA_BEFORE_INSTALL_PROMPT__) {
+    window.__NUQTHA_BEFORE_INSTALL_PROMPT__ = (event) => {
+      event.preventDefault();
+      deferred = event;
+      window.deferredPrompt = event;
+      syncInstallItems();
+    };
+    window.addEventListener("beforeinstallprompt", window.__NUQTHA_BEFORE_INSTALL_PROMPT__, { passive: false });
+  }
+}
 
 const num = (key) => {
   try { return Number(localStorage.getItem(key)) || 0; } catch { return 0; }
@@ -139,11 +152,13 @@ export async function installNow() {
     return;
   }
 
-  if (deferred) {
+  const promptEvent = deferred || window.deferredPrompt;
+  if (promptEvent) {
     try {
-      deferred.prompt();
-      const { outcome } = await deferred.userChoice;
+      promptEvent.prompt();
+      const { outcome } = await promptEvent.userChoice;
       deferred = null;
+      window.deferredPrompt = null;
       if (outcome === "accepted") {
         put(K.installed, 1);
         close(null);
@@ -152,6 +167,7 @@ export async function installNow() {
       return;
     } catch (_) {
       deferred = null;
+      window.deferredPrompt = null;
     }
   }
 
@@ -176,6 +192,16 @@ export function offerInstall(reason) {
 
 export function initInstall() {
   syncInstallItems();
+
+  if (typeof window !== "undefined") {
+    window.NUQTHA_INSTALL = {
+      installNow,
+      showInstallItem,
+      syncInstallItems,
+      isStandalone,
+      get deferredPrompt() { return deferred || window.deferredPrompt || null; }
+    };
+  }
   if (isStandalone() || isWebView()) {
     close(null);
     document.querySelectorAll("[data-install], .pwa-card, .nuqtha-app-notice").forEach(element => element.remove());
@@ -184,11 +210,6 @@ export function initInstall() {
   if (installInitialized) return;
   installInitialized = true;
 
-  window.addEventListener("beforeinstallprompt", (event) => {
-    event.preventDefault();
-    deferred = event;
-    if (num(K.active) >= ACTIVE_GOAL) offerInstall("time");
-  });
 
   try {
     if (!isStandalone() && !isWebView() && !sessionStorage.getItem(TOAST_SESSION_KEY)) {
@@ -208,6 +229,19 @@ export function initInstall() {
     }
   });
 
+  if (!delegatedClickInitialized) {
+    delegatedClickInitialized = true;
+    document.addEventListener("click", async (event) => {
+      const element = event.target.closest("[data-install]");
+      if (!element) return;
+      event.preventDefault();
+      if (element.closest("#sidebar-drawer")) {
+        document.getElementById("sidebar-close-btn")?.click();
+      }
+      await installNow();
+    });
+  }
+
   window.addEventListener("appinstalled", () => {
     put(K.installed, 1);
     try {
@@ -215,6 +249,7 @@ export function initInstall() {
       localStorage.setItem("nuqtha_installed_platform", "pwa");
     } catch {}
     deferred = null;
+    window.deferredPrompt = null;
     close(null);
     syncInstallItems();
     document.querySelectorAll("[data-install], .pwa-card, .nuqtha-app-notice").forEach(element => element.remove());
