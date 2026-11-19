@@ -661,8 +661,9 @@
 
     <!-- Footer -->
     <footer class="bg-[#241711] text-[#cbbba9] border-t border-[#3d2c22] py-8 mt-16">
-        <div translate="no" class="notranslate max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs font-english tracking-wider">
-            &copy; 2026 NUQTHA. All rights reserved.
+        <div translate="no" class="notranslate max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-4 flex-wrap text-xs font-english tracking-wider">
+            <span>&copy; 2026 NUQTHA. All rights reserved.</span>
+            <button type="button" data-install class="footer-install-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M5 20h14"/></svg><span>Install</span></button>
         </div>
     </footer>
 
@@ -682,12 +683,19 @@
         import { getDeferredImageAttributes, installLazyFirestoreImages } from "/js/public-image-loader.js";
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, getDevicePlatform } from "/js/paywall-service.js";
         import { isPremiumBook, showPremiumBookUnavailableModal } from "/js/book-notice.js";
-        import { initInstall, isWebView, offerInstall } from "/src/install.js";
+        import { initInstall, isWebView, offerInstall, installNow, syncInstallItems } from "/src/install.js";
 
         if ("serviceWorker" in navigator && !isWebView()) {
             addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
         }
         initInstall();
+        syncInstallItems();
+        document.querySelectorAll("[data-install]").forEach((element) => {
+            element.addEventListener("click", async (event) => {
+                event.preventDefault();
+                await installNow();
+            });
+        });
 
         void syncReadingBg();
         installLazyFirestoreImages();

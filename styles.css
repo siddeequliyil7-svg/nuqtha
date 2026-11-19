@@ -2590,6 +2590,10 @@ body.dark-mode #sidebar-drawer {
     cursor: pointer;
 }
 
+.footer-install-button { display: inline-flex; align-items: center; gap: .4rem; min-height: 40px; padding: 0 .85rem; border: 1px solid rgba(203,187,169,.38); border-radius: 10px; color: #fff7ed; background: rgba(180,83,44,.18); font: 800 .72rem/1 "Plus Jakarta Sans",sans-serif; cursor: pointer; }
+.footer-install-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.footer-install-button:hover { background: #b4532c; border-color: #b4532c; }
+
 .drawer-install-link > svg {
     width: 22px;
     height: 22px;

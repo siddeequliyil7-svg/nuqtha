@@ -13,6 +13,9 @@ const IOS_SNOOZE = 30 * 24 * 3600 * 1000;
 let deferred = null;
 let shownThisSession = false;
 let card = null;
+let toastTimer = null;
+let toastDismissTimer = null;
+const TOAST_SESSION_KEY = "nuqtha:install-toast-shown";
 
 const num = (key) => {
   try { return Number(localStorage.getItem(key)) || 0; } catch { return 0; }
@@ -28,6 +31,14 @@ const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSS
 const eligible = () => !isStandalone() && !isWebView() && !num(K.installed);
 
 function close(snoozeKey) {
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
+  if (toastDismissTimer) {
+    clearTimeout(toastDismissTimer);
+    toastDismissTimer = null;
+  }
   if (card) {
     card.classList.remove("on");
     const currentCard = card;
@@ -37,17 +48,23 @@ function close(snoozeKey) {
   if (snoozeKey) put(snoozeKey, Date.now());
 }
 
-function show({ ios, manual = false, manualText = "" }) {
+function show({ ios, manual = false, manualText = "", toast = false }) {
   if (!manual && (shownThisSession || card || !eligible())) return;
   if (!manual) shownThisSession = true;
   if (card) close(null);
   card = document.createElement("div");
-  card.className = "pwa-card";
+  card.className = toast ? "pwa-card pwa-toast" : "pwa-card";
   card.setAttribute("role", "region");
   card.setAttribute("aria-label", "Install NUQTHA");
 
+  const brand = document.createElement("div");
+  brand.className = "pwa-brand";
+  const icon = document.createElement("span");
+  icon.className = "pwa-app-icon";
+  icon.textContent = "N";
   const title = document.createElement("strong");
-  title.textContent = "Install NUQTHA";
+  title.textContent = toast ? "Add NUQTHA to your device" : "Install NUQTHA";
+  brand.append(icon, title);
   const paragraph = document.createElement("p");
   paragraph.textContent = manual
     ? (ios
@@ -63,15 +80,26 @@ function show({ ios, manual = false, manualText = "" }) {
   later.type = "button";
   later.className = "pwa-later";
   later.textContent = ios ? "Got it" : "Not now";
-  later.onclick = () => close(ios ? K.ios : K.dismissed);
+  later.onclick = () => {
+    if (toast) {
+      try { sessionStorage.setItem(TOAST_SESSION_KEY, "1"); } catch {}
+      close(null);
+    } else {
+      close(ios ? K.ios : K.dismissed);
+    }
+  };
   row.append(later);
 
-  if (!ios) {
+  if (!ios || toast) {
     const go = document.createElement("button");
     go.type = "button";
     go.className = "pwa-go";
     go.textContent = "Install";
     go.onclick = async () => {
+      if (toast) {
+        await installNow();
+        return;
+      }
       if (!deferred) return;
       go.disabled = true;
       deferred.prompt();
@@ -82,9 +110,22 @@ function show({ ios, manual = false, manualText = "" }) {
     row.append(go);
   }
 
-  card.append(title, paragraph, row);
+  card.append(brand, paragraph, row);
+  if (toast) {
+    const progress = document.createElement("span");
+    progress.className = "pwa-toast-progress";
+    progress.setAttribute("aria-hidden", "true");
+    card.append(progress);
+  }
   document.body.append(card);
   requestAnimationFrame(() => card && card.classList.add("on"));
+
+  if (toast) {
+    toastDismissTimer = setTimeout(() => {
+      try { sessionStorage.setItem(TOAST_SESSION_KEY, "1"); } catch {}
+      close(null);
+    }, 5500);
+  }
 }
 
 export function showInstallItem() {
@@ -143,6 +184,17 @@ export function initInstall() {
     deferred = event;
     if (num(K.active) >= ACTIVE_GOAL) offerInstall("time");
   });
+
+  try {
+    if (!sessionStorage.getItem(TOAST_SESSION_KEY)) {
+      toastTimer = setTimeout(() => {
+        toastTimer = null;
+        if (!eligible() || card) return;
+        try { sessionStorage.setItem(TOAST_SESSION_KEY, "1"); } catch {}
+        show({ ios: isIOS(), toast: true });
+      }, 5000);
+    }
+  } catch {}
 
   addEventListener("appinstalled", () => {
     put(K.installed, 1);
