@@ -4,7 +4,7 @@ import { filterPublicCollections } from "./public-status.js";
 
 const REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
 const IMAGE_FIELDS = ["imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage"];
-const MAX_ACTIVE_REQUESTS = 3;
+const MAX_ACTIVE_REQUESTS = 10;
 const IMAGE_DB_NAME = "nuqtha-image-cache";
 const IMAGE_DB_VERSION = 1;
 const IMAGE_STORE_NAME = "images";
@@ -421,18 +421,35 @@ export function installLazyFirestoreImages() {
     else document.addEventListener("DOMContentLoaded", start, { once: true });
 }
 
+const warmedImageUrls = new Set();
+
 export function warmImageUrls(items) {
     if (!(typeof window !== "undefined") || !Array.isArray(items)) return;
     const seen = new Set();
+    let warmedCount = 0;
     for (const item of items) {
         for (const field of IMAGE_FIELDS) {
             const source = typeof item?.[field] === "string" ? item[field].trim() : "";
-            if (!/^https?:\/\//i.test(source) || seen.has(source)) continue;
+            if (!/^https?:\/\//i.test(source) || seen.has(source) || warmedImageUrls.has(source)) continue;
             seen.add(source);
+            warmedImageUrls.add(source);
+            warmedCount += 1;
+
+            if (warmedCount <= 8) {
+                const preload = document.createElement("link");
+                preload.rel = "preload";
+                preload.as = "image";
+                preload.href = source;
+                preload.fetchPriority = "high";
+                document.head.appendChild(preload);
+            }
+
             const image = new Image();
             image.decoding = "async";
             image.loading = "eager";
+            image.fetchPriority = warmedCount <= 4 ? "high" : "low";
             image.src = source;
+            if (typeof image.decode === "function") image.decode().catch(() => {});
         }
     }
 }

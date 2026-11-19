@@ -38,7 +38,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com">
     <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://firebasestorage.app" crossorigin>
     <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
+    <link rel="dns-prefetch" href="//firestore.googleapis.com">
+    <link rel="dns-prefetch" href="//firebasestorage.googleapis.com">
+    <link rel="dns-prefetch" href="//firebasestorage.app">
+    <link rel="dns-prefetch" href="//storage.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@100..800&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700;800;900&family=Noto+Serif+Malayalam:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Razorpay Checkout Preconnect & Preload for Seamless iOS Safari Modal Checkout -->
@@ -713,8 +718,8 @@
             const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
             const styleAttribute = deferredAttributes
                 ? (imageUrl
-                    ? 'style="opacity:0;transition:opacity .25s ease;"'
-                    : 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"')
+                    ? ''
+                    : 'style="position:absolute;inset:0;"')
                 : "";
             const priorityAttribute = loading === "eager" ? 'fetchpriority="high"' : "";
             return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" loading="${loading}" ${priorityAttribute} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
@@ -865,7 +870,7 @@
 
             const pools = [];
             try {
-                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v11") || localStorage.getItem("nuqtha_cached_articles_v11");
+                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v12") || localStorage.getItem("nuqtha_cached_articles_v12");
                 if (s1) {
                     const parsed = JSON.parse(s1);
                     if (Array.isArray(parsed)) pools.push(...parsed);
@@ -1398,7 +1403,7 @@
                 return clean;
             };
             try {
-                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v11") || localStorage.getItem("nuqtha_cached_articles_v11");
+                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v12") || localStorage.getItem("nuqtha_cached_articles_v12");
                 if (s1) {
                     const parsed = JSON.parse(s1);
                     if (Array.isArray(parsed) && parsed.length > 0) {

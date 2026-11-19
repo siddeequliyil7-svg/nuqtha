@@ -39,7 +39,7 @@ document.querySelectorAll("[data-install]").forEach((element) => {
 void syncReadingBg();
 
 /* ═══════════ Pre-bundled Fallback Data for 100% Uptime & Smooth Load ═══════════ */
-const CACHE_KEY = 'nuqtha_cached_articles_v11';
+const CACHE_KEY = 'nuqtha_cached_articles_v12';
 
 installLazyFirestoreImages();
 
@@ -51,9 +51,7 @@ function buildCardImageMarkup(item, className, alt, width, height, eager = false
     if (!imageUrl && !deferredAttributes) return "";
 
     const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
-    const styleAttribute = imageUrl
-        ? 'style="opacity:0;transition:opacity .25s ease;"'
-        : 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"';
+    const styleAttribute = imageUrl ? '' : 'style="position:absolute;inset:0;"';
     const priority = eager ? 'loading="eager" fetchpriority="high"' : 'loading="eager"';
     return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" ${priority} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
 }
@@ -70,8 +68,14 @@ function safeCacheArticles(articles) {
             const copy = stripListHeavyFields(a);
             delete copy.content;
             delete copy.transcription;
-            copy.imageUrl = "/cover-placeholder.svg";
-            copy.thumbnailUrl = "/cover-placeholder.svg";
+            const coverUrl = getArticleImageUrl(a, "");
+            if (coverUrl) {
+                copy.imageUrl = coverUrl;
+                copy.thumbnailUrl = getArticleImageUrl(a, coverUrl);
+                copy.coverUrl = coverUrl;
+                copy.coverImage = coverUrl;
+                copy.ogImage = coverUrl;
+            }
             return copy;
         });
         const str = JSON.stringify(lightweight);
@@ -98,7 +102,9 @@ try {
     sessionStorage.removeItem('nuqtha_cached_articles_v5');
     localStorage.removeItem('nuqtha_cached_articles_v5');
     sessionStorage.removeItem('nuqtha_cached_articles_v10');
+    sessionStorage.removeItem('nuqtha_cached_articles_v11');
     localStorage.removeItem('nuqtha_cached_articles_v10');
+    localStorage.removeItem('nuqtha_cached_articles_v11');
     sessionStorage.removeItem('nuqtha_cached_authors');
 
     const cachedArts = sessionStorage.getItem(CACHE_KEY);
