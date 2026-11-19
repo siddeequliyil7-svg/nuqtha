@@ -1240,17 +1240,17 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
                 ${initialGridArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
             </div>
         ` : ""}
-        ${remainingArticles.length ? `
-            <template class="home-category-more-template">
-                ${remainingArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
-            </template>
-            <div class="home-category-show-more-wrap">
+        <div class="home-category-show-more-wrap">
+            ${remainingArticles.length ? `
+                <template class="home-category-more-template">
+                    ${remainingArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
+                </template>
                 <button type="button" class="home-category-show-more" data-category="${escapeHtml(category.slug)}" aria-controls="${gridId}">
                     <span>Show More</span>
                     <span aria-hidden="true">&darr;</span>
                 </button>
-            </div>
-        ` : ""}
+            ` : '<span class="home-category-end-state">No more articles</span>'}
+        </div>
     `;
     section.dataset.loaded = "true";
     attachShowMoreListeners();

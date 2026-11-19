@@ -3123,6 +3123,11 @@ body:has(#standard-article-view) {
     margin-top: 1rem;
 }
 
+.home-category-end-state {
+    color: var(--text-muted);
+    font: 500 0.75rem/1.2 "Plus Jakarta Sans", sans-serif;
+}
+
 .home-category-show-more {
     display: inline-flex;
     align-items: center;
