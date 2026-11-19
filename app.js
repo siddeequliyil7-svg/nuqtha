@@ -52,7 +52,7 @@ function buildCardImageMarkup(item, className, alt, width, height, eager = false
 
     const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
     const styleAttribute = imageUrl ? '' : 'style="position:absolute;inset:0;"';
-    const priority = eager ? 'loading="eager" fetchpriority="high"' : 'loading="eager"';
+    const priority = 'loading="eager" fetchpriority="high"';
     return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" ${priority} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
 }
 
@@ -121,6 +121,7 @@ try {
             const hasNoOldAuthor = !parsed.some(a => (a.author || "").includes("അബൂബക്കർ"));
             if (hasNoAiStudio && hasNoOldAuthor) {
                 allArticles = parsed.filter(isPubliclyPublished);
+                warmImageUrls(allArticles);
             }
         }
     }
@@ -129,6 +130,7 @@ try {
 // Pre-fill with normalized fallback articles so feed is NEVER empty, broken, or stuck on skeletons
 if (!Array.isArray(allArticles) || allArticles.length === 0) {
     allArticles = FALLBACK_ARTICLE_ITEMS.map(a => normalizeArticleDoc(a, a.id));
+    warmImageUrls(allArticles);
     safeCacheArticles(allArticles);
 }
 
@@ -943,6 +945,7 @@ export function initAppData() {
 
         allArticles = sortArticles(combined.filter(isPubliclyPublished));
         warmImageUrls(allArticles);
+        requestAnimationFrame(() => warmImageUrls(allArticles));
         safeCacheArticles(allArticles);
         renderFeed();
     })().catch(error => {
@@ -1995,7 +1998,9 @@ function buildCarouselCard(art, index = 0) {
     const cardImg = buildCardImageMarkup(art, "carousel-card-img", cleanTitle, 400, 300, index === 0);
     const hasCardImage = hasImmediateCardImage(art);
     const imagePlaceholder = '<div class="carousel-card-img-placeholder" ' + (hasCardImage ? 'style="display:none;' : 'style="') + 'background: linear-gradient(135deg, #2a201c, #4a3328); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;" data-nuqtha-image-placeholder><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
-    const imgHtml = hasCardImage ? cardImg + imagePlaceholder : imagePlaceholder + cardImg;
+    const imgHtml = hasCardImage
+        ? cardImg + imagePlaceholder
+        : cardImg + imagePlaceholder;
 
     return '<div class="carousel-card relative cursor-pointer stretched-card-wrap" data-id="' + art.id + '">' +
         '<div class="relative w-full overflow-hidden flex-shrink-0 aspect-[16/9]">' + imgHtml + '</div>' +

@@ -685,7 +685,7 @@
         import { getArticleCategoryId, getCachedCategoryName, getCategories } from "/js/category-store.js";
         import { filterPublicCollections, isPubliclyPublished } from "/js/public-status.js";
         import { trackReadingActivity } from "/js/analytics-tracker.js";
-        import { getDeferredImageAttributes, installLazyFirestoreImages } from "/js/public-image-loader.js";
+        import { getDeferredImageAttributes, installLazyFirestoreImages, warmImageUrls } from "/js/public-image-loader.js";
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, getDevicePlatform } from "/js/paywall-service.js";
         import { isPremiumBook, showPremiumBookUnavailableModal } from "/js/book-notice.js";
         import { initInstall, isWebView, offerInstall, installNow, syncInstallItems } from "/src/install.js";
@@ -878,6 +878,7 @@
             } catch (_) {}
 
             pools.push(...FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id)));
+            warmImageUrls(pools);
 
             return pools.find(a =>
                 isPubliclyPublished(a) && (
@@ -1934,7 +1935,14 @@
                 canonicalEl.setAttribute('href', window.location.origin + cleanUrl);
 
                 const currentCoverUrl = getArticleImageUrl(currentDoc, "");
-                if (currentCoverUrl) preloadCoverImage(currentCoverUrl);
+                if (currentCoverUrl) {
+                    preloadCoverImage(currentCoverUrl);
+                    const warmImage = new Image();
+                    warmImage.loading = "eager";
+                    warmImage.decoding = "async";
+                    warmImage.fetchPriority = "high";
+                    warmImage.src = currentCoverUrl;
+                }
 
                 if (skeletonEl) skeletonEl.classList.add("hidden");
                 if (errorContainerEl) {

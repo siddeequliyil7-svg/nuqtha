@@ -27,7 +27,8 @@ const listFields = [
     "excerpt", "storedExcerpt", "hasCustomExcerpt", "transcription",
     "visible", "description", "introduction", "intro", "summary", "pages", "color", "tags",
     "chapters", "articleIds", "titleColor", "contentColor",
-    "readTime", "accessType", "leadTitle", "featuredTitle", "apkUrl", "fontSize"
+    "readTime", "accessType", "leadTitle", "featuredTitle", "apkUrl", "fontSize",
+    "imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage"
 ];
 
 function decodeValue(value) {
@@ -52,7 +53,7 @@ export function stripListHeavyFields(value) {
     if (Array.isArray(value)) return value.map(stripListHeavyFields);
     if (!value || typeof value !== "object") return value;
     return Object.fromEntries(Object.entries(value)
-        .filter(([key]) => !IMAGE_FIELDS.includes(key) && key !== "content" && key !== "body")
+        .filter(([key]) => key !== "content" && key !== "body")
         .map(([key, child]) => [key, stripListHeavyFields(child)]));
 }
 
@@ -358,6 +359,8 @@ function observeImage(image) {
     if (image.dataset.nuqthaImageObserved === "true") return;
     image.dataset.nuqthaImageObserved = "true";
     if (image.hasAttribute("src")) {
+        image.loading = "eager";
+        image.decoding = "async";
         const reveal = () => {
             image.classList.add("nuqtha-image-loaded");
             image.style.opacity = "1";
@@ -388,7 +391,7 @@ export function installLazyFirestoreImages() {
             entries.forEach(entry => {
                 enqueueImage(entry.target);
             });
-        }, { rootMargin: "300px" });
+        }, { rootMargin: "2000px" });
     } else {
         observer = {
             observe(image) {
