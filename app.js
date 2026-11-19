@@ -53,7 +53,9 @@ installLazyFirestoreImages();
 
 function buildCardImageMarkup(item, className, alt, width, height, eager = false) {
     const rawUrl = getArticleImageUrl(item, "");
-    const deferredAttributes = getDeferredImageAttributes(item);
+    const deferredAttributes = /^https?:\/\//i.test(rawUrl) || /^\/[^/]/.test(rawUrl)
+        ? ""
+        : getDeferredImageAttributes(item);
     const deferInlineImage = /^data:image\//i.test(rawUrl) && deferredAttributes;
     const imageUrl = deferInlineImage ? "" : rawUrl;
     if (!imageUrl && !deferredAttributes) return "";

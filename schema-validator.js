@@ -382,6 +382,8 @@ function isCoverPlaceholder(url) {
     return typeof url === "string" && /(?:^|\/)cover-placeholder\.svg(?:[?#].*)?$/i.test(url.trim());
 }
 
+const DIRECT_IMAGE_URL_CACHE = new Map();
+
 export function getArticleImageUrl(item, fallback = "/cover-placeholder.svg") {
     if (item && typeof item === "object") {
         const candidates = [

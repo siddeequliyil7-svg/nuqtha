@@ -10,6 +10,9 @@ const IMAGE_DB_VERSION = 1;
 const IMAGE_STORE_NAME = "images";
 const activeObjectUrls = new Map();
 const imageSourcePromises = new Map();
+const resolvedImageUrls = new Map();
+const RESOLVED_URL_CACHE_PREFIX = "nuqtha:image-url:v1:";
+const RESOLVED_URL_TTL = 30 * 60 * 1000;
 const queue = [];
 let activeRequests = 0;
 let imageDatabasePromise;
@@ -222,9 +225,31 @@ async function getObjectUrl(key, dataUrl) {
     return url;
 }
 
+function readResolvedImageUrl(cacheKey) {
+    if (resolvedImageUrls.has(cacheKey)) return resolvedImageUrls.get(cacheKey);
+    try {
+        const cached = JSON.parse(sessionStorage.getItem(RESOLVED_URL_CACHE_PREFIX + cacheKey) || "null");
+        if (cached?.url && Date.now() - Number(cached.savedAt) < RESOLVED_URL_TTL) {
+            resolvedImageUrls.set(cacheKey, cached.url);
+            return cached.url;
+        }
+    } catch (_) {}
+    return "";
+}
+
+function writeResolvedImageUrl(cacheKey, url) {
+    if (!url) return;
+    resolvedImageUrls.set(cacheKey, url);
+    try {
+        sessionStorage.setItem(RESOLVED_URL_CACHE_PREFIX + cacheKey, JSON.stringify({ url, savedAt: Date.now() }));
+    } catch (_) {}
+}
+
 function fetchImageFromDocument(collectionName, documentId) {
     if (!collectionName || !documentId) return "";
     const cacheKey = `${collectionName}:${documentId}`;
+    const resolvedUrl = readResolvedImageUrl(cacheKey);
+    if (resolvedUrl) return Promise.resolve(resolvedUrl);
     if (imageSourcePromises.has(cacheKey)) return imageSourcePromises.get(cacheKey);
 
     const imageRequest = (async () => {
@@ -236,7 +261,9 @@ function fetchImageFromDocument(collectionName, documentId) {
             const response = await fetch(url, { signal: controller.signal });
             if (!response.ok) throw new Error(`Firestore image read failed (${response.status}).`);
             const document = await response.json();
-            return getArticleImageUrl(decodeFields(document.fields || {}), "");
+            const url = getArticleImageUrl(decodeFields(document.fields || {}), "");
+            writeResolvedImageUrl(cacheKey, url);
+            return url;
         } finally {
             clearTimeout(timeout);
         }
@@ -245,7 +272,9 @@ function fetchImageFromDocument(collectionName, documentId) {
     imageSourcePromises.set(cacheKey, imageRequest);
     imageRequest.then(
         () => {
-            if (imageSourcePromises.get(cacheKey) === imageRequest) imageSourcePromises.delete(cacheKey);
+            if (imageSourcePromises.get(cacheKey) === imageRequest) {
+                imageSourcePromises.delete(cacheKey);
+            }
         },
         () => {
             if (imageSourcePromises.get(cacheKey) === imageRequest) imageSourcePromises.delete(cacheKey);
@@ -428,6 +457,9 @@ export function warmImageUrls(items) {
             warmedCount += 1;
 
             if (warmedCount <= 8) {
+                const existingPreload = Array.from(document.querySelectorAll('link[rel="preload"][as="image"]'))
+                    .some(link => link.href === source);
+                if (existingPreload) continue;
                 const preload = document.createElement("link");
                 preload.rel = "preload";
                 preload.as = "image";
@@ -448,6 +480,8 @@ export function warmImageUrls(items) {
 
 export function getDeferredImageAttributes(item) {
     if (!item?._imageCollection || !item?._imageDocId) return "";
+    const directUrl = getArticleImageUrl(item, "");
+    if (/^https?:\/\//i.test(directUrl) || /^\/[^/]/.test(directUrl)) return "";
     const updatedAt = String(item.updatedAt || item.createdAt || "");
     const escape = value => String(value).replace(/[&<>"']/g, char => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"

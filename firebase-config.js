@@ -155,12 +155,9 @@ if (typeof window !== "undefined" && !window.__NUQTHA_IMG_RETRY_INSTALLED__) {
         const src = target.currentSrc || target.src;
         if (target.dataset.nuqthaFallback) {
           target.hidden = true;
-        } else if (src && /^https?:/i.test(src) && !target.dataset.nuqthaRetried) {
+        } else if (src && /^https?:/i.test(src) && target.hasAttribute("data-nuqtha-cover") && !target.dataset.nuqthaRetried) {
           target.dataset.nuqthaRetried = "true";
-          const separator = src.includes("?") ? "&" : "?";
-          setTimeout(() => {
-            if (target.isConnected) target.src = `${src}${separator}_retry=${Date.now()}`;
-          }, 450);
+          return;
         } else {
           target.dataset.nuqthaFallback = "true";
           target.removeAttribute("srcset");

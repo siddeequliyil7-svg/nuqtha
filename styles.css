@@ -2378,15 +2378,7 @@ body.dark-mode .playlist-preset-chip:hover {
         line-height: 1.35 !important;
     }
 
-    /* Carousel Cards Comfortable Width */
-    .carousel-card {
-        flex: 0 0 320px !important;
-        width: 320px !important;
-    }
-    .carousel-card-img,
-    .carousel-card-img-placeholder {
-        height: 165px !important;
-    }
+    /* Carousel sizing is controlled by the responsive 82% / 2-column / 4-column rules above. */
 }
 
 @media (min-width: 1024px) {
