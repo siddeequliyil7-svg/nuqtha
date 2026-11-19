@@ -10,6 +10,7 @@ import { syncUserProfileToFirestore } from "./analytics-tracker.js";
 // Cache for loaded Firebase Auth SDK module
 let authModulePromise = null;
 let currentRecaptchaVerifier = null;
+let currentRecaptchaContainerId = null;
 let currentConfirmationResult = null;
 
 // Approved Admin Identifiers
@@ -224,18 +225,21 @@ export async function registerWithEmailPassword(email, password, displayName) {
 /**
  * Phone Number (OTP) - Clean Recaptcha lifecycle management
  */
-export function cleanupRecaptcha() {
+export function cleanupRecaptcha(containerId = null) {
     if (currentRecaptchaVerifier) {
         try {
             currentRecaptchaVerifier.clear();
-        } catch (e) {
-            console.warn("[Auth] Recaptcha cleanup error:", e);
-        }
+        } catch (_) {}
         currentRecaptchaVerifier = null;
     }
-    const container = document.getElementById("recaptcha-container");
-    if (container) {
-        container.innerHTML = "";
+    currentRecaptchaContainerId = null;
+
+    const containerIds = containerId
+        ? [containerId]
+        : [currentRecaptchaContainerId, "recaptcha-container"].filter(Boolean);
+    for (const id of new Set(containerIds)) {
+        const container = document.getElementById(id);
+        if (container) container.replaceChildren();
     }
 }
 
@@ -243,23 +247,48 @@ export function cleanupRecaptcha() {
  * Sends OTP to the provided phone number
  */
 export async function sendPhoneOtp(phoneNumber, containerId = "recaptcha-container") {
-    cleanupRecaptcha();
-    const { auth, RecaptchaVerifier, signInWithPhoneNumber } = await loadFirebaseAuth();
+    cleanupRecaptcha(containerId);
+    const container = document.getElementById(containerId);
+    if (!container) throw new Error("Phone verification container not found. Please reopen the login window.");
 
-    currentRecaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+    let authModule;
+    try {
+        authModule = await loadFirebaseAuth();
+    } catch (error) {
+        throw new Error("Firebase authentication could not be loaded. Check your connection and try again.");
+    }
+    const { auth, RecaptchaVerifier, signInWithPhoneNumber } = authModule;
+
+    container.replaceChildren();
+    currentRecaptchaContainerId = containerId;
+    currentRecaptchaVerifier = new RecaptchaVerifier(auth, container, {
         size: "invisible",
         callback: () => {
             // Invisible reCAPTCHA completed
         },
         "expired-callback": () => {
             console.warn("[Auth] reCAPTCHA expired, resetting");
-            cleanupRecaptcha();
+            cleanupRecaptcha(containerId);
         }
     });
 
-    await currentRecaptchaVerifier.render();
-    currentConfirmationResult = await signInWithPhoneNumber(auth, phoneNumber, currentRecaptchaVerifier);
-    return currentConfirmationResult;
+    try {
+        await currentRecaptchaVerifier.render();
+        currentConfirmationResult = await signInWithPhoneNumber(auth, phoneNumber, currentRecaptchaVerifier);
+        return currentConfirmationResult;
+    } catch (error) {
+        cleanupRecaptcha(containerId);
+        if (error?.code === "auth/invalid-phone-number") {
+            throw new Error("The phone number is invalid. Enter a valid 10-digit Indian mobile number.");
+        }
+        if (error?.code === "auth/too-many-requests") {
+            throw new Error("Too many OTP requests. Please wait before trying again.");
+        }
+        if (/already been rendered/i.test(error?.message || "")) {
+            throw new Error("Phone verification was reset. Please tap Send OTP again.");
+        }
+        throw new Error(error?.message || "Unable to send OTP. Please try again.");
+    }
 }
 
 /**
@@ -272,7 +301,8 @@ export async function verifyPhoneOtp(otpCode) {
     const res = await currentConfirmationResult.confirm(otpCode.trim());
     const profile = mapFirebaseUser(res.user);
     safeSaveAuthUser(profile);
-    cleanupRecaptcha();
+    cleanupRecaptcha("recaptcha-container");
+    currentConfirmationResult = null;
     return profile;
 }
 
@@ -290,6 +320,7 @@ export async function signOutUser() {
     try {
         sessionStorage.removeItem(ADMIN_SESSION_KEY);
     } catch (_) {}
-    cleanupRecaptcha();
+    currentConfirmationResult = null;
+    cleanupRecaptcha("recaptcha-container");
 }
 

@@ -132,6 +132,7 @@ export function ensureAuthModalDOM() {
  */
 export function openAuthModal(defaultTab = "google") {
     ensureAuthModalDOM();
+    cleanupRecaptcha("recaptcha-container");
     const modal = document.getElementById("nuqtha-auth-modal");
     const card = document.getElementById("nuqtha-auth-modal-card");
     if (!modal) return;
@@ -153,6 +154,11 @@ export function openAuthModal(defaultTab = "google") {
  * Closes the auth modal
  */
 export function closeAuthModal() {
+    cleanupRecaptcha("recaptcha-container");
+    if (resendTimerInterval) {
+        clearInterval(resendTimerInterval);
+        resendTimerInterval = null;
+    }
     const modal = document.getElementById("nuqtha-auth-modal");
     const card = document.getElementById("nuqtha-auth-modal-card");
     if (!modal) return;
@@ -166,7 +172,7 @@ export function closeAuthModal() {
         modal.classList.add("hidden");
         window.dispatchEvent(new CustomEvent("nuqtha:auth-modal-closed"));
         clearAuthModalError();
-        cleanupRecaptcha();
+        cleanupRecaptcha("recaptcha-container");
         if (resendTimerInterval) {
             clearInterval(resendTimerInterval);
             resendTimerInterval = null;
@@ -210,6 +216,8 @@ function switchAuthTab(tabName) {
     panes.forEach(pane => {
         pane.classList.add("hidden");
     });
+
+    if (tabName !== "phone") cleanupRecaptcha("recaptcha-container");
 
     const activePane = document.getElementById(`auth-pane-${tabName}`);
     if (activePane) {
@@ -295,6 +303,7 @@ function setupAuthModalListeners() {
                 sendOtpBtn.innerHTML = `<span>അയക്കുന്നു...</span>`;
                 clearAuthModalError();
 
+                cleanupRecaptcha("recaptcha-container");
                 await sendPhoneOtp(fullPhone, "recaptcha-container");
 
                 if (stepSend) stepSend.classList.add("hidden");
@@ -308,7 +317,7 @@ function setupAuthModalListeners() {
             } catch (err) {
                 console.error("[Auth] Send OTP error:", err);
                 showAuthModalError(err.message || "OTP അയക്കാൻ സാധിച്ചില്ല. ദയവായി നമ്പർ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.");
-                cleanupRecaptcha();
+                cleanupRecaptcha("recaptcha-container");
             } finally {
                 sendOtpBtn.disabled = false;
                 sendOtpBtn.innerHTML = `<span>OTP അയക്കുക (Send OTP)</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>`;
@@ -324,7 +333,7 @@ function setupAuthModalListeners() {
                 clearInterval(resendTimerInterval);
                 resendTimerInterval = null;
             }
-            cleanupRecaptcha();
+            cleanupRecaptcha("recaptcha-container");
         });
     }
 
@@ -334,11 +343,12 @@ function setupAuthModalListeners() {
             try {
                 resendBtn.disabled = true;
                 clearAuthModalError();
+                cleanupRecaptcha("recaptcha-container");
                 await sendPhoneOtp(pendingPhoneNumber, "recaptcha-container");
                 startResendTimer();
             } catch (err) {
                 showAuthModalError(err.message || "OTP വീണ്ടും അയക്കാൻ സാധിച്ചില്ല.");
-                cleanupRecaptcha();
+                cleanupRecaptcha("recaptcha-container");
             }
         });
     }
@@ -361,6 +371,7 @@ function setupAuthModalListeners() {
             } catch (err) {
                 console.warn("[Auth] OTP verification error:", err);
                 showAuthModalError("തെറ്റായ OTP കോഡ് അല്ലെങ്കിൽ കാലാവധി കഴിഞ്ഞു (Invalid or expired code)");
+                cleanupRecaptcha("recaptcha-container");
             } finally {
                 verifyOtpBtn.disabled = false;
                 verifyOtpBtn.textContent = "സ്ഥിരീകരിക്കുക (Verify & Sign In)";
