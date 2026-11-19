@@ -1761,16 +1761,8 @@ function buildCategoryFeaturedCard(art, theme = null) {
         <div class="block stretched-card-wrap">
             <!-- Large Prominent Cover Image -->
             <div class="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden bg-gradient-to-br ${t.accentGrad}">
-                ${hasCategoryImage ? `
-                    ${categoryImage}
-                ` : `
-                    <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90" data-nuqtha-image-placeholder>
-                        <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                        </div>
-                        <span class="text-xs font-bold uppercase tracking-widest text-white/80 font-english">${categoryMalayalam}</span>
-                    </div>
-                    ${categoryImage}
+                ${categoryImage || `
+                    <div class="w-full h-full bg-[#f4ede3] dark:bg-[#29231f]" aria-hidden="true"></div>
                 `}
                 <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
                 <!-- Floating Category Badge -->
@@ -1841,17 +1833,7 @@ function buildFeaturedCard(art) {
         <div class="block stretched-card-wrap">
             <!-- Large Top Cover Image Container -->
             <div class="featured-cover-container relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#b8542c] via-[#aa4923] to-[#803113]">
-                ${hasFeaturedImage ? `
-                    ${featuredImage}
-                ` : `
-                    <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90" data-nuqtha-image-placeholder>
-                        <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-2 border border-white/20">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                        </div>
-                        <span class="text-xs font-bold uppercase tracking-widest text-white/80 font-english">${categoryMalayalam}</span>
-                    </div>
-                    ${featuredImage}
-                `}
+                ${featuredImage || `<div class="w-full h-full bg-[#f4ede3] dark:bg-[#29231f]" aria-hidden="true"></div>`}
             </div>
 
             <!-- Content Details Area -->
@@ -1914,14 +1896,7 @@ function buildCompactRecentCard(art, theme = null) {
         <div class="flex items-center p-3 sm:p-4 gap-3.5 sm:gap-4 w-full stretched-card-wrap">
             <!-- Left Thumbnail -->
             <div class="compact-thumbnail-wrap relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${t.accentGrad}">
-                ${hasCompactImage ? `
-                    ${compactImage}
-                ` : `
-                    <div class="w-full h-full flex items-center justify-center text-white/70 text-[10px]" data-nuqtha-image-placeholder>
-                        ചിത്രം
-                    </div>
-                    ${compactImage}
-                `}
+                ${compactImage || `<div class="w-full h-full bg-[#f4ede3] dark:bg-[#29231f]" aria-hidden="true"></div>`}
             </div>
 
             <!-- Right Details -->
@@ -2024,13 +1999,12 @@ function buildCarouselCard(art, index = 0) {
     if (!art) return "";
     const dateStr = art.date || formatDate(art.createdAt);
     const titleStyle = art.titleColor ? 'style="color: ' + art.titleColor + ';"' : '';
-    const catLabel = categoryLabel(art.category);
     const cleanTitle = stripMarkdown(art.title);
     const authorName = art.author || "NUQTHA";
 
     const cardImg = buildCardImageMarkup(art, "carousel-card-img", cleanTitle, 400, 300, index === 0);
     const hasCardImage = hasImmediateCardImage(art);
-    const imagePlaceholder = '<div class="carousel-card-img-placeholder" ' + (hasCardImage ? 'style="display:none;' : 'style="') + 'background: linear-gradient(135deg, #2a201c, #4a3328); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;" data-nuqtha-image-placeholder><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
+    const imagePlaceholder = hasCardImage ? '' : '<div class="carousel-card-img-placeholder" style="background:#f4ede3;" aria-hidden="true"></div>';
     const imgHtml = hasCardImage
         ? cardImg + imagePlaceholder
         : cardImg + imagePlaceholder;
@@ -2393,13 +2367,8 @@ function buildBookCard(book, articles) {
     return `
     <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${book.id}">
         <!-- Cover Image Container (Vertical Magazine Style) -->
-        <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
-            ${coverUrl && hasImmediateCardImage(book) ? `
-                ${coverImage}
-            ` : `
-                ${buildBookCoverPlaceholder(book)}
-                ${coverImage}
-            `}
+        <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#f7eedf] dark:bg-[#29231f]">
+            ${coverImage || `<div class="w-full h-full bg-[#f7eedf] dark:bg-[#29231f]" aria-hidden="true"></div>`}
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
         </div>
         <!-- Bottom Risala-Style Banner -->
@@ -2686,13 +2655,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
                         ` : `
                             <span class="premium-book-ribbon" translate="no">₹${price} • PREMIUM</span>
                         `}
-                        ${bookCoverImg && hasImmediateCardImage(book) ? `
-                            ${bookCoverMarkup}
-                            ${buildBookCoverPlaceholder(book, idx, true, true)}
-                        ` : `
-                            ${buildBookCoverPlaceholder(book, idx, true)}
-                            ${bookCoverMarkup}
-                        `}
+                        ${bookCoverMarkup || `<div class="premium-book-placeholder" aria-hidden="true"></div>`}
                     </div>
                 </div>
                 <div class="premium-book-info">
@@ -2812,13 +2775,7 @@ function renderBooksCategoryFeed(container) {
                         <span class="absolute top-2.5 right-2.5 z-10 px-2.5 py-1 rounded-full text-[10px] font-black uppercase font-english ${isFree ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-300 dark:border-green-700 shadow-md' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-md'}">
                             ${isFree ? 'FREE' : 'PREMIUM'}
                         </span>
-                        ${bookCoverImg && hasImmediateCardImage(book) ? `
-                            ${bookCoverMarkup}
-                            ${buildBookCoverPlaceholder(book, index, false, true)}
-                        ` : `
-                            ${buildBookCoverPlaceholder(book, index)}
-                            ${bookCoverMarkup}
-                        `}
+                        ${bookCoverMarkup || `<div class="w-full h-full bg-[#f7eedf] dark:bg-[#29231f]" aria-hidden="true"></div>`}
                         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
                             <span class="text-[11px] font-bold text-white uppercase font-english tracking-wider flex items-center gap-1 bg-[#b4532c] px-3 py-1 rounded-full shadow">
                                 <span>തുറക്കുക</span>

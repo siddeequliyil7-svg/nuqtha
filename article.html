@@ -1041,7 +1041,7 @@
                                     <span class="book-v2-ribbon" aria-hidden="true"></span>
                                     <span class="book-v2-spine" aria-hidden="true"></span>
                                     <div class="book-v2-cover">
-                                        ${hasCover ? `${coverMarkup}<div class="book-v2-cover-fallback hidden" data-nuqtha-image-placeholder aria-hidden="true">📚</div>` : `<div class="book-v2-cover-fallback" aria-hidden="true">📚</div>`}
+                                        ${coverMarkup || `<div class="book-v2-cover-fallback" aria-hidden="true"></div>`}
                                     </div>
                                 </div>
                             </div>
@@ -2220,7 +2220,7 @@
                                         <div class="book-v2-cover">
                                         ${hasCover ? `
                                             ${coverMarkup}
-                                            <div class="book-v2-cover-fallback hidden" data-nuqtha-image-placeholder aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>
+                                            <div class="book-v2-cover-fallback hidden" aria-hidden="true"></div>
                                         ` : `
                                             <div class="book-v2-cover-fallback">
                                                 <span class="text-4xl" aria-hidden="true">📚</span>

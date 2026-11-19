@@ -386,21 +386,10 @@ function scanImages(node) {
 
 export function installLazyFirestoreImages() {
     if (observer || typeof window === "undefined") return;
-    if ("IntersectionObserver" in window) {
-        observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                enqueueImage(entry.target);
-            });
-        }, { rootMargin: "2000px" });
-    } else {
-        observer = {
-            observe(image) {
-                queue.push(image);
-                processNext();
-            },
-            unobserve() {}
-        };
-    }
+    observer = {
+        observe() {},
+        unobserve() {}
+    };
 
     const start = () => {
         scanImages(document.body);
