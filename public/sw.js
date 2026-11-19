@@ -35,13 +35,46 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.mode === "navigate") {
-    event.respondWith(fetch(event.request).catch(async () => {
-      const cached = await caches.match(event.request);
-      if (cached) return cached;
-      if (/\/book\//.test(new URL(event.request.url).pathname)) return caches.match(OFFLINE);
-      return caches.match("/index.html").then((index) => index || caches.match(OFFLINE));
-    }));
+  const request = event.request;
+  const url = new URL(request.url);
+
+  if (request.mode === "navigate") {
+    event.respondWith((async () => {
+      const isBookRoute = /\/book\//.test(url.pathname);
+      const shellUrl = isBookRoute ? "/article.html" : (url.pathname.includes("article.html") || /\/story\//.test(url.pathname) ? "/article.html" : "/index.html");
+      const cache = await caches.open(CACHE);
+      const cachedShell = await cache.match(shellUrl);
+
+      const networkUpdate = fetch(request).then(async (response) => {
+        if (response && response.ok) {
+          await cache.put(shellUrl, response.clone());
+        }
+        return response;
+      }).catch(() => null);
+
+      if (cachedShell) {
+        event.waitUntil(networkUpdate);
+        return cachedShell;
+      }
+      return (await networkUpdate) || caches.match(OFFLINE);
+    })());
+    return;
+  }
+
+  if (request.method === "GET" && url.origin === self.location.origin) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match(request);
+      const networkUpdate = fetch(request).then(async (response) => {
+        if (response && response.ok) cache.put(request, response.clone());
+        return response;
+      }).catch(() => null);
+      if (cached) {
+        event.waitUntil(networkUpdate);
+        return cached;
+      }
+      return (await networkUpdate) || caches.match(OFFLINE);
+    })());
   }
 });
 

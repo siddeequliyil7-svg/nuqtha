@@ -46,6 +46,8 @@ void syncReadingBg();
 
 /* ═══════════ Pre-bundled Fallback Data for 100% Uptime & Smooth Load ═══════════ */
 const CACHE_KEY = 'nuqtha_cached_articles_v12';
+const HOME_SCROLL_KEY = 'nuqtha:home-scroll-y';
+const HOME_CACHE_FINGERPRINT_KEY = 'nuqtha:home-cache-fingerprint';
 
 installLazyFirestoreImages();
 
@@ -251,6 +253,20 @@ function initApp() {
     renderFeed();
     initAppData();
 }
+
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
+window.addEventListener("pagehide", () => {
+    if (location.pathname === "/" || location.pathname.endsWith("/index.html")) {
+        try { sessionStorage.setItem(HOME_SCROLL_KEY, String(window.scrollY)); } catch (_) {}
+    }
+});
+
+window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
+    const restoredScroll = Number(sessionStorage.getItem(HOME_SCROLL_KEY)) || 0;
+    requestAnimationFrame(() => window.scrollTo({ top: restoredScroll, behavior: "auto" }));
+});
 
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initApp);
@@ -612,7 +628,8 @@ function setupHomeLink() {
             document.getElementById("more-categories-dropdown")?.classList.add("hidden");
             document.getElementById("sidebar-close-btn")?.click();
             switchToCategory("ALL");
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            const restoredScroll = Number(sessionStorage.getItem(HOME_SCROLL_KEY)) || 0;
+            window.scrollTo({ top: restoredScroll, behavior: "smooth" });
         });
     });
 }
@@ -871,7 +888,7 @@ export function initAppData() {
                     );
                     if (hasNoAiStudio) {
                         allArticles = parsed.filter(isPubliclyPublished);
-                        renderFeed();
+                        warmImageUrls(allArticles);
                     }
                 }
             }
@@ -950,6 +967,10 @@ export function initAppData() {
         });
 
         allArticles = sortArticles(combined.filter(isPubliclyPublished));
+        let cacheFingerprint = "";
+        try { cacheFingerprint = JSON.stringify(allArticles.map(article => ({ id: article.id, updatedAt: article.updatedAt || article.createdAt || article.date || "", status: article.status || "", slug: article.slug || "", imageUrl: getArticleImageUrl(article, "") }))); } catch (_) { cacheFingerprint = ""; }
+        let previousFingerprint = "";
+        try { previousFingerprint = sessionStorage.getItem(HOME_CACHE_FINGERPRINT_KEY) || ""; } catch (_) {}
         checkLatestContent(allArticles);
         try {
           if (!localStorage.getItem("nuqtha:last-seen-content") && allArticles.length) {
@@ -960,7 +981,10 @@ export function initAppData() {
         warmImageUrls(allArticles);
         requestAnimationFrame(() => warmImageUrls(allArticles));
         safeCacheArticles(allArticles);
-        renderFeed();
+        if (cacheFingerprint !== previousFingerprint) {
+            try { sessionStorage.setItem(HOME_CACHE_FINGERPRINT_KEY, cacheFingerprint); } catch (_) {}
+            renderFeed();
+        }
     })().catch(error => {
         console.error("[NUQTHA App] Could not load articles and books.", error);
         if (allArticles.length === 0) {
