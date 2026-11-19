@@ -705,7 +705,7 @@
             return transliterated.match(/[a-z0-9]/i)?.[0]?.toUpperCase() || "N";
         }
 
-        function buildDeferredImageMarkup(item, source, alt, className, width, height, loading = "lazy") {
+        function buildDeferredImageMarkup(item, source, alt, className, width, height, loading = "eager") {
             const deferredAttributes = getDeferredImageAttributes(item);
             const deferInlineImage = /^data:image\//i.test(source || "") && deferredAttributes;
             const imageUrl = deferInlineImage ? "" : (source || "");
@@ -1010,7 +1010,7 @@
                     : `Chapter ${index + 1}`;
                 const chapterImageUrl = getArticleImageUrl(chapter, "");
                 const chapterImage = chapterImageUrl
-                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapterImageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true"></div>`
+                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapterImageUrl)}" alt="" width="400" height="300" loading="eager" decoding="async" data-nuqtha-cover="true"></div>`
                     : `<div class="chapter-thumbnail chapter-thumbnail-empty" aria-hidden="true">📄</div>`;
                 return `<div class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">Chapter ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></div>`;
             }).join("") : "";
@@ -2955,7 +2955,7 @@
                         const url = imgMatch[3];
                         return `
                             <figure class="article-image-wrap my-6">
-                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" width="1200" height="800" style="aspect-ratio:3/2;object-fit:contain;background:var(--surface)" loading="lazy">
+                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" width="1200" height="800" style="aspect-ratio:3/2;object-fit:contain;background:var(--surface)" loading="eager" decoding="async">
                                 ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
                             </figure>
                         `;

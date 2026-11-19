@@ -3029,7 +3029,7 @@ function renderBookChaptersReorderList(chapters) {
                     #${idx + 1}
                 </span>
                 ${art.imageUrl ? `
-                    <img src="${art.imageUrl}" alt="Thumb" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-200" width="40" height="40" loading="lazy" data-nuqtha-cover="true">
+                    <img src="${art.imageUrl}" alt="Thumb" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-200" width="40" height="40" loading="eager" decoding="async" data-nuqtha-cover="true">
                 ` : `
                     <span class="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-sm flex-shrink-0 border border-amber-200/60">📄</span>
                 `}
@@ -3380,7 +3380,7 @@ function renderBookManagerCompactArticles(articles, activeBookParam) {
             <label class="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-200/60 hover:border-amber-300 transition cursor-pointer gap-2">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <input type="checkbox" class="bm-article-chk rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer" data-id="${art.id}" ${isBelong ? "checked" : ""}>
-                    ${art.imageUrl ? `<img src="${art.imageUrl}" alt="" class="w-8 h-8 rounded-lg object-cover flex-shrink-0" width="32" height="32" loading="lazy" data-nuqtha-cover="true">` : `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center text-xs flex-shrink-0">📄</span>`}
+                    ${art.imageUrl ? `<img src="${art.imageUrl}" alt="" class="w-8 h-8 rounded-lg object-cover flex-shrink-0" width="32" height="32" loading="eager" decoding="async" data-nuqtha-cover="true">` : `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center text-xs flex-shrink-0">📄</span>`}
                     <div class="min-w-0">
                         <h5 class="text-xs font-bold text-[#1e1b18] truncate font-['Anek_Malayalam']">${art.title}</h5>
                         <p class="text-[10px] text-slate-400">${art.author || "NUQTHA"} • ${art.date || "Recent"}</p>
@@ -3641,7 +3641,7 @@ function renderAdminBooksTab(articles) {
             <div class="p-4 bg-white rounded-2xl border-2 ${isActive ? 'border-amber-500 bg-amber-50/20 ring-2 ring-amber-200' : 'border-[#ebdccb] hover:border-amber-300'} transition shadow-xs flex flex-col justify-between gap-3">
                 <div class="flex items-start gap-3">
                     <div class="w-16 h-22 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-amber-600 to-amber-900 border border-amber-200 shadow-xs flex items-center justify-center text-white">
-                        ${coverImage ? `<img src="${escapeAdminHtml(coverImage)}" alt="${safeTitle}" class="w-full h-full object-cover" width="64" height="85" loading="lazy" data-nuqtha-cover="true">` : `<span class="text-2xl">📚</span>`}
+                        ${coverImage ? `<img src="${escapeAdminHtml(coverImage)}" alt="${safeTitle}" class="w-full h-full object-cover" width="64" height="85" loading="eager" decoding="async" data-nuqtha-cover="true">` : `<span class="text-2xl">📚</span>`}
                     </div>
                     <div class="flex-1 min-w-0 space-y-1">
                         <div class="flex items-center gap-1.5 flex-wrap">
@@ -4184,7 +4184,7 @@ export function renderAdminPublishedList(items) {
                 <div class="flex items-center gap-3">
                     <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-[#f7eddd] border border-[#ebdccb]">
                         ${(data.thumbnailUrl || data.ogImage || data.imageUrl) ? `
-                            <img src="${getArticleImageUrl(data)}" alt="${data.title || 'Article'} cover" class="w-full h-full object-cover" width="400" height="300" loading="lazy" data-nuqtha-cover="true">
+                            <img src="${getArticleImageUrl(data)}" alt="${data.title || 'Article'} cover" class="w-full h-full object-cover" width="400" height="300" loading="eager" decoding="async" data-nuqtha-cover="true">
                         ` : `
                             <div class="w-full h-full flex items-center justify-center text-[#b4532c] text-xl" aria-hidden="true">📄</div>
                         `}
@@ -4344,7 +4344,7 @@ export function renderLayoutManagerList(items) {
                 <div class="flex items-center gap-3">
                     ${art.imageUrl ? `
                         <div class="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 border border-[#ebdccb]">
-                            <img src="${art.imageUrl}" alt="" class="w-full h-full object-cover" width="400" height="300" loading="lazy" data-nuqtha-cover="true">
+                            <img src="${art.imageUrl}" alt="" class="w-full h-full object-cover" width="400" height="300" loading="eager" decoding="async" data-nuqtha-cover="true">
                         </div>
                     ` : ''}
                     <div class="flex-1 min-w-0">

@@ -370,9 +370,9 @@ function observeImage(image) {
         }
         return;
     }
-    if (!observer) return;
-    observer.observe(image);
-    if (image.loading === "eager" || isNearViewport(image)) enqueueImage(image);
+    image.loading = "eager";
+    image.decoding = "async";
+    enqueueImage(image);
 }
 
 function scanImages(node) {
@@ -386,7 +386,6 @@ export function installLazyFirestoreImages() {
     if ("IntersectionObserver" in window) {
         observer = new IntersectionObserver(entries => {
             entries.forEach(entry => {
-                if (!entry.isIntersecting) return;
                 enqueueImage(entry.target);
             });
         }, { rootMargin: "300px" });
@@ -420,6 +419,22 @@ export function installLazyFirestoreImages() {
     };
     if (document.body) start();
     else document.addEventListener("DOMContentLoaded", start, { once: true });
+}
+
+export function warmImageUrls(items) {
+    if (!(typeof window !== "undefined") || !Array.isArray(items)) return;
+    const seen = new Set();
+    for (const item of items) {
+        for (const field of IMAGE_FIELDS) {
+            const source = typeof item?.[field] === "string" ? item[field].trim() : "";
+            if (!/^https?:\/\//i.test(source) || seen.has(source)) continue;
+            seen.add(source);
+            const image = new Image();
+            image.decoding = "async";
+            image.loading = "eager";
+            image.src = source;
+        }
+    }
 }
 
 export function getDeferredImageAttributes(item) {

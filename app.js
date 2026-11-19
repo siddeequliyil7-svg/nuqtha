@@ -8,7 +8,7 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
  */
 import { db, doc, getDoc } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl, sanitizeCategory } from "./schema-validator.js";
-import { fetchArticleSearchContent, fetchPublicCollections, getDeferredImageAttributes, installLazyFirestoreImages, stripListHeavyFields } from "./js/public-image-loader.js";
+import { fetchArticleSearchContent, fetchPublicCollections, getDeferredImageAttributes, installLazyFirestoreImages, stripListHeavyFields, warmImageUrls } from "./js/public-image-loader.js";
 import { filterPublicCollections, isPubliclyPublished } from "./js/public-status.js";
 import { syncReadingBg } from "./reading-theme.js";
 import { getBookChapterIds } from "./book-data.js";
@@ -54,7 +54,7 @@ function buildCardImageMarkup(item, className, alt, width, height, eager = false
     const styleAttribute = imageUrl
         ? 'style="opacity:0;transition:opacity .25s ease;"'
         : 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"';
-    const priority = eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
+    const priority = eager ? 'loading="eager" fetchpriority="high"' : 'loading="eager"';
     return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" ${priority} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
 }
 
@@ -936,6 +936,7 @@ export function initAppData() {
         });
 
         allArticles = sortArticles(combined.filter(isPubliclyPublished));
+        warmImageUrls(allArticles);
         safeCacheArticles(allArticles);
         renderFeed();
     })().catch(error => {
@@ -1648,7 +1649,7 @@ function formatRichContent(rawText, contentStyle = "") {
                 const url = imgMatch[3];
                 return `
                     <figure class="article-image-wrap my-6">
-                        <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block" loading="lazy" decoding="async">
+                        <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block" loading="eager" decoding="async">
                         ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
                     </figure>
                 `;
@@ -1758,7 +1759,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
                 <div class="flex items-center justify-start pt-3 border-t border-[#ebdccb]/60 dark:border-white/10 gap-2 flex-wrap">
                     <div class="flex items-center gap-2.5">
                         <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy" decoding="async">` : authorInitial}
+                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="eager" decoding="async">` : authorInitial}
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
@@ -1835,7 +1836,7 @@ function buildFeaturedCard(art) {
                 <div class="featured-bottom-row flex items-center justify-start pt-4 border-t border-[#ebdccb]/60 dark:border-white/10 gap-3">
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-full bg-[#ebdccb]/80 dark:bg-white/10 text-[#7a4124] dark:text-[#f8fafc] font-black text-xs flex items-center justify-center overflow-hidden flex-shrink-0">
-                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy" decoding="async">` : authorInitial}
+                            ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="eager" decoding="async">` : authorInitial}
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs sm:text-sm font-bold text-[#1e1b18] dark:text-white font-['Anek_Malayalam']">
@@ -1891,7 +1892,7 @@ function buildCompactRecentCard(art, theme = null) {
 
                 <div class="flex items-center gap-1.5 text-[11px] sm:text-xs flex-wrap font-['Noto_Sans_Malayalam']">
                     <div class="w-5 h-5 rounded-full overflow-hidden bg-[#ebdccb]/80 dark:bg-white/10 flex items-center justify-center text-[9px] font-bold text-[#7a4124] dark:text-[#f8fafc] flex-shrink-0">
-                        ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="lazy" decoding="async">` : authorInitial}
+                        ${authorPhoto ? `<img src="${authorPhoto}" alt="${authorName}" class="w-full h-full object-cover" loading="eager" decoding="async">` : authorInitial}
                     </div>
                     <span class="font-bold text-[#1e1b18] dark:text-white">${authorName}</span>
                     ${art.transcription ? `<span class="text-[#8c7a6b] dark:text-[#a0aec0]">(📝 ${art.transcription})</span>` : ''}
