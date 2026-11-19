@@ -15,6 +15,7 @@ let shownThisSession = false;
 let card = null;
 let toastTimer = null;
 let toastDismissTimer = null;
+let installInitialized = false;
 const TOAST_SESSION_KEY = "nuqtha:install-toast-shown";
 
 const num = (key) => {
@@ -96,16 +97,9 @@ function show({ ios, manual = false, manualText = "", toast = false }) {
     go.className = "pwa-go";
     go.textContent = "Install";
     go.onclick = async () => {
-      if (toast) {
-        await installNow();
-        return;
-      }
-      if (!deferred) return;
       go.disabled = true;
-      deferred.prompt();
-      const { outcome } = await deferred.userChoice;
-      deferred = null;
-      close(outcome === "accepted" ? null : K.dismissed);
+      await installNow();
+      if (!toast) go.disabled = false;
     };
     row.append(go);
   }
@@ -146,22 +140,26 @@ export async function installNow() {
   }
 
   if (deferred) {
-    deferred.prompt();
-    const { outcome } = await deferred.userChoice;
-    deferred = null;
-    if (outcome === "accepted") {
-      put(K.installed, 1);
-      close(null);
-      syncInstallItems();
+    try {
+      deferred.prompt();
+      const { outcome } = await deferred.userChoice;
+      deferred = null;
+      if (outcome === "accepted") {
+        put(K.installed, 1);
+        close(null);
+        syncInstallItems();
+      }
+      return;
+    } catch (_) {
+      deferred = null;
     }
-    return;
   }
 
   if (isIOS()) {
     show({ ios: true, manual: true });
-  } else {
-    show({ ios: false, manual: true, manualText: "Open your browser menu and choose Install app or Add to Home screen." });
+    return;
   }
+  show({ ios: false, manual: true, manualText: "Open your browser menu and choose Install app or Add to Home screen." });
 }
 
 export function offerInstall(reason) {
@@ -178,8 +176,10 @@ export function offerInstall(reason) {
 
 export function initInstall() {
   syncInstallItems();
+  if (installInitialized) return;
+  installInitialized = true;
 
-  addEventListener("beforeinstallprompt", (event) => {
+  window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferred = event;
     if (num(K.active) >= ACTIVE_GOAL) offerInstall("time");
@@ -196,7 +196,7 @@ export function initInstall() {
     }
   } catch {}
 
-  addEventListener("appinstalled", () => {
+  window.addEventListener("appinstalled", () => {
     put(K.installed, 1);
     try {
       localStorage.setItem("nuqtha_app_installed", "true");
