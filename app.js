@@ -128,7 +128,10 @@ try {
             );
             const hasNoOldAuthor = !parsed.some(a => (a.author || "").includes("അബൂബക്കർ"));
             if (hasNoAiStudio && hasNoOldAuthor) {
-                allArticles = parsed.filter(isPubliclyPublished);
+                allArticles = parsed.map(record => normalizeArticleDoc(record, record.id)).filter(isPubliclyPublished);
+                if (allArticles.length === 0) {
+                    allArticles = FALLBACK_ARTICLE_ITEMS.map(article => normalizeArticleDoc(article, article.id));
+                }
                 warmImageUrls(allArticles);
             }
         }
@@ -887,7 +890,7 @@ export function initAppData() {
                         (a.thumbnailUrl || "").includes("og-cover.png")
                     );
                     if (hasNoAiStudio) {
-                        allArticles = parsed.filter(isPubliclyPublished);
+                        allArticles = parsed.map(record => normalizeArticleDoc(record, record.id)).filter(isPubliclyPublished);
                         warmImageUrls(allArticles);
                     }
                 }
@@ -967,6 +970,9 @@ export function initAppData() {
         });
 
         allArticles = sortArticles(combined.filter(isPubliclyPublished));
+        if (allArticles.length === 0) {
+            allArticles = FALLBACK_ARTICLE_ITEMS.map(article => normalizeArticleDoc(article, article.id));
+        }
         let cacheFingerprint = "";
         try { cacheFingerprint = JSON.stringify(allArticles.map(article => ({ id: article.id, updatedAt: article.updatedAt || article.createdAt || article.date || "", status: article.status || "", slug: article.slug || "", imageUrl: getArticleImageUrl(article, "") }))); } catch (_) { cacheFingerprint = ""; }
         let previousFingerprint = "";
@@ -1291,7 +1297,7 @@ function renderHomeFeed(container) {
     const regularArticles = allArticles.filter(a =>
         !isBookCoverItem(a) && !isChapter(a) &&
         String(a.status || "published").toLowerCase() === "published" &&
-        siteCategoryById.get(getArticleCategoryId(a))?.visible !== false
+        (siteCategoryById.size === 0 || siteCategoryById.get(getArticleCategoryId(a))?.visible !== false)
     );
 
     const visibleCategories = getVisibleCategories(regularArticles);
@@ -1379,7 +1385,9 @@ function renderHomeFeed(container) {
         if (!categoryGroups.has(categoryId)) categoryGroups.set(categoryId, []);
         categoryGroups.get(categoryId).push(article);
     });
-    const orderedCategories = visibleCategories;
+    const orderedCategories = visibleCategories.length > 0
+        ? visibleCategories
+        : getVisibleCategories(regularArticles);
     const lazySections = [];
     orderedCategories.forEach(category => {
         const theme = getCategoryTheme();
@@ -1396,22 +1404,10 @@ function renderHomeFeed(container) {
     });
     container.innerHTML = html;
     const pendingSections = new Map(lazySections.map(item => [item.category.slug, item]));
-    const observer = "IntersectionObserver" in window
-        ? new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if (!entry.isIntersecting) return;
-                observer.unobserve(entry.target);
-                const item = pendingSections.get(entry.target.dataset.homeCategorySection);
-                if (item) renderLazyHomeCategorySection(entry.target, item.category, item.articles);
-            });
-        }, { rootMargin: "300px 0px" })
-        : null;
     pendingSections.forEach((item, slug) => {
         const section = [...container.querySelectorAll("[data-home-category-section]")]
-            .find(item => item.dataset.homeCategorySection === slug);
-        if (!section) return;
-        if (observer) observer.observe(section);
-        else renderLazyHomeCategorySection(section, item.category, item.articles);
+            .find(sectionItem => sectionItem.dataset.homeCategorySection === slug);
+        if (section) renderLazyHomeCategorySection(section, item.category, item.articles);
     });
     attachShowMoreListeners();
 }

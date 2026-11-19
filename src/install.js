@@ -176,6 +176,11 @@ export function offerInstall(reason) {
 
 export function initInstall() {
   syncInstallItems();
+  if (isStandalone() || isWebView()) {
+    close(null);
+    document.querySelectorAll("[data-install], .pwa-card, .nuqtha-app-notice").forEach(element => element.remove());
+    return;
+  }
   if (installInitialized) return;
   installInitialized = true;
 
@@ -186,7 +191,7 @@ export function initInstall() {
   });
 
   try {
-    if (!sessionStorage.getItem(TOAST_SESSION_KEY)) {
+    if (!isStandalone() && !isWebView() && !sessionStorage.getItem(TOAST_SESSION_KEY)) {
       toastTimer = setTimeout(() => {
         toastTimer = null;
         if (!eligible() || card) return;
@@ -195,6 +200,13 @@ export function initInstall() {
       }, 5000);
     }
   } catch {}
+
+  window.addEventListener("pageshow", () => {
+    if (isStandalone() || isWebView()) {
+      close(null);
+      document.querySelectorAll("[data-install], .pwa-card, .nuqtha-app-notice").forEach(element => element.remove());
+    }
+  });
 
   window.addEventListener("appinstalled", () => {
     put(K.installed, 1);
@@ -205,6 +217,7 @@ export function initInstall() {
     deferred = null;
     close(null);
     syncInstallItems();
+    document.querySelectorAll("[data-install], .pwa-card, .nuqtha-app-notice").forEach(element => element.remove());
   });
 
   setInterval(() => {

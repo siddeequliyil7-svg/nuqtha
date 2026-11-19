@@ -215,6 +215,16 @@ async function initFirebaseMessagingIfConfigured() {
 }
 
 export function initAppExperience() {
+  const standalone = (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  if (standalone) {
+    document.querySelectorAll("[data-install], .pwa-card").forEach(element => element.remove());
+  }
+  window.addEventListener("pageshow", () => {
+    if ((typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true) {
+      document.querySelectorAll("[data-install], .pwa-card, .nuqtha-app-notice").forEach(element => element.remove());
+    }
+  });
+
   initOfflineStatus();
   initUpdateNotice();
   initFirebaseMessagingIfConfigured();
