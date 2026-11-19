@@ -759,6 +759,28 @@ function initArticleForm() {
             e.preventDefault();
             await handleFormSubmit(e);
         });
+        form.addEventListener("invalid", (e) => {
+            const field = e.target;
+            const label = field?.id === "art-title"
+                ? "ലേഖനത്തിന്റെ പേര്"
+                : field?.id === "art-category"
+                    ? "ലേഖന വിഭാഗം"
+                    : field?.id === "art-author"
+                        ? "രചയിതാവ്"
+                        : field?.id === "art-content"
+                            ? "ലേഖന ഉള്ളടക്കം"
+                            : "ആവശ്യമായ വിവരങ്ങൾ";
+            showGlobalStatus(`${label} ആവശ്യമാണ്.`, "error");
+        }, true);
+
+        form.querySelectorAll(".submit-article-btn").forEach(button => {
+            button.addEventListener("click", (e) => {
+                e.preventDefault();
+                if (!button.disabled && typeof form.requestSubmit === "function") {
+                    form.requestSubmit(button);
+                }
+            });
+        });
     }
 
     initAdminExcerptControls();
@@ -812,6 +834,7 @@ if (typeof window !== "undefined") {
 
 async function handleFormSubmit(event) {
     const contentStatus = event?.submitter?.value === "draft" ? "draft" : "published";
+    showGlobalStatus(contentStatus === "draft" ? "ഡ്രാഫ്റ്റ് സേവ് ചെയ്യുന്നു..." : "ലേഖനം സേവ് ചെയ്യുന്നു...", "info");
     setSubmitButtonsLoading(true);
 
     try {
@@ -1943,6 +1966,21 @@ async function handleSaveBookStep1(e) {
             normalizeStringClean(a.bookName) === normalizeStringClean(name) ||
             normalizeStringClean(a.title) === normalizeStringClean(name)
         ));
+
+    if (contentStatus === "published") {
+        const existingCover = existing?.imageUrl || existing?.coverUrl || existing?.coverImage || existing?.thumbnailUrl || existing?.ogImage || existing?.image;
+        if (!selectedBookCoverBase64 && !existingCover) {
+            const coverErrEl = document.getElementById("book-cover-error");
+            if (coverErrEl) {
+                coverErrEl.textContent = "ദയവായി പുസ്തകത്തിന്റെ കവർ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക.";
+                coverErrEl.classList.remove("hidden");
+            }
+            document.getElementById("book-cover-dropzone")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+        }
+    }
+
+    showGlobalStatus(contentStatus === "draft" ? "പുസ്തകം ഡ്രാഫ്റ്റ് സേവ് ചെയ്യുന്നു..." : "പുസ്തകം സേവ് ചെയ്യുന്നു...", "info");
 
     // Keep an empty cover on the shared neutral static placeholder.
     let coverImage = selectedBookCoverBase64 || (existing
