@@ -43,6 +43,14 @@ export async function syncUserProfileToFirestore(user) {
             photoURL: user.photoURL || user.avatar || "",
             phoneNumber: user.phoneNumber || "",
             providerId: user.providerId || "google.com",
+            appInstalled: typeof window !== "undefined" && (
+                localStorage.getItem("nuqtha_app_installed") === "true" ||
+                (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) ||
+                navigator.standalone === true || /[?&]app=1/.test(location.search) || /; wv\)/.test(navigator.userAgent)
+            ),
+            installedPlatform: typeof window !== "undefined"
+                ? (/; wv\)|[?&]app=1/.test(navigator.userAgent + location.search) ? "android-app" : ((typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) ? "pwa" : "web"))
+                : "web",
             lastLogin: serverTimestamp(),
             lastActive: serverTimestamp()
         };

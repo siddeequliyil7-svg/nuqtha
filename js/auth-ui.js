@@ -444,9 +444,24 @@ export function initHeaderAuthUI(options = {}) {
         });
     }
 
+    // Require login when NUQTHA is launched as an installed app/WebView app.
+    const isInstalledAppRuntime = (() => {
+        try {
+            return (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) ||
+                navigator.standalone === true || /[?&]app=1/.test(location.search) || /; wv\)/.test(navigator.userAgent);
+        } catch (_) {
+            return false;
+        }
+    })();
+    let appLoginPromptShown = false;
+
     // Auth State Listener
     initAuthStateListener((user) => {
         updateHeaderUserUI(user);
+        if (isInstalledAppRuntime && !user && !appLoginPromptShown) {
+            appLoginPromptShown = true;
+            openAuthModal("google");
+        }
         if (typeof options.onAuthStateChanged === "function") {
             options.onAuthStateChanged(user);
         }

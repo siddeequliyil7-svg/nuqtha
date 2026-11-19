@@ -56,7 +56,15 @@ export function isAppInstalledConfirmed() {
 export function markAppInstalledConfirmed() {
     try {
         localStorage.setItem("nuqtha_app_installed", "true");
+        localStorage.setItem("nuqtha_installed_platform", getDevicePlatform() === "android" ? "android-app" : "pwa");
     } catch (_) {}
+
+    const activeUser = getCachedAuthUser();
+    if (activeUser?.uid) {
+        import("./analytics-tracker.js")
+            .then(({ syncUserProfileToFirestore }) => syncUserProfileToFirestore(activeUser))
+            .catch(() => {});
+    }
 }
 
 /**
@@ -373,12 +381,7 @@ export function showPaywallModal({ book, onUnlocked }) {
         return;
     }
 
-    if (isPremiumBook(book)) {
-        showPremiumBookUnavailableModal();
-        return;
-    }
-
-    // 2. Mandatory Login Rule: User MUST be logged in first to read any book
+    // 2. Mandatory Login Rule: User MUST be logged in before paid purchase or book reading.
     if (!activeUser) {
         showLoginRequiredModal({
             book,
@@ -386,6 +389,11 @@ export function showPaywallModal({ book, onUnlocked }) {
                 showPaywallModal({ book, onUnlocked });
             }
         });
+        return;
+    }
+
+    if (isPremiumBook(book)) {
+        showPremiumBookUnavailableModal();
         return;
     }
 

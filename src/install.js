@@ -198,6 +198,10 @@ export function initInstall() {
 
   addEventListener("appinstalled", () => {
     put(K.installed, 1);
+    try {
+      localStorage.setItem("nuqtha_app_installed", "true");
+      localStorage.setItem("nuqtha_installed_platform", "pwa");
+    } catch {}
     deferred = null;
     close(null);
     syncInstallItems();

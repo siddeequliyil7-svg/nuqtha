@@ -5344,7 +5344,7 @@ export function initUserAnalyticsDashboard() {
         }, (err) => {
             console.warn("[Admin Analytics] users listener notice:", err);
             if (usersTbody && rawRegisteredUsers.length === 0) {
-                usersTbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-xs text-[#8c7a6b]">ഉപയോക്താക്കളുടെ വിവരങ്ങൾ ലഭ്യമല്ല.</td></tr>`;
+                usersTbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-xs text-[#8c7a6b]">ഉപയോക്താക്കളുടെ വിവരങ്ങൾ ലഭ്യമല്ല.</td></tr>`;
             }
         });
     } catch (err) {
@@ -5504,7 +5504,7 @@ export function renderRegisteredUsersTable() {
     if (rawRegisteredUsers.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="4" class="py-10 text-center text-[#8c7a6b] font-medium">
+                <td colspan="5" class="py-10 text-center text-[#8c7a6b] font-medium">
                     <span class="text-2xl block mb-1">👤</span>
                     ഇതുവരെ ലോഗിൻ ചെയ്ത ഉപയോക്താക്കൾ ഇല്ല (No registered users yet).
                 </td>
@@ -5537,6 +5537,11 @@ export function renderRegisteredUsersTable() {
                 </td>
                 <td class="py-3 px-3 font-mono text-[10px] text-[#8c7a6b] font-english">
                     <span class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200" title="${uid}">${shortUid}</span>
+                </td>
+                <td class="py-3 px-3">
+                    ${user.appInstalled === true
+                        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold font-english">✓ App</span>`
+                        : `<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 font-english">Web</span>`}
                 </td>
                 <td class="py-3 px-3 text-right whitespace-nowrap text-[#8c7a6b] font-english text-[11px] font-medium">
                     ${formattedTime}
