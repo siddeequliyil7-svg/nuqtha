@@ -10,13 +10,20 @@
     <link rel="dns-prefetch" href="//firestore.googleapis.com">
     <link rel="dns-prefetch" href="//firebasestorage.googleapis.com">
     <link rel="dns-prefetch" href="//storage.googleapis.com">
-    <title>Contact Us - Ustha Project</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>window.tailwind.config = { darkMode: 'class' };</script>
+    <title>Contact Us - NUQTHA</title>
+    <script>window.tailwind = window.tailwind || {}; window.tailwind.config = { darkMode: 'class' };</script>
+    <link rel="stylesheet" href="tailwind.css">
     <link rel="stylesheet" href="styles.css">
+    <style>
+        .contact-fallback-card { width: min(100%, 28rem); }
+        @media (max-width: 640px) {
+            body { padding: 1.25rem !important; }
+            .contact-fallback-card { border-radius: 1rem !important; }
+        }
+    </style>
 </head>
 <body class="bg-[var(--bg)] text-[var(--text)] min-h-screen p-8 flex items-center justify-center">
-    <div class="max-w-md w-full bg-[var(--surface)] p-6 rounded-2xl border border-[var(--border)] shadow-xl text-center">
+    <div class="contact-fallback-card max-w-md w-full bg-[var(--surface)] p-6 rounded-2xl border border-[var(--border)] shadow-xl text-center">
         <h2 class="text-2xl font-bold text-[var(--accent)] mb-2">Live Sync Test!</h2>
         <p class="text-[var(--text-muted)] text-sm mb-4">ഈ ഫയൽ Antigravity Main ചാറ്റിൽ നിന്ന് ഉണ്ടാക്കിയതാണ്. IDE-യിൽ തത്സമയം വന്നു!</p>
         <span class="inline-block px-3 py-1 bg-[var(--accent)] text-[var(--on-accent)] rounded-full text-xs font-semibold">100% Synced</span>
