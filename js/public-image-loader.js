@@ -91,7 +91,11 @@ async function fetchCollectionWithCache(collectionName, signal) {
     try {
         return await fetchCollection(collectionName, signal);
     } catch (error) {
-        console.warn(`[NUQTHA Data] ${collectionName} list read failed; checking the local cache.`, error);
+        if (error?.name === "AbortError") {
+            console.debug(`[NUQTHA Data] ${collectionName} request cancelled; using cached records.`);
+        } else {
+            console.warn(`[NUQTHA Data] ${collectionName} list read failed; checking the local cache.`, error);
+        }
         try {
             const snapshot = await getDocsFromCache(collection(db, collectionName));
             return snapshot.docs.map(document => {
@@ -114,7 +118,6 @@ export async function fetchPublicCollections() {
     if (publicCollectionsCache) return publicCollectionsCache;
     if (publicCollectionsPromise) return publicCollectionsPromise;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
     publicCollectionsPromise = Promise.all([
         fetchCollectionWithCache("articles", controller.signal),
         fetchCollectionWithCache("books", controller.signal)
@@ -125,7 +128,6 @@ export async function fetchPublicCollections() {
         };
         return publicCollectionsCache;
     }).finally(() => {
-        clearTimeout(timeout);
         publicCollectionsPromise = null;
     });
     return publicCollectionsPromise;
@@ -136,7 +138,6 @@ export async function fetchArticleSearchContent() {
     const results = new Map();
     let pageToken = "";
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
 
     try {
         do {
@@ -154,7 +155,7 @@ export async function fetchArticleSearchContent() {
 
         return results;
     } finally {
-        clearTimeout(timeout);
+        // Caller/navigation owns cancellation; no timer aborts this shared read.
     }
 }
 

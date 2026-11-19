@@ -984,11 +984,16 @@ export function initAppData() {
             renderFeed();
         }
     })().catch(error => {
-        console.error("[NUQTHA App] Could not load articles and books.", error);
+        if (error?.name === "AbortError") {
+            console.debug("[NUQTHA App] Articles refresh cancelled; retaining cached articles.");
+        } else {
+            console.error("[NUQTHA App] Could not load articles and books.", error);
+        }
         if (allArticles.length === 0) {
             allArticles = FALLBACK_ARTICLE_ITEMS.map(article => normalizeArticleDoc(article, article.id));
         }
         renderFeed();
+        appDataPromise = null;
     });
 
     return appDataPromise;

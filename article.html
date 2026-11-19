@@ -1705,7 +1705,6 @@
             }
 
             const controller = new AbortController();
-            const timeoutTimer = setTimeout(() => controller.abort(), 3500);
             let requestedDraft = false;
 
             try {
@@ -1944,7 +1943,6 @@
                         );
                     }
                 }
-                clearTimeout(timeoutTimer);
 
                 if (!currentDoc) {
                     currentDoc = !requestedDraft ? cachedBook || searchLocalArticlesPool(lookupId) : null;
@@ -2086,8 +2084,9 @@
                 }
 
             } catch (err) {
-                clearTimeout(timeoutTimer);
-                console.warn("[Reader] Network load notice, falling back to local pool:", err?.message || err);
+                if (err?.name !== "AbortError") {
+                    console.warn("[Reader] Network load notice, falling back to local pool:", err?.message || err);
+                }
                 const localDoc = !requestedDraft ? cachedBook || searchLocalArticlesPool(articleId || targetIdentifier) : null;
                 if (localDoc) {
                     if (skeletonEl) skeletonEl.classList.add("hidden");
