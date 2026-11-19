@@ -248,7 +248,8 @@
         syncInstallItems();
         import { initHeaderAuthUI } from "./js/auth-ui.js";
         import { categoryUrl, categoryTag } from "./js/category-link.js";
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, getStoryUrl } from "./schema-validator.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, getStoryUrl, getArticleImageUrl } from "./schema-validator.js";
+        import { getDeferredImageAttributes, installLazyFirestoreImages } from "./js/public-image-loader.js";
         import { isPubliclyPublished } from "./js/public-status.js";
         import { 
             PRIMARY_AUTHORS, 
@@ -260,6 +261,8 @@
             findAuthorInMap 
         } from "./js/author-service.js";
         import { FALLBACK_ARTICLES } from "./fallback-data.js";
+
+        installLazyFirestoreImages();
 
         // Theme Setup
         function setupTheme() {
@@ -304,6 +307,20 @@
         let activeCategoryFilter = "ALL";
         let searchQuery = "";
 
+        async function getDocsWithTimeout(reference, timeoutMs) {
+            let timeoutId;
+            try {
+                return await Promise.race([
+                    getDocs(reference),
+                    new Promise((_, reject) => {
+                        timeoutId = setTimeout(() => reject(new Error("Timed out loading author articles.")), timeoutMs);
+                    })
+                ]);
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
         async function loadAuthorProfile() {
             const urlParams = new URLSearchParams(window.location.search);
             const rawName = urlParams.get('name');
@@ -334,6 +351,11 @@
                 }
                 return;
             }
+
+            const articleSnapshotPromise = getDocsWithTimeout(collection(db, "articles"), 7000).then(
+                snap => ({ snap }),
+                error => ({ error })
+            );
 
             try {
                 // 1. FAST IMMEDIATE HEADER RESOLUTION
@@ -370,23 +392,37 @@
                     if (cached) {
                         const parsed = JSON.parse(cached);
                         if (Array.isArray(parsed) && parsed.length > 0) {
-                            cachedArticles = parsed.filter(isPubliclyPublished);
+                            cachedArticles = parsed.filter(isPubliclyPublished).map(article => ({
+                                ...article,
+                                _imageCollection: article._imageCollection || "articles",
+                                _imageDocId: article._imageDocId || article.id
+                            }));
                         }
                     }
                 } catch (e) {}
 
                 try {
-                    const snap = await getDocs(collection(db, "articles"));
+                    const articleResult = await articleSnapshotPromise;
+                    if (articleResult.error) throw articleResult.error;
+                    const snap = articleResult.snap;
                     hasFirestoreArticles = snap.docs.length > 0;
                     allArticles = snap.docs
-                        .map(d => normalizeArticleDoc(d.data(), d.id))
+                        .map(d => ({
+                            ...normalizeArticleDoc(d.data(), d.id),
+                            _imageCollection: "articles",
+                            _imageDocId: d.id
+                        }))
                         .filter(isPubliclyPublished);
                 } catch (error) {
-                    console.warn("[author.html] Firestore request failed; checking persistent local cache.", error);
+                    console.warn("[author.html] Firestore request failed or timed out; checking persistent local cache.", error);
                     try {
                         const cachedSnapshot = await getDocsFromCache(collection(db, "articles"));
                         allArticles = cachedSnapshot.docs
-                            .map(d => normalizeArticleDoc(d.data(), d.id))
+                            .map(d => ({
+                                ...normalizeArticleDoc(d.data(), d.id),
+                                _imageCollection: "articles",
+                                _imageDocId: d.id
+                            }))
                             .filter(isPubliclyPublished);
                     } catch (cacheError) {
                         console.warn("[author.html] Articles are unavailable in persistent local cache.", cacheError);
@@ -482,13 +518,23 @@
                 const dateStr = art.date || formatDateSafe(art.createdAt, "Recent");
                 const cleanTitle = (art.title || "Untitled").replace(/<[^>]*>?/gm, '');
                 const preview = (art.excerpt || (art.content ? art.content.substring(0, 120) : '')).replace(/<[^>]*>?/gm, '');
-                const coverUrl = art.imageUrl || art.coverUrl || art.coverImage || art.image || art.thumbnailUrl || art.ogImage || "/cover-placeholder.svg";
+                const coverUrl = getArticleImageUrl(art, "");
+                const deferredImageAttributes = getDeferredImageAttributes(art);
+                const useDeferredImage = Boolean(deferredImageAttributes && (!coverUrl || /^data:image\//i.test(coverUrl)));
+                const imageSrc = useDeferredImage ? "" : (coverUrl || "/cover-placeholder.svg");
+                const escapedImageSrc = imageSrc.replace(/[&<>"']/g, char => ({
+                    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+                }[char]));
+                const escapedTitle = cleanTitle.replace(/[&<>"']/g, char => ({
+                    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+                }[char]));
 
                 return `
                 <article class="compact-recent-card group cursor-pointer hover:shadow-lg transition-all duration-300" onclick="if(!event.target.closest('a')) window.location.href='${getStoryUrl(art)}'">
                     <div class="flex items-center p-3.5 sm:p-4 gap-3.5 w-full stretched-card-wrap">
-                        <div class="compact-thumbnail-wrap w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#b8542c] to-[#803113]">
-                            <img src="${coverUrl}" alt="${cleanTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" width="400" height="400" loading="eager" decoding="async" data-nuqtha-cover="true">
+                        <div class="compact-thumbnail-wrap relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#b8542c] to-[#803113]">
+                            <div data-nuqtha-image-placeholder class="absolute inset-0 flex items-center justify-center bg-[#f7eddd] text-[#b4532c] ${useDeferredImage ? "" : "hidden"}" aria-hidden="true">📖</div>
+                            <img ${imageSrc ? `src="${escapedImageSrc}"` : ""} ${useDeferredImage ? deferredImageAttributes : ""} alt="${escapedTitle}" class="relative z-10 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" width="400" height="400" loading="eager" decoding="async" data-nuqtha-cover="true">
                         </div>
                         <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
                             ${categoryTag(art.category, { variant: 'bracket' })}
