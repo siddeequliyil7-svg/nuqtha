@@ -2571,6 +2571,45 @@ body.dark-mode #sidebar-drawer {
     gap: 0.3rem;
 }
 
+.drawer-install-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 64px;
+    margin-bottom: 0.15rem;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid rgba(180, 83, 44, 0.28);
+    border-radius: 12px;
+    color: #b4532c;
+    background: rgba(180, 83, 44, 0.09);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.drawer-install-link > svg {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.drawer-install-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.drawer-install-copy strong { font-size: 0.88rem; }
+.drawer-install-copy small { color: var(--text-muted); font-size: 0.68rem; line-height: 1.35; }
+html.dark .drawer-install-link,
+body.dark-mode .drawer-install-link { color: #f87171; background: rgba(248, 113, 113, 0.08); border-color: rgba(248, 113, 113, 0.22); }
+
 .drawer-link {
     position: relative;
     gap: 0.75rem;

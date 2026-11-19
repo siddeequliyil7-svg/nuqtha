@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ml">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="manifest" href="/manifest.webmanifest">
@@ -195,11 +195,6 @@
                                     <span>ðŸ“¬</span>
                                     <span>ABOUT &amp; CONTACT</span>
                                 </a>
-                                <div class="border-t border-[var(--border)]/60 dark:border-white/10 my-1"></div>
-                                <a href="admin.html" class="more-dropdown-item flex items-center gap-2.5 px-4 py-2 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] transition font-english">
-                                    <span>âš™ï¸</span>
-                                    <span>ADMIN PORTAL</span>
-                                </a>
                             </div>
                         </div>
                     </nav>
@@ -370,8 +365,8 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-english tracking-wider">
             <span translate="no" class="notranslate">&copy; 2026 NUQTHA. All rights reserved.</span>
             <div class="flex items-center gap-4">
-                <a href="admin.html" class="hover:text-white transition">Admin Portal</a>
-                <span>â€¢</span>
+                <a href="#" data-install class="hover:text-white transition">Install app</a>
+                <span>&bull;</span>
                 <a href="contact.html" class="hover:text-white transition">Contact</a>
             </div>
         </div>
@@ -407,6 +402,11 @@
                     </button>
                 </div>
             </div>
+
+            <button type="button" data-install class="drawer-install-link">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M5 20h14"/></svg>
+                <span class="drawer-install-copy"><strong>Install app</strong><small>Add NUQTHA to your home screen</small></span>
+            </button>
 
             <!-- Drawer Search Bar -->
             <div class="space-y-1.5">

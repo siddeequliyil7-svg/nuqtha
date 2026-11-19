@@ -37,9 +37,10 @@ function close(snoozeKey) {
   if (snoozeKey) put(snoozeKey, Date.now());
 }
 
-function show({ ios }) {
-  if (shownThisSession || card || !eligible()) return;
-  shownThisSession = true;
+function show({ ios, manual = false, manualText = "" }) {
+  if (!manual && (shownThisSession || card || !eligible())) return;
+  if (!manual) shownThisSession = true;
+  if (card) close(null);
   card = document.createElement("div");
   card.className = "pwa-card";
   card.setAttribute("role", "region");
@@ -47,10 +48,14 @@ function show({ ios }) {
 
   const title = document.createElement("strong");
   title.textContent = "Install NUQTHA";
-  const text = document.createElement("p");
-  text.textContent = ios
-    ? "Tap the Share button, then \u201cAdd to Home Screen\u201d."
-    : "Add NUQTHA to your home screen to read faster, even on a weak connection.";
+  const paragraph = document.createElement("p");
+  paragraph.textContent = manual
+    ? (ios
+      ? "Tap the Share button, then \u201cAdd to Home Screen\u201d."
+      : (manualText || "Open your browser menu and choose Install app or Add to Home screen."))
+    : (ios
+      ? "Tap the Share button, then \u201cAdd to Home Screen\u201d."
+      : "Add NUQTHA to your home screen to read faster, even on a weak connection.");
   const row = document.createElement("div");
   row.className = "pwa-row";
 
@@ -77,9 +82,45 @@ function show({ ios }) {
     row.append(go);
   }
 
-  card.append(title, text, row);
+  card.append(title, paragraph, row);
   document.body.append(card);
   requestAnimationFrame(() => card && card.classList.add("on"));
+}
+
+export function showInstallItem() {
+  return eligible();
+}
+
+export function syncInstallItems() {
+  const visible = showInstallItem();
+  document.querySelectorAll("[data-install]").forEach((element) => {
+    element.classList.toggle("hidden", !visible);
+  });
+}
+
+export async function installNow() {
+  if (!showInstallItem()) {
+    syncInstallItems();
+    return;
+  }
+
+  if (deferred) {
+    deferred.prompt();
+    const { outcome } = await deferred.userChoice;
+    deferred = null;
+    if (outcome === "accepted") {
+      put(K.installed, 1);
+      close(null);
+      syncInstallItems();
+    }
+    return;
+  }
+
+  if (isIOS()) {
+    show({ ios: true, manual: true });
+  } else {
+    show({ ios: false, manual: true, manualText: "Open your browser menu and choose Install app or Add to Home screen." });
+  }
 }
 
 export function offerInstall(reason) {
@@ -95,7 +136,7 @@ export function offerInstall(reason) {
 }
 
 export function initInstall() {
-  if (!eligible()) return;
+  syncInstallItems();
 
   addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
@@ -107,6 +148,7 @@ export function initInstall() {
     put(K.installed, 1);
     deferred = null;
     close(null);
+    syncInstallItems();
   });
 
   setInterval(() => {

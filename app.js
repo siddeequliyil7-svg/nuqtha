@@ -18,12 +18,23 @@ import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-servic
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
 import { getArticleCategoryId, getCachedCategories, getCategories, slugifyCategory } from "./js/category-store.js";
-import { initInstall, isWebView, offerInstall } from "./src/install.js";
+import { initInstall, isWebView, offerInstall, installNow, syncInstallItems } from "./src/install.js";
 
 if ("serviceWorker" in navigator && !isWebView()) {
     addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
 }
 initInstall();
+syncInstallItems();
+document.querySelectorAll("[data-install]").forEach((element) => {
+    element.addEventListener("click", async (event) => {
+        event.preventDefault();
+        const drawer = element.closest("#sidebar-drawer");
+        if (drawer) {
+            document.getElementById("sidebar-close-btn")?.click();
+        }
+        await installNow();
+    });
+});
 
 void syncReadingBg();
 
@@ -295,8 +306,7 @@ function setupBooksNavLink() {
 
 export const DEFAULT_FRONT_MORE_MENU = [
     { id: "menu-authors", label: "AUTHORS (എഴുത്തുകാർ)", url: "author.html?id=സയ്യിദ്-സൽമാൻ-അദനി-കരിപ്പൂർ", icon: "✍️", order: 1, targetBlank: false, isActive: true },
-    { id: "menu-contact", label: "ABOUT & CONTACT", url: "contact.html", icon: "📬", order: 2, targetBlank: false, isActive: true },
-    { id: "menu-admin", label: "ADMIN PORTAL", url: "admin.html", icon: "⚙️", order: 3, targetBlank: false, isActive: true }
+    { id: "menu-contact", label: "ABOUT & CONTACT", url: "contact.html", icon: "📬", order: 2, targetBlank: false, isActive: true }
 ];
 
 function renderDynamicMoreMenu(items) {
