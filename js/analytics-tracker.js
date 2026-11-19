@@ -73,6 +73,14 @@ let currentSession = {
     hasFullRead: false
 };
 
+function isPermissionDenied(error) {
+    const code = String(error?.code || "").toLowerCase();
+    const message = String(error?.message || "").toLowerCase();
+    return code === "permission-denied" ||
+        code.endsWith("/permission-denied") ||
+        message.includes("missing or insufficient permissions");
+}
+
 /**
  * 3-Stage Reading Activity Tracker for /story/[slug] & article.html
  */
@@ -148,12 +156,7 @@ export async function trackReadingActivity(article) {
             window.__currentTrackedArticleId = targetArticleId;
         }
     } catch (err) {
-        const code = String(err?.code || "").toLowerCase();
-        const message = String(err?.message || "").toLowerCase();
-        const permissionDenied = code === "permission-denied" ||
-            code.endsWith("/permission-denied") ||
-            message.includes("missing or insufficient permissions");
-        if (permissionDenied) {
+        if (isPermissionDenied(err)) {
             currentSession.pageViewWriteDenied = true;
         } else {
             console.warn("[Analytics] Error logging Stage 1 Page View:", err);
@@ -178,7 +181,9 @@ export async function trackReadingActivity(article) {
                 updatedAt: serverTimestamp()
             });
         } catch (err) {
-            console.warn("[Analytics] Error updating Stage 2 Engaged Read:", err);
+            if (!isPermissionDenied(err)) {
+                console.warn("[Analytics] Error updating Stage 2 Engaged Read:", err);
+            }
         }
     }, 5000);
 
@@ -203,7 +208,9 @@ export async function trackReadingActivity(article) {
                 fullReadAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             }).catch(err => {
-                console.warn("[Analytics] Error updating Stage 3 Full Read:", err);
+                if (!isPermissionDenied(err)) {
+                    console.warn("[Analytics] Error updating Stage 3 Full Read:", err);
+                }
             });
         }
     }

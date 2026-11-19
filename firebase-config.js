@@ -65,8 +65,8 @@ setLogLevel("silent");
 let firestoreDb;
 try {
   firestoreDb = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-    experimentalAutoDetectLongPolling: false,
+    experimentalAutoDetectLongPolling: true,
+    useFetchStreams: false,
     localCache: persistentLocalCache({
       cacheSizeBytes: 20 * 1024 * 1024,
       tabManager: persistentMultipleTabManager()
@@ -76,8 +76,8 @@ try {
   console.warn("[Firebase] Persistent Firestore cache could not be initialized; falling back to memory cache.", e);
   try {
     firestoreDb = initializeFirestore(app, {
-      experimentalForceLongPolling: true,
-      experimentalAutoDetectLongPolling: false,
+      experimentalAutoDetectLongPolling: true,
+      useFetchStreams: false,
       localCache: memoryLocalCache()
     });
   } catch (memoryError) {

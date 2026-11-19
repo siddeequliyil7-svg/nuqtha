@@ -1023,7 +1023,7 @@ export function initAppData() {
             return restoreFallbackFields(book, fallbacksById, bookData);
         });
 
-        const fallbackItems = hasFirestoreContent ? [] : FALLBACK_ARTICLE_ITEMS;
+        const fallbackItems = publicLists.articles.length > 0 ? [] : FALLBACK_ARTICLE_ITEMS;
         const combined = fallbackItems.map(article => normalizeArticleDoc(article, article.id));
         rawArticlesList.forEach(article => {
             const existingIndex = combined.findIndex(item => item.id === article.id || (article.slug && item.slug === article.slug));

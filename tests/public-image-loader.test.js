@@ -1,9 +1,42 @@
-import { installLazyFirestoreImages } from "../js/public-image-loader.js";
+import { fetchPublicCollections, installLazyFirestoreImages } from "../js/public-image-loader.js";
 
 const { describe, it } = window;
 const { expect } = window.chai;
 
 describe("Deferred public images", () => {
+    it("keeps article and book list reads shared and independent of abort signals", async () => {
+        const originalFetch = window.fetch;
+        const requests = [];
+        window.fetch = (input, options) => {
+            const url = String(input);
+            if (!url.includes("firestore.googleapis.com")) return originalFetch(input, options);
+            requests.push({ url, options });
+            const collectionName = url.includes("/documents/articles?") ? "articles" : "books";
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({
+                    documents: [{
+                        name: `projects/test/databases/(default)/documents/${collectionName}/sample`,
+                        fields: {
+                            title: { stringValue: `Sample ${collectionName}` },
+                            status: { stringValue: "published" }
+                        }
+                    }]
+                })
+            });
+        };
+
+        try {
+            const result = await fetchPublicCollections();
+            expect(result.articles).to.have.length(1);
+            expect(result.books).to.have.length(1);
+            expect(requests).to.have.length(2);
+            expect(requests.every(request => !request.options?.signal)).to.equal(true);
+        } finally {
+            window.fetch = originalFetch;
+        }
+    });
+
     it("loads covers after they intersect the viewport", function(done) {
         this.timeout(5000);
         const originalFetch = window.fetch;

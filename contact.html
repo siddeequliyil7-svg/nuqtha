@@ -11,7 +11,18 @@
     <link rel="dns-prefetch" href="//firebasestorage.googleapis.com">
     <link rel="dns-prefetch" href="//storage.googleapis.com">
     <title>Contact Us - NUQTHA</title>
-    <script>window.tailwind = window.tailwind || {}; window.tailwind.config = { darkMode: 'class' };</script>
+    <script>
+        (function() {
+            try {
+                var tailwind = window.tailwind;
+                if (!tailwind || typeof tailwind !== "object") {
+                    tailwind = {};
+                    window.tailwind = tailwind;
+                }
+                tailwind.config = { darkMode: "class" };
+            } catch (_) {}
+        })();
+    </script>
     <link rel="stylesheet" href="tailwind.css">
     <link rel="stylesheet" href="styles.css">
     <style>

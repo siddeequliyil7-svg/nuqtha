@@ -61,14 +61,14 @@ export function stripListHeavyFields(value) {
         .map(([key, child]) => [key, stripListHeavyFields(child)]));
 }
 
-async function fetchCollection(collectionName, signal) {
+async function fetchCollection(collectionName) {
     const mask = listFields.map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&");
     const documents = [];
     let pageToken = "";
 
     do {
         const token = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "";
-        const response = await fetch(`${REST_BASE}/${encodeURIComponent(collectionName)}?pageSize=100&key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}${token}`, { signal });
+        const response = await fetch(`${REST_BASE}/${encodeURIComponent(collectionName)}?pageSize=100&key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}${token}`);
         if (!response.ok) throw new Error(`Firestore list read failed (${response.status}) for ${collectionName}.`);
         const result = await response.json();
 
@@ -88,18 +88,14 @@ async function fetchCollection(collectionName, signal) {
     return documents;
 }
 
-async function fetchCollectionWithCache(collectionName, signal) {
+async function fetchCollectionWithCache(collectionName) {
     try {
-        return await fetchCollection(collectionName, signal);
+        return { records: await fetchCollection(collectionName), available: true };
     } catch (error) {
-        if (error?.name === "AbortError") {
-            console.debug(`[NUQTHA Data] ${collectionName} request cancelled; using cached records.`);
-        } else {
-            console.warn(`[NUQTHA Data] ${collectionName} list read failed; checking the local cache.`, error);
-        }
+        console.warn(`[NUQTHA Data] ${collectionName} list read failed; checking the local cache.`, error);
         try {
             const snapshot = await getDocsFromCache(collection(db, collectionName));
-            return snapshot.docs.map(document => {
+            const records = snapshot.docs.map(document => {
                 const data = stripListHeavyFields(document.data());
                 return {
                     ...data,
@@ -108,9 +104,10 @@ async function fetchCollectionWithCache(collectionName, signal) {
                     _imageDocId: document.id
                 };
             });
+            return { records, available: true };
         } catch (cacheError) {
-            console.warn(`[NUQTHA Data] ${collectionName} is unavailable in the local cache.`, cacheError);
-            throw error;
+            console.info(`[NUQTHA Data] No cached ${collectionName} records are available.`, cacheError?.message || cacheError);
+            return { records: [], available: false };
         }
     }
 }
@@ -118,16 +115,20 @@ async function fetchCollectionWithCache(collectionName, signal) {
 export async function fetchPublicCollections() {
     if (publicCollectionsCache) return publicCollectionsCache;
     if (publicCollectionsPromise) return publicCollectionsPromise;
-    const controller = new AbortController();
     publicCollectionsPromise = Promise.all([
-        fetchCollectionWithCache("articles", controller.signal),
-        fetchCollectionWithCache("books", controller.signal)
-    ]).then(([articles, books]) => {
-        publicCollectionsCache = {
+        fetchCollectionWithCache("articles"),
+        fetchCollectionWithCache("books")
+    ]).then(([articleResult, bookResult]) => {
+        const articles = articleResult.records;
+        const books = bookResult.records;
+        const result = {
             ...filterPublicCollections(articles, books),
             hasFirestoreContent: articles.length > 0 || books.length > 0
         };
-        return publicCollectionsCache;
+        if (articleResult.available && bookResult.available) {
+            publicCollectionsCache = result;
+        }
+        return result;
     }).finally(() => {
         publicCollectionsPromise = null;
     });
@@ -138,26 +139,21 @@ export async function fetchArticleSearchContent() {
     const mask = ["content", "body"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&");
     const results = new Map();
     let pageToken = "";
-    const controller = new AbortController();
 
-    try {
-        do {
-            const token = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "";
-            const response = await fetch(`${REST_BASE}/articles?pageSize=100&key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}${token}`, { signal: controller.signal });
-            if (!response.ok) throw new Error(`Firestore article search read failed (${response.status}).`);
-            const result = await response.json();
-            for (const document of result.documents || []) {
-                const id = document.name.split("/").pop();
-                const fields = decodeFields(document.fields || {});
-                results.set(id, fields.content || fields.body || "");
-            }
-            pageToken = result.nextPageToken || "";
-        } while (pageToken);
+    do {
+        const token = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "";
+        const response = await fetch(`${REST_BASE}/articles?pageSize=100&key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}${token}`);
+        if (!response.ok) throw new Error(`Firestore article search read failed (${response.status}).`);
+        const result = await response.json();
+        for (const document of result.documents || []) {
+            const id = document.name.split("/").pop();
+            const fields = decodeFields(document.fields || {});
+            results.set(id, fields.content || fields.body || "");
+        }
+        pageToken = result.nextPageToken || "";
+    } while (pageToken);
 
-        return results;
-    } finally {
-        // Caller/navigation owns cancellation; no timer aborts this shared read.
-    }
+    return results;
 }
 
 function openImageDatabase() {
