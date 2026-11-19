@@ -154,14 +154,13 @@ if (typeof window !== "undefined" && !window.__NUQTHA_IMG_RETRY_INSTALLED__) {
         if (isCoverImage) event.stopImmediatePropagation();
         const src = target.currentSrc || target.src;
         if (target.dataset.nuqthaFallback) {
-          target.hidden = true;
+          return;
         } else if (src && /^https?:/i.test(src) && target.hasAttribute("data-nuqtha-cover") && !target.dataset.nuqthaRetried) {
           target.dataset.nuqthaRetried = "true";
           return;
         } else {
           target.dataset.nuqthaFallback = "true";
           target.removeAttribute("srcset");
-          target.src = "/cover-placeholder.svg";
         }
       }
     },

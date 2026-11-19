@@ -114,7 +114,7 @@ export async function fetchPublicCollections() {
     if (publicCollectionsCache) return publicCollectionsCache;
     if (publicCollectionsPromise) return publicCollectionsPromise;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), 5000);
     publicCollectionsPromise = Promise.all([
         fetchCollectionWithCache("articles", controller.signal),
         fetchCollectionWithCache("books", controller.signal)
@@ -136,7 +136,7 @@ export async function fetchArticleSearchContent() {
     const results = new Map();
     let pageToken = "";
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), 5000);
 
     try {
         do {
@@ -203,6 +203,10 @@ async function getObjectUrl(key, dataUrl) {
     const existing = activeObjectUrls.get(key);
     if (existing) return existing;
 
+    if (/^data:image\//i.test(dataUrl)) {
+        return dataUrl;
+    }
+
     let blob = null;
     try {
         blob = await readCachedBlob(key);
@@ -254,7 +258,7 @@ function fetchImageFromDocument(collectionName, documentId) {
 
     const imageRequest = (async () => {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000);
+        const timeout = setTimeout(() => controller.abort(), 2500);
         try {
             const mask = IMAGE_FIELDS.map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&");
             const url = `${REST_BASE}/${encodeURIComponent(collectionName)}/${encodeURIComponent(documentId)}?key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}`;
@@ -368,10 +372,7 @@ function processNext() {
                     return;
                 }
                 let resolvedSource = source;
-                if (/^data:image\//i.test(source)) {
-                    const key = `${image.dataset.nuqthaImageCollection}:${image.dataset.nuqthaImageDoc}:${image.dataset.nuqthaImageUpdated || ""}`;
-                    resolvedSource = await getObjectUrl(key, source);
-                }
+                if (/^data:image\//i.test(source)) resolvedSource = source;
                 if (image.isConnected) revealImage(image, resolvedSource);
             } catch (error) {
                 console.warn("[NUQTHA Images] Could not load a card image.", error);

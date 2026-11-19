@@ -1419,7 +1419,7 @@
                     }
                 }
             } catch (_) {}
-            if (storedArticles.length > 0 && checkIsRateLimited()) {
+            if (storedArticles.length > 0) {
                 memoryCache.set("lightweight_articles", storedArticles);
                 return storedArticles;
             }
@@ -1433,7 +1433,9 @@
                 "visible", "description", "introduction", "pages", "color",
                 "articleIds", "updatedAt", "chapterIndex", "bookType",
                 "intro", "summary", "leadTitle", "featuredTitle", "authorPhoto",
-                "accessType", "apkUrl", "fontSize"
+                "accessType", "apkUrl", "fontSize",
+                "imageUrl", "coverUrl", "coverImage", "image",
+                "thumbnail", "thumbnailUrl", "ogImage"
             ];
             const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
             const articleDocsMap = new Map();
@@ -1703,7 +1705,7 @@
             }
 
             const controller = new AbortController();
-            const timeoutTimer = setTimeout(() => controller.abort(), 20000);
+            const timeoutTimer = setTimeout(() => controller.abort(), 3500);
             let requestedDraft = false;
 
             try {
@@ -1796,10 +1798,13 @@
                     });
                 }
 
-                const [allArticlesResult] = await Promise.allSettled([allArticlesPromise]);
-                allArticles = allArticlesResult.status === "fulfilled"
-                    ? (allArticlesResult.value || []).filter(isPubliclyPublished)
-                    : [];
+                const allArticlesSettled = await Promise.race([
+                    Promise.allSettled([allArticlesPromise]).then(results => results[0]),
+                    new Promise(resolve => setTimeout(() => resolve({ status: "rejected", reason: new Error("background timeout") }), 5000))
+                ]);
+                allArticles = allArticlesSettled.status === "fulfilled"
+                    ? (allArticlesSettled.value || []).filter(isPubliclyPublished)
+                    : allArticles;
 
                 if (!currentDoc) {
                     currentDoc = !requestedDraft
@@ -1967,7 +1972,16 @@
 
                 cacheArticlesOffline([currentDoc]);
 
+                const standardArticleImage = document.getElementById("art-image");
+                const standardArticleImageWrapper = document.getElementById("art-image-wrapper");
                 const currentCoverUrl = getArticleImageUrl(currentDoc, "");
+                if ((currentDoc.type || "").toUpperCase() !== "BOOK" && !currentDoc.isBook && standardArticleImage && currentCoverUrl) {
+                    standardArticleImage.loading = "eager";
+                    standardArticleImage.decoding = "async";
+                    standardArticleImage.fetchPriority = "high";
+                    standardArticleImage.src = currentCoverUrl;
+                    standardArticleImageWrapper?.classList.remove("hidden");
+                }
                 if (currentCoverUrl) {
                     preloadCoverImage(currentCoverUrl);
                     const warmImage = new Image();
