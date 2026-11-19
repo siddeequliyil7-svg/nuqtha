@@ -4,15 +4,15 @@ const { describe, it } = window;
 const { expect } = window.chai;
 
 describe("Public draft visibility", () => {
-    it("only keeps explicitly published records visible", () => {
+    it("keeps published and legacy records visible but hides explicit non-published statuses", () => {
         expect(isPubliclyPublished({ status: "published" })).to.equal(true);
         expect(isPubliclyPublished({ status: "PUBLISHED" })).to.equal(true);
-        expect(isPubliclyPublished({})).to.equal(false);
+        expect(isPubliclyPublished({})).to.equal(true);
         expect(isPubliclyPublished({ status: "draft" })).to.equal(false);
         expect(isPubliclyPublished({ status: "review" })).to.equal(false);
     });
 
-    it("hides draft books, their duplicate records, chapters, and records without a published status", () => {
+    it("hides draft books, their duplicate records, and chapters while keeping unrelated legacy content", () => {
         const { articles, books } = filterPublicCollections([
             { id: "draft-book", title: "Work in Progress", type: "BOOK", status: "draft" },
             { id: "duplicate-book", title: "Also Draft", type: "BOOK", status: "published", slug: "also-draft" },
@@ -27,7 +27,7 @@ describe("Public draft visibility", () => {
             { id: "published-book", title: "Live Book", status: "published" }
         ]);
 
-        expect(articles.map(article => article.id)).to.deep.equal(["published-article"]);
+        expect(articles.map(article => article.id)).to.deep.equal(["published-article", "legacy-article"]);
         expect(books.map(book => book.id)).to.deep.equal(["published-book"]);
     });
 });

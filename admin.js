@@ -10,11 +10,10 @@ import {
     loadFirebaseAuth,
     mapFirebaseUser,
     safeSaveAuthUser,
-    signInWithEmailPassword,
+    signInWithGoogle,
     signOutUser
 } from "./js/auth-system.js";
-import { runAction } from "./js/admin-actions.js";
-import { addDoc, setDoc, updateDoc, deleteDoc, uploadImageDataUrl, uploadFile, getAdminWriteErrorMessage } from "./js/admin-write-guard.js";
+import { addDoc, setDoc, updateDoc, deleteDoc, uploadImageDataUrl, getAdminWriteErrorMessage } from "./js/admin-write-guard.js";
 
 function isExplicitChapterRecord(art) {
     if (!art) return false;
@@ -32,13 +31,6 @@ function escapeAdminHtml(value) {
         '"': "&quot;",
         "'": "&#39;"
     })[char]);
-}
-
-function requireAdminField(input, label, minLength = 1) {
-    if (String(input?.value || "").trim().length >= minLength) return;
-    const error = new Error(`${label} is required${minLength > 1 ? ` (at least ${minLength} characters)` : ""}.`);
-    error.field = input || undefined;
-    throw error;
 }
 
 if (typeof window !== "undefined") window.scanCoverImageUrls = async function() {
@@ -387,7 +379,7 @@ let selectedBase64Image = "";
 let selectedBase64Thumbnail = "";
 let selectedBookCoverBase64 = "";
 let bmSelectedArticleImage = "";
-let bmPresentationFile = null;
+let bmPresentationFileBase64 = "";
 let bmPresentationFileName = "";
 let activeBookName = "";
 let activeBookAuthor = "";
@@ -514,12 +506,8 @@ function initAdminSecurity() {
     const authBarrier = document.getElementById("admin-auth-barrier");
     const mainWrapper = document.getElementById("admin-main-wrapper");
     const errorBox = document.getElementById("admin-login-error");
-    const loginForm = document.getElementById("admin-login-form");
-    const emailInput = document.getElementById("admin-login-email");
-    const passwordInput = document.getElementById("admin-login-password");
-    const loginButton = document.getElementById("admin-email-signin-btn");
     const logoutBtn = document.getElementById("admin-logout-btn");
-    const signedInEmail = document.getElementById("admin-signed-in-email");
+    const googleAdminBtn = document.getElementById("admin-google-signin-btn");
     const unauthorizedNotice = document.getElementById("admin-unauthorized-notice");
     const unauthorizedMsg = document.getElementById("admin-unauthorized-msg");
     const switchBtn = document.getElementById("admin-switch-btn");
@@ -541,17 +529,14 @@ function initAdminSecurity() {
     }
 
     function getLoginErrorMessage(error) {
-        if (["auth/invalid-credential", "auth/invalid-login-credentials", "auth/user-not-found", "auth/wrong-password"].includes(error?.code)) {
-            return "The email or password is incorrect.";
+        if (error?.code === "auth/unauthorized-domain") {
+            return `Google sign-in is blocked for "${window.location.hostname}". Add this exact hostname in Firebase Console under Authentication > Settings > Authorized domains, then reload this page.`;
         }
         if (error?.code === "auth/operation-not-allowed") {
-            return "Email/password sign-in is disabled. Enable the Email/Password provider in Firebase Console under Authentication > Sign-in method.";
-        }
-        if (error?.code === "auth/too-many-requests") {
-            return "Too many sign-in attempts. Wait a few minutes and try again.";
+            return "Google sign-in is disabled for this Firebase project. Enable the Google provider in Firebase Console under Authentication > Sign-in method.";
         }
         const message = String(error?.message || error || "Unknown error.");
-        return `Sign-in failed${error?.code ? ` (${error.code})` : ""}: ${message}`;
+        return `Google sign-in failed${error?.code ? ` (${error.code})` : ""}: ${message}`;
     }
 
     function unlock() {
@@ -562,8 +547,6 @@ function initAdminSecurity() {
 
     function lock(unauthorizedUser = null) {
         clearDashboardSession();
-        window.currentUser = unauthorizedUser || null;
-        if (signedInEmail) signedInEmail.textContent = unauthorizedUser?.email || "";
         if (authBarrier) authBarrier.classList.remove("hidden");
         if (mainWrapper) mainWrapper.classList.add("hidden");
 
@@ -576,7 +559,7 @@ function initAdminSecurity() {
                 );
                 const reason = isApprovedEmail && !unauthorizedUser.emailVerified
                     ? "This account's email is not verified. Verify it and sign in again."
-                    : "This account is not an approved admin. Use an approved, verified Firebase email/password account.";
+                    : "This account is not an approved admin. Use an approved, verified Google account.";
                 unauthorizedMsg.textContent = `The signed-in account (${unauthorizedUser.email || unauthorizedUser.phoneNumber || unauthorizedUser.name}) cannot access admin: ${reason}`;
             }
         } else {
@@ -587,7 +570,6 @@ function initAdminSecurity() {
     if (switchBtn) {
         switchBtn.addEventListener("click", () => {
             if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
-            emailInput?.focus();
         });
     }
 
@@ -603,8 +585,6 @@ function initAdminSecurity() {
 
             const profile = mapFirebaseUser(firebaseUser);
             safeSaveAuthUser(profile);
-            window.currentUser = profile;
-            if (signedInEmail) signedInEmail.textContent = profile.email || "";
             if (isApprovedFirebaseAdmin(firebaseUser)) unlock();
             else lock(profile);
         });
@@ -616,39 +596,31 @@ function initAdminSecurity() {
         }
     });
 
-    if (loginForm) {
-        loginForm.addEventListener("submit", async event => {
-            event.preventDefault();
-            if (loginButton) {
-                loginButton.disabled = true;
-                loginButton.classList.add("opacity-60");
-                if (!loginButton.dataset.defaultText) loginButton.dataset.defaultText = loginButton.textContent.trim();
-                loginButton.textContent = "Signing in...";
-            }
+    // Google Admin Sign-In
+    if (googleAdminBtn) {
+        googleAdminBtn.addEventListener("click", async () => {
             try {
+                googleAdminBtn.disabled = true;
+                googleAdminBtn.classList.add("opacity-60");
                 if (errorBox) errorBox.classList.add("hidden");
-                const profile = await signInWithEmailPassword(emailInput?.value || "", passwordInput?.value || "");
-                window.currentUser = profile;
-                safeSaveAuthUser(profile);
-                if (!isApprovedFirebaseAdmin(profile)) {
+
+                const profile = await signInWithGoogle();
+                if (isApprovedFirebaseAdmin(profile)) {
+                    unlock();
+                } else {
                     lock(profile);
-                    return;
                 }
-                if (signedInEmail) signedInEmail.textContent = profile.email || "";
-                if (unauthorizedNotice) unauthorizedNotice.classList.add("hidden");
-                unlock();
-            } catch (error) {
-                console.error("[Admin Auth] Email/password sign-in failed:", error);
-                if (errorBox) {
-                    errorBox.textContent = getLoginErrorMessage(error);
-                    errorBox.classList.remove("hidden");
+            } catch (err) {
+                console.warn("[Admin Auth] Google sign-in error:", err);
+                if (err?.code !== "auth/popup-closed-by-user") {
+                    if (errorBox) {
+                        errorBox.textContent = getLoginErrorMessage(err);
+                        errorBox.classList.remove("hidden");
+                    }
                 }
             } finally {
-                if (loginButton) {
-                    loginButton.disabled = false;
-                    loginButton.classList.remove("opacity-60");
-                    loginButton.textContent = loginButton.dataset.defaultText || "Sign in";
-                }
+                googleAdminBtn.disabled = false;
+                googleAdminBtn.classList.remove("opacity-60");
             }
         });
     }
@@ -783,22 +755,9 @@ function initArticleForm() {
     }
 
     if (form) {
-        form.addEventListener("submit", e => {
-            const contentStatus = e.submitter?.value === "draft" ? "draft" : "published";
-            runAction(e.submitter, () => handleFormSubmit(e), {
-                event: e,
-                form,
-                loadingText: "Saving...",
-                successMsg: contentStatus === "draft" ? "Article saved as draft." : "Article published successfully.",
-                validate() {
-                    requireAdminField(document.getElementById("art-title"), "Title", 2);
-                    if (contentStatus === "published") {
-                        requireAdminField(document.getElementById("art-category"), "Category");
-                        requireAdminField(document.getElementById("art-author"), "Author");
-                        requireAdminField(document.getElementById("art-content"), "Content", 5);
-                    }
-                }
-            });
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await handleFormSubmit(e);
         });
     }
 
@@ -862,9 +821,7 @@ async function handleFormSubmit(event) {
         const categories = await getCategories();
         const selectedCategory = categories.find(category => category.slug === rawCategoryId);
         if (!selectedCategory && contentStatus === "published") {
-            const error = new Error("Select an existing category before publishing.");
-            error.field = document.getElementById("art-category");
-            throw error;
+            throw new Error("Select an existing category before publishing.");
         }
         const rawAuthor = document.getElementById("art-author")?.value || "";
         const authorId = window.currentUser?.uid || localStorage.getItem("nuqtha_admin_uid") || "admin";
@@ -984,7 +941,6 @@ async function handleFormSubmit(event) {
                 coverUrl: storedCover,
                 thumbnailUrl: storedThumbnail,
                 ogImage: storedThumbnail,
-                publishedAt: contentStatus === "published" ? serverTimestamp() : null,
                 updatedAt: serverTimestamp()
             };
 
@@ -1018,7 +974,6 @@ async function handleFormSubmit(event) {
                 excerpt: typedExcerpt,
                 thumbnailUrl: storedThumbnail,
                 ogImage: storedThumbnail,
-                publishedAt: contentStatus === "published" ? serverTimestamp() : null,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
@@ -1034,7 +989,14 @@ async function handleFormSubmit(event) {
     } catch (err) {
         console.error("[NUQTHA ADMIN] Save failed:", err?.code || "", err?.message || err);
         showGlobalStatus(getAdminWriteErrorMessage(err, "Article save"), "error");
-        throw err;
+        // If validation failed on title or content, bring user back to create tab
+        if (!document.getElementById("art-title")?.value.trim()) {
+            switchAdminTab("create");
+            document.getElementById("art-title")?.focus();
+        } else if (!document.getElementById("art-content")?.value.trim()) {
+            switchAdminTab("create");
+            document.getElementById("art-content")?.focus();
+        }
     } finally {
         setSubmitButtonsLoading(false);
     }
@@ -2039,7 +2001,6 @@ async function handleSaveBookStep1(e) {
             priority: 1,
             date: dateVal,
             status: contentStatus,
-            publishedAt: contentStatus === "published" ? serverTimestamp() : null,
             updatedAt: serverTimestamp()
         };
 
@@ -2090,7 +2051,6 @@ async function handleSaveBookStep1(e) {
                 date: dateVal,
                 visible: existing?.visible !== false,
                 status: contentStatus,
-                publishedAt: contentStatus === "published" ? serverTimestamp() : null,
                 ...(Array.isArray(existing?.chapters) ? { chapters: existing.chapters } : {}),
                 updatedAt: serverTimestamp(),
             }, { merge: true });
@@ -2136,7 +2096,6 @@ async function handleSaveBookStep1(e) {
     } catch (err) {
         console.error("Save book error:", err?.code || "", err?.message || err);
         showGlobalStatus(getAdminWriteErrorMessage(err, "Book save"), "error");
-        throw err;
     } finally {
         saveButtons.forEach(button => {
             button.disabled = false;
@@ -2222,25 +2181,10 @@ function initBookSwitcherAndStep1() {
     }
 
     if (publishBtn) {
-        publishBtn.addEventListener("click", event => runAction(publishBtn, () => handleSaveBookStep1(event), {
-            event,
-            loadingText: "Saving...",
-            successMsg: "Book published successfully.",
-            validate() {
-                requireAdminField(document.getElementById("book-meta-name"), "Book title");
-                requireAdminField(document.getElementById("book-meta-intro"), "Introduction");
-            }
-        }));
+        publishBtn.addEventListener("click", handleSaveBookStep1);
     }
     if (saveDraftBtn) {
-        saveDraftBtn.addEventListener("click", event => runAction(saveDraftBtn, () => handleSaveBookStep1(event), {
-            event,
-            loadingText: "Saving...",
-            successMsg: "Book saved as draft.",
-            validate() {
-                requireAdminField(document.getElementById("book-meta-name"), "Book title");
-            }
-        }));
+        saveDraftBtn.addEventListener("click", handleSaveBookStep1);
     }
 }
 
@@ -2260,10 +2204,7 @@ export async function addNewBook(database = db) {
     accessType: typeVal,
     isPremium: typeVal === "premium",
     isBook: true,
-    status: "published",
-    publishedAt: serverTimestamp(),
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    createdAt: new Date()
   };
 
   if (!bookData.title) {
@@ -2700,7 +2641,11 @@ function initChapterWriter() {
 
         const activeBookId = targetBookDoc?.id || "";
         if (!activeBookId) {
-            throw new Error("Save the book details before adding a chapter.");
+            showChapterInlineMsg("ആദ്യം ഘട്ടം 1 സേവ് ചെയ്യുക", "error");
+            console.error("[ChapterWriter] Active bookId missing from Step 1. Cannot add chapter without a saved book.");
+            const step1El = document.getElementById("bm-step1-section");
+            if (step1El) step1El.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
         }
 
         // 2. Read inputs with .trim()
@@ -2814,7 +2759,6 @@ function initChapterWriter() {
                     parentBookId: activeBookId,
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
-                    publishedAt: serverTimestamp(),
                     type: "ARTICLE",
                     isBook: false,
                     isChapter: true,
@@ -2825,7 +2769,6 @@ function initChapterWriter() {
                 const sanitized = validateAndSanitizeArticleForSave(raw);
                 await updateDoc(doc(db, "articles", editingChapterId), {
                     ...sanitized,
-                    publishedAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
                 });
 
@@ -2874,7 +2817,6 @@ function initChapterWriter() {
                     bookId: activeBookId,
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
-                    publishedAt: serverTimestamp(),
                     type: "ARTICLE",
                     isBook: false,
                     isChapter: true,
@@ -2887,7 +2829,6 @@ function initChapterWriter() {
                 const docRef = doc(db, "articles", chapterId);
                 await setDoc(docRef, {
                     ...sanitized,
-                    publishedAt: serverTimestamp(),
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
                 });
@@ -2956,7 +2897,6 @@ function initChapterWriter() {
             console.error("[ChapterWriter] Add chapter error:", err);
             showChapterInlineMsg("അധ്യായം ചേർക്കാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
             showGlobalStatus("അധ്യായം ചേർക്കാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
-            throw err;
         } finally {
             isSavingChapter = false;
             if (btn) {
@@ -2968,15 +2908,11 @@ function initChapterWriter() {
         }
     }
 
-    window.handleAddChapterToBook = event => runAction(publishBtn, () => handleAddChapterToBook(event), {
-        event,
-        loadingText: "Saving...",
-        successMsg: "Chapter saved successfully.",
-        validate() {
-            requireAdminField(document.getElementById("bm-art-title"), "Chapter title", 2);
-            requireAdminField(document.getElementById("bm-art-content"), "Chapter content", 5);
-        }
-    });
+    window.handleAddChapterToBook = handleAddChapterToBook;
+
+    if (publishBtn) {
+        publishBtn.addEventListener("click", handleAddChapterToBook);
+    }
 
     const cancelEditBtn = document.getElementById("bm-cancel-edit-chapter-btn");
     if (cancelEditBtn) {
@@ -3449,12 +3385,23 @@ function initBookPresentationUpload() {
             return;
         }
 
-        bmPresentationFile = file;
         bmPresentationFileName = file.name;
         if (placeholder) placeholder.classList.add("hidden");
-        if (progressEl) progressEl.classList.add("hidden");
-        if (fileNameEl) fileNameEl.textContent = file.name;
-        if (fileInfo) fileInfo.classList.remove("hidden");
+        if (progressEl) progressEl.classList.remove("hidden");
+
+        const reader = new FileReader();
+        reader.onerror = () => {
+            showGlobalStatus("ഫയൽ വായിക്കുന്നതിൽ തടസ്സം നേരിട്ടു.", "error");
+            if (progressEl) progressEl.classList.add("hidden");
+            if (placeholder) placeholder.classList.remove("hidden");
+        };
+        reader.onload = (event) => {
+            bmPresentationFileBase64 = event.target.result;
+            if (progressEl) progressEl.classList.add("hidden");
+            if (fileNameEl) fileNameEl.textContent = file.name;
+            if (fileInfo) fileInfo.classList.remove("hidden");
+        };
+        reader.readAsDataURL(file);
     }
 
     if (fileInput) {
@@ -3492,7 +3439,7 @@ function initBookPresentationUpload() {
     }
 
     function handleRemovePresentation() {
-        bmPresentationFile = null;
+        bmPresentationFileBase64 = "";
         bmPresentationFileName = "";
         if (fileInput) fileInput.value = "";
         if (fileInfo) fileInfo.classList.add("hidden");
@@ -3508,10 +3455,12 @@ function initBookPresentationUpload() {
     async function handleSavePresentation() {
         const externalLink = linkInput ? linkInput.value.trim() : "";
         if (!activeBookName) {
-            throw new Error("Select a book before uploading a presentation.");
+            showGlobalStatus("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.", "error");
+            return;
         }
-        if (!bmPresentationFile && !externalLink) {
-            throw new Error("Select a presentation file or enter a presentation URL.");
+        if (!bmPresentationFileBase64 && !externalLink) {
+            showGlobalStatus("ദയവായി ഒരു PDF ഫയൽ അപ്‌ലോഡ് ചെയ്യുക അല്ലെങ്കിൽ ലിങ്ക് നൽകുക.", "error");
+            return;
         }
 
         if (saveBtn) {
@@ -3524,55 +3473,22 @@ function initBookPresentationUpload() {
                 normalizeStringClean(a.bookName) === normalizeStringClean(activeBookName) ||
                 normalizeStringClean(a.title) === normalizeStringClean(activeBookName)
             ));
-            if (!existingBook) throw new Error("Save the book details before uploading a presentation.");
-            let presentationUrl = externalLink;
-            if (bmPresentationFile) {
-                const extension = bmPresentationFile.name.toLowerCase().split(".").pop();
-                const contentTypes = {
-                    pdf: "application/pdf",
-                    ppt: "application/vnd.ms-powerpoint",
-                    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                    key: "application/vnd.apple.keynote"
-                };
-                const contentType = bmPresentationFile.type || contentTypes[extension] || "";
-                presentationUrl = await uploadFile(bmPresentationFile, `books/${existingBook.id}/presentation`, {
-                    maxBytes: 25 * 1024 * 1024,
-                    contentType,
-                    allowedTypes: Object.values(contentTypes),
-                    onProgress(progress) {
-                        if (progressEl) progressEl.classList.remove("hidden");
-                        const bar = progressEl?.querySelector("div > div");
-                        if (bar) {
-                            bar.classList.remove("w-2/3", "animate-pulse");
-                            bar.style.width = `${Math.max(0, Math.min(100, progress.percent))}%`;
-                        }
-                    }
-                });
-                if (linkInput) linkInput.value = presentationUrl;
-            }
             const payload = {
-                presentationUrl,
+                presentationUrl: externalLink || bmPresentationFileBase64,
                 presentationName: bmPresentationFileName || "Book Presentation",
                 updatedAt: serverTimestamp()
             };
 
-            await updateDoc(getBookDocumentRef(existingBook), payload);
-            Object.assign(existingBook, payload);
-            if (bmPresentationFile) {
-                bmPresentationFile = null;
-                bmPresentationFileName = "";
-                if (fileInput) fileInput.value = "";
-                if (fileInfo) fileInfo.classList.add("hidden");
-                if (placeholder) placeholder.classList.remove("hidden");
+            if (existingBook) {
+                await updateDoc(getBookDocumentRef(existingBook), payload);
+                Object.assign(existingBook, payload);
             }
 
             showGlobalStatus(`പ്രസന്റേഷൻ '${activeBookName}' ലേക്ക് വിജയകരമായി സേവ് ചെയ്തു! 📑`, "success");
         } catch (err) {
             console.error("Presentation save error:", err);
-            showGlobalStatus(getAdminWriteErrorMessage(err, "Presentation save"), "error");
-            throw err;
+            showGlobalStatus("പ്രസന്റേഷൻ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
         } finally {
-            if (progressEl) progressEl.classList.add("hidden");
             if (saveBtn) {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = "Save Presentation to Book";
@@ -3581,13 +3497,8 @@ function initBookPresentationUpload() {
     }
 
     if (saveBtn) {
-        saveBtn.addEventListener("click", event => {
-            runAction(saveBtn, handleSavePresentation, {
-                event,
-                loadingText: "Uploading...",
-                successMsg: "Presentation saved successfully."
-            });
-        });
+        saveBtn.addEventListener("click", handleSavePresentation);
+        saveBtn.addEventListener("execute-save", handleSavePresentation);
     }
 }
 
@@ -4473,7 +4384,7 @@ window.saveArticleLayoutQuick = async function(articleId) {
    AUTHORS PROFILE MANAGER LOGIC
    ═══════════════════════════════════════════════════════════ */
 let managedAuthorsList = [];
-let authorPhotoFile = null;
+let authorPhotoBase64 = "";
 
 function slugifyAuthor(name) {
     return (name || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
@@ -4507,18 +4418,16 @@ function initAuthorManager() {
         photoFileInput.addEventListener("change", (e) => {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
-            if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type) || file.size > 5 * 1024 * 1024) {
-                showGlobalStatus("Choose an image smaller than 5 MB.", "error");
-                photoFileInput.value = "";
-                return;
-            }
-            authorPhotoFile = file;
-            if (photoPreview) {
-                const previewUrl = URL.createObjectURL(file);
-                photoPreview.innerHTML = `<img src="${previewUrl}" class="w-full h-full object-cover rounded-2xl" />`;
-                photoPreview.querySelector("img")?.addEventListener("load", () => URL.revokeObjectURL(previewUrl), { once: true });
-                photoPreview.querySelector("img")?.addEventListener("error", () => URL.revokeObjectURL(previewUrl), { once: true });
-            }
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                authorPhotoBase64 = evt.target.result;
+                if (photoUrlInput) photoUrlInput.value = authorPhotoBase64;
+                if (photoPreview) {
+                    photoPreview.innerHTML = `<img src="${authorPhotoBase64}" class="w-full h-full object-cover rounded-2xl" />`;
+                }
+            };
+            reader.readAsDataURL(file);
         });
     }
 
@@ -4538,7 +4447,8 @@ function initAuthorManager() {
     }
 
     if (authorForm) {
-        authorForm.addEventListener("submit", e => {
+        authorForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
             const nameEl = document.getElementById("admin-author-name");
             const roleEl = document.getElementById("admin-author-role");
             const photoEl = document.getElementById("admin-author-photo");
@@ -4547,39 +4457,49 @@ function initAuthorManager() {
 
             const name = nameEl ? nameEl.value.trim() : "";
             const role = (roleEl ? roleEl.value.trim() : "") || "CONTRIBUTOR";
-            let photoUrl = photoEl ? photoEl.value.trim() : "";
+            const photoUrl = (photoEl ? photoEl.value.trim() : "") || authorPhotoBase64;
             const bio = bioEl ? bioEl.value.trim() : "";
             const editSlug = editSlugEl ? editSlugEl.value.trim() : "";
+
+            if (!name) {
+                showGlobalStatus("എഴുത്തുകാരന്റെ പേര് നൽകേണ്ടതുണ്ട്.", "error");
+                return;
+            }
 
             const slug = editSlug || slugifyAuthor(name);
             const submitBtn = document.getElementById("admin-author-submit-btn");
             const toast = document.getElementById("admin-author-save-toast");
 
-            runAction(submitBtn, async () => {
-                if (authorPhotoFile) {
-                    photoUrl = await uploadFile(authorPhotoFile, `authors/${slug}/profile`, {
-                        maxBytes: 5 * 1024 * 1024,
-                        contentType: authorPhotoFile.type,
-                        allowedTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"]
-                    });
-                    if (photoEl) photoEl.value = photoUrl;
-                }
-                const payload = { name, role, photoUrl, bio, slug, updatedAt: serverTimestamp() };
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add("opacity-60");
+            }
+
+            const payload = {
+                name,
+                role,
+                photoUrl,
+                bio,
+                slug,
+                updatedAt: serverTimestamp()
+            };
+
+            try {
                 await setDoc(doc(db, "authors", slug), payload);
                 if (toast) {
                     toast.classList.remove("hidden");
                     setTimeout(() => toast.classList.add("hidden"), 3000);
                 }
                 resetAuthorForm();
-            }, {
-                event: e,
-                form: authorForm,
-                loadingText: authorPhotoFile ? "Uploading..." : "Saving...",
-                successMsg: "Author profile saved.",
-                validate() {
-                    requireAdminField(nameEl, "Name");
+            } catch (err) {
+                console.error("[admin.js] Author save error:", err);
+                showGlobalStatus("പ്രൊഫൈൽ സേവ് ചെയ്യുമ്പോൾ തടസ്സം നേരിട്ടു: " + err.message, "error");
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove("opacity-60");
                 }
-            });
+            }
         });
     }
 
@@ -4595,18 +4515,16 @@ function resetAuthorForm() {
     const photoPreview = document.getElementById("admin-author-photo-preview");
     const heading = document.getElementById("author-form-heading");
     const newBtn = document.getElementById("admin-author-new-btn");
-    const photoFileInput = document.getElementById("admin-author-photo-file");
 
     if (editSlug) editSlug.value = "";
     if (nameInput) nameInput.value = "";
     if (roleInput) roleInput.value = "";
     if (photoInput) photoInput.value = "";
-    if (photoFileInput) photoFileInput.value = "";
     if (bioInput) bioInput.value = "";
     if (photoPreview) photoPreview.textContent = "?";
     if (heading) heading.textContent = "എഴുത്തുകാരന്റെ പ്രൊഫൈൽ മാനേജർ (Author Profile Manager)";
     if (newBtn) newBtn.classList.add("hidden");
-    authorPhotoFile = null;
+    authorPhotoBase64 = "";
 }
 
 function listenToFirestoreAuthors() {
@@ -4942,36 +4860,33 @@ document.addEventListener("click", async (e) => {
             if (removeBtn && removeBtn.click) removeBtn.dispatchEvent(new CustomEvent("execute-remove"));
             break;
         }
+        case "save-presentation": {
+            e.preventDefault();
+            const saveBtn = document.getElementById("bm-save-presentation-btn");
+            if (saveBtn && saveBtn.click) saveBtn.dispatchEvent(new CustomEvent("execute-save"));
+            break;
+        }
         case "edit-article": {
+            e.preventDefault();
             const id = actionEl.dataset.id;
             if (id && typeof window.startEditArticle === "function") {
-                await runAction(actionEl, () => window.startEditArticle(id), {
-                    event: e,
-                    loadingText: "Opening...",
-                    successMsg: "Article opened for editing."
-                });
+                window.startEditArticle(id);
             }
             break;
         }
         case "manage-book": {
+            e.preventDefault();
             const id = actionEl.dataset.id;
             if (id && typeof window.manageBookById === "function") {
-                await runAction(actionEl, () => window.manageBookById(id), {
-                    event: e,
-                    loadingText: "Opening...",
-                    successMsg: "Book opened."
-                });
+                window.manageBookById(id);
             }
             break;
         }
         case "edit-book-meta": {
+            e.preventDefault();
             const id = actionEl.dataset.id;
             if (id && typeof window.editBookMetadataById === "function") {
-                await runAction(actionEl, () => window.editBookMetadataById(id), {
-                    event: e,
-                    loadingText: "Opening...",
-                    successMsg: "Book opened for editing."
-                });
+                window.editBookMetadataById(id);
             }
             break;
         }

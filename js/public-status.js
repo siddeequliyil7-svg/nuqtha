@@ -1,5 +1,6 @@
 export function isPubliclyPublished(record) {
     if (!record || typeof record !== "object") return false;
+    if (record.status === undefined || record.status === null) return true;
     return String(record.status).trim().toLowerCase() === "published";
 }
 

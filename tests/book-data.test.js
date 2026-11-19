@@ -124,10 +124,10 @@ describe("Book chapter relationships", () => {
         const currentBook = { id: "book-1", title: "Current Book", slug: "current-book", type: "BOOK" };
         const related = getRelatedBooks(currentBook, [
             currentBook,
-            { id: "duplicate-id", title: "Same by slug", slug: "current-book", type: "BOOK", status: "published" },
-            { id: "book-2", title: "Another Book", slug: "another-book", type: "FREE", status: "published" },
-            { id: "book-2", title: "Another Edition", slug: "different-slug", type: "BOOK", status: "published" },
-            { id: "duplicate-title", title: "Another Book", slug: "another-edition", type: "BOOK", status: "published" },
+            { id: "duplicate-id", title: "Same by slug", slug: "current-book", type: "BOOK" },
+            { id: "book-2", title: "Another Book", slug: "another-book", type: "FREE" },
+            { id: "book-2", title: "Another Edition", slug: "different-slug", type: "BOOK" },
+            { id: "duplicate-title", title: "Another Book", slug: "another-edition", type: "BOOK" },
             { id: "book-3", title: "Draft Book", type: "BOOK", status: "draft" },
             { id: "book-4", title: "A Chapter", type: "CHAPTER", isChapter: true },
             { id: "book-5", title: "Chapter-like Book", type: "BOOK", isChapter: true }

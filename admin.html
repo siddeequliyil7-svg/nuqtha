@@ -47,7 +47,7 @@
                 <div>
                     <span class="text-xs font-black tracking-widest uppercase font-english text-[#b4532c] block">NUQTHA Security</span>
                     <h2 class="text-xl sm:text-2xl font-black text-[#1e1b18] tracking-tight">Admin Sign In</h2>
-                    <p class="text-xs text-[#8c7a6b] mt-1">Sign in with an approved, verified Firebase email and password to manage and save content.</p>
+                    <p class="text-xs text-[#8c7a6b] mt-1">Sign in with an approved Google account to manage and save content.</p>
                 </div>
             </div>
 
@@ -58,7 +58,7 @@
                     <div>
                         <h4 class="text-xs font-black text-amber-900 uppercase font-english">Admin Access Required</h4>
                         <p id="admin-unauthorized-msg" class="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                            Sign in with an approved, verified Firebase email/password account to continue.
+                            Sign in with an approved, verified Google account to continue.
                         </p>
                     </div>
                 </div>
@@ -72,27 +72,24 @@
                 </div>
             </div>
 
-            <div class="space-y-3">
-                <form id="admin-login-form" class="space-y-3" novalidate>
-                    <label class="block text-left text-xs font-bold text-[#5a4b41]">
-                        Email address
-                        <input type="email" id="admin-login-email" name="email" required autocomplete="username" class="mt-1 w-full px-4 py-3 rounded-xl border border-[#ebdccb] focus:border-[#b4532c] focus:ring-2 focus:ring-[#b4532c]/20 outline-none text-sm bg-white/90" placeholder="admin@example.com">
-                    </label>
-                    <label class="block text-left text-xs font-bold text-[#5a4b41]">
-                        Password
-                        <input type="password" id="admin-login-password" name="password" required autocomplete="current-password" class="mt-1 w-full px-4 py-3 rounded-xl border border-[#ebdccb] focus:border-[#b4532c] focus:ring-2 focus:ring-[#b4532c]/20 outline-none text-sm bg-white/90" placeholder="Enter your password">
-                    </label>
-                    <button type="submit" id="admin-email-signin-btn" class="w-full py-3 px-4 rounded-2xl bg-[#b4532c] hover:bg-[#923e1b] text-white text-xs font-bold shadow transition flex items-center justify-center gap-2 font-english cursor-pointer">
-                        Sign in
-                    </button>
-                    <div id="admin-login-error" role="alert" aria-live="polite" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold text-center"></div>
-                </form>
+            <!-- Google Admin Sign-In Option -->
+            <div id="admin-google-auth-section" class="space-y-3">
+                <button type="button" id="admin-google-signin-btn" class="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-50 border border-[#ebdccb] text-[#1e1b18] text-xs font-bold shadow-xs hover:shadow transition flex items-center justify-center gap-2.5 font-english cursor-pointer">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    <span>Sign in with Google</span>
+                </button>
                 <p class="text-[11px] leading-relaxed text-[#8c7a6b]">
-                    Only approved, verified Firebase accounts can manage content.
+                    Firestore saves require an authenticated admin account. A local password cannot authorize changes.
                 </p>
-                <a class="inline-block text-[11px] font-bold text-[#b4532c] hover:underline" href="https://console.firebase.google.com/project/nuqtha-c0900/authentication/providers" target="_blank" rel="noopener noreferrer">
-                    Firebase Email/Password provider settings
+                <a class="inline-block text-[11px] font-bold text-[#b4532c] hover:underline" href="https://console.firebase.google.com/project/nuqtha-c0900/authentication/settings" target="_blank" rel="noopener noreferrer">
+                    Firebase authorized domain settings
                 </a>
+                <div id="admin-login-error" role="alert" aria-live="polite" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold text-center"></div>
             </div>
 
             <div class="pt-2 border-t border-[#ebdccb]">
@@ -123,7 +120,6 @@
                 </div>
 
                 <div class="flex items-center gap-2.5">
-                    <span id="admin-signed-in-email" class="max-w-[36vw] truncate text-[10px] sm:text-xs text-[#cbbba9] font-english"></span>
                     <a href="index.html" class="inline-flex items-center gap-2 text-xs font-bold uppercase font-english text-[#cbbba9] hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full transition shadow-sm">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                         <span>View Website</span>
@@ -205,7 +201,7 @@
         </nav>
 
         <!-- ═══════════ SINGLE UNIFIED FORM FOR TAB 1 & TAB 2 ═══════════ -->
-        <form id="add-article-form" novalidate>
+        <form id="add-article-form">
 
             <!-- ═══════════════════════════════════════════════════════════
                  TAB 1: പുതിയ ലേഖനം (CREATE & EDITOR)
@@ -1146,7 +1142,7 @@
                                 </div>
                                 <div class="space-y-2">
                                     <input type="url" id="bm-presentation-link" placeholder="Drive ലിങ്ക് (ഓപ്ഷണൽ)..." class="w-full text-xs p-2.5 rounded-xl border border-indigo-200 outline-none">
-                                    <button type="button" id="bm-save-presentation-btn" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition">
+                                    <button type="button" id="bm-save-presentation-btn" data-action="save-presentation" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition">
                                         Save Presentation to Book
                                     </button>
                                 </div>
@@ -1301,7 +1297,7 @@
                         </div>
                     </div>
 
-                    <form id="admin-author-form" class="space-y-4" novalidate>
+                    <form id="admin-author-form" class="space-y-4">
                         <input type="hidden" id="author-edit-slug" value="">
 
                         <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
@@ -1731,7 +1727,7 @@
                             </span>
                         </div>
 
-                        <form id="bk-form" class="bg-[#faf6f0] dark:bg-white/5 p-5 rounded-2xl border border-[#ebdccb] dark:border-white/10 space-y-4" novalidate>
+                        <form id="bk-form" class="bg-[#faf6f0] dark:bg-white/5 p-5 rounded-2xl border border-[#ebdccb] dark:border-white/10 space-y-4">
                             <input type="hidden" name="id">
 
                             <!-- Existing Items Quick-Selector (Books / Articles) -->
@@ -1902,6 +1898,6 @@
     </div>
 
     <!-- Admin Modular Logic -->
-    <script type="module" src="admin.js?v=2.4"></script>
+    <script type="module" src="admin.js?v=2.2"></script>
 </body>
 </html>

@@ -1,6 +1,4 @@
-import { collection, db, doc, getDocs, serverTimestamp, writeBatch } from "./firebase-config.js";
-import { deleteDoc, setDoc } from "./js/admin-write-guard.js";
-import { runAction } from "./js/admin-actions.js";
+import { collection, db, deleteDoc, doc, getDocs, setDoc, writeBatch } from "./firebase-config.js";
 import { cacheCategories, getArticleCategoryId, getCategories, isValidCategoryId, slugifyCategory } from "./js/category-store.js";
 
 const LEGACY_CATEGORIES = [
@@ -48,7 +46,7 @@ export async function initCategoryAdmin(root) {
                 <h2>Category Management</h2>
                 <p>Create, reorder, hide, or remove categories. Category slugs stay fixed after creation.</p>
             </header>
-            <form id="category-admin-form" class="category-admin-form" novalidate>
+            <form id="category-admin-form" class="category-admin-form">
                 <input type="hidden" name="editingSlug">
                 <label>Name <input name="name" required maxlength="80" autocomplete="off"></label>
                 <label>English slug <input name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxlength="80" autocomplete="off" placeholder="kerala-islamic-scholars"></label>
@@ -63,7 +61,7 @@ export async function initCategoryAdmin(root) {
             <div class="category-migration">
                 <div>
                     <h3>Legacy category migration</h3>
-                    <p>Add missing categories, mark legacy content as published, and set categoryId on older articles. Existing category values are retained.</p>
+                    <p>Add missing category records and set categoryId on older articles. Existing category values are retained.</p>
                 </div>
                 <button type="button" id="category-migrate-btn" class="category-secondary-button">Run one-time migration</button>
                 <p id="category-migration-status" role="status" aria-live="polite"></p>
@@ -156,17 +154,10 @@ export async function initCategoryAdmin(root) {
         const editingSlug = editingInput.value;
         if (!name || !isValidCategoryId(slug)) {
             showFormMessage("Enter a category name and a valid English slug.", true);
-            const invalidInput = !name ? nameInput : slugInput;
-            invalidInput.classList.add("border-rose-500");
-            invalidInput.focus();
-            invalidInput.addEventListener("input", () => invalidInput.classList.remove("border-rose-500"), { once: true });
             return;
         }
         if (!editingSlug && slug !== slugifyCategory(slug)) {
             showFormMessage("Slugs may contain lowercase English letters, numbers, and hyphens.", true);
-            slugInput.classList.add("border-rose-500");
-            slugInput.focus();
-            slugInput.addEventListener("input", () => slugInput.classList.remove("border-rose-500"), { once: true });
             return;
         }
 
@@ -177,9 +168,6 @@ export async function initCategoryAdmin(root) {
             const categories = await getCategories({ forceRefresh: true });
             if (categories.some(category => category.slug === slug && category.slug !== editingSlug)) {
                 showFormMessage("That category slug already exists. Choose a unique slug.", true);
-                slugInput.classList.add("border-rose-500");
-                slugInput.focus();
-                slugInput.addEventListener("input", () => slugInput.classList.remove("border-rose-500"), { once: true });
                 return;
             }
             const targetSlug = editingSlug || slug;
@@ -254,10 +242,9 @@ export async function initCategoryAdmin(root) {
         migrationStatus.textContent = "Scanning legacy articles...";
         let committed = 0;
         try {
-            const [categories, articles, books] = await Promise.all([
+            const [categories, articles] = await Promise.all([
                 getCategories({ forceRefresh: true }),
-                getDocs(collection(db, "articles")),
-                getDocs(collection(db, "books"))
+                getDocs(collection(db, "articles"))
             ]);
             const categoryById = new Map(categories.map(category => [category.slug, category]));
             const categoriesToCreate = new Map();
@@ -267,18 +254,7 @@ export async function initCategoryAdmin(root) {
 
             articles.docs.forEach(snapshot => {
                 const data = snapshot.data();
-                if (!isArticleCategoryRecord(data)) {
-                    if (!data.status) {
-                        articleUpdates.push({
-                            ref: snapshot.ref,
-                            update: {
-                                status: data.visible === false ? "draft" : "published",
-                                ...(data.visible === false ? {} : { publishedAt: serverTimestamp() })
-                            }
-                        });
-                    }
-                    return;
-                }
+                if (!isArticleCategoryRecord(data)) return;
                 const rawCategoryId = String(data.categoryId || "").trim();
                 const oldCategoryId = rawCategoryId.toLowerCase();
                 const oldName = String(data.category || oldCategoryId).trim();
@@ -297,16 +273,8 @@ export async function initCategoryAdmin(root) {
                     });
                     categoryById.set(slug, { slug });
                 }
-                const update = {};
-                if (rawCategoryId !== slug) update.categoryId = slug;
-                if (!data.status) {
-                    update.status = data.visible === false ? "draft" : "published";
-                    if (data.visible !== false) update.publishedAt = serverTimestamp();
-                }
-                if (Object.keys(update).length) articleUpdates.push({ ref: snapshot.ref, update });
+                if (rawCategoryId !== slug) articleUpdates.push({ ref: snapshot.ref, categoryId: slug });
             });
-
-            const legacyBooks = books.docs.filter(snapshot => !snapshot.data().status);
 
             LEGACY_CATEGORIES.forEach(category => {
                 if (!categoryById.has(category.slug)) {
@@ -317,25 +285,17 @@ export async function initCategoryAdmin(root) {
 
             const writes = [
                 ...[...categoriesToCreate].map(([slug, data]) => batch => batch.set(doc(db, "categories", slug), data, { merge: true })),
-                ...articleUpdates.map(({ ref, update }) => batch => batch.update(ref, update)),
-                ...legacyBooks.map(snapshot => batch => batch.update(snapshot.ref, {
-                    status: snapshot.data().visible === false ? "draft" : "published",
-                    ...(snapshot.data().visible === false ? {} : { publishedAt: serverTimestamp() })
-                }))
+                ...articleUpdates.map(({ ref, categoryId }) => batch => batch.update(ref, { categoryId }))
             ];
             for (let index = 0; index < writes.length; index += MAX_BATCH_WRITES) {
                 const batch = writeBatch(db);
                 writes.slice(index, index + MAX_BATCH_WRITES).forEach(write => write(batch));
-                const result = await runAction(migrationButton, () => batch.commit(), {
-                    loadingText: "Saving...",
-                    successMsg: "Category migration batch saved."
-                });
-                if (!result.ok) throw result.error || new Error("Category migration batch was not saved.");
+                await batch.commit();
                 committed += Math.min(MAX_BATCH_WRITES, writes.length - index);
             }
             cacheCategories(await getCategories({ forceRefresh: true }));
             await refresh();
-            migrationStatus.textContent = `Migration complete: created ${categoriesToCreate.size} categories, updated ${articleUpdates.length} articles, and migrated ${legacyBooks.length} legacy books (${committed} Firestore writes). Skipped ${skippedArticles} articles without a usable English category slug.`;
+            migrationStatus.textContent = `Migration complete: created ${categoriesToCreate.size} categories and set categoryId on ${articleUpdates.length} articles (${committed} Firestore writes). Skipped ${skippedArticles} articles without a usable English category slug.`;
         } catch (error) {
             console.error("[Admin Categories] Legacy migration failed.", error);
             migrationStatus.textContent = `Migration failed after ${committed} Firestore writes. Check admin access, Firestore rules, and network, then retry.`;

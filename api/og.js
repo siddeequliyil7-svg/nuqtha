@@ -41,7 +41,8 @@ function getRemoteImage(fields) {
 }
 
 function isPubliclyPublished(fields = {}) {
-    const status = fields.status?.stringValue;
+    if (!fields.status) return true;
+    const status = fields.status.stringValue;
     return typeof status === "string" && status.trim().toLowerCase() === "published";
 }
 
@@ -111,28 +112,14 @@ async function fetchArticle(idOrSlug, bookSlug = "", includeDrafts = false) {
                 structuredQuery: {
                     from: [{ collectionId: col }],
                     where: {
-                        compositeFilter: {
-                            op: "AND",
-                            filters: [
-                                {
-                                    fieldFilter: {
-                                        field: { fieldPath: "slug" },
-                                        op: "IN",
-                                        value: {
-                                            arrayValue: {
-                                                values: candidateSlugs.map(s => ({ stringValue: s }))
-                                            }
-                                        }
-                                    }
-                                },
-                                {
-                                    fieldFilter: {
-                                        field: { fieldPath: "status" },
-                                        op: "EQUAL",
-                                        value: { stringValue: "published" }
-                                    }
+                        fieldFilter: {
+                            field: { fieldPath: "slug" },
+                            op: "IN",
+                            value: {
+                                arrayValue: {
+                                    values: candidateSlugs.map(s => ({ stringValue: s }))
                                 }
-                            ]
+                            }
                         }
                     },
                     limit: 1
@@ -163,30 +150,13 @@ async function fetchArticle(idOrSlug, bookSlug = "", includeDrafts = false) {
     let fallbackDraft = null;
     for (const col of collections) {
         try {
-            const listUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents:runQuery?key=${FIRESTORE_API_KEY}`;
-            const res = await fetch(listUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    structuredQuery: {
-                        from: [{ collectionId: col }],
-                        where: {
-                            fieldFilter: {
-                                field: { fieldPath: "status" },
-                                op: "EQUAL",
-                                value: { stringValue: "published" }
-                            }
-                        },
-                        limit: 100
-                    }
-                })
-            });
+            const listUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/${col}?pageSize=100&key=${FIRESTORE_API_KEY}`;
+            const res = await fetch(listUrl);
             if (res.ok) {
-                const results = await res.json();
-                const documents = (results || []).map(result => result.document).filter(Boolean);
-                if (documents.length) {
+                const data = await res.json();
+                if (data && Array.isArray(data.documents)) {
                     const targetSlug = slugifyText(cleanNoPrefix);
-                    for (const doc of documents) {
+                    for (const doc of data.documents) {
                         const fields = doc.fields || {};
                         const titleSlug = slugifyText(fields.title?.stringValue || "");
                         const docId = doc.name ? doc.name.split("/").pop() : "";

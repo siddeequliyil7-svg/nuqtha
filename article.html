@@ -1225,28 +1225,14 @@
                             structuredQuery: {
                                 from: [{ collectionId: col }],
                                 where: {
-                                    compositeFilter: {
-                                        op: "AND",
-                                        filters: [
-                                            {
-                                                fieldFilter: {
-                                                    field: { fieldPath: "slug" },
-                                                    op: "IN",
-                                                    value: {
-                                                        arrayValue: {
-                                                            values: candList.map(c => ({ stringValue: c }))
-                                                        }
-                                                    }
-                                                }
-                                            },
-                                            {
-                                                fieldFilter: {
-                                                    field: { fieldPath: "status" },
-                                                    op: "EQUAL",
-                                                    value: { stringValue: "published" }
-                                                }
+                                    fieldFilter: {
+                                        field: { fieldPath: "slug" },
+                                        op: "IN",
+                                        value: {
+                                            arrayValue: {
+                                                values: candList.map(c => ({ stringValue: c }))
                                             }
-                                        ]
+                                        }
                                     }
                                 },
                                 limit: 1
@@ -1305,28 +1291,14 @@
                                 structuredQuery: {
                                     from: [{ collectionId: col }],
                                     where: {
-                                        compositeFilter: {
-                                            op: "AND",
-                                            filters: [
-                                                {
-                                                    fieldFilter: {
-                                                        field: { fieldPath: "bookSlug" },
-                                                        op: "IN",
-                                                        value: {
-                                                            arrayValue: {
-                                                                values: candList.map(c => ({ stringValue: c }))
-                                                            }
-                                                        }
-                                                    }
-                                                },
-                                                {
-                                                    fieldFilter: {
-                                                        field: { fieldPath: "status" },
-                                                        op: "EQUAL",
-                                                        value: { stringValue: "published" }
-                                                    }
+                                        fieldFilter: {
+                                            field: { fieldPath: "bookSlug" },
+                                            op: "IN",
+                                            value: {
+                                                arrayValue: {
+                                                    values: candList.map(c => ({ stringValue: c }))
                                                 }
-                                            ]
+                                            }
                                         }
                                     },
                                     limit: 1
@@ -1430,43 +1402,26 @@
                 "intro", "summary", "leadTitle", "featuredTitle", "authorPhoto",
                 "accessType", "apkUrl", "fontSize"
             ];
+            const maskParams = projectedFields.map(f => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
             const articleDocsMap = new Map();
             const bookDocsMap = new Map();
 
             async function fetchCol(colName) {
                 if (checkIsRateLimited()) return;
-                let offset = 0;
-                const pageSize = 1000;
-                while (true) {
-                    const res = await fetch(`${FIRESTORE_REST_BASE}:runQuery?key=${FIRESTORE_API_KEY}`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            structuredQuery: {
-                                from: [{ collectionId: colName }],
-                                select: { fields: projectedFields.map(fieldPath => ({ fieldPath })) },
-                                where: {
-                                    fieldFilter: {
-                                        field: { fieldPath: "status" },
-                                        op: "EQUAL",
-                                        value: { stringValue: "published" }
-                                    }
-                                },
-                                limit: pageSize,
-                                offset
-                            }
-                        }),
-                        signal
-                    });
+                let nextPageToken = "";
+                let pageCount = 0;
+                do {
+                    pageCount++;
+                    const pageTokenParam = nextPageToken ? `&pageToken=${encodeURIComponent(nextPageToken)}` : "";
+                    const res = await fetch(`${FIRESTORE_REST_BASE}/${colName}?pageSize=100&key=${FIRESTORE_API_KEY}&${maskParams}${pageTokenParam}`, { signal });
                     if (res.status === 429) {
                         markFirestoreRateLimited();
                         break;
                     }
                     if (!res.ok) break;
-                    const queryResults = await res.json();
-                    const pageDocuments = (queryResults || []).map(result => result.document).filter(Boolean);
-                    if (pageDocuments.length > 0) {
-                        for (const docItem of pageDocuments) {
+                    const json = await res.json();
+                    if (json && json.documents && Array.isArray(json.documents)) {
+                        for (const docItem of json.documents) {
                             const docId = docItem.name.split("/").pop();
                             const data = {};
                             if (docItem.fields) {
@@ -1493,9 +1448,8 @@
                             (colName === "books" ? bookDocsMap : articleDocsMap).set(docId, normalized);
                         }
                     }
-                    offset += pageDocuments.length;
-                    if (pageDocuments.length < pageSize) break;
-                }
+                    nextPageToken = json.nextPageToken || "";
+                } while (nextPageToken && pageCount < 10);
             }
 
             try {
@@ -3008,7 +2962,7 @@
 
             const candidates = articlesList
                 .filter(item => item && item.id !== currentArticle.id && !isBookEntity(item) && !isChapter(item))
-                .filter(item => String(item.status || "").trim().toLowerCase() === "published")
+                .filter(item => !item.status || ["published", "live"].includes(String(item.status).trim().toLowerCase()))
                 .map(item => {
                     const itemTags = new Set((Array.isArray(item.tags) ? item.tags : []).map(normalizeKey).filter(Boolean));
                     const sharedTags = [...itemTags].filter(tag => currentTags.has(tag)).length;
