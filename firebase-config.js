@@ -87,6 +87,7 @@ try {
 }
 export const db = firestoreDb;
 export const storage = getStorage(app);
+const MAX_STORAGE_UPLOAD_TIMEOUT_MS = 14000;
 
 function createStoragePath(path) {
   const cleanPath = String(path || "").trim();
@@ -112,6 +113,34 @@ function uploadBlobToStorage(blob, path, options = {}) {
   });
 
   return new Promise((resolve, reject) => {
+    let settled = false;
+    let timeoutId;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      callback(value);
+    };
+    const requestedTimeout = Number(options.timeoutMs);
+    const timeoutMs = Number.isFinite(requestedTimeout) && requestedTimeout > 0
+      ? Math.min(requestedTimeout, MAX_STORAGE_UPLOAD_TIMEOUT_MS)
+      : MAX_STORAGE_UPLOAD_TIMEOUT_MS;
+
+    timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      const error = new Error(
+        `Firebase Storage upload timed out after ${Math.round(timeoutMs / 1000)} seconds. This may be a network/CORS issue.`
+      );
+      error.code = "storage/upload-timeout";
+      try {
+        task.cancel();
+      } catch (cancelError) {
+        console.warn("[Firebase Storage] Could not cancel timed-out upload:", cancelError);
+      }
+      reject(error);
+    }, timeoutMs);
+
     task.on("state_changed", snapshot => {
       if (typeof options.onProgress === "function") {
         options.onProgress({
@@ -119,11 +148,11 @@ function uploadBlobToStorage(blob, path, options = {}) {
           message: "Uploading..."
         });
       }
-    }, reject, async () => {
+    }, error => finish(reject, error), async () => {
       try {
-        resolve(await getDownloadURL(task.snapshot.ref));
+        finish(resolve, await getDownloadURL(task.snapshot.ref));
       } catch (error) {
-        reject(error);
+        finish(reject, error);
       }
     });
   });

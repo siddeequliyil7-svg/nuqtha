@@ -852,6 +852,10 @@ function initArticleForm() {
                 successMsg: editingArticleId
                     ? (contentStatus === "draft" ? "Article changes saved as draft." : "Article updated successfully.")
                     : (contentStatus === "draft" ? "Article saved as draft." : "Article published successfully."),
+                onTimeout(error) {
+                    setSubmitButtonsLoading(false);
+                    showGlobalStatus(`Article save timed out: ${error.message}`, "error");
+                },
                 validate() {
                     requireAdminField(document.getElementById("art-title"), "Title", 2);
                     if (contentStatus === "published") {
@@ -2056,10 +2060,21 @@ window.toggleBookPremiumFields = function(checked) {
     }
 };
 
+function restoreBookMetadataButtons() {
+    document.querySelectorAll("#publish-book-cover-btn, #save-book-draft-btn").forEach(button => {
+        button.disabled = false;
+        if (button.dataset.defaultHtml) button.innerHTML = button.dataset.defaultHtml;
+    });
+}
+
 /* ═══════════ 2. BOOK SWITCHER & STEP 1 SAVING ═══════════ */
 async function handleSaveBookStep1(e) {
     if (e && e.preventDefault) e.preventDefault();
-    const contentStatus = e?.currentTarget?.dataset.status === "draft" ? "draft" : "published";
+    const clickedTarget = e?.target instanceof Element ? e.target : e?.currentTarget;
+    const clickedButton = clickedTarget instanceof Element
+        ? clickedTarget.closest("button")
+        : null;
+    const contentStatus = (clickedButton || clickedTarget)?.dataset?.status === "draft" ? "draft" : "published";
 
     // Clear previous inline errors
     const titleErrEl = document.getElementById("book-title-error");
@@ -2371,6 +2386,11 @@ function initBookSwitcherAndStep1() {
             event,
             loadingText: "Saving...",
             successMsg: "Book published successfully.",
+            successButtonText: "Published",
+            onTimeout(error) {
+                restoreBookMetadataButtons();
+                showGlobalStatus(`Book save timed out: ${error.message}`, "error");
+            },
             validate() {
                 requireAdminField(document.getElementById("book-meta-name"), "Book title");
                 requireAdminField(document.getElementById("book-meta-intro"), "Introduction");
@@ -2382,6 +2402,11 @@ function initBookSwitcherAndStep1() {
             event,
             loadingText: "Saving...",
             successMsg: "Book saved as draft.",
+            successButtonText: "Saved",
+            onTimeout(error) {
+                restoreBookMetadataButtons();
+                showGlobalStatus(`Book save timed out: ${error.message}`, "error");
+            },
             validate() {
                 requireAdminField(document.getElementById("book-meta-name"), "Book title");
             }
@@ -2472,6 +2497,7 @@ function resetBookManagerForm() {
     const publishBtn = document.getElementById("publish-book-cover-btn");
     if (publishBtn) {
         publishBtn.innerHTML = `<span>സേവ് ചെയ്ത് അധ്യായങ്ങൾ ചേർക്കലിലേക്ക് കടക്കുക (Save & Continue to Step 2)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+        publishBtn.dataset.defaultHtml = publishBtn.innerHTML;
     }
 
     const wrapper = document.getElementById("bm-step2-3-wrapper");
@@ -2558,6 +2584,7 @@ function selectActiveBook(bookName, bookId = "") {
     const publishBtn = document.getElementById("publish-book-cover-btn");
     if (publishBtn) {
         publishBtn.innerHTML = `<span>💾 '${activeBookName}' വിവരങ്ങൾ അപ്‌ഡേറ്റ് ചെയ്യുക (Update Book Details)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
+        publishBtn.dataset.defaultHtml = publishBtn.innerHTML;
     }
 
     // Activate Step 2 & 3
@@ -2695,6 +2722,14 @@ function initChapterWriter() {
 
     let isSavingChapter = false;
     let editingChapterId = null;
+    const getChapterSubmitButtonHtml = () => editingChapterId
+        ? '<span>അധ്യായം അപ്‌ഡേറ്റ് ചെയ്യുക (Update Chapter)</span><svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+        : '<span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>';
+    const restoreChapterSubmitButton = () => {
+        if (!publishBtn) return;
+        publishBtn.disabled = false;
+        publishBtn.innerHTML = getChapterSubmitButtonHtml();
+    };
 
     function showChapterInlineMsg(text, type = "error") {
         const msgEl = document.getElementById("bm-chapter-msg");
@@ -3109,12 +3144,7 @@ function initChapterWriter() {
             throw err;
         } finally {
             isSavingChapter = false;
-            if (btn) {
-                btn.disabled = false;
-                if (!editingChapterId) {
-                    btn.innerHTML = '<span>ഈ അധ്യായം പുസ്തകത്തിലേക്ക് ചേർക്കുക (Add Chapter to Book)</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>';
-                }
-            }
+            restoreChapterSubmitButton();
         }
     }
 
@@ -3122,6 +3152,11 @@ function initChapterWriter() {
         event,
         loadingText: "Saving...",
         successMsg: "Chapter saved successfully.",
+        successButtonText: editingChapterId ? "Updated" : "Saved",
+        onTimeout(error) {
+            restoreChapterSubmitButton();
+            showChapterInlineMsg(`Chapter save timed out: ${error.message}`, "error");
+        },
         validate() {
             requireAdminField(document.getElementById("bm-art-title"), "Chapter title", 2);
             requireAdminField(document.getElementById("bm-art-content"), "Chapter content", 5);
@@ -3168,8 +3203,14 @@ function initChapterWriter() {
 function initChapterReordering() {
     const saveOrderBtn = document.getElementById("bm-save-order-btn");
     if (saveOrderBtn) {
-        saveOrderBtn.addEventListener("click", () => {
-            saveAndApplyChapterOrder(true);
+        saveOrderBtn.addEventListener("click", event => {
+            runAction(saveOrderBtn, () => saveAndApplyChapterOrder(true), {
+                event,
+                loadingText: "Saving chapter order...",
+                onTimeout(error) {
+                    showGlobalStatus(`Chapter order save timed out: ${error.message}`, "error");
+                }
+            });
         });
     }
 }
@@ -3429,18 +3470,13 @@ function initBookAttachExistingArticles() {
         if (attachBtn) {
         const executeAttach = async () => {
             if (!activeBookName) {
-                showGlobalStatus("ദയവായി ആദ്യം ഒരു പുസ്തകം തിരഞ്ഞെടുക്കുക.", "error");
-                return;
+                throw new Error("Select a book before attaching articles.");
             }
 
             const checked = Array.from(document.querySelectorAll(".bm-article-chk:checked"));
             if (checked.length === 0) {
-                showGlobalStatus("ദയവായി പുസ്തകത്തിലേക്ക് ചേർക്കാൻ ലേഖനങ്ങൾ തിരഞ്ഞെടുക്കുക.", "error");
-                return;
+                throw new Error("Select at least one article to attach.");
             }
-
-            attachBtn.disabled = true;
-            attachBtn.innerHTML = "അറ്റാച്ച് ചെയ്യുന്നു...";
 
             try {
                 let startPriority = activeBookChapters.length;
@@ -3491,15 +3527,21 @@ function initBookAttachExistingArticles() {
                 renderBookManagerCompactArticles(currentArticlesList, activeBookName);
             } catch (err) {
                 console.error("Attach articles error:", err);
-                showGlobalStatus("ലേഖനങ്ങൾ അറ്റാച്ച് ചെയ്യാൻ കഴിഞ്ഞില്ല.", "error");
-            } finally {
-                attachBtn.disabled = false;
-                attachBtn.innerHTML = "തിരഞ്ഞെടുത്തവ പുസ്തകത്തിലേക്ക് അറ്റാച്ച് ചെയ്യുക";
+                throw err;
             }
         };
 
-        attachBtn.addEventListener("click", executeAttach);
-        attachBtn.addEventListener("execute-attach", executeAttach);
+        const runAttach = event => runAction(attachBtn, executeAttach, {
+            event,
+            loadingText: "Attaching...",
+            successMsg: "Articles attached to the book.",
+            successButtonText: "Saved",
+            onTimeout(error) {
+                showGlobalStatus(`Attach operation timed out: ${error.message}`, "error");
+            }
+        });
+        attachBtn.addEventListener("click", runAttach);
+        attachBtn.addEventListener("execute-attach", runAttach);
     }
 }
 
@@ -3735,7 +3777,16 @@ function initBookPresentationUpload() {
             runAction(saveBtn, handleSavePresentation, {
                 event,
                 loadingText: "Uploading...",
-                successMsg: "Presentation saved successfully."
+                successMsg: "Presentation saved successfully.",
+                successButtonText: "Saved",
+                onTimeout(error) {
+                    if (progressEl) progressEl.classList.add("hidden");
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = "Save Presentation to Book";
+                    }
+                    showGlobalStatus(`Presentation upload timed out: ${error.message}`, "error");
+                }
             });
         });
     }
@@ -4599,29 +4650,22 @@ window.saveArticleLayoutQuick = async function(articleId) {
     const newPlacement = sanitizePlacement(placementSelect.value);
     const newPriority = sanitizePriority(priorityInput.value, 10);
 
-    if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = `<span>⏳</span>`;
-    }
-
-    try {
+    return runAction(saveBtn, async () => {
         const articleRef = doc(db, "articles", articleId);
         await updateDoc(articleRef, {
             placement: newPlacement,
             priority: newPriority,
             updatedAt: serverTimestamp()
         });
-
         showGlobalStatus(`ലേഔട്ട് വിജയകരമായി മാറ്റി! (${newPlacement}, Priority: ${newPriority})`, "success");
-    } catch (err) {
-        console.error("Error saving quick layout:", err);
-        showGlobalStatus("ലേഔട്ട് അപ്‌ഡേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല: " + (err.message || err), "error");
-    } finally {
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = `<span>Save</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+    }, {
+        loadingText: "Saving...",
+        successMsg: "Article layout saved.",
+        successButtonText: "Saved",
+        onTimeout(error) {
+            showGlobalStatus(`Layout save timed out: ${error.message}`, "error");
         }
-    }
+    });
 };
 
 
@@ -4732,6 +4776,7 @@ function initAuthorManager() {
                 form: authorForm,
                 loadingText: authorPhotoFile ? "Uploading..." : "Saving...",
                 successMsg: "Author profile saved.",
+                successButtonText: "Saved",
                 validate() {
                     requireAdminField(nameEl, "Name");
                 }

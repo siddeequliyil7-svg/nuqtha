@@ -3,7 +3,59 @@ import { APPROVED_ADMIN_EMAILS, loadFirebaseAuth } from "./auth-system.js";
 let activeAction = null;
 let activeActionButton = null;
 const runningButtons = new WeakSet();
+const successFeedbackTimers = new WeakMap();
+const successFeedbackOriginalStyles = new WeakMap();
 let toastTimer = 0;
+const ACTION_SAFETY_TIMEOUT_MS = 15000;
+
+function clearSuccessButtonFeedback(button) {
+    const timer = successFeedbackTimers.get(button);
+    if (timer) window.clearTimeout(timer);
+    successFeedbackTimers.delete(button);
+    const message = button.dataset.adminSuccessMessage;
+    const originalHtml = button.dataset.adminSuccessOriginalHtml;
+    if (!message) return;
+    if (button.textContent === message && originalHtml) button.innerHTML = originalHtml;
+    delete button.dataset.adminSuccessMessage;
+    delete button.dataset.adminSuccessOriginalHtml;
+    const originalStyles = successFeedbackOriginalStyles.get(button);
+    ["background-color", "border-color", "color"].forEach(property => {
+        const value = originalStyles?.[property];
+        if (value) button.style.setProperty(property, value);
+        else button.style.removeProperty(property);
+    });
+    successFeedbackOriginalStyles.delete(button);
+}
+
+function showSuccessButtonFeedback(button, message, originalHtml) {
+    if (!(button instanceof HTMLButtonElement) || !message) return;
+    clearSuccessButtonFeedback(button);
+    successFeedbackOriginalStyles.set(button, {
+        "background-color": button.style.getPropertyValue("background-color"),
+        "border-color": button.style.getPropertyValue("border-color"),
+        color: button.style.getPropertyValue("color")
+    });
+    button.dataset.adminSuccessMessage = message;
+    button.dataset.adminSuccessOriginalHtml = originalHtml;
+    button.textContent = message;
+    button.style.backgroundColor = "#059669";
+    button.style.borderColor = "#047857";
+    button.style.color = "#ffffff";
+    successFeedbackTimers.set(button, window.setTimeout(() => {
+        if (button.dataset.adminSuccessMessage !== message) return;
+        if (button.textContent === message) button.innerHTML = originalHtml;
+        delete button.dataset.adminSuccessMessage;
+        delete button.dataset.adminSuccessOriginalHtml;
+        const originalStyles = successFeedbackOriginalStyles.get(button);
+        ["background-color", "border-color", "color"].forEach(property => {
+            const value = originalStyles?.[property];
+            if (value) button.style.setProperty(property, value);
+            else button.style.removeProperty(property);
+        });
+        successFeedbackOriginalStyles.delete(button);
+        successFeedbackTimers.delete(button);
+    }, 3000));
+}
 
 function getToast() {
     let toast = document.getElementById("admin-action-toast");
@@ -85,8 +137,13 @@ export async function runAction(button, asyncFn, options = {}) {
     const actionButton = button instanceof HTMLElement
         ? button
         : (document.activeElement instanceof HTMLElement ? document.activeElement.closest("button, input[type=submit]") : null);
+    if (actionButton instanceof HTMLButtonElement) clearSuccessButtonFeedback(actionButton);
     if (activeAction) {
         if (actionButton === activeActionButton) {
+            if (activeAction.timedOut) {
+                showToast("The previous admin action is still processing. Wait for it to finish before retrying.", "error");
+                return { ok: false, skipped: true };
+            }
             return options.nested
                 ? { ok: true, value: await asyncFn(activeAction), nested: true }
                 : { ok: false, skipped: true };
@@ -102,6 +159,7 @@ export async function runAction(button, asyncFn, options = {}) {
     if (actionButton && runningButtons.has(actionButton)) return { ok: false, skipped: true };
 
     const previousDisabled = actionButton?.disabled;
+    const previousHtml = actionButton instanceof HTMLButtonElement ? actionButton.innerHTML : "";
     let loadingIndicator = null;
     if (actionButton) {
         runningButtons.add(actionButton);
@@ -118,22 +176,51 @@ export async function runAction(button, asyncFn, options = {}) {
 
     const context = {
         reportProgress(progress) {
+            if (context.timedOut) return;
             const percent = Number.isFinite(progress?.percent) ? ` ${Math.round(progress.percent)}%` : "";
             const message = progress?.message || options.loadingText || "Saving...";
             if (loadingIndicator?.isConnected) loadingIndicator.textContent = ` ${message}${percent}`;
             showToast(`${message}${percent}`, "pending");
-        }
+        },
+        timedOut: false,
+        timeoutError: null
     };
     activeAction = context;
     activeActionButton = actionButton;
     showToast(options.loadingText || "Saving...", "pending");
+    const safetyTimeoutId = window.setTimeout(() => {
+        if (activeAction !== context || context.timedOut) return;
+        context.timedOut = true;
+        context.timeoutError = new Error(
+            `This admin action did not finish within ${ACTION_SAFETY_TIMEOUT_MS / 1000} seconds. Check your connection and try again.`
+        );
+        context.timeoutError.code = "admin/action-timeout";
+        console.error("[Admin Action] Safety timeout reached:", context.timeoutError);
+        showToast(formatActionError(context.timeoutError), "error");
+        if (actionButton) {
+            loadingIndicator?.remove();
+            actionButton.removeAttribute("aria-busy");
+            actionButton.disabled = Boolean(previousDisabled);
+            if (previousHtml) actionButton.innerHTML = previousHtml;
+            runningButtons.delete(actionButton);
+        }
+        try {
+            options.onTimeout?.(context.timeoutError);
+        } catch (error) {
+            console.error("[Admin Action] Could not restore the timed-out action UI:", error);
+        }
+    }, ACTION_SAFETY_TIMEOUT_MS);
 
     try {
         await assertApprovedAdmin();
+        if (context.timedOut) throw context.timeoutError;
         if (typeof options.validate === "function") options.validate();
         const value = await asyncFn(context);
         if (value === false) return { ok: false, validation: true };
-        if (options.successMsg) showToast(options.successMsg, "success");
+        if (!context.timedOut) {
+            if (options.successMsg) showToast(options.successMsg, "success");
+            if (options.successButtonText) showSuccessButtonFeedback(actionButton, options.successButtonText, previousHtml);
+        }
         return { ok: true, value };
     } catch (error) {
         console.error("[Admin Action] Action failed:", error);
@@ -142,6 +229,7 @@ export async function runAction(button, asyncFn, options = {}) {
         if (options.rethrow) throw error;
         return { ok: false, error };
     } finally {
+        window.clearTimeout(safetyTimeoutId);
         activeAction = null;
         activeActionButton = null;
         if (actionButton) {

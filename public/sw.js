@@ -38,6 +38,11 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
+  if (request.mode === "navigate" && /^\/admin(?:\.html)?\/?$/.test(url.pathname)) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   if (request.mode === "navigate") {
     event.respondWith((async () => {
       const isBookRoute = /\/book\//.test(url.pathname);
