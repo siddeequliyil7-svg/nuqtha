@@ -229,8 +229,8 @@ if (typeof window !== "undefined" && !window.__NUQTHA_IMG_RETRY_INSTALLED__) {
       const target = event.target;
       if (target && target.tagName === "IMG") {
         const isCoverImage = target.dataset.nuqthaCover === "true";
-        if (typeof target.onerror === "function" && !isCoverImage) return;
-        if (isCoverImage) event.stopImmediatePropagation();
+        if (isCoverImage || target.dataset.nuqthaImageDoc) return;
+        if (typeof target.onerror === "function") return;
         const src = target.currentSrc || target.src;
         if (target.dataset.nuqthaFallback) {
           target.hidden = true;

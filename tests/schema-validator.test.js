@@ -124,7 +124,7 @@ describe("Schema Validator & Sanitizer Suite", () => {
         });
 
         it("normalizes legacy cover image field names", () => {
-            ["coverImage", "coverUrl", "image", "thumbnail"].forEach((field) => {
+            ["cover", "coverImage", "coverUrl", "image", "thumbnail"].forEach((field) => {
                 const normalized = normalizeArticleDoc({ title: "Cover test", [field]: "https://example.com/cover.jpg" });
                 expect(normalized.imageUrl).to.equal("https://example.com/cover.jpg");
                 expect(normalized.coverImage).to.equal(normalized.imageUrl);
@@ -191,6 +191,11 @@ describe("Schema Validator & Sanitizer Suite", () => {
 
         it("returns an empty result when the caller explicitly disables image fallbacks", () => {
             expect(getArticleImageUrl({ imageUrl: "/cover-placeholder.svg" }, "")).to.equal("");
+        });
+
+        it("resolves supported relative cover paths from the site root", () => {
+            expect(getArticleImageUrl({ cover: "assets/books/cover.jpg" }, ""))
+                .to.equal("/assets/books/cover.jpg");
         });
 
         it("uses a raster data URL when no permanent cover alias exists", () => {

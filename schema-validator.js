@@ -360,6 +360,10 @@ export function sanitizeImageUrl(url) {
         }
     }
 
+    if (/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\\)[A-Za-z0-9._~!$&'()*+,;=@%-]+(?:\/[A-Za-z0-9._~!$&'()*+,;=@%-]+)*(?:[?#][^\s<>"']*)?$/.test(trimmed)) {
+        return trimmed;
+    }
+
     // Allow valid Data URIs for safe raster images only (JPEG, PNG, WEBP, GIF)
     if (/^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
         return trimmed;
@@ -388,6 +392,7 @@ export function getArticleImageUrl(item, fallback = "/cover-placeholder.svg") {
             item.imageUrl,
             item.coverUrl,
             item.coverImage,
+            item.cover,
             item.image,
             item.thumbnail,
             item.thumbnailUrl,
@@ -398,7 +403,12 @@ export function getArticleImageUrl(item, fallback = "/cover-placeholder.svg") {
                 if (typeof candidate !== "string" || isCoverPlaceholder(candidate) ||
                     /^data:/i.test(candidate) !== allowDataUri) continue;
                 const safeUrl = sanitizeImageUrl(candidate);
-                if (safeUrl) return safeUrl;
+                if (safeUrl) {
+                    if (!/^https?:\/\//i.test(safeUrl) && !/^data:/i.test(safeUrl)) {
+                        return `/${safeUrl.replace(/^(?:\.\/|\/)+/, "")}`;
+                    }
+                    return safeUrl;
+                }
             }
         }
     }
@@ -517,8 +527,10 @@ export function validateAndSanitizeArticleForSave(raw) {
     }
 
     // 6. Cover image
-    const imageUrl = sanitizeImageUrl(raw.imageUrl || raw.coverUrl || raw.coverImage || raw.image || "");
-    const thumbnailUrl = sanitizeImageUrl(raw.thumbnailUrl || raw.ogImage || raw.imageUrl || "");
+    const imageUrl = getArticleImageUrl(raw, "");
+    const thumbnailUrl = [
+        raw.thumbnailUrl, raw.thumbnail, raw.ogImage, imageUrl
+    ].map(sanitizeImageUrl).find(url => url && !isCoverPlaceholder(url)) || imageUrl;
 
     // 7. Colors & Font Size
     const titleColor = sanitizeColor(raw.titleColor, "#1e1b18");
@@ -685,12 +697,12 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         return "";
     };
     const imageUrl = firstSafeCoverUrl([
-        rawDoc.imageUrl, rawDoc.coverUrl, rawDoc.coverImage, rawDoc.image,
+        rawDoc.imageUrl, rawDoc.coverUrl, rawDoc.coverImage, rawDoc.cover, rawDoc.image,
         rawDoc.thumbnailUrl, rawDoc.thumbnail, rawDoc.ogImage
     ]) || "/cover-placeholder.svg";
     const thumbnailUrl = firstSafeCoverUrl([
         rawDoc.thumbnailUrl, rawDoc.thumbnail, rawDoc.ogImage, rawDoc.imageUrl,
-        rawDoc.coverUrl, rawDoc.coverImage, rawDoc.image
+        rawDoc.coverUrl, rawDoc.coverImage, rawDoc.cover, rawDoc.image
     ]) || imageUrl;
     const slug = sanitizeString(rawDoc.slug || slugifyText(title), 200, "");
     const bookSlug = sanitizeString(rawDoc.bookSlug || (rawDoc.bookName ? slugifyText(rawDoc.bookName) : (rawDoc.playlistName ? slugifyText(rawDoc.playlistName) : "")), 200, "");

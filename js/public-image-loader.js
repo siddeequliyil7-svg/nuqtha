@@ -3,7 +3,7 @@ import { getArticleImageUrl } from "../schema-validator.js";
 import { filterPublicCollections } from "./public-status.js";
 
 const REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
-const IMAGE_FIELDS = ["imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage"];
+const IMAGE_FIELDS = ["imageUrl", "coverUrl", "coverImage", "cover", "image", "thumbnail", "thumbnailUrl", "ogImage"];
 const MAX_ACTIVE_REQUESTS = 3;
 const IMAGE_DB_NAME = "nuqtha-image-cache";
 const IMAGE_DB_VERSION = 1;
@@ -130,10 +130,19 @@ export async function fetchPublicCollections() {
     if (publicCollectionsPromise) return publicCollectionsPromise;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
-    publicCollectionsPromise = Promise.all([
+    publicCollectionsPromise = Promise.allSettled([
         fetchCollectionWithCache("articles", controller.signal),
         fetchCollectionWithCache("books", controller.signal)
-    ]).then(([articles, books]) => {
+    ]).then(results => {
+        const [articlesResult, booksResult] = results;
+        const articles = articlesResult.status === "fulfilled" ? articlesResult.value : [];
+        const books = booksResult.status === "fulfilled" ? booksResult.value : [];
+        if (articlesResult.status === "rejected") {
+            console.warn("[NUQTHA Data] Articles are unavailable; continuing with the remaining public data.", articlesResult.reason);
+        }
+        if (booksResult.status === "rejected") {
+            console.warn("[NUQTHA Data] Books are unavailable; continuing with the remaining public data.", booksResult.reason);
+        }
         publicCollectionsCache = {
             ...filterPublicCollections(articles, books),
             hasFirestoreContent: articles.length > 0 || books.length > 0
@@ -333,7 +342,7 @@ function handleImageError(image) {
         image.dataset.nuqthaImageFallbackCollection,
         image.dataset.nuqthaImageFallbackDoc
     ).then(source => {
-        if (source && image.isConnected) image.src = source;
+        if (source && image.isConnected) revealImage(image, source);
     }).catch(error => {
         console.warn("[NUQTHA Images] Could not load the fallback image.", error);
     });

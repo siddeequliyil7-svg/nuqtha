@@ -1,5 +1,5 @@
 import { getBookArticleLinkFields, getBookChapters, getBookChapterIds, mergeBookRecords } from "../book-data.js";
-import { filterAndSortChapters, getBookChapters as fetchBookChapters, getBookPageLightData, getRelatedBooks, isArticleInBook } from "../js/book-data.js";
+import { areSameBookByTitle, filterAndSortChapters, getBookChapters as fetchBookChapters, getBookPageLightData, getRelatedBooks, isArticleInBook, parseFirestoreRestDoc } from "../js/book-data.js";
 
 const { describe, it } = window;
 const { expect } = window.chai;
@@ -97,6 +97,45 @@ describe("Book chapter relationships", () => {
         expect(lightData.isPremium).to.equal(true);
         expect(lightData._imageCollection).to.equal("books");
         expect(lightData._imageDocId).to.equal("book-1");
+    });
+
+    it("matches duplicate book records by title without merging different authors or volumes", () => {
+        expect(areSameBookByTitle(
+            { title: "Book Title", author: "Author", volume: 1 },
+            { bookName: " book   title ", author: "Author", volume: "1" }
+        )).to.equal(true);
+        expect(areSameBookByTitle(
+            { title: "Book Title", author: "Author A" },
+            { title: "Book Title", author: "Author B" }
+        )).to.equal(false);
+        expect(areSameBookByTitle(
+            { title: "Book Title", volume: 1 },
+            { title: "Book Title", volume: 2 }
+        )).to.equal(false);
+    });
+
+    it("decodes nested Firestore REST arrays, maps, and numeric values", () => {
+        const document = parseFirestoreRestDoc({
+            name: "projects/project/databases/(default)/documents/books/book-1",
+            fields: {
+                chapters: {
+                    arrayValue: {
+                        values: [{
+                            mapValue: {
+                                fields: {
+                                    chapterId: { stringValue: "chapter-1" },
+                                    order: { integerValue: "2" }
+                                }
+                            }
+                        }]
+                    }
+                },
+                price: { doubleValue: 4.5 }
+            }
+        });
+
+        expect(document).to.include({ id: "book-1", price: 4.5 });
+        expect(document.chapters).to.deep.equal([{ chapterId: "chapter-1", order: 2 }]);
     });
 
     it("skips the redundant book-document request when book metadata is supplied", async () => {

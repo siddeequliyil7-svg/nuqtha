@@ -13,7 +13,7 @@ const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${enco
 const CHAPTER_LIST_FIELDS = [
     "title", "author", "date", "order", "priority", "createdAt", "isChapter",
     "bookId", "parentBookId", "bookName", "playlistName", "bookSlug", "type",
-    "category", "status", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail",
+    "category", "status", "imageUrl", "coverUrl", "coverImage", "cover", "image", "thumbnail",
     "thumbnailUrl", "ogImage", "excerpt", "transcription"
 ];
 const prefetchedBookPages = new Set();
@@ -150,6 +150,19 @@ export function normalizeBookKey(s) {
         .trim()
         .toLowerCase()
         .replace(/\s+/g, " ");
+}
+
+export function areSameBookByTitle(left, right) {
+    const leftTitle = normalizeBookKey(left?.title || left?.bookName);
+    const rightTitle = normalizeBookKey(right?.title || right?.bookName);
+    if (!leftTitle || leftTitle !== rightTitle) return false;
+
+    for (const field of ["author", "volume", "issue"]) {
+        const leftValue = normalizeBookKey(left?.[field]);
+        const rightValue = normalizeBookKey(right?.[field]);
+        if (leftValue && rightValue && leftValue !== rightValue) return false;
+    }
+    return true;
 }
 
 function isBookRecord(item) {
@@ -411,7 +424,7 @@ export async function getBookChapters(bookId, options = {}) {
                 const apiKey = getFirebaseApiKey();
                 // 1. Try books collection first
                 let bookRes = await fetchWithRetry(
-                    `${FIRESTORE_REST_BASE}/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "status", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
+                    `${FIRESTORE_REST_BASE}/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "status", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "cover", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
                     { signal: controller.signal },
                     2,
                     250
@@ -419,7 +432,7 @@ export async function getBookChapters(bookId, options = {}) {
                 // 2. Fallback to articles collection
                 if (!bookRes || !bookRes.ok) {
                     bookRes = await fetchWithRetry(
-                        `${FIRESTORE_REST_BASE}/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "status", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
+                        `${FIRESTORE_REST_BASE}/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "status", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "cover", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
                         { signal: controller.signal },
                         2,
                         250
@@ -575,27 +588,26 @@ export function parseFirestoreRestDoc(docItem, fallbackId = "") {
 
     if (docItem.fields) {
         for (const [k, v] of Object.entries(docItem.fields)) {
-            if (v.stringValue !== undefined) data[k] = v.stringValue;
-            else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
-            else if (v.doubleValue !== undefined) data[k] = parseFloat(v.doubleValue);
-            else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
-            else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
-            else if (v.arrayValue && v.arrayValue.values) {
-                data[k] = v.arrayValue.values.map(val => {
-                    if (val.stringValue !== undefined) return val.stringValue;
-                    if (val.mapValue && val.mapValue.fields) {
-                        const sub = {};
-                        for (const [sk, sv] of Object.entries(val.mapValue.fields)) {
-                            sub[sk] = sv.stringValue || sv.integerValue || sv.booleanValue;
-                        }
-                        return sub;
-                    }
-                    return val;
-                });
-            } else {
-                data[k] = null;
-            }
+            data[k] = decodeFirestoreRestValue(v);
         }
     }
     return data;
+}
+
+function decodeFirestoreRestValue(value) {
+    if (!value || typeof value !== "object") return value ?? null;
+    if ("nullValue" in value) return null;
+    if ("stringValue" in value) return value.stringValue;
+    if ("integerValue" in value) return Number(value.integerValue);
+    if ("doubleValue" in value) return Number(value.doubleValue);
+    if ("booleanValue" in value) return value.booleanValue;
+    if ("timestampValue" in value) return value.timestampValue;
+    if ("referenceValue" in value) return value.referenceValue;
+    if ("arrayValue" in value) return (value.arrayValue.values || []).map(decodeFirestoreRestValue);
+    if ("mapValue" in value) {
+        return Object.fromEntries(
+            Object.entries(value.mapValue.fields || {}).map(([key, child]) => [key, decodeFirestoreRestValue(child)])
+        );
+    }
+    return null;
 }

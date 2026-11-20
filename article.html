@@ -345,7 +345,7 @@
                                 </span>
                                 <span id="dropdown-saved-count" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold">0</span>
                             </button>
-                            <a id="dropdown-admin-link" href="admin.html" class="hidden flex items-center justify-between px-4 py-2.5 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] transition">
+                            <a id="dropdown-admin-link" href="/admin.html" class="hidden flex items-center justify-between px-4 py-2.5 hover:bg-[#b4532c]/10 dark:hover:bg-white/10 text-xs font-bold text-[#b4532c] dark:text-[#f87171] transition">
                                 <span class="flex items-center gap-2.5">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                     <span>Admin</span>
@@ -666,8 +666,8 @@
         import { syncReadingBg } from "/reading-theme.js";
         import { FALLBACK_ARTICLES } from "/fallback-data.js";
         import { initHeaderAuthUI } from "/js/auth-ui.js";
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, getArticleImageUrl, cleanUrlPart, sanitizeCategory } from "/schema-validator.js";
-        import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, getRelatedBooks, saveBookPageLightCache, saveBookChapterListCache, readBookChapterListCache } from "/js/book-data.js";
+        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, getArticleImageUrl, cleanUrlPart, sanitizeCategory, sanitizeImageUrl } from "/schema-validator.js";
+        import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, getRelatedBooks, saveBookPageLightCache, saveBookChapterListCache, readBookChapterListCache, parseFirestoreRestDoc, areSameBookByTitle } from "/js/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "/js/author-service.js";
         import { categoryUrl, categoryTag } from "/js/category-link.js";
         import { getArticleCategoryId, getCachedCategoryName, getCategories } from "/js/category-store.js";
@@ -952,15 +952,22 @@
         // Dynamic Image Preloader
         function preloadCoverImage(url) {
             if (!url || /^data:/i.test(url) || url.includes("placeholder")) return;
-            const existing = Array.from(document.querySelectorAll('link[rel="preload"][as="image"]')).find(link => link.href === new URL(url, window.location.href).href);
+            const resolvedUrl = new URL(url, `${window.location.origin}/`).href;
+            const existing = Array.from(document.querySelectorAll('link[rel="preload"][as="image"]')).find(link => link.href === resolvedUrl);
             if (!existing) {
                 const link = document.createElement("link");
                 link.rel = "preload";
                 link.as = "image";
-                link.href = url;
+                link.href = resolvedUrl;
                 link.fetchPriority = "high";
                 document.head.appendChild(link);
             }
+        }
+
+        function resolveArticleImageUrl(value) {
+            const safeUrl = sanitizeImageUrl(value);
+            if (!safeUrl) return "";
+            return new URL(safeUrl, `${window.location.origin}/`).href;
         }
 
         function escapeHtml(value) {
@@ -976,7 +983,7 @@
             const date = escapeHtml(lightData.date || "");
             const intro = String(lightData.intro || "").trim().replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
             const hasIntro = intro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
-            const coverUrl = getArticleImageUrl({ imageUrl: lightData.coverUrl }, "");
+            const coverUrl = getArticleImageUrl(lightData, "");
             const hasCover = Boolean(coverUrl || getDeferredImageAttributes(lightData));
             const coverMarkup = hasCover
                 ? buildDeferredImageMarkup(lightData, coverUrl, `${title} cover`, "book-v2-cover-img", 300, 400, "eager")
@@ -984,6 +991,7 @@
             const introMarkup = hasIntro
                 ? `<div class="book-v2-intro"><span class="book-v2-quote-mark" aria-hidden="true">&ldquo;</span><div id="book-intro-text" class="book-v2-intro-text">${escapeHtml(intro)}</div><button id="book-intro-toggle" type="button" class="book-v2-intro-toggle" aria-expanded="false" aria-controls="book-intro-text" onclick="toggleBookIntro()">Read more <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7 5 5 5-5"/></svg></button></div>`
                 : "";
+            const bookSlug = cleanRouteSlug(lightData.slug || lightData.bookSlug || lightData.id || "");
             const chapterRows = Array.isArray(cachedChapters) ? cachedChapters.filter(isPubliclyPublished).map((chapter, index) => {
                 const chapterTitle = typeof chapter.title === "string" && chapter.title.trim()
                     ? chapter.title.trim()
@@ -992,7 +1000,11 @@
                 const chapterImage = chapterImageUrl
                     ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapterImageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true"></div>`
                     : `<div class="chapter-thumbnail chapter-thumbnail-empty" aria-hidden="true">📄</div>`;
-                return `<div class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">Chapter ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></div>`;
+                const chapterSlug = cleanRouteSlug(chapter.slug || slugifyText(chapterTitle) || chapter.id);
+                const href = bookSlug && chapterSlug
+                    ? `/story/${encodeURIComponent(bookSlug)}/${encodeURIComponent(chapterSlug)}`
+                    : getStoryUrl({ ...chapter, bookId: lightData.id, bookName: lightData.title, bookSlug });
+                return `<a href="${href}" data-article-id="${escapeHtml(chapter.id || "")}" class="chapter-card-link book-light-chapter-row">${chapterImage}<div><span class="book-light-chapter-number">Chapter ${index + 1}</span><h4>${escapeHtml(chapterTitle)}</h4><p class="chapter-author">${escapeHtml(chapter.author || author)}</p></div></a>`;
             }).join("") : "";
             const authorInitial = getEnglishInitial(lightData.author);
 
@@ -1010,7 +1022,7 @@
                                     <span class="book-v2-ribbon" aria-hidden="true"></span>
                                     <span class="book-v2-spine" aria-hidden="true"></span>
                                     <div class="book-v2-cover">
-                                        ${hasCover ? `${coverMarkup}<div class="book-v2-cover-fallback hidden" data-nuqtha-image-placeholder aria-hidden="true">📚</div>` : `<div class="book-v2-cover-fallback" aria-hidden="true">📚</div>`}
+                                        ${hasCover ? `${coverMarkup}                                        <div class="book-v2-cover-fallback hidden" data-nuqtha-image-placeholder aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>` : `<div class="book-v2-cover-fallback" aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>`}
                                     </div>
                                 </div>
                             </div>
@@ -1123,19 +1135,7 @@
                         } else if (res.ok) {
                             const json = await res.json();
                             if (json && json.fields) {
-                                const data = {};
-                                for (const [k, v] of Object.entries(json.fields)) {
-                                    if (v.stringValue !== undefined) data[k] = v.stringValue;
-                                    else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
-                                    else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
-                                    else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
-                                    else if (v.arrayValue && v.arrayValue.values) {
-                                        data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
-                                    } else {
-                                        data[k] = null;
-                                    }
-                                }
-                                const normalized = normalizeArticleDoc(data, cleanId);
+                                const normalized = normalizeArticleDoc(parseFirestoreRestDoc(json, cleanId), cleanId);
                                 normalized._imageCollection = col;
                                 normalized._imageDocId = cleanId;
                                 if (col === "books") {
@@ -1262,21 +1262,7 @@
                         const docItem = Array.isArray(qJson) ? qJson.find(item => item && item.document)?.document : null;
                         if (docItem) {
                             const docId = docItem.name.split("/").pop();
-                            const data = {};
-                            if (docItem.fields) {
-                                for (const [k, v] of Object.entries(docItem.fields)) {
-                                    if (v.stringValue !== undefined) data[k] = v.stringValue;
-                                    else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
-                                    else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
-                                    else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
-                                    else if (v.arrayValue && v.arrayValue.values) {
-                                        data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
-                                    } else {
-                                        data[k] = null;
-                                    }
-                                }
-                            }
-                            const normalized = normalizeArticleDoc(data, docId);
+                            const normalized = normalizeArticleDoc(parseFirestoreRestDoc(docItem, docId), docId);
                             normalized._imageCollection = col;
                             normalized._imageDocId = docId;
                             if (col === "books") {
@@ -1342,21 +1328,7 @@
                             const docItem = Array.isArray(qJson) ? qJson.find(item => item && item.document)?.document : null;
                             if (docItem) {
                                 const docId = docItem.name.split("/").pop();
-                                const data = {};
-                                if (docItem.fields) {
-                                    for (const [k, v] of Object.entries(docItem.fields)) {
-                                        if (v.stringValue !== undefined) data[k] = v.stringValue;
-                                        else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
-                                        else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
-                                        else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
-                                        else if (v.arrayValue && v.arrayValue.values) {
-                                            data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
-                                        } else {
-                                            data[k] = null;
-                                        }
-                                    }
-                                }
-                                const normalized = normalizeArticleDoc(data, docId);
+                                const normalized = normalizeArticleDoc(parseFirestoreRestDoc(docItem, docId), docId);
                                 normalized._imageCollection = col;
                                 normalized._imageDocId = docId;
                                 if (col === "books") {
@@ -1378,9 +1350,21 @@
 
             // 2. Direct document ID lookup in both collections (deduplicated)
             const idsToTry = Array.from(new Set([cleanDecoded, cleanRaw, decodedId])).filter(Boolean);
+            const explicitDocumentId = Boolean(
+                urlParams.get("id") &&
+                !urlParams.get("slug") &&
+                !urlParams.get("chapterSlug") &&
+                !pathStorySlug &&
+                !pathChapterSlug &&
+                !isBookRoute
+            );
+            const hasSlugRoute = Boolean(
+                querySlug || pathStorySlug || pathChapterSlug || pathBookSlug ||
+                editionParam || urlParams.get("bookSlug")
+            );
             for (const tryId of idsToTry) {
                 const isLikelyDocId = /^[A-Za-z0-9_-]{15,30}$/.test(tryId) && !tryId.includes("--");
-                if (isLikelyDocId || idsToTry.length === 1) {
+                if ((isLikelyDocId && !hasSlugRoute) || explicitDocumentId) {
                     const direct = await fetchTargetDocument(tryId, signal);
                     if (direct) return direct;
                 }
@@ -1468,21 +1452,7 @@
                     if (pageDocuments.length > 0) {
                         for (const docItem of pageDocuments) {
                             const docId = docItem.name.split("/").pop();
-                            const data = {};
-                            if (docItem.fields) {
-                                for (const [k, v] of Object.entries(docItem.fields)) {
-                                    if (v.stringValue !== undefined) data[k] = v.stringValue;
-                                    else if (v.integerValue !== undefined) data[k] = parseInt(v.integerValue, 10);
-                                    else if (v.timestampValue !== undefined) data[k] = v.timestampValue;
-                                    else if (v.booleanValue !== undefined) data[k] = v.booleanValue;
-                                    else if (v.arrayValue && v.arrayValue.values) {
-                                        data[k] = v.arrayValue.values.map(val => val.stringValue || (val.mapValue ? val.mapValue.fields : val));
-                                    } else {
-                                        data[k] = null;
-                                    }
-                                }
-                            }
-                            const normalized = normalizeArticleDoc(data, docId);
+                            const normalized = normalizeArticleDoc(parseFirestoreRestDoc(docItem, docId), docId);
                             normalized._imageCollection = colName;
                             normalized._imageDocId = docId;
                             if (colName === "books") {
@@ -1513,9 +1483,16 @@
                         const publicArticleMap = new Map(publicCollections.articles.map(article => [article.id, article]));
                         for (const book of publicCollections.books) {
                             const articleRecord = publicArticleMap.get(book.id) ||
-                                Array.from(publicArticleMap.values()).find(article => book.slug && article.slug === book.slug);
+                                Array.from(publicArticleMap.values()).find(article =>
+                                    (book.slug && article.slug === book.slug) ||
+                                    (book.bookSlug && article.bookSlug === book.bookSlug) ||
+                                    (isBookEntity(article) && areSameBookByTitle(article, book))
+                                );
                             const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(book, "");
                             const thumbnailUrl = getArticleImageUrl(book, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
+                            if (articleRecord?.id && articleRecord.id !== book.id) {
+                                publicArticleMap.delete(articleRecord.id);
+                            }
                             publicArticleMap.set(book.id, {
                                 ...(articleRecord || {}),
                                 ...book,
@@ -1556,10 +1533,17 @@
                 booksSnap.forEach(d => {
                     const bookData = stripInlineImageData(d.data());
                     const articleRecord = articles.find(article =>
-                        article.id === d.id || (bookData.slug && article.slug === bookData.slug)
+                        article.id === d.id ||
+                        (bookData.slug && article.slug === bookData.slug) ||
+                        (bookData.bookSlug && article.bookSlug === bookData.bookSlug) ||
+                        (isBookEntity(article) && areSameBookByTitle(article, bookData))
                     );
                     const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(bookData, "");
                     const thumbnailUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
+                    if (articleRecord?.id && articleRecord.id !== d.id) {
+                        const articleIndex = articles.findIndex(article => article.id === articleRecord.id);
+                        if (articleIndex >= 0) articles.splice(articleIndex, 1);
+                    }
                     const norm = normalizeArticleDoc({
                         ...(articleRecord || {}),
                         ...bookData,
@@ -1799,7 +1783,10 @@
                 if (currentDoc && (currentDoc.type === "BOOK" || currentDoc.isBook === true || isBookEditionDoc(currentDoc)) &&
                     !getArticleImageUrl(currentDoc, "")) {
                     const articleBook = allArticles.find(item =>
-                        item.id === currentDoc.id || (currentDoc.slug && item.slug === currentDoc.slug)
+                        item.id === currentDoc.id ||
+                        (currentDoc.slug && item.slug === currentDoc.slug) ||
+                        (currentDoc.bookSlug && item.bookSlug === currentDoc.bookSlug) ||
+                        (isBookEntity(item) && areSameBookByTitle(item, currentDoc))
                     );
                     const coverUrl = getArticleImageUrl(articleBook, "");
                     if (coverUrl) {
@@ -1812,6 +1799,9 @@
                             thumbnailUrl,
                             ogImage: thumbnailUrl
                         };
+                    } else if (articleBook?._imageCollection && articleBook?._imageDocId) {
+                        currentDoc._imageFallbackCollection = articleBook._imageCollection;
+                        currentDoc._imageFallbackDocId = articleBook._imageDocId;
                     }
                 }
 
@@ -1999,7 +1989,12 @@
                     if (hasParentBook) {
                         const parentBook = allArticles.find(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && (a.id === currentDoc.bookId || a.bookName === currentDoc.bookName || a.title === currentDoc.bookName || a.slug === currentDoc.bookSlug));
                         if (parentBook) {
-                            const isUnlocked = await isUserUnlockedForBook(parentBook);
+                            let isUnlocked = false;
+                            try {
+                                isUnlocked = await isUserUnlockedForBook(parentBook);
+                            } catch (error) {
+                                console.warn("[Reader] Chapter access verification failed.", error);
+                            }
                             if (!isUnlocked) {
                                 if (skeletonEl) skeletonEl.classList.add("hidden");
                                 showPaywallModal({
@@ -2115,7 +2110,7 @@
             const authorPhoto = (book.authorPhoto || book.authorAvatar || "").trim();
             const firstLetter = getEnglishInitial(cleanAuthor);
             const authorId = (cleanAuthor || '').trim().toLowerCase().replace(/[^a-z0-9\u0D00-\u0D7F]+/g, '-');
-            const authorUrl = `author.html?id=${encodeURIComponent(authorId)}&name=${encodeURIComponent(cleanAuthor)}`;
+            const authorUrl = `/author.html?id=${encodeURIComponent(authorId)}&name=${encodeURIComponent(cleanAuthor)}`;
 
             const isPremium = isPremiumBook(book);
 
@@ -2607,7 +2602,7 @@
             const authorLink = document.getElementById('art-author-link');
             const cleanAuthorSlug = slugifyAuthor(authorName);
             if (authorLink) {
-                authorLink.href = `author.html?id=${encodeURIComponent(cleanAuthorSlug)}&name=${encodeURIComponent(authorName)}`;
+                authorLink.href = `/author.html?id=${encodeURIComponent(cleanAuthorSlug)}&name=${encodeURIComponent(authorName)}`;
                 authorLink.title = `${authorName} - View author profile`;
             }
             const avatarEl = document.getElementById('art-author-avatar');
@@ -2939,11 +2934,12 @@
                     const imgMatch = p.match(/^!\[(.*?)(?:\|(small|medium|full))?\]\((.*?)\)$/);
                     if (imgMatch) {
                         const caption = imgMatch[1] || "";
-                        const url = imgMatch[3];
+                        const url = resolveArticleImageUrl(imgMatch[3]);
+                        if (!url) return "";
                         return `
                             <figure class="article-image-wrap my-6">
-                                <img src="${url}" alt="${caption}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" width="1200" height="800" style="aspect-ratio:3/2;object-fit:contain;background:var(--surface)" loading="lazy">
-                                ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${caption}</figcaption>` : ''}
+                                <img src="${escapeHtml(url)}" alt="${escapeHtml(caption)}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" width="1200" height="800" style="aspect-ratio:3/2;object-fit:contain;background:var(--surface)" loading="lazy">
+                                ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${escapeHtml(caption)}</figcaption>` : ''}
                             </figure>
                         `;
                     }

@@ -13,7 +13,7 @@ import { filterPublicCollections, isPubliclyPublished } from "./js/public-status
 import { syncReadingBg } from "./reading-theme.js";
 import { getBookChapterIds } from "./book-data.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
-import { countBookChapters, filterAndSortChapters, normalizeBookKey, prefetchBookPage, saveBookChapterListCache } from "./js/book-data.js";
+import { areSameBookByTitle, countBookChapters, filterAndSortChapters, prefetchBookPage, saveBookChapterListCache } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
@@ -51,7 +51,8 @@ function buildCardImageMarkup(item, className, alt, width, height, eager = false
     if (!imageUrl && !deferredAttributes) return "";
 
     const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
-    const styleAttribute = 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"';
+    const opacity = deferredAttributes ? "0" : "1";
+    const styleAttribute = `style="position:absolute;inset:0;opacity:${opacity};transition:opacity .25s ease;"`;
     const priority = eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
     return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" ${priority} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
 }
@@ -446,14 +447,17 @@ function getBookCoverItems(items) {
     const chapterIds = getBookChapterIds(items);
     const seenIds = new Set();
     const seenSlugs = new Set();
+    const seenTitleBooks = [];
 
     return items.filter(book => {
         if (!isPubliclyPublished(book) || !isBookEntity(book) || isChapterEntity(book) || chapterIds.has(book.id)) return false;
         const id = String(book.id || "").trim();
         const slug = String(book.slug || book.bookSlug || "").trim().toLowerCase();
-        if ((id && seenIds.has(id)) || (slug && seenSlugs.has(slug))) return false;
+        if ((id && seenIds.has(id)) || (slug && seenSlugs.has(slug)) ||
+            seenTitleBooks.some(previous => areSameBookByTitle(previous, book))) return false;
         if (id) seenIds.add(id);
         if (slug) seenSlugs.add(slug);
+        seenTitleBooks.push(book);
         return true;
     });
 }
@@ -898,11 +902,10 @@ export function initAppData() {
         });
 
         const rawBooksList = publicRecords.books.map(bookData => {
-            const bookTitleKey = normalizeBookKey(bookData.title);
             const articleRecord = rawArticlesList.find(article =>
                 article.id === bookData.id ||
                 (bookData.slug && article.slug === bookData.slug) ||
-                (bookTitleKey && isBookEntity(article) && normalizeBookKey(article.title) === bookTitleKey)
+                (isBookEntity(article) && areSameBookByTitle(article, bookData))
             );
             const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(bookData, "");
             const thumbnailUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
@@ -934,11 +937,10 @@ export function initAppData() {
             else combined[existingIndex] = { ...combined[existingIndex], ...article };
         });
         rawBooksList.forEach(book => {
-            const bookTitleKey = normalizeBookKey(book.title);
             const existingIndex = combined.findIndex(article =>
                 article.id === book.id ||
                 (book.slug && article.slug === book.slug && isBookEntity(article)) ||
-                (bookTitleKey && isBookEntity(article) && normalizeBookKey(article.title) === bookTitleKey)
+                (isBookEntity(article) && areSameBookByTitle(article, book))
             );
             if (existingIndex < 0) combined.push(book);
             else combined[existingIndex] = { ...combined[existingIndex], ...book };
@@ -2056,7 +2058,7 @@ function buildCarouselCard(art, index = 0) {
 
     const cardImg = buildCardImageMarkup(art, "carousel-card-img", cleanTitle, 400, 300, index === 0);
     const hasCardImage = hasImmediateCardImage(art);
-    const imagePlaceholder = '<div class="carousel-card-img-placeholder" style="' + (hasCardImage ? 'display:none;' : '') + 'background: linear-gradient(135deg, #2a201c, #4a3328); align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;" data-nuqtha-image-placeholder><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
+    const imagePlaceholder = '<div class="carousel-card-img-placeholder" style="display:' + (hasCardImage ? 'none' : 'flex') + ';background: linear-gradient(135deg, #2a201c, #4a3328); align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;" data-nuqtha-image-placeholder><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
     const imgHtml = hasCardImage ? cardImg + imagePlaceholder : imagePlaceholder + cardImg;
 
     return '<div class="carousel-card relative cursor-pointer stretched-card-wrap" data-id="' + art.id + '">' +
@@ -2806,11 +2808,13 @@ function renderBooksCategoryFeed(container) {
                 const isFree = !isPremium || price === 0;
                 const bookCoverMarkup = buildCardImageMarkup(book, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 600, 800);
                 const hasCoverSource = hasBookCoverSource(book);
-                const volumeLabel = book.volume
-                    ? (book.volume.toLowerCase().includes("vol") ? book.volume : `Volume ${book.volume}`)
+                        const volumeText = String(book.volume || "");
+                        const issueText = String(book.issue || "");
+                        const volumeLabel = volumeText
+                            ? (volumeText.toLowerCase().includes("vol") ? volumeText : `Volume ${volumeText}`)
                     : "";
-                const issueLabel = book.issue
-                    ? (book.issue.toLowerCase().includes("issue") ? book.issue : `Issue: ${book.issue}`)
+                        const issueLabel = issueText
+                            ? (issueText.toLowerCase().includes("issue") ? issueText : `Issue: ${issueText}`)
                     : "";
                 const volumeIssueLabel = [volumeLabel, issueLabel].filter(Boolean).map(escapeHtml).join(" • ");
 
