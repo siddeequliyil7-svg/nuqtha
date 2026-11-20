@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title">
+  <title id="title">NUQTHA Malayalam Publishing Platform</title>
+  <defs>
+    <linearGradient id="sand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6ead7"/>
+      <stop offset="1" stop-color="#e4c7a6"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b4532c"/>
+      <stop offset="1" stop-color="#7d3219"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#sand)"/>
+  <circle cx="900" cy="315" r="245" fill="none" stroke="#b4532c" stroke-opacity=".16" stroke-width="2"/>
+  <circle cx="900" cy="315" r="205" fill="none" stroke="#b4532c" stroke-opacity=".2" stroke-width="2"/>
+  <rect x="790" y="175" width="220" height="280" rx="16" fill="url(#accent)"/>
+  <path d="M900 198v230M900 220c-26-23-56-24-82-17v180c29-9 57-6 82 16m0-179c26-23 56-24 82-17v180c-29-9-57-6-82 16" fill="none" stroke="#fff8ee" stroke-linecap="round" stroke-linejoin="round" stroke-width="11"/>
+  <text x="110" y="300" fill="#573624" font-family="sans-serif" font-size="64" font-weight="800" letter-spacing="10">NUQTHA</text>
+  <text x="116" y="356" fill="#74563f" font-family="sans-serif" font-size="25" font-weight="600" letter-spacing="2">Malayalam Publishing Platform</text>
+</svg>

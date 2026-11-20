@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isApprovedAdmin() {
+      return signedIn() && request.auth.token.email_verified == true &&
+        request.auth.token.email in [
+          'sayyidsalman314@gmail.com',
+          'aboobakersiddeequliyil@gmail.com',
+          'admin@nuqtha.com',
+          'nuqtha.editor@gmail.com'
+        ];
+    }
+
+    // Public content used by the NUQTHA website.
+    match /articles/{docId} {
+      allow read: if true;
+      allow write: if isApprovedAdmin();
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if signedIn() || (request.resource.data.guestId is string);
+        allow update, delete: if isApprovedAdmin();
+      }
+    }
+
+    match /books/{docId} {
+      allow read: if true;
+      allow write: if isApprovedAdmin();
+    }
+
+    match /authors/{docId} {
+      allow read: if true;
+      allow write: if isApprovedAdmin();
+    }
+
+    match /categories/{docId} {
+      allow read: if true;
+      allow write: if isApprovedAdmin();
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isApprovedAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isApprovedAdmin() || (signedIn() && request.auth.uid == userId);
+      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if isApprovedAdmin();
+    }
+
+    match /reading_history/{docId} {
+      allow create: if signedIn() || (request.resource.data.isGuest == true);
+      allow read: if isApprovedAdmin();
+      allow update: if signedIn() || (resource.data.isGuest == true);
+      allow delete: if isApprovedAdmin();
+    }
+
+    match /purchases/{docId} {
+      allow read: if isApprovedAdmin() || (signedIn() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.userEmail == request.auth.token.email
+      ));
+      allow create: if signedIn() && (
+        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.userEmail == request.auth.token.email
+      );
+      allow update, delete: if isApprovedAdmin();
+    }
+
+    match /{document=**} {
+      allow read: if false;
+      allow write: if isApprovedAdmin();
+    }
+  }
+}

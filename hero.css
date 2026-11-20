@@ -1,0 +1,146 @@
+/* NUQTHA hero. Imported by hero.js (Vite bundles it). */
+
+#hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  height: 100vh;
+  width: 100%;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  background: #faf6f0;
+  color: #2c221e;
+  z-index: 50;
+}
+
+html.dark #hero,
+body.dark-mode #hero {
+  background: #0f1016;
+  color: #e2e8f0;
+}
+
+.hero-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.15em;
+  margin: 0;
+  font-family: "Noto Serif", "Noto Serif Malayalam", "Amiri", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(3.5rem, 18vw, 9rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+/* Fast, smooth write-in ink sweep animation (no caret line) */
+.hero-typed {
+  display: inline-block;
+  color: #a75d3a;
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: clip-path 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.4s ease,
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html.dark .hero-typed,
+body.dark-mode .hero-typed {
+  color: #f87171;
+}
+
+.hero-typed.is-written {
+  clip-path: inset(0 0% 0 0);
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hero-tagline {
+  max-width: 28rem;
+  margin: 1.5rem 0 0;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: #5c4a42;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+html.dark .hero-tagline,
+body.dark-mode .hero-tagline {
+  color: #94a3b8;
+}
+
+.hero-tagline.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hero-skip {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #7a431d;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.hero-skip:hover {
+  opacity: 1;
+  color: #a75d3a;
+}
+
+html.dark .hero-skip,
+body.dark-mode .hero-skip {
+  color: #fca5a5;
+}
+
+.hero-skip:focus-visible {
+  outline: 2px solid #a75d3a;
+  outline-offset: 2px;
+}
+
+/* Visually hidden for accessibility */
+.hero-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Set by the inline <head> script for returning visitors (no flash) */
+.hero-seen #hero {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-typed {
+    clip-path: inset(0 0% 0 0);
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .hero-tagline {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
