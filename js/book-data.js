@@ -12,7 +12,7 @@ import { isPubliclyPublished } from "./public-status.js";
 const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
 const CHAPTER_LIST_FIELDS = [
     "title", "author", "date", "order", "priority", "createdAt", "isChapter",
-    "bookId", "parentBookId", "bookName", "playlistName", "bookSlug", "type",
+    "bookId", "parentBookId", "bookName", "bookTitle", "playlistName", "bookSlug", "book", "type",
     "category", "status", "imageUrl", "coverUrl", "coverImage", "cover", "image", "thumbnail",
     "thumbnailUrl", "ogImage", "excerpt", "transcription"
 ];
@@ -172,46 +172,73 @@ function isBookRecord(item) {
         category === "chapter" || (item?.chapterIndex !== undefined && item?.chapterIndex !== null);
     return !isChapter && (
         type === "BOOK" || type === "FREE" || type === "PREMIUM" ||
-        item?.isBook === true || category === "book" || category === "books" || category === "premium book"
+        item?.isBook === true || category === "book" || category === "books" || category === "premium book" ||
+        (Array.isArray(item?.chapters) && item.chapters.length > 0) ||
+        (Array.isArray(item?.articleIds) && item.articleIds.length > 0)
     );
+}
+
+function getReferenceValues(value) {
+    if (typeof value === "string" || typeof value === "number") {
+        const text = String(value).trim();
+        return text ? [text, text.split("/").pop()] : [];
+    }
+    if (!value || typeof value !== "object") return [];
+    return [
+        value.id, value.docId, value.documentId, value.bookId, value.bookSlug, value.slug,
+        value.bookTitle, value.bookName, value.title, value.name, value.path, value.reference, value.ref
+    ].flatMap(getReferenceValues);
+}
+
+function getChapterReferenceId(value) {
+    if (typeof value === "string" || typeof value === "number") {
+        const text = String(value).trim();
+        return text ? text.split("/").pop() : "";
+    }
+    if (!value || typeof value !== "object") return "";
+    return getChapterReferenceId(
+        value.id || value.articleId || value.chapterId || value.docId ||
+        value.documentId || value.reference || value.ref || value.path || value.name
+    );
+}
+
+function getEmbeddedChapterReferences(book) {
+    return [
+        ...(Array.isArray(book?.chapters) ? book.chapters : []),
+        ...(Array.isArray(book?.articleIds) ? book.articleIds : [])
+    ];
 }
 
 /**
  * Returns true if an article belongs to the target book doc.
  * Supports:
  * - targetBook.chapters array of IDs or objects
- * - art.bookId === targetBook.id
- * - art.bookName / playlistName matching targetBook.title or targetBook.bookName
+ * - bookId, parentBookId, bookSlug, bookTitle, and book reference links
  */
 export function isArticleInBook(article, targetBook) {
     if (!article || !targetBook) return false;
     if (article.id && targetBook.id && article.id === targetBook.id) return false;
     if (isBookRecord(article)) return false;
 
-    // Check chapters array on targetBook doc if present
-    if (Array.isArray(targetBook.chapters)) {
-        const inArray = targetBook.chapters.some(ch => {
-            if (!ch) return false;
-            if (typeof ch === "string") return ch === article.id;
-            if (typeof ch === "object" && (ch.id || ch.articleId || ch.chapterId)) {
-                return (ch.id || ch.articleId || ch.chapterId) === article.id;
-            }
-            return false;
-        });
-        if (inArray) return true;
+    const articleId = String(article.id || "").trim();
+    if (articleId && getEmbeddedChapterReferences(targetBook).some(reference => getChapterReferenceId(reference) === articleId)) {
+        return true;
     }
 
-    const bId = (targetBook.id || "").toString().trim();
-    const aBookId = (article.bookId || article.parentBookId || "").toString().trim();
-    if (bId && aBookId && bId === aBookId) return true;
+    const targetIds = new Set([
+        targetBook.id, targetBook.bookId, targetBook.docId, targetBook.documentId
+    ].flatMap(getReferenceValues));
+    const targetKeys = new Set([
+        targetBook.slug, targetBook.bookSlug, targetBook.title, targetBook.bookTitle, targetBook.bookName
+    ].map(normalizeBookKey).filter(Boolean));
+    const articleReferences = [
+        article.bookId, article.parentBookId, article.bookSlug,
+        article.bookTitle, article.bookName, article.playlistName, article.book
+    ];
 
-    const bTitle = normalizeBookKey(targetBook.title);
-    const bName = normalizeBookKey(targetBook.bookName);
-    const articleBookNames = [article.bookName, article.playlistName].map(normalizeBookKey).filter(Boolean);
-
-    if (articleBookNames.some(name => (bName && name === bName) || (bTitle && name === bTitle))) return true;
-
-    return false;
+    return articleReferences.some(reference => getReferenceValues(reference).some(value =>
+        targetIds.has(value) || targetKeys.has(normalizeBookKey(value))
+    ));
 }
 
 export function getRelatedBooks(currentBook, books = [], limit = 4) {
@@ -274,14 +301,14 @@ export function filterAndSortChapters(bookDoc, allArticles) {
     let chapters = [];
     const idMap = new Map(allArticles.map(a => [a.id, a]));
     const seen = new Set();
+    const chapterReferences = getEmbeddedChapterReferences(bookDoc);
 
-    // Check if bookDoc itself has embedded chapters array
-    if (Array.isArray(bookDoc.chapters) && bookDoc.chapters.length > 0) {
-        chapters = bookDoc.chapters.map((ch, idx) => {
-            const chapterId = typeof ch === "string"
-                ? ch
-                : (ch?.id || ch?.articleId || ch?.chapterId ||
-                    (String(ch?.title || "").trim() ? `${bookDoc.id || "book"}-chapter-${idx + 1}` : ""));
+    if (chapterReferences.length > 0) {
+        chapters = chapterReferences.map((ch, idx) => {
+            const chapterId = getChapterReferenceId(ch) ||
+                (typeof ch === "object" && ch && String(ch.title || "").trim()
+                    ? `${bookDoc.id || "book"}-chapter-${idx + 1}`
+                    : "");
             if (!chapterId || seen.has(chapterId)) return null;
             const found = idMap.get(chapterId);
             const foundType = (found?.type || "").toUpperCase();
@@ -305,16 +332,9 @@ export function filterAndSortChapters(bookDoc, allArticles) {
 
     // An explicit embedded chapter list is authoritative; unrelated legacy
     // articles sharing a book name must not inflate the list or its count.
-    if (!Array.isArray(bookDoc.chapters) || bookDoc.chapters.length === 0) {
+    if (chapterReferences.length === 0) {
         const related = allArticles.filter(art => isArticleInBook(art, bookDoc));
-        const explicitlyMarked = related.filter(art =>
-            art.isChapter === true ||
-            (art.type || "").toUpperCase() === "CHAPTER" ||
-            normalizeBookKey(art.category) === "chapter" ||
-            (art.chapterIndex !== undefined && art.chapterIndex !== null)
-        );
-        const matched = explicitlyMarked.length > 0 ? explicitlyMarked : related;
-        for (const m of matched) {
+        for (const m of related) {
             if (m?.id && !seen.has(m.id)) {
                 seen.add(m.id);
                 chapters.push(m);
@@ -371,10 +391,94 @@ export async function getBookChapters(bookId, options = {}) {
             }
         }
 
-        const hasEmbeddedChapterList = Array.isArray(bookDoc?.chapters) && bookDoc.chapters.length > 0;
-        const relationshipQuery = hasEmbeddedChapterList
+        const hasEmbeddedChapterList = getEmbeddedChapterReferences(bookDoc).length > 0;
+
+        if (!bookDoc || (!options.skipBookFetch && !hasEmbeddedChapterList)) {
+            try {
+                const apiKey = getFirebaseApiKey();
+                // 1. Try books collection first
+                let bookRes = await fetchWithRetry(
+                    `${FIRESTORE_REST_BASE}/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "status", "slug", "bookSlug", "bookName", "bookTitle", "book", "bookId", "parentBookId", "playlistName", "imageUrl", "coverUrl", "coverImage", "cover", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters", "articleIds"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
+                    { signal: controller.signal },
+                    2,
+                    250
+                );
+                // 2. Fallback to articles collection
+                if (!bookRes || !bookRes.ok) {
+                    bookRes = await fetchWithRetry(
+                        `${FIRESTORE_REST_BASE}/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "status", "slug", "bookSlug", "bookName", "bookTitle", "book", "bookId", "parentBookId", "playlistName", "imageUrl", "coverUrl", "coverImage", "cover", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters", "articleIds"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
+                        { signal: controller.signal },
+                        2,
+                        250
+                    );
+                }
+                if (bookRes && bookRes.ok) {
+                    const bookJson = await bookRes.json();
+                    const directDoc = parseFirestoreRestDoc(bookJson, bookId);
+                    bookDoc = { ...(bookDoc || {}), ...directDoc, isBook: true, type: "BOOK" };
+                }
+            } catch (bErr) {
+                console.warn("[BookData] Direct book fetch error:", bErr);
+            }
+        }
+
+        if (!bookDoc) {
+            throw new Error("പുസ്തകം കണ്ടെത്താനായില്ല.");
+        }
+
+        const chapterReferences = getEmbeddedChapterReferences(bookDoc);
+        const relationshipQuery = chapterReferences.length > 0
             ? Promise.resolve([])
-            : Promise.allSettled(["bookId", "parentBookId"].map(async fieldPath => {
+            : (async () => {
+                const rawIds = [...new Set([bookDoc.id, bookDoc.bookId, bookId].flatMap(getReferenceValues).filter(Boolean))];
+                const ids = [...new Set(rawIds.map(value => value.split("/").pop()).filter(Boolean))];
+                const slugs = [...new Set([bookDoc.slug, bookDoc.bookSlug, bookId].flatMap(getReferenceValues).filter(Boolean))];
+                const titles = [...new Set([bookDoc.title, bookDoc.bookTitle, bookDoc.bookName].flatMap(getReferenceValues).filter(Boolean))];
+                const referenceValues = ids.flatMap(id => ["books", "articles"].map(collectionName => ({
+                    referenceValue: `projects/${firebaseConfig.projectId}/databases/(default)/documents/${collectionName}/${id}`
+                })));
+                const stringValues = values => [...new Set(values)].map(stringValue => ({ stringValue }));
+                const fieldQueries = [
+                    ...([...ids, ...referenceValues].length ? [{
+                        field: { fieldPath: "bookId" },
+                        values: [...stringValues(rawIds), ...referenceValues]
+                    }, {
+                        field: { fieldPath: "parentBookId" },
+                        values: [...stringValues(rawIds), ...referenceValues]
+                    }] : []),
+                    ...(slugs.length ? [{
+                        field: { fieldPath: "bookSlug" },
+                        values: stringValues(slugs)
+                    }] : []),
+                    ...(titles.length ? ["bookTitle", "bookName", "playlistName"].map(fieldPath => ({
+                        field: { fieldPath },
+                        values: stringValues(titles)
+                    })) : []),
+                    ...([...ids, ...slugs, ...titles].length ? [{
+                        field: { fieldPath: "book" },
+                        values: [...stringValues([...rawIds, ...slugs, ...titles]), ...referenceValues]
+                    }] : [])
+                ];
+                const relationshipFilters = [];
+                fieldQueries.forEach(query => {
+                    const uniqueValues = new Map(query.values.map(value => [JSON.stringify(value), value]));
+                    const valuesByType = [
+                        Array.from(uniqueValues.values()).filter(value => "stringValue" in value),
+                        Array.from(uniqueValues.values()).filter(value => "referenceValue" in value)
+                    ];
+                    valuesByType.forEach(values => {
+                        if (!values.length) return;
+                        relationshipFilters.push({
+                            fieldFilter: {
+                                field: query.field,
+                                op: values.length === 1 ? "EQUAL" : "IN",
+                                value: values.length === 1 ? values[0] : { arrayValue: { values } }
+                            }
+                        });
+                    });
+                });
+                if (!relationshipFilters.length) return [];
+
                 const apiKey = getFirebaseApiKey();
                 const runQueryRes = await fetchWithRetry(
                     `${FIRESTORE_REST_BASE}:runQuery?key=${encodeURIComponent(apiKey)}`,
@@ -390,10 +494,9 @@ export async function getBookChapters(bookId, options = {}) {
                                         op: "AND",
                                         filters: [
                                             {
-                                                fieldFilter: {
-                                                    field: { fieldPath },
-                                                    op: "EQUAL",
-                                                    value: { stringValue: bookDoc?.id || bookId }
+                                                compositeFilter: {
+                                                    op: "OR",
+                                                    filters: relationshipFilters
                                                 }
                                             },
                                             {
@@ -414,52 +517,22 @@ export async function getBookChapters(bookId, options = {}) {
                     250
                 );
                 if (!runQueryRes || !runQueryRes.ok) {
-                    throw new Error(`Chapter query by ${fieldPath} failed (${runQueryRes?.status || "no response"}).`);
+                    throw new Error(`Chapter relationship query failed (${runQueryRes?.status || "no response"}).`);
                 }
                 return runQueryRes.json();
-            }));
-
-        if (!bookDoc || (!options.skipBookFetch && !hasEmbeddedChapterList)) {
-            try {
-                const apiKey = getFirebaseApiKey();
-                // 1. Try books collection first
-                let bookRes = await fetchWithRetry(
-                    `${FIRESTORE_REST_BASE}/books/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "status", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "cover", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
-                    { signal: controller.signal },
-                    2,
-                    250
-                );
-                // 2. Fallback to articles collection
-                if (!bookRes || !bookRes.ok) {
-                    bookRes = await fetchWithRetry(
-                        `${FIRESTORE_REST_BASE}/articles/${encodeURIComponent(bookId)}?key=${encodeURIComponent(apiKey)}&${["title", "author", "date", "status", "slug", "bookSlug", "imageUrl", "coverUrl", "coverImage", "cover", "image", "thumbnail", "thumbnailUrl", "ogImage", "introduction", "intro", "excerpt", "price", "isPremium", "chapters"].map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&")}`,
-                        { signal: controller.signal },
-                        2,
-                        250
-                    );
-                }
-                if (bookRes && bookRes.ok) {
-                    const bookJson = await bookRes.json();
-                    const directDoc = parseFirestoreRestDoc(bookJson, bookId);
-                    bookDoc = { ...(bookDoc || {}), ...directDoc, isBook: true, type: "BOOK" };
-                }
-            } catch (bErr) {
-                console.warn("[BookData] Direct book fetch error:", bErr);
-            }
-        }
-
-        if (!bookDoc) {
-            throw new Error("പുസ്തകം കണ്ടെത്താനായില്ല.");
-        }
+            })().then(
+                result => [{ status: "fulfilled", value: result }],
+                reason => [{ status: "rejected", reason }]
+            );
 
         // Build pool map from options pool
         const pool = Array.isArray(options.articlesPool) ? [...options.articlesPool] : [];
         const poolMap = new Map();
         pool.forEach(a => { if (a && a.id) poolMap.set(a.id, a); });
 
-        // Merge projected chapter-list results only when no explicit list exists.
+        // Merge related results only when the book does not define an explicit chapter list.
         const queryResults = await relationshipQuery;
-        if (!Array.isArray(bookDoc.chapters) || bookDoc.chapters.length === 0) {
+        if (chapterReferences.length === 0) {
             queryResults.forEach((result, queryIndex) => {
                 if (result.status !== "fulfilled" || !Array.isArray(result.value)) {
                     if (result.status === "rejected") {
@@ -478,10 +551,10 @@ export async function getBookChapters(bookId, options = {}) {
             });
         }
 
-        // Fetch any missing chapter documents specifically listed in bookDoc.chapters array
-        if (Array.isArray(bookDoc.chapters) && bookDoc.chapters.length > 0) {
-            const missingIds = bookDoc.chapters
-                .map(ch => (typeof ch === "string" ? ch : (ch?.id || ch?.articleId || ch?.chapterId)))
+        // Fetch missing documents explicitly listed on the book document.
+        if (chapterReferences.length > 0) {
+            const missingIds = chapterReferences
+                .map(getChapterReferenceId)
                 .filter(id => id && (!poolMap.has(id) || !poolMap.get(id).title));
 
             if (missingIds.length > 0) {
@@ -508,13 +581,13 @@ export async function getBookChapters(bookId, options = {}) {
 
         clearTimeout(timer);
 
-        // Assemble full chapter list preserving bookDoc.chapters order and all bookId matches
+        // Assemble full chapter list preserving embedded order and all related articles.
         let chapters = [];
         const seenIds = new Set();
 
-        if (Array.isArray(bookDoc.chapters) && bookDoc.chapters.length > 0) {
-            bookDoc.chapters.forEach((ch, idx) => {
-                const chId = typeof ch === "string" ? ch : (ch?.id || ch?.articleId || ch?.chapterId);
+        if (chapterReferences.length > 0) {
+            chapterReferences.forEach((ch, idx) => {
+                const chId = getChapterReferenceId(ch);
                 const found = chId ? poolMap.get(chId) : null;
                 const foundType = (found?.type || "").toUpperCase();
                 const foundIsChapter = found?.isChapter === true || foundType === "CHAPTER" ||
@@ -545,16 +618,9 @@ export async function getBookChapters(bookId, options = {}) {
         }
 
         // An embedded list is the book's canonical chapter order and membership.
-        if (!Array.isArray(bookDoc.chapters) || bookDoc.chapters.length === 0) {
+        if (chapterReferences.length === 0) {
             const related = pool.filter(art => isArticleInBook(art, bookDoc));
-            const explicitlyMarked = related.filter(art =>
-                art.isChapter === true ||
-                (art.type || "").toUpperCase() === "CHAPTER" ||
-                normalizeBookKey(art.category) === "chapter" ||
-                (art.chapterIndex !== undefined && art.chapterIndex !== null)
-            );
-            const matched = explicitlyMarked.length > 0 ? explicitlyMarked : related;
-            matched.forEach(art => {
+            related.forEach(art => {
                 const artType = (art?.type || "").toUpperCase();
                 if (art && art.id && !seenIds.has(art.id) && artType !== "BOOK" && art.isBook !== true) {
                     seenIds.add(art.id);

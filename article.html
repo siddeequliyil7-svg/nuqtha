@@ -796,6 +796,13 @@
             articleId = "";
         }
 
+        const queryChapterSlug = cleanRouteSlug(urlParams.get('chapterSlug'));
+        const explicitQueryBookSlug = cleanRouteSlug(urlParams.get('bookSlug'));
+        if (!pathChapterSlug && queryChapterSlug && explicitQueryBookSlug) {
+            pathBookSlug = explicitQueryBookSlug;
+            pathChapterSlug = queryChapterSlug;
+        }
+
         let rawQuerySlug = urlParams.get('slug') || urlParams.get('chapterSlug') || pathChapterSlug || pathStorySlug;
         if (rawQuerySlug && (rawQuerySlug.toLowerCase() === 'index.html' || rawQuerySlug.toLowerCase() === 'index')) {
             rawQuerySlug = "";
@@ -1045,6 +1052,22 @@
             });
         }
 
+        function matchesBookChapterRoute(item, bookSlug, articles = []) {
+            if (matchesBookRoute(item, bookSlug)) return true;
+            const reference = item?.bookId || item?.parentBookId || item?.book;
+            const referenceId = typeof reference === "object"
+                ? (reference.id || reference.bookId || reference.docId ||
+                    reference.reference || reference.ref || reference.path || "")
+                : String(reference || "");
+            const parentId = String(referenceId || "").split("/").pop();
+            if (!parentId) return false;
+            const parentBook = articles.find(candidate =>
+                candidate.id === parentId && (isBookEntity(candidate) || isBookEditionDoc(candidate))
+            ) || searchLocalArticlesPool(parentId);
+            return Boolean(parentBook && (isBookEntity(parentBook) || isBookEditionDoc(parentBook)) &&
+                matchesBookRoute(parentBook, bookSlug) && isArticleInBook(item, parentBook));
+        }
+
         // Helper to determine if an entity is a Book (or a book chapter)
         function isBookEntity(item) {
             if (!item) return false;
@@ -1053,7 +1076,8 @@
                 (item.chapterIndex !== undefined && item.chapterIndex !== null)) return false;
             const type = String(item.type || "").trim().toUpperCase();
             if (type === "BOOK" || type === "FREE" || type === "PREMIUM" || item.isBook === true) return true;
-            if (Array.isArray(item.chapters) && item.chapters.length > 0) return true;
+            if ((Array.isArray(item.chapters) && item.chapters.length > 0) ||
+                (Array.isArray(item.articleIds) && item.articleIds.length > 0)) return true;
             const cat = (item.category || "").toLowerCase().trim();
             if (cat === "books" || cat === "book" || cat === "premium book") return true;
             return false;
@@ -1074,7 +1098,8 @@
 
             const artType = (item.type || "").toString().toLowerCase().trim();
             if (artType === "book" || artType === "free" || artType === "premium" || item.isBook === true) return true;
-            if (Array.isArray(item.chapters) && item.chapters.length > 0) return true;
+            if ((Array.isArray(item.chapters) && item.chapters.length > 0) ||
+                (Array.isArray(item.articleIds) && item.articleIds.length > 0)) return true;
             const cat = (item.category || "").toLowerCase().trim();
             if (cat === "books" || cat === "book" || cat === "premium book") return true;
             return false;
@@ -1106,6 +1131,33 @@
             if (bTitle && aBook && bTitle === aBook) return true;
 
             return false;
+        }
+
+        function matchesBookRoute(item, bookSlug) {
+            if (!item || !bookSlug) return false;
+            const targetSlug = slugifyText(bookSlug);
+            const rawTargetSlug = slugifyMalayalamRaw(bookSlug);
+            const bookReference = item.book;
+            const candidates = [
+                item.bookSlug, item.bookTitle, item.bookName, item.playlistName,
+                item.bookId, item.parentBookId,
+                typeof bookReference === "string" ? bookReference : "",
+                bookReference?.id, bookReference?.docId, bookReference?.path,
+                bookReference?.reference, bookReference?.ref, bookReference?.slug,
+                bookReference?.bookSlug, bookReference?.title, bookReference?.bookTitle,
+                bookReference?.bookName, bookReference?.name
+            ];
+            if (isBookEntity(item)) {
+                candidates.push(item.id, item.slug, item.bookSlug, item.title, item.bookName);
+            }
+            return candidates.some(value => {
+                const text = String(value || "").trim();
+                const referenceId = text.split("/").pop();
+                return text && (
+                    slugifyText(text) === targetSlug || slugifyMalayalamRaw(text) === rawTargetSlug ||
+                    slugifyText(referenceId) === targetSlug || slugifyMalayalamRaw(referenceId) === rawTargetSlug
+                );
+            });
         }
 
         // ═══════════ PARALLEL DATA FETCHERS WITH FIELD PROJECTION ═══════════
@@ -1405,6 +1457,7 @@
 
             const projectedFields = [
                 "title", "bookName", "bookId", "playlistName",
+                "bookTitle", "book",
                 "priority", "excerpt", "storedExcerpt", "hasCustomExcerpt", "author",
                 "date", "createdAt", "type", "category",
                 "order", "chapters", "transcription", "status",
@@ -1619,6 +1672,14 @@
                 if (!cachedBook) {
                     cachedBook = searchLocalArticlesPool(cacheKey);
                 }
+                if (pathChapterSlug && pathBookSlug && cachedBook &&
+                    !matchesBookChapterRoute(cachedBook, pathBookSlug)) {
+                    cachedBook = null;
+                }
+                if ((isBookRoute || editionParam) && !pathChapterSlug && cachedBook &&
+                    !isBookEntity(cachedBook) && !isBookEditionDoc(cachedBook)) {
+                    cachedBook = null;
+                }
 
                 if (cachedLightBook) {
                     cachedBook = {
@@ -1709,8 +1770,12 @@
                     requestedDraft = true;
                     currentDoc = null;
                 }
+                if ((isBookRoute || editionParam) && !pathChapterSlug && currentDoc &&
+                    !isBookEntity(currentDoc) && !isBookEditionDoc(currentDoc)) {
+                    currentDoc = null;
+                }
 
-                if (currentDoc && ((currentDoc.type || "").toUpperCase() === "BOOK" || currentDoc.isBook === true)) {
+                if (currentDoc && isBookEntity(currentDoc)) {
                     earlyBookChaptersPromise = Promise.allSettled([
                         getBookChapters(currentDoc.id, {
                             articlesPool: [currentDoc],
@@ -1773,11 +1838,38 @@
                 allArticles = allArticlesResult.status === "fulfilled"
                     ? (allArticlesResult.value || []).filter(isPubliclyPublished)
                     : [];
+                if (pathChapterSlug && pathBookSlug && currentDoc &&
+                    !matchesBookRoute(currentDoc, pathBookSlug)) {
+                    const parentReference = currentDoc.bookId || currentDoc.parentBookId || currentDoc.book;
+                    const parentReferenceId = typeof parentReference === "object"
+                        ? (parentReference.id || parentReference.bookId || parentReference.docId ||
+                            parentReference.reference || parentReference.ref || parentReference.path || "")
+                        : String(parentReference || "");
+                    const parentId = String(parentReferenceId || "").split("/").pop();
+                    let parentBook = allArticles.find(item =>
+                        item.id === parentId && (isBookEntity(item) || isBookEditionDoc(item))
+                    ) || allArticles.find(item =>
+                        isBookEntity(item) && matchesBookRoute(item, pathBookSlug)
+                    );
+                    if (!parentBook && parentId) {
+                        const fetchedParent = await fetchTargetDocument(parentId, controller.signal);
+                        if (fetchedParent && (isBookEntity(fetchedParent) || isBookEditionDoc(fetchedParent))) {
+                            parentBook = fetchedParent;
+                        }
+                    }
+                    if (!parentBook || !matchesBookRoute(parentBook, pathBookSlug) ||
+                        !isArticleInBook(currentDoc, parentBook)) {
+                        currentDoc = null;
+                    }
+                }
 
                 if (!currentDoc) {
-                    currentDoc = !requestedDraft
+                    const fallbackDoc = !requestedDraft
                         ? ((cachedBook && !cachedBook.__lightCache ? cachedBook : null) || searchLocalArticlesPool(lookupId))
                         : null;
+                    currentDoc = fallbackDoc && pathChapterSlug && pathBookSlug
+                        ? (matchesBookChapterRoute(fallbackDoc, pathBookSlug, allArticles) ? fallbackDoc : null)
+                        : fallbackDoc;
                 }
 
                 if (currentDoc && (currentDoc.type === "BOOK" || currentDoc.isBook === true || isBookEditionDoc(currentDoc)) &&
@@ -1811,13 +1903,9 @@
                     if (pathChapterSlug && pathBookSlug) {
                         const targetChapterSlug = slugifyText(pathChapterSlug);
                         const rawChapterSlug = slugifyMalayalamRaw(pathChapterSlug);
-                        const targetBookSlug = slugifyText(pathBookSlug);
-                        const rawBookSlug = slugifyMalayalamRaw(pathBookSlug);
                         currentDoc = allArticles.find(a => 
                             (a.slug === targetChapterSlug || a.slug === rawChapterSlug || slugifyText(a.title) === targetChapterSlug || slugifyMalayalamRaw(a.title) === rawChapterSlug || a.id === pathChapterSlug) &&
-                            (a.bookSlug === targetBookSlug || a.bookSlug === rawBookSlug || slugifyText(a.bookName) === targetBookSlug || slugifyMalayalamRaw(a.bookName) === rawBookSlug || slugifyText(a.playlistName) === targetBookSlug || slugifyMalayalamRaw(a.playlistName) === rawBookSlug || a.bookId === pathBookSlug)
-                        ) || allArticles.find(a =>
-                            a.slug === targetChapterSlug || a.slug === rawChapterSlug || slugifyText(a.title) === targetChapterSlug || slugifyMalayalamRaw(a.title) === rawChapterSlug || a.id === pathChapterSlug
+                            matchesBookChapterRoute(a, pathBookSlug, allArticles)
                         );
                         if (currentDoc) {
                             isBookRoute = false;
@@ -1857,15 +1945,45 @@
                             (a.title && a.title.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
                         ));
 
-                        // 2. Fallback: If book overview doc not found directly, find any chapter of this book and fetch parent book by chapter.bookId
+                        // 2. Resolve a chapter's parent book when the book document is stored separately.
                         if (!currentDoc) {
                             const chapterWithBookId = allArticles.find(a => 
-                                (a.bookSlug === targetBookSlug || a.bookSlug === rawTargetSlug || slugifyText(a.bookName) === targetBookSlug || slugifyMalayalamRaw(a.bookName) === rawTargetSlug || (a.bookName && a.bookName.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)) && a.bookId
+                                !isBookEntity(a) && matchesBookRoute(a, bookSearch)
                             );
-                            if (chapterWithBookId && chapterWithBookId.bookId) {
-                                currentDoc = allArticles.find(a => a.id === chapterWithBookId.bookId);
+                            if (chapterWithBookId) {
+                                const bookReference = chapterWithBookId.bookId || chapterWithBookId.parentBookId || chapterWithBookId.book;
+                                const bookReferenceId = typeof bookReference === "object"
+                                    ? (bookReference.id || bookReference.bookId || bookReference.docId ||
+                                        bookReference.reference || bookReference.ref || bookReference.path || "")
+                                    : String(bookReference || "");
+                                const parentBookId = String(bookReferenceId || "").split("/").pop();
+                                currentDoc = allArticles.find(a => a.id === parentBookId && (isBookEntity(a) || isBookEditionDoc(a)));
                                 if (!currentDoc) {
-                                    currentDoc = await fetchTargetDocument(chapterWithBookId.bookId, controller.signal);
+                                    const fetchedParent = parentBookId
+                                        ? await fetchTargetDocument(parentBookId, controller.signal)
+                                        : null;
+                                    if (fetchedParent && (isBookEntity(fetchedParent) || isBookEditionDoc(fetchedParent))) {
+                                        currentDoc = fetchedParent;
+                                    }
+                                }
+                                if (!currentDoc) {
+                                    const bookTitle = chapterWithBookId.bookTitle || chapterWithBookId.bookName ||
+                                        chapterWithBookId.playlistName ||
+                                        (typeof chapterWithBookId.book === "object"
+                                            ? chapterWithBookId.book.title || chapterWithBookId.book.bookTitle ||
+                                                chapterWithBookId.book.bookName || chapterWithBookId.book.name
+                                            : "");
+                                    currentDoc = {
+                                        id: parentBookId || targetBookSlug || bookSearch,
+                                        slug: chapterWithBookId.bookSlug || targetBookSlug || bookSearch,
+                                        bookSlug: chapterWithBookId.bookSlug || targetBookSlug || bookSearch,
+                                        title: bookTitle || spaceTarget.replace(/-/g, " "),
+                                        bookName: bookTitle || spaceTarget.replace(/-/g, " "),
+                                        author: chapterWithBookId.author || "",
+                                        status: "published",
+                                        type: "BOOK",
+                                        isBook: true
+                                    };
                                 }
                             }
                         }
@@ -1875,25 +1993,11 @@
                             currentDoc.type = "BOOK";
                         }
 
-                        // 3. Fallback for chapter URLs mistakenly routed to /book/:chapterSlug
-                        if (!currentDoc) {
-                            const matchedChapter = allArticles.find(a => 
-                                a.slug === targetBookSlug ||
-                                a.slug === rawTargetSlug ||
-                                slugifyText(a.title) === targetBookSlug ||
-                                slugifyMalayalamRaw(a.title) === rawTargetSlug ||
-                                a.id === bookSearch ||
-                                (a.title && a.title.toString().normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase().replace(/\s+/g, ' ') === spaceTarget)
-                            );
-                            if (matchedChapter) {
-                                currentDoc = matchedChapter;
-                                isBookRoute = false; // Render in chapter/article mode instead of 404
-                            }
-                        }
                     }
 
                     // C. General article slug or title match (/story/:slug or /article/:slug or ?id=...)
-                    if (!currentDoc && (querySlug || pathStorySlug || pathBookSlug || targetIdentifier)) {
+                    if (!currentDoc && !isBookRoute && !editionParam && !pathChapterSlug &&
+                        (querySlug || pathStorySlug || pathBookSlug || targetIdentifier)) {
                         const targetSearch = querySlug || pathStorySlug || pathBookSlug || targetIdentifier;
                         const decodedTarget = safeDecodeParam(targetSearch);
                         const targetQuerySlug = slugifyText(decodedTarget);
@@ -1921,7 +2025,14 @@
                 clearTimeout(timeoutTimer);
 
                 if (!currentDoc) {
-                    currentDoc = !requestedDraft ? cachedBook || searchLocalArticlesPool(lookupId) : null;
+                    const fallbackDoc = !requestedDraft ? cachedBook || searchLocalArticlesPool(lookupId) : null;
+                    currentDoc = fallbackDoc && pathChapterSlug && pathBookSlug
+                        ? (matchesBookChapterRoute(fallbackDoc, pathBookSlug, allArticles) ? fallbackDoc : null)
+                        : fallbackDoc;
+                }
+                if ((isBookRoute || editionParam) && !pathChapterSlug && currentDoc &&
+                    !isBookEntity(currentDoc) && !isBookEditionDoc(currentDoc)) {
+                    currentDoc = null;
                 }
 
                 if (!currentDoc) {
@@ -1953,7 +2064,7 @@
                     errorContainerEl.innerHTML = "";
                 }
 
-                if ((currentDoc.type || "").toUpperCase() === "BOOK" || currentDoc.isBook === true) {
+                if (isBookEntity(currentDoc)) {
                     if (articleViewEl) articleViewEl.classList.add("hidden");
                     if (bookContainerEl) bookContainerEl.classList.remove("hidden");
 
@@ -1961,7 +2072,12 @@
                     try {
                         if (earlyBookRenderPromise) {
                             bookChapters = await earlyBookRenderPromise || [];
-                        } else {
+                        }
+                        if (!earlyBookRendered && allArticles.length > 0) {
+                            const fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
+                            bookChapters = (Array.isArray(fetched) ? fetched : (fetched?.chapters || []))
+                                .filter(isPubliclyPublished);
+                        } else if (!earlyBookRenderPromise) {
                             const fetched = await getBookChapters(currentDoc.id, { articlesPool: allArticles, timeoutMs: 8000 });
                             bookChapters = (Array.isArray(fetched) ? fetched : (fetched?.chapters || []))
                                 .filter(isPubliclyPublished);
@@ -1985,9 +2101,11 @@
 
                 } else {
                     // Check if chapter belongs to a book and requires login / paywall
-                    const hasParentBook = Boolean(currentDoc.bookId || currentDoc.bookName || currentDoc.isChapter || (currentDoc.type || "").toUpperCase() === "CHAPTER");
+                    const hasParentBook = Boolean(currentDoc.bookId || currentDoc.parentBookId || currentDoc.bookName ||
+                        currentDoc.bookTitle || currentDoc.bookSlug || currentDoc.book || currentDoc.isChapter ||
+                        (currentDoc.type || "").toUpperCase() === "CHAPTER");
                     if (hasParentBook) {
-                        const parentBook = allArticles.find(a => ((a.type || "").toUpperCase() === "BOOK" || a.isBook === true) && (a.id === currentDoc.bookId || a.bookName === currentDoc.bookName || a.title === currentDoc.bookName || a.slug === currentDoc.bookSlug));
+                        const parentBook = allArticles.find(a => isBookEntity(a) && isArticleInBook(currentDoc, a));
                         if (parentBook) {
                             let isUnlocked = false;
                             try {

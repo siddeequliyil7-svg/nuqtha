@@ -23,7 +23,7 @@ const listFields = [
     "category", "categoryId", "status", "type", "isBook", "isChapter",
     "isPremium", "bookType", "price", "priority", "placement", "order", "date",
     "publishDate", "createdAt", "updatedAt", "slug", "bookSlug", "bookId",
-    "parentBookId", "bookName", "playlistName", "chapterIndex", "volume", "issue",
+    "parentBookId", "bookName", "bookTitle", "book", "playlistName", "chapterIndex", "volume", "issue",
     "excerpt", "storedExcerpt", "hasCustomExcerpt", "transcription",
     "visible", "description", "introduction", "intro", "summary", "pages", "color", "tags",
     "chapters", "articleIds", "titleColor", "contentColor",

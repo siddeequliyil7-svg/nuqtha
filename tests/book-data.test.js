@@ -48,6 +48,42 @@ describe("Book chapter relationships", () => {
         expect(chapterIds.has("not-a-chapter")).to.equal(false);
     });
 
+    it("matches chapters through bookSlug, bookTitle, book references, and parent reference IDs", () => {
+        const book = { id: "book-4", slug: "sample-book", title: "Sample Book" };
+        const chapters = [
+            { id: "by-slug", type: "ARTICLE", bookSlug: "sample-book" },
+            { id: "by-title", type: "ARTICLE", bookTitle: "Sample Book" },
+            { id: "by-reference", type: "ARTICLE", book: "projects/nuqtha/databases/(default)/documents/books/book-4" },
+            { id: "by-parent-reference", type: "ARTICLE", parentBookId: "projects/nuqtha/databases/(default)/documents/books/book-4" }
+        ];
+
+        expect(chapters.every(chapter => isArticleInBook(chapter, book))).to.equal(true);
+        expect(filterAndSortChapters(book, chapters).map(chapter => chapter.id)).to.have.members([
+            "by-slug", "by-title", "by-reference", "by-parent-reference"
+        ]);
+    });
+
+    it("uses articleIds and reference paths as explicit chapter membership", () => {
+        const book = {
+            id: "book-5",
+            articleIds: ["projects/nuqtha/databases/(default)/documents/articles/chapter-5"]
+        };
+        const chapter = { id: "chapter-5", type: "ARTICLE" };
+
+        expect(isArticleInBook(chapter, book)).to.equal(true);
+        expect(filterAndSortChapters(book, [chapter]).map(item => item.id)).to.deep.equal(["chapter-5"]);
+    });
+
+    it("includes every linked article even when only some are explicitly marked as chapters", () => {
+        const book = { id: "book-6", title: "Mixed Chapter Markers" };
+        const chapters = [
+            { id: "marked", type: "CHAPTER", bookId: "book-6", order: 1 },
+            { id: "unmarked", type: "ARTICLE", bookId: "book-6", order: 2 }
+        ];
+
+        expect(filterAndSortChapters(book, chapters).map(chapter => chapter.id)).to.deep.equal(["marked", "unmarked"]);
+    });
+
     it("includes books from the books collection without duplicating article-backed books", () => {
         const articleBook = { id: "shared-id", title: "Article Book", type: "BOOK" };
         const slugArticleBook = { id: "article-by-slug", slug: "same-book", type: "BOOK" };
@@ -141,8 +177,8 @@ describe("Book chapter relationships", () => {
     it("skips the redundant book-document request when book metadata is supplied", async () => {
         const originalFetch = window.fetch;
         const requests = [];
-        window.fetch = async url => {
-            requests.push(String(url));
+        window.fetch = async (url, options) => {
+            requests.push({ url: String(url), body: JSON.parse(options.body) });
             return { ok: true, status: 200, json: async () => [] };
         };
 
@@ -152,10 +188,32 @@ describe("Book chapter relationships", () => {
                 skipBookFetch: true
             });
             expect(result.chapters).to.deep.equal([]);
-            expect(requests).to.have.length(2);
-            expect(requests.every(url => url.includes(":runQuery"))).to.equal(true);
+            expect(requests).to.have.length(1);
+            expect(requests[0].url).to.include(":runQuery");
+            const relationshipFilters = requests[0].body.structuredQuery.where.compositeFilter.filters[0].compositeFilter.filters;
+            const fieldPaths = relationshipFilters.map(filter => filter.fieldFilter.field.fieldPath);
+            expect(fieldPaths).to.include.members(["bookId", "parentBookId", "bookTitle", "bookName", "playlistName", "book"]);
         } finally {
             window.fetch = originalFetch;
+        }
+    });
+
+    it("keeps the book detail usable when Firestore denies the relationship query", async () => {
+        const originalFetch = window.fetch;
+        const originalWarn = console.warn;
+        window.fetch = async () => ({ ok: false, status: 403, json: async () => ({}) });
+        console.warn = () => {};
+
+        try {
+            const result = await fetchBookChapters("book-403", {
+                articlesPool: [{ id: "book-403", title: "Book", type: "BOOK" }],
+                skipBookFetch: true
+            });
+            expect(result.chapters).to.deep.equal([]);
+            expect(result.book.id).to.equal("book-403");
+        } finally {
+            window.fetch = originalFetch;
+            console.warn = originalWarn;
         }
     });
 

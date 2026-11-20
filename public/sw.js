@@ -1,29 +1,32 @@
-const CACHE = "nuqtha-shell-v2";
+const CACHE = "nuqtha-shell-v3";
 const OFFLINE = "/offline.html";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([
+  const precacheUrls = [
     OFFLINE,
     "/",
     "/index.html",
     "/article.html",
-    "/styles.css",
-    "/tailwind.css",
-    "/app.js",
-    "/schema-validator.js",
-    "/firebase-config.js",
-    "/js/public-image-loader.js",
-    "/js/book-data.js",
-    "/src/install.js",
-    "/src/install.css",
-    "/src/app-experience.js",
-    "/src/app-experience.css",
+    "/manifest.webmanifest",
     "/favicon.svg",
     "/icons/icon-192.png",
     "/icons/icon-512.png",
     "/icons/maskable-512.png"
-  ])));
-  self.skipWaiting();
+  ];
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    const results = await Promise.allSettled(precacheUrls.map(async (url) => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Precache request failed (${response.status}): ${url}`);
+      await cache.put(url, response);
+    }));
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        console.warn("[ServiceWorker] Skipping unavailable precache asset:", precacheUrls[index], result.reason);
+      }
+    });
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", (event) => {

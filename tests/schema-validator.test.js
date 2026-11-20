@@ -11,13 +11,30 @@ import {
     parseTimestampMillis,
     formatDateSafe,
     normalizeArticleDoc,
-    validateAndSanitizeArticleForSave
+    validateAndSanitizeArticleForSave,
+    getStoryUrl
 } from "../schema-validator.js";
 
 const { describe, it } = window;
 const { expect } = window.chai;
 
 describe("Schema Validator & Sanitizer Suite", () => {
+    describe("getStoryUrl()", () => {
+        it("uses book title, slug, and reference aliases for chapter routes", () => {
+            expect(getStoryUrl({
+                id: "chapter-1",
+                title: "Chapter One",
+                bookTitle: "Sample Book",
+                bookSlug: "sample-book"
+            })).to.equal("/story/sample-book/chapter-one");
+            expect(getStoryUrl({
+                id: "chapter-2",
+                title: "Chapter Two",
+                book: { path: "projects/nuqtha/databases/(default)/documents/books/book-2" }
+            })).to.equal("/story/book-2/chapter-two");
+        });
+    });
+
     describe("sanitizeString()", () => {
         it("should return fallback for null or undefined", () => {
             expect(sanitizeString(null, 100, "fallback")).to.equal("fallback");

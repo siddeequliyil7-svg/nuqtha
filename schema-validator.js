@@ -162,10 +162,27 @@ export function getStoryUrl(item) {
     }
 
     // 2. Chapter belonging to a book: /story/:bookSlug/:chapterSlug
-    const bookTitle = item.bookName || item.playlistName;
-    const hasParentBook = Boolean(item.bookId || (bookTitle && String(bookTitle).trim()));
+    const bookReference = item.book;
+    const bookReferencePath = String(typeof bookReference === "string"
+        ? bookReference
+        : (bookReference?.path || bookReference?.reference || bookReference?.ref || ""));
+    const bookReferenceTitle = typeof bookReference === "string" && !bookReference.includes("/")
+        ? bookReference
+        : "";
+    const bookTitle = item.bookTitle || item.bookName || item.playlistName ||
+        bookReference?.title || bookReference?.bookTitle || bookReference?.bookName ||
+        bookReference?.name || bookReferenceTitle;
+    const parentReference = item.parentBookId || item.bookId;
+    const parentReferenceId = String(typeof parentReference === "object"
+        ? (parentReference.id || parentReference.bookId || parentReference.docId ||
+            parentReference.path || parentReference.reference || parentReference.ref || "")
+        : (parentReference || "")).split("/").pop();
+    const bookReferenceSlug = bookReference?.bookSlug || bookReference?.slug ||
+        bookReference?.id || bookReferencePath.split("/").pop();
+    const hasParentBook = Boolean(item.bookId || item.parentBookId || item.bookSlug || bookTitle || bookReference);
     if (hasParentBook) {
-        const parentBookSlug = item.bookSlug || (bookTitle ? slugifyText(bookTitle) : "") || item.bookId || "";
+        const parentBookSlug = item.bookSlug || bookReferenceSlug ||
+            (bookTitle ? slugifyText(bookTitle) : "") || parentReferenceId || "";
         // Chapter's own slug must ALWAYS be its own slug or title, NEVER the parent's bookSlug!
         const chapterSlug = item.slug || (item.title ? slugifyText(item.title) : "") || item.id || "";
         let cleanBook = cleanUrlPart(parentBookSlug);
@@ -527,7 +544,9 @@ export function validateAndSanitizeArticleForSave(raw) {
     }
 
     // 6. Cover image
-    const imageUrl = getArticleImageUrl(raw, "");
+    const imageUrl = [
+        raw.imageUrl, raw.coverUrl, raw.coverImage, raw.cover, raw.image
+    ].map(sanitizeImageUrl).find(url => url && !isCoverPlaceholder(url)) || "";
     const thumbnailUrl = [
         raw.thumbnailUrl, raw.thumbnail, raw.ogImage, imageUrl
     ].map(sanitizeImageUrl).find(url => url && !isCoverPlaceholder(url)) || imageUrl;
