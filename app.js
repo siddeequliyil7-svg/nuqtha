@@ -929,11 +929,12 @@ export function initAppData() {
             else combined[existingIndex] = { ...combined[existingIndex], ...article };
         });
         rawBooksList.forEach(book => {
-            const exists = combined.some(article =>
+            const existingIndex = combined.findIndex(article =>
                 article.id === book.id ||
                 (book.slug && article.slug === book.slug && (article.type === "BOOK" || article.type === "free" || article.type === "premium"))
             );
-            if (!exists) combined.push(book);
+            if (existingIndex < 0) combined.push(book);
+            else combined[existingIndex] = { ...combined[existingIndex], ...book };
         });
 
         allArticles = sortArticles(combined.filter(isPubliclyPublished));
@@ -1201,7 +1202,14 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
                     <span aria-hidden="true">&darr;</span>
                 </button>
             </div>
-        ` : ""}
+        ` : `
+            <div class="home-category-show-more-wrap">
+                <a href="${escapeHtml(categoryUrl(category.slug))}" class="home-category-show-more">
+                    <span>Show More</span>
+                    <span aria-hidden="true">&rarr;</span>
+                </a>
+            </div>
+        `}
     `;
     section.dataset.loaded = "true";
     attachShowMoreListeners();
@@ -1210,7 +1218,7 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
 }
 
 function attachHomeCategoryLoadMoreListeners(root = document) {
-    root.querySelectorAll(".home-category-show-more:not([data-listener])").forEach(button => {
+    root.querySelectorAll("button.home-category-show-more:not([data-listener])").forEach(button => {
         button.dataset.listener = "true";
         button.addEventListener("click", () => {
             const section = button.closest("[data-home-category-section]");
@@ -1228,10 +1236,61 @@ function attachHomeCategoryLoadMoreListeners(root = document) {
 
             if (!template.content.firstElementChild) {
                 template.remove();
-                button.remove();
+                const allArticlesLink = document.createElement("a");
+                allArticlesLink.className = button.className;
+                allArticlesLink.href = categoryUrl(button.dataset.category);
+                allArticlesLink.innerHTML = '<span>Show More</span><span aria-hidden="true">&rarr;</span>';
+                button.replaceWith(allArticlesLink);
             }
         });
     });
+}
+
+function getHomeArticleKeys(article) {
+    if (!article) return [];
+    const keys = [];
+    const id = String(article.id || "").trim();
+    const slug = String(article.slug || "").trim().normalize("NFC").toLowerCase();
+    const title = stripMarkdown(article.title || "")
+        .normalize("NFC")
+        .replace(/[\u200B-\u200D\uFEFF]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+
+    if (id) keys.push(`id:${id}`);
+    if (slug) keys.push(`slug:${slug}`);
+    if (title) keys.push(`title:${getArticleCategoryId(article)}:${title}`);
+    return keys;
+}
+
+function getHomeArticleImageScore(article) {
+    if (getArticleImageUrl(article, "")) return 2;
+    return getDeferredImageAttributes(article) ? 1 : 0;
+}
+
+function deduplicateHomeArticles(articles) {
+    const uniqueArticles = [];
+    const articleIndexByKey = new Map();
+
+    articles.forEach(article => {
+        const keys = getHomeArticleKeys(article);
+        const duplicateIndex = keys
+            .map(key => articleIndexByKey.get(key))
+            .find(index => index !== undefined);
+        if (duplicateIndex === undefined) {
+            const index = uniqueArticles.push(article) - 1;
+            keys.forEach(key => articleIndexByKey.set(key, index));
+            return;
+        }
+
+        if (getHomeArticleImageScore(article) > getHomeArticleImageScore(uniqueArticles[duplicateIndex])) {
+            uniqueArticles[duplicateIndex] = article;
+        }
+        keys.forEach(key => articleIndexByKey.set(key, duplicateIndex));
+    });
+
+    return uniqueArticles;
 }
 
 /* ─── HOME FEED: Scrolling Carousel + Hero Featured + Dedicated Books + Category Feeds ─── */
@@ -1242,11 +1301,11 @@ function renderHomeFeed(container) {
     const isBookCoverItem = article => isBookEntity(article) && !isChapter(article);
     const bookCovers = getBookCoverItems(allArticles);
     // Regular articles: keep only genuine standalone articles (exclude book covers AND all book chapters)
-    const regularArticles = allArticles.filter(a =>
+    const regularArticles = deduplicateHomeArticles(allArticles.filter(a =>
         !isBookCoverItem(a) && !isChapter(a) &&
         isPubliclyPublished(a) &&
         siteCategoryById.get(getArticleCategoryId(a))?.visible !== false
-    );
+    ));
 
     const visibleCategories = getVisibleCategories(regularArticles);
     if (regularArticles.length === 0 && bookCovers.length === 0 && visibleCategories.length === 0) {
@@ -1288,21 +1347,19 @@ function renderHomeFeed(container) {
 
     // 2. Determine Carousel Articles for Top Horizontal Swipe:
     // Keep the hero separate so the same article is not shown twice above the fold.
+    const heroKeys = new Set(getHomeArticleKeys(heroArticle));
     const carouselPool = [
         ...explicitCarousel,
-        ...explicitHero.filter(a => a.id !== heroArticle?.id),
-        ...autoArticles.filter(a => a.id !== heroArticle?.id)
-    ].filter(Boolean);
+        ...explicitHero,
+        ...autoArticles
+    ].filter(article => article && !getHomeArticleKeys(article).some(key => heroKeys.has(key)));
+    const swipeArticles = deduplicateHomeArticles(carouselPool).slice(0, 10);
+    const usedHomeArticleKeys = new Set([
+        ...getHomeArticleKeys(heroArticle),
+        ...swipeArticles.flatMap(getHomeArticleKeys)
+    ]);
 
-    // Deduplicate
-    const carouselSeen = new Set();
-    const swipeArticles = carouselPool.filter(a => {
-        if (carouselSeen.has(a.id)) return false;
-        carouselSeen.add(a.id);
-        return true;
-    }).slice(0, 10);
-
-    // Track used IDs for subsequent sections
+    // Track article identities so later sections do not repeat the featured content.
     let html = '';
 
     // ═══════════════════════════════════════════════════════════
@@ -1328,12 +1385,17 @@ function renderHomeFeed(container) {
 
     const categoryGroups = new Map();
     regularArticles.forEach(article => {
+        const articleKeys = getHomeArticleKeys(article);
+        if (articleKeys.some(key => usedHomeArticleKeys.has(key))) return;
         const categoryId = getArticleCategoryId(article);
         if (!categoryId) return;
+        articleKeys.forEach(key => usedHomeArticleKeys.add(key));
         if (!categoryGroups.has(categoryId)) categoryGroups.set(categoryId, []);
         categoryGroups.get(categoryId).push(article);
     });
-    const orderedCategories = visibleCategories;
+    const orderedCategories = visibleCategories.filter(category =>
+        (categoryGroups.get(category.slug) || []).length > 0
+    );
     const lazySections = [];
     orderedCategories.forEach(category => {
         const theme = getCategoryTheme();

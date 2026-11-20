@@ -3109,7 +3109,7 @@ body:has(#standard-article-view) {
 
 .home-category-show-more-wrap {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     margin-top: 1rem;
 }
 
@@ -3126,6 +3126,7 @@ body:has(#standard-article-view) {
     background: var(--surface);
     font: 700 0.8rem/1.2 "Plus Jakarta Sans", sans-serif;
     cursor: pointer;
+    text-decoration: none;
     transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 

@@ -37,8 +37,9 @@ assert.ok(
     "app.js must keep the hero article out of the carousel"
 );
 assert.ok(
-    appJs.includes("!usedIds.has(a.id) && sanitizeCategory(a.category).toUpperCase() === cat"),
-    "app.js must not repeat carousel or hero articles in category sections"
+    appJs.includes("deduplicateHomeArticles(allArticles.filter(a =>") &&
+        appJs.includes("articleKeys.some(key => usedHomeArticleKeys.has(key))"),
+    "app.js must deduplicate repeated stories and omit carousel/hero stories from category sections"
 );
 console.log("  [OK] app.js excludes book covers and explicitly marked chapters from regularArticles.");
 
@@ -94,6 +95,20 @@ assert.strictEqual(new Set([...displayedIds, ...categoryIds]).size,
     displayedIds.size + categoryIds.length,
     "An article must appear in only one homepage preview section");
 assert.deepStrictEqual(categoryIds, ["category"], "Category previews must exclude previously shown articles and chapters");
+assert.ok(
+    appJs.includes("function getHomeArticleKeys(article)") &&
+        appJs.includes("...swipeArticles.flatMap(getHomeArticleKeys)") &&
+        appJs.includes("if (getHomeArticleImageScore(article) > getHomeArticleImageScore(uniqueArticles[duplicateIndex]))"),
+    "Homepage deduplication must cover IDs, slugs, titles, and prefer an available cover"
+);
+assert.ok(
+    appJs.includes("else combined[existingIndex] = { ...combined[existingIndex], ...book };"),
+    "Live book records must update matching fallback books so their cover source is retained"
+);
+assert.ok(
+    appJs.includes('<a href="${escapeHtml(categoryUrl(category.slug))}" class="home-category-show-more">'),
+    "Category sections must keep a Show More link when there are no hidden preview cards"
+);
 console.log("  [OK] Homepage hero, carousel, and category previews contain no duplicate articles.");
 
 console.log("==================================================");
