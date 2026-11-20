@@ -18,6 +18,23 @@ import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-servic
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
 import { getArticleCategoryId, getCachedCategories, getCategories, slugifyCategory } from "./js/category-store.js";
+import { initInstall, isWebView, syncInstallItems } from "./src/install.js";
+import "./src/app-experience.css";
+import { initAppExperience, requestNotificationPermission } from "./src/app-experience.js";
+
+if ("serviceWorker" in navigator && !isWebView()) {
+    addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(error => {
+            console.warn("[NUQTHA] Service worker registration failed.", error);
+        });
+    });
+}
+initInstall();
+initAppExperience();
+if (typeof window.Notification !== "undefined") {
+    window.requestNUQTHANotifications = requestNotificationPermission;
+}
+syncInstallItems();
 
 void syncReadingBg();
 

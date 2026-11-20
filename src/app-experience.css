@@ -1,0 +1,31 @@
+.nuqtha-offline-status,
+.nuqtha-update-banner,
+.nuqtha-app-notice {
+  position: fixed;
+  z-index: 120;
+  border-radius: 12px;
+  border: 1px solid rgba(235, 220, 203, .9);
+  background: #fff;
+  color: #2c221e;
+  box-shadow: 0 12px 32px rgba(70, 35, 15, .16);
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+.nuqtha-offline-status { left: 50%; bottom: 16px; max-width: calc(100vw - 32px); padding: .7rem .9rem; transform: translate(-50%, 140%); opacity: 0; font-size: .78rem; font-weight: 700; transition: transform .28s ease, opacity .28s ease; }
+.nuqtha-offline-status.on { transform: translate(-50%, 0); opacity: 1; }
+.nuqtha-offline-status.offline { border-color: #d6c2a8; background: #fff8ee; }
+
+.nuqtha-update-banner { top: 14px; left: 50%; display: flex; align-items: center; gap: .8rem; padding: .65rem .7rem .65rem .85rem; transform: translateX(-50%); font-size: .78rem; font-weight: 700; }
+.nuqtha-update-banner button { min-height: 36px; border: 0; border-radius: 9px; padding: 0 .8rem; background: #a8512c; color: #fff; font: inherit; cursor: pointer; }
+
+.nuqtha-app-notice { right: 16px; bottom: 16px; display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: .7rem; width: min(390px, calc(100vw - 32px)); padding: .85rem; transform: translateY(140%); opacity: 0; transition: transform .28s ease, opacity .28s ease; }
+.nuqtha-app-notice.on { transform: translateY(0); opacity: 1; }
+.nuqtha-app-notice-copy { display: grid; gap: 2px; min-width: 0; }
+.nuqtha-app-notice-copy strong { color: #a8512c; font-size: .78rem; }
+.nuqtha-app-notice-copy span { overflow: hidden; color: #4a3c33; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+.nuqtha-app-notice-action { min-height: 38px; display: inline-flex; align-items: center; border-radius: 9px; padding: 0 .75rem; background: #a8512c; color: #fff; font-size: .76rem; font-weight: 800; text-decoration: none; }
+.nuqtha-app-notice-close { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: #6f5d53; font-size: 1.2rem; cursor: pointer; }
+
+@media (max-width: 640px) {
+  .nuqtha-app-notice { right: 16px; bottom: 16px; }
+}

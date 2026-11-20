@@ -5022,3 +5022,36 @@ html.dark .category-tag-bracket {
     z-index: 1;
     pointer-events: auto;
 }
+
+.footer-install-button,
+.drawer-install-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    border: 1px solid rgba(203, 187, 169, .45);
+    border-radius: 10px;
+    padding: .5rem .75rem;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+.footer-install-button svg,
+.drawer-install-link svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+.drawer-install-copy {
+    display: grid;
+    text-align: left;
+}
+
+.drawer-install-copy small {
+    opacity: .75;
+}

@@ -14,8 +14,20 @@ export function slugifyCategory(value) {
         .replace(/^-+|-+$/g, "");
 }
 
+function normalizeStandardCategory(value) {
+    const category = String(value || "").trim().toUpperCase();
+    if (category === "HISTORY" || category.includes("HIST") || category.includes("ചരിത്ര")) return "history";
+    if (category === "STUDY" || category.includes("STUD") || category.includes("പഠന")) return "study";
+    if (category === "STORY" || category.includes("STOR") || category.includes("കഥ")) return "story";
+    if (category === "GENERAL") return "general";
+    return "";
+}
+
 export function getArticleCategoryId(article) {
-    return String(article?.categoryId || "").trim() || slugifyCategory(article?.category || "");
+    const categoryId = String(article?.categoryId || "").trim();
+    if (categoryId) return normalizeStandardCategory(categoryId) || categoryId;
+    const category = String(article?.category || "").trim();
+    return normalizeStandardCategory(category) || slugifyCategory(category) || "general";
 }
 
 function normalizeCategory(snapshot) {

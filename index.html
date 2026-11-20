@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#A8512C">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="NUQTHA">
     <title>NUQTHA - നുഖ്ത | Malayalam Publishing Platform</title>
     <meta name="description" content="A modern Malayalam personal publishing platform and newsroom with realtime articles, category feeds, reader mode, and admin publisher." />
     <meta property="og:title" content="NUQTHA - à´¨àµà´–àµà´¤ | Malayalam Publishing Platform" />
@@ -365,6 +370,10 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-english tracking-wider">
             <span translate="no" class="notranslate">&copy; 2026 NUQTHA. All rights reserved.</span>
             <div class="flex items-center gap-4">
+                <button type="button" data-install class="footer-install-button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M5 20h14"/></svg>
+                    <span>Install</span>
+                </button>
                 <a href="admin.html" class="hover:text-white transition">Admin Portal</a>
                 <span>â€¢</span>
                 <a href="contact.html" class="hover:text-white transition">Contact</a>
@@ -451,6 +460,10 @@
         </div>
 
         <footer class="drawer-foot">
+            <button type="button" data-install class="drawer-install-link">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M5 20h14"/></svg>
+                <span class="drawer-install-copy"><strong>Install App</strong><small>Add NUQTHA to your home screen</small></span>
+            </button>
             <a id="drawer-contact-link" class="drawer-contact" href="contact.html">Contact us</a>
         </footer>
     </aside>
