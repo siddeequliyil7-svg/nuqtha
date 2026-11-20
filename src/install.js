@@ -1,5 +1,3 @@
-import "./install.css";
-
 const K = {
   dismissed: "nuqtha:install-dismissed",
   ios: "nuqtha:install-ios-shown",

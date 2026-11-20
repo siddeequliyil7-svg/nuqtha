@@ -94,4 +94,29 @@ describe("Deferred public images", () => {
 
         installLazyFirestoreImages();
     });
+
+    it("replaces broken direct cover URLs with the local fallback image", function(done) {
+        this.timeout(5000);
+        installLazyFirestoreImages();
+        const image = document.createElement("img");
+        image.dataset.nuqthaCover = "true";
+        image.src = "/missing-cover-image-test.png";
+        document.body.append(image);
+
+        const timeout = Date.now() + 4500;
+        const checkFallback = () => {
+            if (image.getAttribute("src") === "/cover-placeholder.svg") {
+                image.remove();
+                done();
+                return;
+            }
+            if (Date.now() >= timeout) {
+                image.remove();
+                done(new Error("Broken cover was not replaced with the local fallback."));
+                return;
+            }
+            setTimeout(checkFallback, 20);
+        };
+        checkFallback();
+    });
 });

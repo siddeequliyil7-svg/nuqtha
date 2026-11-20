@@ -1,5 +1,15 @@
 import { getBookArticleLinkFields, getBookChapters, getBookChapterIds, mergeBookRecords } from "../book-data.js";
-import { areSameBookByTitle, filterAndSortChapters, getBookChapters as fetchBookChapters, getBookPageLightData, getRelatedBooks, isArticleInBook, parseFirestoreRestDoc } from "../js/book-data.js";
+import {
+    areSameBookByTitle,
+    filterAndSortChapters,
+    getBookChapters as fetchBookChapters,
+    getBookPageLightData,
+    getRelatedBooks,
+    isArticleInBook,
+    parseFirestoreRestDoc,
+    readBookChapterListCache,
+    saveBookChapterListCache
+} from "../js/book-data.js";
 
 const { describe, it } = window;
 const { expect } = window.chai;
@@ -133,6 +143,30 @@ describe("Book chapter relationships", () => {
         expect(lightData.isPremium).to.equal(true);
         expect(lightData._imageCollection).to.equal("books");
         expect(lightData._imageDocId).to.equal("book-1");
+    });
+
+    it("preserves deferred chapter image sources in the fast book-page cache", () => {
+        const slug = "chapter-image-cache-test";
+        const cacheKey = `nuqtha_cache_book_chapters_${slug}_v4`;
+        sessionStorage.removeItem(cacheKey);
+
+        try {
+            expect(saveBookChapterListCache(slug, [{
+                id: "chapter-image-1",
+                title: "Chapter",
+                status: "published",
+                _imageCollection: "articles",
+                _imageDocId: "chapter-image-1",
+                updatedAt: "2026-11-20T00:00:00Z"
+            }])).to.equal(true);
+            expect(readBookChapterListCache(slug)[0]).to.include({
+                _imageCollection: "articles",
+                _imageDocId: "chapter-image-1",
+                updatedAt: "2026-11-20T00:00:00Z"
+            });
+        } finally {
+            sessionStorage.removeItem(cacheKey);
+        }
     });
 
     it("matches duplicate book records by title without merging different authors or volumes", () => {

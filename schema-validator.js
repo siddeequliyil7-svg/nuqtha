@@ -368,28 +368,29 @@ export function sanitizeImageUrl(url) {
     const trimmed = url.trim();
     if (trimmed.length === 0) return "";
 
-    // Allow root-relative and relative local asset paths (e.g., /assets/..., ./assets/..., assets/..., /favicon.ico)
-    if (trimmed.startsWith("/") || trimmed.startsWith("./") || trimmed.startsWith("assets/")) {
-        const lower = trimmed.toLowerCase();
-        // Prevent protocol-relative URLs (//evil.com) and code execution characters
-        if (!lower.startsWith("//") && !lower.includes("<") && !lower.includes(">") && !lower.includes('"') && !lower.includes("'")) {
-            return trimmed;
+    if (/^data:image\/(jpeg|jpg|png|webp|gif|avif);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
+        return trimmed;
+    }
+
+    if (/^https?:\/\//i.test(trimmed)) {
+        try {
+            const parsed = new URL(trimmed);
+            if (parsed.hostname && !parsed.username && !parsed.password) return parsed.href;
+        } catch (_) {}
+        return "";
+    }
+
+    if (/^[a-z][a-z\d+.-]*:/i.test(trimmed) || trimmed.startsWith("//") || /[<>"'\\]/.test(trimmed)) {
+        return "";
+    }
+
+    try {
+        const baseUrl = new URL("https://nuqtha.invalid/");
+        const parsed = new URL(trimmed, baseUrl);
+        if (parsed.origin === baseUrl.origin && parsed.pathname !== "/") {
+            return `${parsed.pathname}${parsed.search}${parsed.hash}`;
         }
-    }
-
-    if (/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\\)[A-Za-z0-9._~!$&'()*+,;=@%-]+(?:\/[A-Za-z0-9._~!$&'()*+,;=@%-]+)*(?:[?#][^\s<>"']*)?$/.test(trimmed)) {
-        return trimmed;
-    }
-
-    // Allow valid Data URIs for safe raster images only (JPEG, PNG, WEBP, GIF)
-    if (/^data:image\/(jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
-        return trimmed;
-    }
-
-    // Allow standard HTTP/HTTPS URLs
-    if (/^https?:\/\/[^\s$.?#].[^\s]*$/i.test(trimmed)) {
-        return trimmed;
-    }
+    } catch (_) {}
 
     // Disallow corrupted/unknown strings or dangerous pseudo-protocols
     // Do not log warning for empty strings or common benign non-image values

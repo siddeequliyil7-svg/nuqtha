@@ -105,6 +105,13 @@ describe("Schema Validator & Sanitizer Suite", () => {
             expect(sanitizeImageUrl(httpsUrl)).to.equal(httpsUrl);
             expect(sanitizeImageUrl("javascript:alert(1)")).to.equal("");
         });
+
+        it("normalizes relative image paths to safe root-relative URLs", () => {
+            expect(sanitizeImageUrl("../uploads/book cover.jpg")).to.equal("/uploads/book%20cover.jpg");
+            expect(sanitizeImageUrl("//images.example.test/cover.jpg")).to.equal("");
+            expect(getArticleImageUrl({ coverUrl: "./uploads/book-cover.jpg" }, ""))
+                .to.equal("/uploads/book-cover.jpg");
+        });
     });
 
     describe("parseTimestampMillis() & formatDateSafe()", () => {

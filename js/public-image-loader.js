@@ -333,18 +333,32 @@ function hideImagePlaceholder(image) {
     placeholder.classList.add("hidden");
 }
 
+function useStaticImageFallback(image) {
+    if (!image?.isConnected || image.dataset.nuqthaStaticFallbackAttempted === "true") return;
+    image.dataset.nuqthaStaticFallbackAttempted = "true";
+    revealImage(image, "/cover-placeholder.svg");
+}
+
 function handleImageError(image) {
     showImagePlaceholder(image);
     if (image.dataset.nuqthaImageFallbackAttempted === "true" ||
-        !image.dataset.nuqthaImageFallbackCollection || !image.dataset.nuqthaImageFallbackDoc) return;
+        !image.dataset.nuqthaImageFallbackCollection || !image.dataset.nuqthaImageFallbackDoc) {
+        useStaticImageFallback(image);
+        return;
+    }
     image.dataset.nuqthaImageFallbackAttempted = "true";
     fetchImageFromDocument(
         image.dataset.nuqthaImageFallbackCollection,
         image.dataset.nuqthaImageFallbackDoc
     ).then(source => {
-        if (source && image.isConnected) revealImage(image, source);
+        if (source && image.isConnected) {
+            revealImage(image, source);
+            return;
+        }
+        useStaticImageFallback(image);
     }).catch(error => {
         console.warn("[NUQTHA Images] Could not load the fallback image.", error);
+        useStaticImageFallback(image);
     });
 }
 
@@ -383,7 +397,10 @@ function processNext() {
             try {
                 const source = await fetchImageField(image);
                 if (!source || !image.isConnected) {
-                    if (image.isConnected) showImagePlaceholder(image);
+                    if (image.isConnected) {
+                        showImagePlaceholder(image);
+                        useStaticImageFallback(image);
+                    }
                     return;
                 }
                 let resolvedSource = source;
@@ -394,7 +411,10 @@ function processNext() {
                 if (image.isConnected) revealImage(image, resolvedSource);
             } catch (error) {
                 console.warn("[NUQTHA Images] Could not load a card image.", error);
-                if (image.isConnected) showImagePlaceholder(image);
+                if (image.isConnected) {
+                    showImagePlaceholder(image);
+                    useStaticImageFallback(image);
+                }
             } finally {
                 activeRequests -= 1;
                 processNext();
@@ -412,7 +432,10 @@ function observeImage(image) {
             image.style.opacity = "1";
             hideImagePlaceholder(image);
         };
-        if (image.complete && image.naturalWidth > 0) reveal();
+        if (image.complete) {
+            if (image.naturalWidth > 0) reveal();
+            else handleImageError(image);
+        }
         else {
             image.addEventListener("load", reveal, { once: true });
             image.addEventListener("error", () => handleImageError(image), { once: true });
@@ -426,8 +449,8 @@ function observeImage(image) {
 
 function scanImages(node) {
     if (!(node instanceof Element)) return;
-    if (node.matches("img[data-nuqtha-image-doc]")) observeImage(node);
-    node.querySelectorAll("img[data-nuqtha-image-doc]").forEach(observeImage);
+    if (node.matches("img[data-nuqtha-cover], img[data-nuqtha-image-doc]")) observeImage(node);
+    node.querySelectorAll("img[data-nuqtha-cover], img[data-nuqtha-image-doc]").forEach(observeImage);
 }
 
 export function installLazyFirestoreImages() {

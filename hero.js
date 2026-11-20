@@ -1,5 +1,3 @@
-import "./hero.css";
-
 /*
   NUQTHA hero (vanilla JS, ES module)
 

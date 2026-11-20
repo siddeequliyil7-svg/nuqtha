@@ -1,5 +1,5 @@
 import { safeInit } from "./js/ui-safe.js";
-import { FALLBACK_ARTICLES, FALLBACK_BOOKS } from './fallback-data.js';
+import { FALLBACK_ARTICLES, FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from './fallback-data.js';
 export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
 /**
  * NUQTHA — Frosted Glass Feed Engine
@@ -19,7 +19,6 @@ import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
 import { getArticleCategoryId, getCachedCategories, getCategories, slugifyCategory } from "./js/category-store.js";
 import { initInstall, isWebView, syncInstallItems } from "./src/install.js";
-import "./src/app-experience.css";
 import { initAppExperience, requestNotificationPermission } from "./src/app-experience.js";
 
 if ("serviceWorker" in navigator && !isWebView()) {
@@ -39,15 +38,18 @@ syncInstallItems();
 void syncReadingBg();
 
 /* ═══════════ Pre-bundled Fallback Data for 100% Uptime & Smooth Load ═══════════ */
-const CACHE_KEY = 'nuqtha_cached_articles_v11';
+const CACHE_KEY = 'nuqtha_cached_articles_v12';
+let appDataPromise;
 
 installLazyFirestoreImages();
 
-function buildCardImageMarkup(item, className, alt, width, height, eager = false) {
+function buildCardImageMarkup(item, className, alt, width, height, eager = false, fallbackUrl = "") {
     const rawUrl = getArticleImageUrl(item, "");
     const deferredAttributes = getDeferredImageAttributes(item);
     const deferInlineImage = /^data:image\//i.test(rawUrl) && deferredAttributes;
-    const imageUrl = deferInlineImage ? "" : rawUrl;
+    const imageUrl = deferInlineImage
+        ? ""
+        : rawUrl || (deferredAttributes ? "" : fallbackUrl);
     if (!imageUrl && !deferredAttributes) return "";
 
     const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
@@ -63,7 +65,7 @@ function hasImmediateCardImage(item) {
 }
 
 function hasBookCoverSource(book) {
-    return Boolean(getArticleImageUrl(book, "") || getDeferredImageAttributes(book));
+    return hasImmediateCardImage(book);
 }
 
 function safeCacheArticles(articles) {
@@ -125,7 +127,7 @@ try {
 
 // Pre-fill with normalized fallback articles so feed is NEVER empty, broken, or stuck on skeletons
 if (!Array.isArray(allArticles) || allArticles.length === 0) {
-    allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
+    allArticles = FALLBACK_ARTICLE_ITEMS.map(a => normalizeArticleDoc(a, a.id));
     safeCacheArticles(allArticles);
 }
 
@@ -821,8 +823,6 @@ function escapeHtml(str) {
 }
 
 /* ═══════════ App Data Loader ═══════════ */
-let appDataPromise;
-
 function restoreFallbackFields(article, fallbacksById, rawArticle = {}) {
     const fallback = fallbacksById.get(article.id) || fallbacksById.get(article.slug);
     if (!fallback) return article;
@@ -872,16 +872,12 @@ export function initAppData() {
             console.warn("[NUQTHA App] Could not restore the article cache.", error);
         }
 
-        const [publicLists, categories] = await Promise.all([
-            fetchPublicCollections(),
-            getCategories({ forceRefresh: true }).catch(error => {
-                console.error("[NUQTHA App] Could not load Firestore categories.", error);
-                return [];
-            })
-        ]);
+        const categoriesPromise = getCategories().catch(error => {
+            console.error("[NUQTHA App] Could not load Firestore categories.", error);
+            return getCachedCategories();
+        });
+        const publicLists = await fetchPublicCollections();
         hasFirestoreContent = publicLists.hasFirestoreContent === true;
-        siteCategories = categories;
-        siteCategoryById = new Map(categories.map(category => [category.slug, category]));
         const fallbacksById = new Map();
         FALLBACK_ARTICLES.forEach(article => {
             if (article.id) fallbacksById.set(article.id, article);
@@ -907,12 +903,14 @@ export function initAppData() {
                 (bookData.slug && article.slug === bookData.slug) ||
                 (isBookEntity(article) && areSameBookByTitle(article, bookData))
             );
-            const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(bookData, "");
+            const coverUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "");
             const thumbnailUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
             const book = normalizeArticleDoc({
                 ...(articleRecord || {}),
                 ...bookData,
                 imageUrl: coverUrl,
+                coverImage: coverUrl,
+                coverUrl,
                 thumbnailUrl,
                 title: sanitizeMalayalamText(bookData.title),
                 author: sanitizeMalayalamText(bookData.author),
@@ -929,7 +927,7 @@ export function initAppData() {
             return restoreFallbackFields(book, fallbacksById, bookData);
         });
 
-        const fallbackItems = FALLBACK_ARTICLES;
+        const fallbackItems = FALLBACK_ARTICLE_ITEMS;
         const combined = fallbackItems.map(article => normalizeArticleDoc(article, article.id));
         rawArticlesList.forEach(article => {
             const existingIndex = combined.findIndex(item => item.id === article.id || (article.slug && item.slug === article.slug));
@@ -949,10 +947,14 @@ export function initAppData() {
         allArticles = sortArticles(combined.filter(isPubliclyPublished));
         safeCacheArticles(allArticles);
         renderFeed();
+
+        siteCategories = await categoriesPromise;
+        siteCategoryById = new Map(siteCategories.map(category => [category.slug, category]));
+        renderFeed();
     })().catch(error => {
         console.error("[NUQTHA App] Could not load articles and books.", error);
         if (allArticles.length === 0) {
-            allArticles = FALLBACK_ARTICLES.map(article => normalizeArticleDoc(article, article.id));
+            allArticles = FALLBACK_ARTICLE_ITEMS.map(article => normalizeArticleDoc(article, article.id));
         }
         renderFeed();
     });
@@ -1172,12 +1174,12 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
         ${featuredArticle ? `<div class="home-category-featured mb-4">${buildFeaturedCard(featuredArticle)}</div>` : ""}
         ${initialGridArticles.length ? `
             <div id="${gridId}" class="home-category-grid">
-                ${initialGridArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
+                ${initialGridArticles.map(article => buildHomeCategorySmallCard(article, theme)).join("")}
             </div>
         ` : ""}
         ${remainingArticles.length ? `
             <template class="home-category-more-template">
-                ${remainingArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
+                ${remainingArticles.map(article => buildHomeCategorySmallCard(article, theme)).join("")}
             </template>
             <div class="home-category-show-more-wrap">
                 <button type="button" class="home-category-show-more" data-category="${escapeHtml(category.slug)}" aria-controls="${gridId}">
@@ -1196,6 +1198,37 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
     attachShowMoreListeners();
     attachHomeCategoryLoadMoreListeners(section);
     attachCardListeners();
+}
+
+function buildHomeCategorySmallCard(article, theme) {
+    if (!article) return "";
+    const cleanTitle = stripMarkdown(article.title);
+    const authorName = article.author || "NUQTHA";
+    const image = buildCardImageMarkup(
+        article,
+        "home-category-small-image",
+        cleanTitle,
+        480,
+        270,
+        false,
+        "/cover-placeholder.svg"
+    );
+    const hasImage = hasImmediateCardImage(article);
+    const placeholder = `<div class="home-category-small-placeholder${hasImage ? " hidden" : ""}" data-nuqtha-image-placeholder aria-hidden="true">📖</div>`;
+
+    return `
+        <article class="compact-recent-card home-category-small-card ${theme.cardBorder}" data-id="${escapeHtml(article.id || "")}">
+            <a href="${escapeHtml(getStoryUrl(article))}" class="home-category-small-cover">
+                ${placeholder}
+                ${image}
+            </a>
+            <div class="home-category-small-copy">
+                ${categoryTag(article.category, { variant: "bracket", theme })}
+                <h4><a href="${escapeHtml(getStoryUrl(article))}">${cleanTitle}</a></h4>
+                <p>${escapeHtml(authorName)}</p>
+            </div>
+        </article>
+    `;
 }
 
 function attachHomeCategoryLoadMoreListeners(root = document) {
@@ -1295,7 +1328,7 @@ function renderHomeFeed(container) {
                 renderEmpty("നിലവിൽ പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങളോ പുസ്തകങ്ങളോ ഇല്ല.");
                 return;
             }
-            allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
+            allArticles = FALLBACK_ARTICLE_ITEMS.map(a => normalizeArticleDoc(a, a.id));
             renderHomeFeed(container);
             return;
         }
@@ -1334,7 +1367,13 @@ function renderHomeFeed(container) {
         ...explicitHero,
         ...autoArticles
     ].filter(article => article && !getHomeArticleKeys(article).some(key => heroKeys.has(key)));
-    const swipeArticles = deduplicateHomeArticles(carouselPool).slice(0, 10);
+    const swipeArticles = deduplicateHomeArticles(carouselPool)
+        .filter(article =>
+            getHomeArticleImageScore(article) > 0 &&
+            stripMarkdown(article.title || "").trim() &&
+            Boolean(getStoryUrl(article))
+        )
+        .slice(0, 10);
     const usedHomeArticleKeys = new Set([
         ...getHomeArticleKeys(heroArticle),
         ...swipeArticles.flatMap(getHomeArticleKeys)
@@ -1374,10 +1413,15 @@ function renderHomeFeed(container) {
         if (!categoryGroups.has(categoryId)) categoryGroups.set(categoryId, []);
         categoryGroups.get(categoryId).push(article);
     });
-    const orderedCategories = visibleCategories.filter(category =>
-        (categoryGroups.get(category.slug) || []).length > 0
-    );
-    const lazySections = [];
+    visibleCategories.forEach(category => {
+        if ((categoryGroups.get(category.slug) || []).length > 0) return;
+        const alreadyFeaturedArticle = regularArticles.find(article =>
+            getArticleCategoryId(article) === category.slug
+        );
+        if (alreadyFeaturedArticle) categoryGroups.set(category.slug, [alreadyFeaturedArticle]);
+    });
+    const orderedCategories = visibleCategories;
+    const categorySections = [];
     orderedCategories.forEach(category => {
         const theme = getCategoryTheme();
         html += `
@@ -1386,29 +1430,19 @@ function renderHomeFeed(container) {
                 <div class="home-category-content min-h-[8rem]"></div>
             </section>
         `;
-        lazySections.push({
+        categorySections.push({
             category,
             articles: (categoryGroups.get(category.slug) || []).sort(comparePriority)
         });
     });
     container.innerHTML = html;
-    const pendingSections = new Map(lazySections.map(item => [item.category.slug, item]));
-    const observer = "IntersectionObserver" in window
-        ? new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if (!entry.isIntersecting) return;
-                observer.unobserve(entry.target);
-                const item = pendingSections.get(entry.target.dataset.homeCategorySection);
-                if (item) renderLazyHomeCategorySection(entry.target, item.category, item.articles);
-            });
-        }, { rootMargin: "300px 0px" })
-        : null;
-    pendingSections.forEach((item, slug) => {
-        const section = [...container.querySelectorAll("[data-home-category-section]")]
-            .find(item => item.dataset.homeCategorySection === slug);
-        if (!section) return;
-        if (observer) observer.observe(section);
-        else renderLazyHomeCategorySection(section, item.category, item.articles);
+    const sectionsBySlug = new Map(Array.from(
+        container.querySelectorAll("[data-home-category-section]"),
+        section => [section.dataset.homeCategorySection, section]
+    ));
+    categorySections.forEach(item => {
+        const section = sectionsBySlug.get(item.category.slug);
+        if (section) renderLazyHomeCategorySection(section, item.category, item.articles);
     });
     attachShowMoreListeners();
 }
@@ -1754,7 +1788,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
     const authorInitial = authorName.trim().charAt(0) || "N";
     const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
     const categoryMalayalam = categoryLabel(art.category);
-    const categoryImage = buildCardImageMarkup(art, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 1200, 675);
+    const categoryImage = buildCardImageMarkup(art, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 1200, 675, false, "/cover-placeholder.svg");
     const hasCategoryImage = hasImmediateCardImage(art);
 
     return `
@@ -1835,7 +1869,7 @@ function buildFeaturedCard(art) {
     const authorInitial = authorName.trim().charAt(0) || "N";
     const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
     const categoryMalayalam = categoryLabel(art.category);
-    const featuredImage = buildCardImageMarkup(art, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 1200, 750);
+    const featuredImage = buildCardImageMarkup(art, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 1200, 750, false, "/cover-placeholder.svg");
     const hasFeaturedImage = hasImmediateCardImage(art);
 
     return `
@@ -1909,7 +1943,7 @@ function buildCompactRecentCard(art, theme = null) {
     const authorInitial = authorName.trim().charAt(0) || "N";
     const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
     const t = theme || getCategoryTheme();
-    const compactImage = buildCardImageMarkup(art, "w-full h-full object-cover transition-transform duration-500 group-hover:scale-105", cleanTitle, 400, 300);
+    const compactImage = buildCardImageMarkup(art, "w-full h-full object-cover transition-transform duration-500 group-hover:scale-105", cleanTitle, 400, 300, false, "/cover-placeholder.svg");
     const hasCompactImage = hasImmediateCardImage(art);
 
     return `
@@ -2034,7 +2068,7 @@ function buildCarouselCard(art, index = 0) {
     const cleanTitle = stripMarkdown(art.title);
     const authorName = art.author || "NUQTHA";
 
-    const cardImg = buildCardImageMarkup(art, "carousel-card-img", cleanTitle, 400, 300, index === 0);
+    const cardImg = buildCardImageMarkup(art, "carousel-card-img", cleanTitle, 400, 300, index === 0, "/cover-placeholder.svg");
     const hasCardImage = hasImmediateCardImage(art);
     const imagePlaceholder = '<div class="carousel-card-img-placeholder" style="display:' + (hasCardImage ? 'none' : 'flex') + ';background: linear-gradient(135deg, #2a201c, #4a3328); align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;" data-nuqtha-image-placeholder><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
     const imgHtml = hasCardImage ? cardImg + imagePlaceholder : imagePlaceholder + cardImg;

@@ -77,13 +77,16 @@ export function saveBookChapterListCache(slug, chapters) {
                 author: typeof chapter.author === "string" ? chapter.author : "",
                 status: chapter.status,
                 order: Number.isFinite(Number(chapter.order)) ? Number(chapter.order) : null,
-                imageUrl: image
+                imageUrl: image,
+                updatedAt: chapter.updatedAt || chapter.createdAt || "",
+                _imageCollection: chapter._imageCollection || "",
+                _imageDocId: chapter._imageDocId || ""
             };
         });
         const serialized = JSON.stringify(safeChapters);
         if (new Blob([serialized]).size >= 50 * 1024) return false;
         const cleanSlug = decodeURIComponent(String(slug));
-        sessionStorage.setItem(`nuqtha_cache_book_chapters_${cleanSlug}_v3`, serialized);
+        sessionStorage.setItem(`nuqtha_cache_book_chapters_${cleanSlug}_v4`, serialized);
         return true;
     } catch (error) {
         console.warn("[BookData] Could not save the chapter-list prefetch.", error);
@@ -95,7 +98,7 @@ export function readBookChapterListCache(slug) {
     if (!slug) return [];
     try {
         const cleanSlug = decodeURIComponent(String(slug));
-        const stored = sessionStorage.getItem(`nuqtha_cache_book_chapters_${cleanSlug}_v3`);
+        const stored = sessionStorage.getItem(`nuqtha_cache_book_chapters_${cleanSlug}_v4`);
         const chapters = stored ? JSON.parse(stored) : [];
         return Array.isArray(chapters) ? chapters.filter(chapter =>
             chapter && typeof chapter.id === "string" && isPubliclyPublished(chapter)

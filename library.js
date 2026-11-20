@@ -6,7 +6,6 @@ import { openAuthModal } from "./js/auth-ui.js";
 import { isPremiumBook, showPremiumBookUnavailableModal } from "./js/book-notice.js";
 import { filterAndSortChapters, prefetchBookPage, saveBookChapterListCache } from "./js/book-data.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "./fallback-data.js";
-import "./library.css";
 
 const MAX_BOOKS = 6, MAX_PAPERS = 5;
 const CACHE_KEY = "nuqtha:library:v5", CACHE_MS = 5 * 60 * 1000;

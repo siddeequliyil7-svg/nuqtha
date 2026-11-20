@@ -852,7 +852,10 @@
 
             const pools = [];
             try {
-                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v11") || localStorage.getItem("nuqtha_cached_articles_v11");
+                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v12") ||
+                    localStorage.getItem("nuqtha_cached_articles_v12") ||
+                    sessionStorage.getItem("nuqtha_cached_articles_v11") ||
+                    localStorage.getItem("nuqtha_cached_articles_v11");
                 if (s1) {
                     const parsed = JSON.parse(s1);
                     if (Array.isArray(parsed)) pools.push(...parsed);
@@ -991,7 +994,8 @@
             const intro = String(lightData.intro || "").trim().replace(/^[\s"'“‘]+|[\s"'”’]+$/g, "");
             const hasIntro = intro.replace(/[\s\p{P}\p{S}]/gu, "").length > 0;
             const coverUrl = getArticleImageUrl(lightData, "");
-            const hasCover = Boolean(coverUrl || getDeferredImageAttributes(lightData));
+            const hasCoverSource = Boolean(coverUrl);
+            const hasCover = hasCoverSource || Boolean(getDeferredImageAttributes(lightData));
             const coverMarkup = hasCover
                 ? buildDeferredImageMarkup(lightData, coverUrl, `${title} cover`, "book-v2-cover-img", 300, 400, "eager")
                 : "";
@@ -1004,8 +1008,12 @@
                     ? chapter.title.trim()
                     : `Chapter ${index + 1}`;
                 const chapterImageUrl = getArticleImageUrl(chapter, "");
-                const chapterImage = chapterImageUrl
-                    ? `<div class="chapter-thumbnail"><img src="${escapeHtml(chapterImageUrl)}" alt="" width="400" height="300" loading="lazy" decoding="async" data-nuqtha-cover="true"></div>`
+                const chapterHasSource = Boolean(chapterImageUrl || getDeferredImageAttributes(chapter));
+                const chapterImageMarkup = chapterHasSource
+                    ? buildDeferredImageMarkup(chapter, chapterImageUrl, "", "w-full h-full object-cover", 400, 300)
+                    : "";
+                const chapterImage = chapterHasSource
+                    ? `<div class="chapter-thumbnail">${chapterImageMarkup}<div class="book-light-chapter-image-fallback${chapterImageUrl ? " hidden" : ""}" data-nuqtha-image-placeholder aria-hidden="true">📄</div></div>`
                     : `<div class="chapter-thumbnail chapter-thumbnail-empty" aria-hidden="true">📄</div>`;
                 const chapterSlug = cleanRouteSlug(chapter.slug || slugifyText(chapterTitle) || chapter.id);
                 const href = bookSlug && chapterSlug
@@ -1029,7 +1037,7 @@
                                     <span class="book-v2-ribbon" aria-hidden="true"></span>
                                     <span class="book-v2-spine" aria-hidden="true"></span>
                                     <div class="book-v2-cover">
-                                        ${hasCover ? `${coverMarkup}                                        <div class="book-v2-cover-fallback hidden" data-nuqtha-image-placeholder aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>` : `<div class="book-v2-cover-fallback" aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>`}
+                                        ${hasCover ? `${coverMarkup}                                        <div class="book-v2-cover-fallback${hasCoverSource ? " hidden" : ""}" data-nuqtha-image-placeholder aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>` : `<div class="book-v2-cover-fallback" aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>`}
                                     </div>
                                 </div>
                             </div>
@@ -1442,7 +1450,10 @@
                 return clean;
             };
             try {
-                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v11") || localStorage.getItem("nuqtha_cached_articles_v11");
+                const s1 = sessionStorage.getItem("nuqtha_cached_articles_v12") ||
+                    localStorage.getItem("nuqtha_cached_articles_v12") ||
+                    sessionStorage.getItem("nuqtha_cached_articles_v11") ||
+                    localStorage.getItem("nuqtha_cached_articles_v11");
                 if (s1) {
                     const parsed = JSON.parse(s1);
                     if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1541,7 +1552,7 @@
                                     (book.bookSlug && article.bookSlug === book.bookSlug) ||
                                     (isBookEntity(article) && areSameBookByTitle(article, book))
                                 );
-                            const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(book, "");
+                            const coverUrl = getArticleImageUrl(book, "") || getArticleImageUrl(articleRecord, "");
                             const thumbnailUrl = getArticleImageUrl(book, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
                             if (articleRecord?.id && articleRecord.id !== book.id) {
                                 publicArticleMap.delete(articleRecord.id);
@@ -1591,7 +1602,7 @@
                         (bookData.bookSlug && article.bookSlug === bookData.bookSlug) ||
                         (isBookEntity(article) && areSameBookByTitle(article, bookData))
                     );
-                    const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(bookData, "");
+                    const coverUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "");
                     const thumbnailUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
                     if (articleRecord?.id && articleRecord.id !== d.id) {
                         const articleIndex = articles.findIndex(article => article.id === articleRecord.id);
@@ -2221,7 +2232,8 @@
             const dateStr = typeof book.date === "string" ? book.date.trim() : (book.date ? formatDateSafe(book.date) : "");
             const chapterCount = countBookChapters(book, attachedArticles);
             const coverUrl = getArticleImageUrl(book, "");
-            const hasCover = Boolean(coverUrl || getDeferredImageAttributes(book));
+            const hasCoverSource = Boolean(coverUrl);
+            const hasCover = hasCoverSource || Boolean(getDeferredImageAttributes(book));
             const coverMarkup = hasCover
                 ? buildDeferredImageMarkup(book, coverUrl, `${cleanTitle} Cover`, "book-v2-cover-img", 300, 400, "eager")
                 : "";
@@ -2302,7 +2314,7 @@
                                         <div class="book-v2-cover">
                                         ${hasCover ? `
                                             ${coverMarkup}
-                                            <div class="book-v2-cover-fallback hidden" data-nuqtha-image-placeholder aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>
+                                            <div class="book-v2-cover-fallback${hasCoverSource ? " hidden" : ""}" data-nuqtha-image-placeholder aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>
                                         ` : `
                                             <div class="book-v2-cover-fallback">
                                                 <span class="text-4xl" aria-hidden="true">📚</span>
