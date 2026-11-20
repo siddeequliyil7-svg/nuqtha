@@ -1146,34 +1146,10 @@ function renderSearchFeed(container, query) {
     if (emptyResetBtn) emptyResetBtn.addEventListener("click", () => clearSearch(true));
 }
 
-function getCachedHomeCategoryArticleIds(categoryId, categoryArticles) {
-    const cacheKey = `nuqtha:home-category:v3:${categoryId}`;
-    const articleById = new Map(categoryArticles.map(article => [article.id, article]));
-    const availableIds = categoryArticles.map(article => article.id);
-    try {
-        const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
-        if (cached && Date.now() - cached.savedAt < 5 * 60 * 1000 && Array.isArray(cached.ids)) {
-            const ids = cached.ids.filter(id => articleById.has(id));
-            const cachedIds = new Set(ids);
-            ids.push(...availableIds.filter(id => !cachedIds.has(id)));
-            if (ids.length > 0) return ids;
-        }
-    } catch (error) {
-        console.warn("[NUQTHA App] Could not read a home category cache entry.", error);
-    }
-
-    const ids = availableIds;
-    try {
-        sessionStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), ids }));
-    } catch (error) {
-        console.warn("[NUQTHA App] Could not cache home category results.", error);
-    }
-    return ids;
-}
-
 function renderLazyHomeCategorySection(section, category, categoryArticles) {
-    const ids = getCachedHomeCategoryArticleIds(category.slug, categoryArticles);
-    const selected = ids.map(id => categoryArticles.find(article => article.id === id)).filter(Boolean);
+    const selected = categoryArticles.filter(article =>
+        getArticleCategoryId(article) === category.slug
+    );
     if (selected.length === 0) {
         const theme = getCategoryTheme();
         section.innerHTML = `
