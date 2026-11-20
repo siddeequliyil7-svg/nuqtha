@@ -223,7 +223,7 @@ export async function runAction(button, asyncFn, options = {}) {
         }
         return { ok: true, value };
     } catch (error) {
-        console.error("[Admin Action] Action failed:", error);
+        if (options.logError !== false) console.error("[Admin Action] Action failed:", error);
         focusInvalidField(error, options.form);
         showToast(formatActionError(error), "error");
         if (options.rethrow) throw error;

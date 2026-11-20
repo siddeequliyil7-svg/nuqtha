@@ -16,6 +16,8 @@ import {
 import { runAction } from "./js/admin-actions.js";
 import { addDoc, setDoc, updateDoc, deleteDoc, uploadImageDataUrl, uploadFile, getAdminWriteErrorMessage } from "./js/admin-write-guard.js";
 
+const ADMIN_IMAGE_UPLOAD_TIMEOUT_MS = 6000;
+
 function getUsableImageFallback(imageUrl) {
     const value = typeof imageUrl === "string" ? imageUrl.trim() : "";
     return /^(data:|blob:|file:)/i.test(value) ? "" : value;
@@ -23,9 +25,9 @@ function getUsableImageFallback(imageUrl) {
 
 async function uploadOptionalAdminImage(imageData, path, fallbackUrl, label, failures) {
     try {
-        return await uploadImageDataUrl(imageData, path);
+        return await uploadImageDataUrl(imageData, path, { timeoutMs: ADMIN_IMAGE_UPLOAD_TIMEOUT_MS });
     } catch (error) {
-        console.error(`[NUQTHA ADMIN] ${label} upload failed; continuing without the new image.`, error);
+        console.warn(`[NUQTHA ADMIN] ${label} upload failed; continuing without the new image.`, error);
         failures.push({ label, error });
         return getUsableImageFallback(fallbackUrl);
     }
@@ -44,7 +46,7 @@ function showOptionalImageUploadWarning(failures, recordLabel) {
         : "";
     showGlobalStatus(
         `${recordLabel} metadata was saved, but the ${labels} upload failed.${reason} Existing image URLs were kept where available.`,
-        "error"
+        "info"
     );
 }
 
@@ -1203,29 +1205,30 @@ async function handleFormSubmit(event) {
 
         const targetArticleId = editingArticleId || doc(collection(db, "articles")).id;
         const shouldPersistCover = articleImageChanged || !editingArticleId || /^data:/i.test(effectiveCover);
-        const storedCover = shouldPersistCover
-            ? await uploadOptionalAdminImage(
+        const coverUpload = shouldPersistCover
+            ? uploadOptionalAdminImage(
                 sanitized.imageUrl,
                 `articles/${targetArticleId}/cover`,
                 originalArticleImages.imageUrl,
                 "cover image",
                 imageUploadFailures
             )
-            : effectiveCover || "";
+            : Promise.resolve(effectiveCover || "");
         const shouldPersistThumbnail = articleThumbnailChanged || !editingArticleId || /^data:/i.test(effectiveThumb);
-        const storedThumbnail = articleThumbnailChanged && !selectedBase64Thumbnail
-            ? ""
+        const thumbnailUpload = articleThumbnailChanged && !selectedBase64Thumbnail
+            ? Promise.resolve("")
             : shouldPersistThumbnail
                 ? sanitized.thumbnailUrl === sanitized.imageUrl
-                    ? storedCover
-                    : await uploadOptionalAdminImage(
+                    ? coverUpload
+                    : uploadOptionalAdminImage(
                         sanitized.thumbnailUrl,
                         `articles/${targetArticleId}/thumbnail`,
                         originalArticleImages.thumbnailUrl,
                         "thumbnail image",
                         imageUploadFailures
                     )
-                : effectiveThumb || effectiveOgImage || "";
+                : Promise.resolve(effectiveThumb || effectiveOgImage || "");
+        const [storedCover, storedThumbnail] = await Promise.all([coverUpload, thumbnailUpload]);
         sanitized.imageUrl = storedCover;
         sanitized.coverImage = storedCover;
         sanitized.coverUrl = storedCover;
@@ -3934,6 +3937,7 @@ function initBookPresentationUpload() {
                 const contentType = bmPresentationFile.type || contentTypes[extension] || "";
                 presentationUrl = await uploadFile(bmPresentationFile, `books/${existingBook.id}/presentation`, {
                     maxBytes: 25 * 1024 * 1024,
+                    timeoutMs: 10000,
                     contentType,
                     allowedTypes: Object.values(contentTypes),
                     onProgress(progress) {
@@ -4962,16 +4966,24 @@ function initAuthorManager() {
             const toast = document.getElementById("admin-author-save-toast");
 
             runAction(submitBtn, async () => {
+                const photoUploadFailures = [];
                 if (authorPhotoFile) {
-                    photoUrl = await uploadFile(authorPhotoFile, `authors/${slug}/profile`, {
-                        maxBytes: 5 * 1024 * 1024,
-                        contentType: authorPhotoFile.type,
-                        allowedTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"]
-                    });
-                    if (photoEl) photoEl.value = photoUrl;
+                    try {
+                        photoUrl = await uploadFile(authorPhotoFile, `authors/${slug}/profile`, {
+                            maxBytes: 5 * 1024 * 1024,
+                            timeoutMs: ADMIN_IMAGE_UPLOAD_TIMEOUT_MS,
+                            contentType: authorPhotoFile.type,
+                            allowedTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"]
+                        });
+                        if (photoEl) photoEl.value = photoUrl;
+                    } catch (error) {
+                        console.warn("[NUQTHA ADMIN] Author photo upload failed; continuing with the existing photo URL.", error);
+                        photoUploadFailures.push({ label: "profile photo", error });
+                    }
                 }
                 const payload = { name, role, photoUrl, bio, slug, updatedAt: serverTimestamp() };
                 await setDoc(doc(db, "authors", slug), payload);
+                showOptionalImageUploadWarning(photoUploadFailures, "Author");
                 if (toast) {
                     toast.classList.remove("hidden");
                     setTimeout(() => toast.classList.add("hidden"), 3000);

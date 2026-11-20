@@ -1,0 +1,24 @@
+[
+  {
+    "origin": [
+      "https://nuqtha.vercel.app",
+      "https://nuqtha-official.vercel.app",
+      "http://localhost:3000"
+    ],
+    "method": ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
+    "responseHeader": [
+      "Authorization",
+      "Content-Type",
+      "x-firebase-gmpid",
+      "x-goog-resumable",
+      "x-goog-upload-protocol",
+      "x-goog-upload-command",
+      "x-goog-upload-header-content-type",
+      "x-goog-upload-header-content-length",
+      "x-goog-upload-offset",
+      "x-goog-upload-url",
+      "x-firebase-storage-xsrf"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

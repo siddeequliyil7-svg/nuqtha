@@ -33,6 +33,7 @@ function runAdminWrite(writeOperation, args, options = {}) {
         loadingText: options.loadingText || "Saving...",
         successMsg: options.successMsg || "Saved successfully.",
         nested: true,
+        logError: options.logError,
         rethrow: true
     }).then(result => {
         if (result?.skipped) throw new Error("Another admin action is in progress. Please retry.");
@@ -74,7 +75,8 @@ export function uploadImageDataUrl(image, path, options = {}) {
     return runAdminWrite(firebaseUploadImageDataUrl, [image, path, options], {
         loadingText: "Uploading...",
         successMsg: "Upload complete.",
-        progressArgumentIndex: 2
+        progressArgumentIndex: 2,
+        logError: false
     });
 }
 
@@ -82,6 +84,7 @@ export function uploadFile(file, path, options = {}) {
     return runAdminWrite(firebaseUploadFile, [file, path, options], {
         loadingText: "Uploading...",
         successMsg: "Upload complete.",
-        progressArgumentIndex: 2
+        progressArgumentIndex: 2,
+        logError: false
     });
 }
