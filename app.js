@@ -13,7 +13,7 @@ import { filterPublicCollections, isPubliclyPublished } from "./js/public-status
 import { syncReadingBg } from "./reading-theme.js";
 import { getBookChapterIds } from "./book-data.js";
 import { getSiteOrigin, getAbsoluteUrl, updatePageMeta, PRIMARY_DOMAIN } from "./site-config.js";
-import { countBookChapters, filterAndSortChapters, prefetchBookPage, saveBookChapterListCache } from "./js/book-data.js";
+import { countBookChapters, filterAndSortChapters, normalizeBookKey, prefetchBookPage, saveBookChapterListCache } from "./js/book-data.js";
 import { getAuthorsMap, getAuthorPhoto, slugifyAuthor } from "./js/author-service.js";
 import { initHeaderAuthUI } from "./js/auth-ui.js";
 import { categoryUrl, categoryTag, normalizeCategoryName, categorySlug, handleCategoryLinkClick } from "./js/category-link.js";
@@ -51,9 +51,7 @@ function buildCardImageMarkup(item, className, alt, width, height, eager = false
     if (!imageUrl && !deferredAttributes) return "";
 
     const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
-    const styleAttribute = imageUrl
-        ? 'style="opacity:0;transition:opacity .25s ease;"'
-        : 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"';
+    const styleAttribute = 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"';
     const priority = eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
     return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" ${priority} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
 }
@@ -896,8 +894,11 @@ export function initAppData() {
         });
 
         const rawBooksList = publicRecords.books.map(bookData => {
+            const bookTitleKey = normalizeBookKey(bookData.title);
             const articleRecord = rawArticlesList.find(article =>
-                article.id === bookData.id || (bookData.slug && article.slug === bookData.slug)
+                article.id === bookData.id ||
+                (bookData.slug && article.slug === bookData.slug) ||
+                (bookTitleKey && isBookEntity(article) && normalizeBookKey(article.title) === bookTitleKey)
             );
             const coverUrl = getArticleImageUrl(articleRecord, "") || getArticleImageUrl(bookData, "");
             const thumbnailUrl = getArticleImageUrl(bookData, "") || getArticleImageUrl(articleRecord, "") || coverUrl;
@@ -929,9 +930,11 @@ export function initAppData() {
             else combined[existingIndex] = { ...combined[existingIndex], ...article };
         });
         rawBooksList.forEach(book => {
+            const bookTitleKey = normalizeBookKey(book.title);
             const existingIndex = combined.findIndex(article =>
                 article.id === book.id ||
-                (book.slug && article.slug === book.slug && (article.type === "BOOK" || article.type === "free" || article.type === "premium"))
+                (book.slug && article.slug === book.slug && isBookEntity(article)) ||
+                (bookTitleKey && isBookEntity(article) && normalizeBookKey(article.title) === bookTitleKey)
             );
             if (existingIndex < 0) combined.push(book);
             else combined[existingIndex] = { ...combined[existingIndex], ...book };
@@ -1179,8 +1182,8 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
 
     const theme = getCategoryTheme();
     const [featuredArt, ...subsequentArticles] = selected;
-    const initialGridArticles = subsequentArticles.slice(0, 4);
-    const remainingArticles = subsequentArticles.slice(4);
+    const initialGridArticles = subsequentArticles.slice(0, 2);
+    const remainingArticles = subsequentArticles.slice(2);
     const gridId = `home-category-grid-${String(category.slug).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
     section.innerHTML = `
         ${buildCategorySectionHeader(category.slug, false, false, theme)}
@@ -1782,6 +1785,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
             <!-- Large Prominent Cover Image -->
             <div class="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden bg-gradient-to-br ${t.accentGrad}">
                 ${hasCategoryImage ? `
+                    <div class="absolute inset-0 bg-gradient-to-br ${t.accentGrad} hidden" data-nuqtha-image-placeholder></div>
                     ${categoryImage}
                 ` : `
                     <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90" data-nuqtha-image-placeholder>
@@ -1862,6 +1866,7 @@ function buildFeaturedCard(art) {
             <!-- Large Top Cover Image Container -->
             <div class="featured-cover-container relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#b8542c] via-[#aa4923] to-[#803113]">
                 ${hasFeaturedImage ? `
+                    <div class="absolute inset-0 bg-gradient-to-br from-[#b8542c] via-[#aa4923] to-[#803113] hidden" data-nuqtha-image-placeholder></div>
                     ${featuredImage}
                 ` : `
                     <div class="w-full h-full flex flex-col items-center justify-center p-6 text-white/90" data-nuqtha-image-placeholder>
@@ -1935,10 +1940,13 @@ function buildCompactRecentCard(art, theme = null) {
             <!-- Left Thumbnail -->
             <div class="compact-thumbnail-wrap relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br ${t.accentGrad}">
                 ${hasCompactImage ? `
+                    <div class="absolute inset-0 flex items-center justify-center text-white/70 text-[10px] hidden" data-nuqtha-image-placeholder>
+                        Image
+                    </div>
                     ${compactImage}
                 ` : `
                     <div class="w-full h-full flex items-center justify-center text-white/70 text-[10px]" data-nuqtha-image-placeholder>
-                        ചിത്രം
+                        Image
                     </div>
                     ${compactImage}
                 `}
@@ -2050,7 +2058,7 @@ function buildCarouselCard(art, index = 0) {
 
     const cardImg = buildCardImageMarkup(art, "carousel-card-img", cleanTitle, 400, 300, index === 0);
     const hasCardImage = hasImmediateCardImage(art);
-    const imagePlaceholder = '<div class="carousel-card-img-placeholder" ' + (hasCardImage ? 'style="display:none;' : 'style="') + 'background: linear-gradient(135deg, #2a201c, #4a3328); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;" data-nuqtha-image-placeholder><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
+    const imagePlaceholder = '<div class="carousel-card-img-placeholder" style="' + (hasCardImage ? 'display:none;' : '') + 'background: linear-gradient(135deg, #2a201c, #4a3328); align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;" data-nuqtha-image-placeholder><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
     const imgHtml = hasCardImage ? cardImg + imagePlaceholder : imagePlaceholder + cardImg;
 
     return '<div class="carousel-card relative cursor-pointer stretched-card-wrap" data-id="' + art.id + '">' +
@@ -2402,6 +2410,7 @@ function buildBookCard(book, articles) {
         <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
             ${coverUrl && hasImmediateCardImage(book) ? `
                 ${coverImage}
+                ${buildBookCoverPlaceholder(book, 0, false, true)}
             ` : `
                 ${buildBookCoverPlaceholder(book)}
                 ${coverImage}

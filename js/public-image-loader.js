@@ -312,6 +312,7 @@ function showImagePlaceholder(image) {
     const placeholder = image.parentElement?.querySelector("[data-nuqtha-image-placeholder]");
     if (!placeholder) return;
     placeholder.hidden = false;
+    placeholder.style.removeProperty("display");
     placeholder.classList.remove("hidden");
 }
 
@@ -319,6 +320,7 @@ function hideImagePlaceholder(image) {
     const placeholder = image.parentElement?.querySelector("[data-nuqtha-image-placeholder]");
     if (!placeholder) return;
     placeholder.hidden = true;
+    placeholder.style.display = "none";
     placeholder.classList.add("hidden");
 }
 
