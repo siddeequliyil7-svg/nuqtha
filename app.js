@@ -1328,7 +1328,7 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
                     <span>Show More</span>
                     <span aria-hidden="true">&darr;</span>
                 </button>
-            ` : '<span class="home-category-end-state">No more articles</span>'}
+            ` : ''}
         </div>
     `;
     section.dataset.loaded = "true";
