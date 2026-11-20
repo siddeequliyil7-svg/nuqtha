@@ -127,6 +127,16 @@ assert.ok(
 );
 console.log("  [OK] Homepage hero, carousel, and category previews contain no duplicate articles.");
 
+// Test 5: Home and Books covers must wait for deferred saved URLs before showing generated covers.
+console.log("Test 5: Verifying book cover placeholders only show when no cover source exists...");
+assert.ok(
+    appJs.includes("function hasBookCoverSource(book)") &&
+        appJs.includes("Boolean(getArticleImageUrl(book, \"\") || getDeferredImageAttributes(book))") &&
+        (appJs.match(/const hasCoverSource = hasBookCoverSource\(book\);/g) || []).length === 3,
+    "All homepage and Books card renderers must treat saved or deferred cover URLs as real cover sources"
+);
+console.log("  [OK] Generated book covers are deferred when a saved cover URL may exist.");
+
 console.log("==================================================");
 console.log("PASS: ALL NO-DUAL-SYNC & FEED PURITY TESTS PASSED!");
 console.log("==================================================");

@@ -61,6 +61,10 @@ function hasImmediateCardImage(item) {
     return Boolean(url && !(/^data:image\//i.test(url) && getDeferredImageAttributes(item)));
 }
 
+function hasBookCoverSource(book) {
+    return Boolean(getArticleImageUrl(book, "") || getDeferredImageAttributes(book));
+}
+
 function safeCacheArticles(articles) {
     if (!Array.isArray(articles) || articles.length === 0) return;
     try {
@@ -2395,14 +2399,14 @@ function buildBookCard(book, articles) {
     const cleanTitle = stripMarkdown(book.title);
     const count = articles.length;
     const dateStr = book.date || formatDate(book.createdAt);
-    const coverUrl = getArticleImageUrl(book, "");
     const coverImage = buildCardImageMarkup(book, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", `${cleanTitle} cover`, 600, 800);
+    const hasCoverSource = hasBookCoverSource(book);
 
     return `
     <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${book.id}">
         <!-- Cover Image Container (Vertical Magazine Style) -->
         <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
-            ${coverUrl && hasImmediateCardImage(book) ? `
+            ${hasCoverSource ? `
                 ${coverImage}
                 ${buildBookCoverPlaceholder(book, 0, false, true)}
             ` : `
@@ -2673,8 +2677,8 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
         const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
         const isFree = !isPremium || price === 0;
 
-        const bookCoverImg = getArticleImageUrl(book, "");
         const bookCoverMarkup = buildCardImageMarkup(book, "premium-book-img", cleanTitle, 300, 400);
+        const hasCoverSource = hasBookCoverSource(book);
         const bookId = book.id || '';
         const bookHref = bookId ? getStoryUrl(book) : '#';
 
@@ -2690,7 +2694,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
                         ` : `
                             <span class="premium-book-ribbon" translate="no">₹${price} • PREMIUM</span>
                         `}
-                        ${bookCoverImg && hasImmediateCardImage(book) ? `
+                        ${hasCoverSource ? `
                             ${bookCoverMarkup}
                             ${buildBookCoverPlaceholder(book, idx, true, true)}
                         ` : `
@@ -2800,8 +2804,8 @@ function renderBooksCategoryFeed(container) {
                 const rawPrice = Number(book.price);
                 const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
                 const isFree = !isPremium || price === 0;
-                const bookCoverImg = getArticleImageUrl(book, "");
                 const bookCoverMarkup = buildCardImageMarkup(book, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 600, 800);
+                const hasCoverSource = hasBookCoverSource(book);
                 const volumeLabel = book.volume
                     ? (book.volume.toLowerCase().includes("vol") ? book.volume : `Volume ${book.volume}`)
                     : "";
@@ -2816,7 +2820,7 @@ function renderBooksCategoryFeed(container) {
                         <span class="absolute top-2.5 right-2.5 z-10 px-2.5 py-1 rounded-full text-[10px] font-black uppercase font-english ${isFree ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-300 dark:border-green-700 shadow-md' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-md'}">
                             ${isFree ? 'FREE' : 'PREMIUM'}
                         </span>
-                        ${bookCoverImg && hasImmediateCardImage(book) ? `
+                        ${hasCoverSource ? `
                             ${bookCoverMarkup}
                             ${buildBookCoverPlaceholder(book, index, false, true)}
                         ` : `

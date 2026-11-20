@@ -4706,7 +4706,8 @@ html.dark .premium-book-placeholder {
 }
 
 .book-cover-placeholder {
-    position: relative;
+    position: absolute;
+    inset: 0;
     isolation: isolate;
     box-sizing: border-box;
     width: 100%;
