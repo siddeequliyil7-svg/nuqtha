@@ -266,6 +266,11 @@
                             <select id="art-category" required class="w-full text-sm p-3.5 rounded-xl border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] transition bg-[#fbf7ee]/40 font-bold text-[#1e1b18]">
                                 <option value="">Loading categories…</option>
                             </select>
+                            <div class="flex gap-2 mt-2">
+                                <input id="art-custom-category" type="text" maxlength="80" autocomplete="off" placeholder="Custom / New Category..." class="min-w-0 flex-1 text-xs p-2.5 rounded-lg border border-[#ebdccb] focus:outline-none focus:border-[#b4532c] bg-white">
+                                <button id="art-add-category" type="button" class="shrink-0 px-3 py-2 rounded-lg bg-[#b4532c]/10 text-[#923e1b] border border-[#b4532c]/20 text-xs font-bold hover:bg-[#b4532c]/20">+ Add / Use</button>
+                            </div>
+                            <p id="art-category-status" class="min-h-4 mt-1 text-[10px] text-[#8c7a6b]" role="status" aria-live="polite"></p>
                         </div>
                         <div>
                             <div class="flex items-center justify-between mb-2">
@@ -723,7 +728,14 @@
                                     <label for="book-meta-tag" class="block text-[10px] font-bold uppercase tracking-wider text-blue-950 mb-1">
                                         Publication Tag / Category (പതിപ്പ് ടാഗ്) <span class="text-rose-500">*</span>
                                     </label>
-                                    <input type="text" id="book-meta-tag" name="book-meta-tag" placeholder="e.g. ചരിത്രം / പഠനം / Premium Book" value="Premium Book" class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                    <select id="book-meta-tag" name="book-meta-tag" required class="w-full text-xs font-bold p-2.5 rounded-xl border border-blue-200 focus:border-blue-600 outline-none bg-white">
+                                        <option value="">Loading categories…</option>
+                                    </select>
+                                    <div class="flex gap-2 mt-2">
+                                        <input id="book-custom-category" type="text" maxlength="80" autocomplete="off" placeholder="Custom / New Category..." class="min-w-0 flex-1 text-xs p-2.5 rounded-lg border border-blue-200 focus:outline-none focus:border-blue-600 bg-white">
+                                        <button id="book-add-category" type="button" class="shrink-0 px-3 py-2 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold hover:bg-blue-100">+ Add / Use</button>
+                                    </div>
+                                    <p id="book-category-status" class="min-h-4 mt-1 text-[10px] text-slate-500" role="status" aria-live="polite"></p>
                                 </div>
 
                                 <!-- Book Access Type Select Input -->

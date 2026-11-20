@@ -171,16 +171,15 @@ export async function initCategoryAdmin(root) {
         }
 
         const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
         showFormMessage("Saving category...");
-        try {
+        const result = await runAction(submitButton, async () => {
             const categories = await getCategories({ forceRefresh: true });
             if (categories.some(category => category.slug === slug && category.slug !== editingSlug)) {
                 showFormMessage("That category slug already exists. Choose a unique slug.", true);
                 slugInput.classList.add("border-rose-500");
                 slugInput.focus();
                 slugInput.addEventListener("input", () => slugInput.classList.remove("border-rose-500"), { once: true });
-                return;
+                return false;
             }
             const targetSlug = editingSlug || slug;
             await setDoc(doc(db, "categories", targetSlug), {
@@ -193,11 +192,20 @@ export async function initCategoryAdmin(root) {
             await refresh();
             resetForm();
             showFormMessage("Category saved.");
-        } catch (error) {
-            console.error("[Admin Categories] Could not save category.", error);
+            return true;
+        }, {
+            event,
+            form,
+            loadingText: "Saving category...",
+            successMsg: "Category saved.",
+            successButtonText: "Saved",
+            onTimeout(error) {
+                showFormMessage(`Category save timed out: ${error.message}`, true);
+            }
+        });
+        if (result.error) {
+            console.error("[Admin Categories] Could not save category.", result.error);
             showFormMessage("Could not save the category. Check your admin access and Firestore rules.", true);
-        } finally {
-            submitButton.disabled = false;
         }
     });
 

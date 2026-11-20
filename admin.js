@@ -1,6 +1,6 @@
 import { safeInit } from "./js/ui-safe.js";
 import { getBookChapters, filterAndSortChapters, isArticleInBook, countBookChapters } from "./js/book-data.js";
-import { getArticleCategoryId, getCategories } from "./js/category-store.js";
+import { getArticleCategoryId, getCategories, isValidCategoryId, mergeCategoryOptions, slugifyCategory } from "./js/category-store.js";
 import { mergeBookRecords } from "./book-data.js";
 import { initLibraryAdmin } from "./admin-library.js";
 import { initCategoryAdmin } from "./admin-categories.js";
@@ -411,6 +411,13 @@ let adminBooksUnsubscribe = null;
 let adminListenerGeneration = 0;
 let adminCategoryNames = new Map();
 let categoryControlsRequest = 0;
+const adminCategoryOverrides = new Map();
+const DEFAULT_ADMIN_CATEGORIES = [
+    { slug: "history", name: "History", order: 10 },
+    { slug: "study", name: "Study", order: 20 },
+    { slug: "story", name: "Stories", order: 30 },
+    { slug: "general", name: "General", order: 40 }
+];
 let submitButtonFeedbackTimer = 0;
 export let safeArticles = [];
 if (typeof window !== "undefined") {
@@ -496,33 +503,77 @@ function initAdminDashboard() {
         const root = document.getElementById("category-admin");
         if (root) initCategoryAdmin(root);
     });
+    safeInit("initAdminCustomCategoryControls", initAdminCustomCategoryControls);
     window.addEventListener("nuqtha:categories-updated", () => void populateCategoryControls());
     void populateCategoryControls();
 }
 
-async function populateCategoryControls(selectedCategoryId = "", preservedCategoryLabel = "") {
+async function getAdminCategoryOptions() {
+    let firestoreCategories = [];
+    try {
+        firestoreCategories = await getCategories();
+    } catch (error) {
+        console.warn("[Admin Categories] Firestore categories unavailable; using categories found in content.", error);
+    }
+    return mergeCategoryOptions(
+        [...firestoreCategories, ...adminCategoryOverrides.values()],
+        currentArticlesList,
+        DEFAULT_ADMIN_CATEGORIES
+    );
+}
+
+function setCategorySelectOptions(select, categories, selectedValue, preservedLabel, fallbackValue) {
+    if (!select) return;
+    const options = [...categories];
+    let selected = String(selectedValue || select.value || "").trim();
+    if (selected && !options.some(category => category.slug === selected)) {
+        options.push({
+            slug: selected,
+            name: preservedLabel || selected,
+            visible: true,
+            order: Number.MAX_SAFE_INTEGER
+        });
+    }
+    if (!selected || !options.some(category => category.slug === selected)) selected = fallbackValue || "";
+    select.innerHTML = `<option value="">Select a category</option>${options.map(category =>
+        `<option value="${escapeAdminHtml(category.slug)}">${escapeAdminHtml(category.name)}${category.visible === false ? " (hidden)" : ""}</option>`
+    ).join("")}`;
+    select.value = selected;
+}
+
+async function populateCategoryControls(
+    selectedCategoryId = "",
+    preservedCategoryLabel = "",
+    selectedBookCategoryId = "",
+    preservedBookCategoryLabel = ""
+) {
     const requestId = ++categoryControlsRequest;
     try {
-        const categories = await getCategories();
+        const categories = await getAdminCategoryOptions();
         if (requestId !== categoryControlsRequest) return;
         adminCategoryNames = new Map(categories.map(category => [category.slug, category.name]));
         const articleSelect = document.getElementById("art-category");
+        const bookSelect = document.getElementById("book-meta-tag");
         const filterSelect = document.getElementById("filter-published-category");
-        if (articleSelect) {
-            const selected = String(selectedCategoryId || articleSelect.value || "").trim();
-            const hasSelectedCategory = categories.some(category => category.slug === selected);
-            const options = categories.map(category =>
-                `<option value="${escapeAdminHtml(category.slug)}">${escapeAdminHtml(category.name)}${category.visible ? "" : " (hidden)"}</option>`
-            );
-            if (selected && !hasSelectedCategory) {
-                options.push(`<option value="${escapeAdminHtml(selected)}">${escapeAdminHtml(preservedCategoryLabel || selected)} (existing)</option>`);
-            }
-            const placeholder = categories.length || selected
-                ? `<option value="">Select a category</option>`
-                : `<option value="">Create or migrate a category first</option>`;
-            articleSelect.innerHTML = `${placeholder}${options.join("")}`;
-            articleSelect.value = selected;
+        setCategorySelectOptions(
+            articleSelect,
+            categories,
+            selectedCategoryId,
+            preservedCategoryLabel,
+            categories.some(category => category.slug === "general") ? "general" : categories[0]?.slug
+        );
+        const bookCategories = [...categories];
+        if (!bookCategories.some(category => category.slug === "premium-book")) {
+            bookCategories.push({ slug: "premium-book", name: "Premium Book", order: Number.MAX_SAFE_INTEGER, visible: true });
         }
+        adminCategoryNames.set("premium-book", "Premium Book");
+        setCategorySelectOptions(
+            bookSelect,
+            bookCategories,
+            selectedBookCategoryId,
+            preservedBookCategoryLabel,
+            bookCategories.some(category => category.slug === "premium-book") ? "premium-book" : bookCategories[0]?.slug
+        );
         if (filterSelect) {
             const selected = filterSelect.value || "ALL";
             filterSelect.innerHTML = `<option value="ALL">All categories</option>${categories.map(category => `<option value="${escapeAdminHtml(category.slug)}">${escapeAdminHtml(category.name)}</option>`).join("")}`;
@@ -531,16 +582,129 @@ async function populateCategoryControls(selectedCategoryId = "", preservedCatego
     } catch (error) {
         console.error("[Admin Categories] Could not populate category controls.", error);
         if (requestId !== categoryControlsRequest) return;
-        const articleSelect = document.getElementById("art-category");
-        if (articleSelect) {
-            const selected = String(selectedCategoryId || articleSelect.value || "").trim();
-            const label = preservedCategoryLabel || selected;
-            articleSelect.innerHTML = selected
-                ? `<option value="${escapeAdminHtml(selected)}">${escapeAdminHtml(label)} (existing)</option>`
-                : `<option value="">Categories unavailable</option>`;
-            articleSelect.value = selected;
-        }
+        setCategorySelectOptions(
+            document.getElementById("art-category"),
+            DEFAULT_ADMIN_CATEGORIES,
+            selectedCategoryId,
+            preservedCategoryLabel,
+            "general"
+        );
+        setCategorySelectOptions(
+            document.getElementById("book-meta-tag"),
+            [...DEFAULT_ADMIN_CATEGORIES, { slug: "premium-book", name: "Premium Book", visible: true }],
+            selectedBookCategoryId,
+            preservedBookCategoryLabel,
+            "premium-book"
+        );
     }
+}
+
+function initAdminCustomCategoryControls() {
+    [
+        {
+            inputId: "art-custom-category",
+            selectId: "art-category",
+            buttonId: "art-add-category",
+            statusId: "art-category-status"
+        },
+        {
+            inputId: "book-custom-category",
+            selectId: "book-meta-tag",
+            buttonId: "book-add-category",
+            statusId: "book-category-status"
+        }
+    ].forEach(({ inputId, selectId, buttonId, statusId }) => {
+        const input = document.getElementById(inputId);
+        const select = document.getElementById(selectId);
+        const button = document.getElementById(buttonId);
+        const status = document.getElementById(statusId);
+        if (!input || !select || !button || button.dataset.categoryBound === "true") return;
+        button.dataset.categoryBound = "true";
+
+        const addOrUse = async () => {
+            const name = input.value.trim().replace(/\s+/g, " ");
+            if (!name) {
+                if (status) {
+                    status.textContent = "Enter a category name first.";
+                    status.classList.add("text-rose-600");
+                }
+                input.focus();
+                return;
+            }
+            const slug = getCustomCategorySlug(name);
+            if (!isValidCategoryId(slug)) {
+                if (status) {
+                    status.textContent = "This name could not be formatted as a category.";
+                    status.classList.add("text-rose-600");
+                }
+                input.focus();
+                return;
+            }
+            status?.classList.remove("text-rose-600");
+            if (status) status.textContent = "Saving category...";
+
+            const result = await runAction(button, async () => {
+                let storedCategories = [];
+                try {
+                    storedCategories = await getCategories({ forceRefresh: true });
+                } catch (error) {
+                    console.warn("[Admin Categories] Could not check for an existing category; creating it directly.", error);
+                }
+                if (!storedCategories.some(category => category.slug === slug)) {
+                    const order = storedCategories.reduce((max, category) => Math.max(max, category.order || 0), 0) + 10;
+                    await setDoc(doc(db, "categories", slug), {
+                        name,
+                        slug,
+                        order,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                }
+                adminCategoryOverrides.set(slug, { slug, name, visible: true });
+
+                const articleSelect = document.getElementById("art-category");
+                const bookSelect = document.getElementById("book-meta-tag");
+                const articleValue = select === articleSelect ? slug : articleSelect?.value || "";
+                const bookValue = select === bookSelect ? slug : bookSelect?.value || "";
+                const articleLabel = select === articleSelect ? name : adminCategoryNames.get(articleValue) || articleValue;
+                const bookLabel = select === bookSelect ? name : adminCategoryNames.get(bookValue) || bookValue;
+                await populateCategoryControls(articleValue, articleLabel, bookValue, bookLabel);
+                select.value = slug;
+                input.value = "";
+                if (status) {
+                    status.textContent = `${name} is ready to use.`;
+                    status.classList.remove("text-rose-600");
+                }
+                window.dispatchEvent(new CustomEvent("nuqtha:categories-updated"));
+                return true;
+            }, {
+                loadingText: "Saving category...",
+                successMsg: "Category ready to use.",
+                successButtonText: "Added",
+                onTimeout(error) {
+                    if (status) {
+                        status.textContent = `Category save timed out: ${error.message}`;
+                        status.classList.add("text-rose-600");
+                    }
+                }
+            });
+            if (!result.ok && result.error && status) {
+                status.textContent = `Could not save category: ${result.error.message}`;
+                status.classList.add("text-rose-600");
+            }
+        };
+
+        button.addEventListener("click", addOrUse);
+        input.addEventListener("input", () => {
+            if (!status) return;
+            status.textContent = "";
+            status.classList.remove("text-rose-600");
+        });
+        input.addEventListener("keydown", event => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            void addOrUse();
+        });
+    });
 }
 
 function getStoredArticleCategory(article) {
@@ -549,6 +713,17 @@ function getStoredArticleCategory(article) {
         id: label ? getArticleCategoryId(article) : "",
         label
     };
+}
+
+function getCustomCategorySlug(name) {
+    const slug = slugifyCategory(name);
+    if (isValidCategoryId(slug)) return slug;
+    let hash = 2166136261;
+    for (const character of name.normalize("NFC").toLowerCase()) {
+        hash ^= character.codePointAt(0);
+        hash = Math.imul(hash, 16777619);
+    }
+    return `custom-category-${(hash >>> 0).toString(36)}`;
 }
 
 function getAdminArticleCategoryName(article) {
@@ -930,9 +1105,9 @@ async function handleFormSubmit(event) {
             : null;
         const existingCategory = getStoredArticleCategory(existingArticle);
         const rawCategoryId = document.getElementById("art-category")?.value || (editingArticleId ? existingCategory.id : "");
-        const categories = await getCategories();
+        const categories = await getAdminCategoryOptions();
         const selectedCategory = categories.find(category => category.slug === rawCategoryId);
-        const canKeepExistingCategory = Boolean(editingArticleId && (existingCategory.id || categories.length === 0));
+        const canKeepExistingCategory = Boolean(editingArticleId && existingCategory.id);
         if (!selectedCategory && contentStatus === "published" && !canKeepExistingCategory) {
             const error = new Error("Select an existing category before publishing.");
             error.field = document.getElementById("art-category");
@@ -1127,6 +1302,7 @@ async function handleFormSubmit(event) {
                 ? "ലേഖനം ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു."
                 : "ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! (Live on NUQTHA) 🎉", "success");
             resetFormFields();
+            setSubmitButtonFeedback(event?.submitter, contentStatus === "draft" ? "Saved" : "Published");
             articleStatusFilter = contentStatus;
             syncContentStatusFilters("[data-article-status-filter]", "articleStatusFilter", articleStatusFilter);
             switchAdminTab("published");
@@ -1199,6 +1375,15 @@ function setSubmitButtonFeedback(button, message) {
 function resetFormFields() {
     const form = document.getElementById("add-article-form");
     if (form) form.reset();
+    const categorySelect = document.getElementById("art-category");
+    if (categorySelect) categorySelect.value = "general";
+    const customCategoryInput = document.getElementById("art-custom-category");
+    if (customCategoryInput) customCategoryInput.value = "";
+    const categoryStatus = document.getElementById("art-category-status");
+    if (categoryStatus) {
+        categoryStatus.textContent = "";
+        categoryStatus.classList.remove("text-rose-600");
+    }
 
     // Reset Image
     selectedBase64Image = "";
@@ -2091,7 +2276,8 @@ async function handleSaveBookStep1(e) {
     const author = (authorInput?.value || "").trim() || "Single Author";
 
     const tagInput = document.getElementById("book-meta-tag") || document.querySelector('[name="book-meta-tag"]');
-    const tag = (tagInput?.value || "").trim() || "Premium Book";
+    const tagId = String(tagInput?.value || "").trim();
+    const tag = adminCategoryNames.get(tagId) || tagId || "Premium Book";
 
     const dateVal = document.getElementById("book-meta-date")?.value.trim() || new Date().toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -2176,6 +2362,8 @@ async function handleSaveBookStep1(e) {
             bookName: name,
             author: author,
             category: tag,
+            categoryId: tagId,
+            categorySlug: tagId,
             slug: bookSlug,
             bookSlug: bookSlug,
             imageUrl: storedCover,
@@ -2229,6 +2417,8 @@ async function handleSaveBookStep1(e) {
                 bookName: name,
                 author: author,
                 category: tag,
+                categoryId: tagId,
+                categorySlug: tagId,
                 slug: bookSlug,
                 bookSlug,
                 type: bookTypeValue,
@@ -2393,6 +2583,7 @@ function initBookSwitcherAndStep1() {
             },
             validate() {
                 requireAdminField(document.getElementById("book-meta-name"), "Book title");
+                requireAdminField(document.getElementById("book-meta-tag"), "Book category");
                 requireAdminField(document.getElementById("book-meta-intro"), "Introduction");
             }
         }));
@@ -2409,6 +2600,7 @@ function initBookSwitcherAndStep1() {
             },
             validate() {
                 requireAdminField(document.getElementById("book-meta-name"), "Book title");
+                requireAdminField(document.getElementById("book-meta-tag"), "Book category");
             }
         }));
     }
@@ -2475,7 +2667,15 @@ function resetBookManagerForm() {
 
     if (nameInput) nameInput.value = "";
     if (authorInput) authorInput.value = "";
-    if (tagInput) tagInput.value = "Premium Book";
+    if (tagInput) tagInput.value = "premium-book";
+    const categoryInput = document.getElementById("book-custom-category");
+    if (categoryInput) categoryInput.value = "";
+    const categoryStatus = document.getElementById("book-category-status");
+    if (categoryStatus) {
+        categoryStatus.textContent = "";
+        categoryStatus.classList.remove("text-rose-600");
+    }
+    void populateCategoryControls("", "", "premium-book", "Premium Book");
     if (introInput) introInput.value = "";
     if (dateInput) dateInput.value = "";
     const bookTypeInput = document.getElementById("bookTypeInput");
@@ -2550,7 +2750,12 @@ function selectActiveBook(bookName, bookId = "") {
         else delete bookSlugInput.dataset.touched;
     }
     if (authorInput) authorInput.value = activeBookAuthor;
-    if (tagInput) tagInput.value = bookCover?.category || "Premium Book";
+    const bookCategoryId = bookCover ? getArticleCategoryId(bookCover) : "premium-book";
+    const bookCategoryName = bookCover
+        ? adminCategoryNames.get(bookCategoryId) || bookCover.category || bookCategoryId
+        : "Premium Book";
+    if (tagInput) tagInput.value = bookCategoryId;
+    void populateCategoryControls("", "", bookCategoryId, bookCategoryName);
     if (introInput) introInput.value = bookCover?.introduction || bookCover?.excerpt || bookCover?.content || "";
     if (dateInput) dateInput.value = bookCover?.date || "";
 
@@ -4190,6 +4395,7 @@ function listenToFirestoreArticles() {
         });
 
         currentArticlesList = items;
+        void populateCategoryControls();
 
         saveAdminArticleCache(items);
 

@@ -4,6 +4,12 @@ import { transliterateMalayalam } from "../schema-validator.js";
 const CATEGORY_CACHE_KEY = "nuqtha:categories:v1";
 const CATEGORY_CACHE_TTL = 5 * 60 * 1000;
 const CATEGORY_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const STANDARD_CATEGORY_NAMES = {
+    history: "History",
+    study: "Study",
+    story: "Stories",
+    general: "General"
+};
 let categoriesPromise = null;
 
 export function slugifyCategory(value) {
@@ -55,6 +61,50 @@ function sortCategories(categories) {
     return categories.sort((a, b) =>
         a.order - b.order || a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
     );
+}
+
+export function mergeCategoryOptions(categories = [], contentRecords = [], defaultCategories = []) {
+    const merged = new Map();
+    const add = category => {
+        const slug = String(category?.slug || category?.id || "").trim().toLowerCase();
+        const name = String(category?.name || "").trim();
+        if (!CATEGORY_ID_PATTERN.test(slug) || !name) return;
+        const existing = merged.get(slug);
+        merged.set(slug, {
+            id: slug,
+            slug,
+            name: existing?.name || name,
+            order: Number.isFinite(Number(category.order)) ? Number(category.order) : (existing?.order || 0),
+            visible: existing ? existing.visible && category.visible !== false : category.visible !== false
+        });
+    };
+
+    categories.forEach(add);
+    let contentOrder = categories.reduce((max, category) =>
+        Math.max(max, Number(category?.order) || 0), 0
+    ) + 10;
+    contentRecords.forEach(record => {
+        if (!record || typeof record !== "object") return;
+        const type = String(record.type || "").trim().toUpperCase();
+        if (record.isChapter === true || type === "CHAPTER" || record.chapterIndex != null) return;
+        const rawName = [record.category, record.categorySlug, record.categoryId]
+            .map(value => String(value || "").trim())
+            .find(Boolean);
+        if (!rawName || rawName.toLowerCase() === "chapter") return;
+        const slug = getArticleCategoryId(record);
+        add({
+            slug,
+            name: STANDARD_CATEGORY_NAMES[slug] || rawName,
+            order: contentOrder,
+            visible: true
+        });
+        contentOrder += 10;
+    });
+
+    if (merged.size === 0 || (merged.size === 1 && merged.has("general"))) {
+        defaultCategories.forEach(add);
+    }
+    return sortCategories([...merged.values()]);
 }
 
 function readCache() {
