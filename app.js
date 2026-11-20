@@ -1181,15 +1181,11 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
     }
 
     const theme = getCategoryTheme();
-    const [featuredArt, ...subsequentArticles] = selected;
-    const initialGridArticles = subsequentArticles.slice(0, 2);
-    const remainingArticles = subsequentArticles.slice(2);
+    const initialGridArticles = selected.slice(0, 2);
+    const remainingArticles = selected.slice(2);
     const gridId = `home-category-grid-${String(category.slug).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
     section.innerHTML = `
         ${buildCategorySectionHeader(category.slug, false, false, theme)}
-        <div class="category-featured-wrapper mt-3 mb-3 sm:mb-4">
-            ${buildCategoryFeaturedCard(featuredArt, theme)}
-        </div>
         ${initialGridArticles.length ? `
             <div id="${gridId}" class="home-category-grid">
                 ${initialGridArticles.map(article => buildCompactRecentCard(article, theme)).join("")}
@@ -1202,14 +1198,12 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
             <div class="home-category-show-more-wrap">
                 <button type="button" class="home-category-show-more" data-category="${escapeHtml(category.slug)}" aria-controls="${gridId}">
                     <span>Show More</span>
-                    <span aria-hidden="true">&darr;</span>
                 </button>
             </div>
         ` : `
             <div class="home-category-show-more-wrap">
                 <a href="${escapeHtml(categoryUrl(category.slug))}" class="home-category-show-more">
                     <span>Show More</span>
-                    <span aria-hidden="true">&rarr;</span>
                 </a>
             </div>
         `}
@@ -1242,7 +1236,7 @@ function attachHomeCategoryLoadMoreListeners(root = document) {
                 const allArticlesLink = document.createElement("a");
                 allArticlesLink.className = button.className;
                 allArticlesLink.href = categoryUrl(button.dataset.category);
-                allArticlesLink.innerHTML = '<span>Show More</span><span aria-hidden="true">&rarr;</span>';
+                allArticlesLink.textContent = "Show More";
                 button.replaceWith(allArticlesLink);
             }
         });

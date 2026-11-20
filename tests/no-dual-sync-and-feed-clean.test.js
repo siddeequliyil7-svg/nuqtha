@@ -109,6 +109,22 @@ assert.ok(
     appJs.includes('<a href="${escapeHtml(categoryUrl(category.slug))}" class="home-category-show-more">'),
     "Category sections must keep a Show More link when there are no hidden preview cards"
 );
+const categorySectionRenderer = appJs.slice(
+    appJs.indexOf("function renderLazyHomeCategorySection"),
+    appJs.indexOf("function attachHomeCategoryLoadMoreListeners")
+);
+assert.ok(
+    categorySectionRenderer.includes("const initialGridArticles = selected.slice(0, 2);") &&
+        categorySectionRenderer.includes("const remainingArticles = selected.slice(2);") &&
+        !categorySectionRenderer.includes("buildCategoryFeaturedCard("),
+    "Homepage category sections must show two compact cards without a featured large card"
+);
+assert.ok(
+    categorySectionRenderer.includes('allArticlesLink.textContent = "Show More";') &&
+        !categorySectionRenderer.includes("&darr;") &&
+        !categorySectionRenderer.includes("&rarr;"),
+    "Category Show More controls must use text only without decorative arrows"
+);
 console.log("  [OK] Homepage hero, carousel, and category previews contain no duplicate articles.");
 
 console.log("==================================================");
