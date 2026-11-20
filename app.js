@@ -1187,11 +1187,13 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
     }
 
     const theme = getCategoryTheme();
-    const initialGridArticles = selected.slice(0, 2);
-    const remainingArticles = selected.slice(2);
+    const featuredArticle = selected[0];
+    const initialGridArticles = selected.slice(1, 3);
+    const remainingArticles = selected.slice(3);
     const gridId = `home-category-grid-${String(category.slug).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
     section.innerHTML = `
         ${buildCategorySectionHeader(category.slug, false, false, theme)}
+        ${featuredArticle ? `<div class="home-category-featured mb-4">${buildFeaturedCard(featuredArticle)}</div>` : ""}
         ${initialGridArticles.length ? `
             <div id="${gridId}" class="home-category-grid">
                 ${initialGridArticles.map(article => buildCompactRecentCard(article, theme)).join("")}

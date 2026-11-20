@@ -114,10 +114,11 @@ const categorySectionRenderer = appJs.slice(
     appJs.indexOf("function attachHomeCategoryLoadMoreListeners")
 );
 assert.ok(
-    categorySectionRenderer.includes("const initialGridArticles = selected.slice(0, 2);") &&
-        categorySectionRenderer.includes("const remainingArticles = selected.slice(2);") &&
-        !categorySectionRenderer.includes("buildCategoryFeaturedCard("),
-    "Homepage category sections must show two compact cards without a featured large card"
+    categorySectionRenderer.includes("const featuredArticle = selected[0];") &&
+        categorySectionRenderer.includes("buildFeaturedCard(featuredArticle)") &&
+        categorySectionRenderer.includes("const initialGridArticles = selected.slice(1, 3);") &&
+        categorySectionRenderer.includes("const remainingArticles = selected.slice(3);"),
+    "Homepage category sections must show one featured card followed by two compact cards before Show More"
 );
 assert.ok(
     categorySectionRenderer.includes('allArticlesLink.textContent = "Show More";') &&
