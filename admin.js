@@ -456,14 +456,7 @@ function syncContentStatusFilters(selector, dataAttribute, activeStatus) {
     });
 }
 
-function refreshAdminListsAfterSave() {
-    renderAdminPublishedList(currentArticlesList);
-    updateBooksCounter(dedupeAdminRecords(currentArticlesList.filter(isBookCatalogRecord)).length);
-    updateActiveBookOverview(currentArticlesList);
-    renderAdminBooksTab(currentArticlesList);
-    renderBookManagerCompactArticles(currentArticlesList, activeBookName);
-    renderLayoutManagerList(currentArticlesList);
-
+function invalidateAdminArticleCache() {
     try {
         sessionStorage.removeItem("nuqtha_cached_articles");
     } catch (error) {
@@ -1279,7 +1272,7 @@ async function handleFormSubmit(event) {
             else currentArticlesList[localIndex] = updatedRecord;
             articleStatusFilter = contentStatus;
             syncContentStatusFilters("[data-article-status-filter]", "articleStatusFilter", articleStatusFilter);
-            refreshAdminListsAfterSave();
+            invalidateAdminArticleCache();
             showGlobalStatus(contentStatus === "draft"
                 ? "ലേഖനത്തിലെ മാറ്റങ്ങൾ ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു."
                 : "ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! ✨", "success");
