@@ -378,6 +378,8 @@ let adminArticlesUnsubscribe = null;
 let adminBooksUnsubscribe = null;
 let adminListenerGeneration = 0;
 let adminCategoryNames = new Map();
+let categoryControlsRequest = 0;
+let submitButtonFeedbackTimer = 0;
 export let safeArticles = [];
 if (typeof window !== "undefined") {
     window.safeArticles = safeArticles;
@@ -462,22 +464,32 @@ function initAdminDashboard() {
         const root = document.getElementById("category-admin");
         if (root) initCategoryAdmin(root);
     });
-    window.addEventListener("nuqtha:categories-updated", populateCategoryControls);
+    window.addEventListener("nuqtha:categories-updated", () => void populateCategoryControls());
     void populateCategoryControls();
 }
 
-async function populateCategoryControls(selectedCategoryId = "") {
+async function populateCategoryControls(selectedCategoryId = "", preservedCategoryLabel = "") {
+    const requestId = ++categoryControlsRequest;
     try {
         const categories = await getCategories();
+        if (requestId !== categoryControlsRequest) return;
         adminCategoryNames = new Map(categories.map(category => [category.slug, category.name]));
         const articleSelect = document.getElementById("art-category");
         const filterSelect = document.getElementById("filter-published-category");
         if (articleSelect) {
-            const selected = selectedCategoryId || articleSelect.value;
-            articleSelect.innerHTML = categories.length
-                ? `<option value="">Select a category</option>${categories.map(category => `<option value="${escapeAdminHtml(category.slug)}">${escapeAdminHtml(category.name)}${category.visible ? "" : " (hidden)"}</option>`).join("")}`
+            const selected = String(selectedCategoryId || articleSelect.value || "").trim();
+            const hasSelectedCategory = categories.some(category => category.slug === selected);
+            const options = categories.map(category =>
+                `<option value="${escapeAdminHtml(category.slug)}">${escapeAdminHtml(category.name)}${category.visible ? "" : " (hidden)"}</option>`
+            );
+            if (selected && !hasSelectedCategory) {
+                options.push(`<option value="${escapeAdminHtml(selected)}">${escapeAdminHtml(preservedCategoryLabel || selected)} (existing)</option>`);
+            }
+            const placeholder = categories.length || selected
+                ? `<option value="">Select a category</option>`
                 : `<option value="">Create or migrate a category first</option>`;
-            articleSelect.value = categories.some(category => category.slug === selected) ? selected : "";
+            articleSelect.innerHTML = `${placeholder}${options.join("")}`;
+            articleSelect.value = selected;
         }
         if (filterSelect) {
             const selected = filterSelect.value || "ALL";
@@ -486,9 +498,25 @@ async function populateCategoryControls(selectedCategoryId = "") {
         }
     } catch (error) {
         console.error("[Admin Categories] Could not populate category controls.", error);
+        if (requestId !== categoryControlsRequest) return;
         const articleSelect = document.getElementById("art-category");
-        if (articleSelect) articleSelect.innerHTML = `<option value="">Categories unavailable</option>`;
+        if (articleSelect) {
+            const selected = String(selectedCategoryId || articleSelect.value || "").trim();
+            const label = preservedCategoryLabel || selected;
+            articleSelect.innerHTML = selected
+                ? `<option value="${escapeAdminHtml(selected)}">${escapeAdminHtml(label)} (existing)</option>`
+                : `<option value="">Categories unavailable</option>`;
+            articleSelect.value = selected;
+        }
     }
+}
+
+function getStoredArticleCategory(article) {
+    const label = String(article?.category || article?.categorySlug || article?.categoryId || "").trim();
+    return {
+        id: label ? getArticleCategoryId(article) : "",
+        label
+    };
 }
 
 function getAdminArticleCategoryName(article) {
@@ -789,11 +817,13 @@ function initArticleForm() {
                 event: e,
                 form,
                 loadingText: "Saving...",
-                successMsg: contentStatus === "draft" ? "Article saved as draft." : "Article published successfully.",
+                successMsg: editingArticleId
+                    ? (contentStatus === "draft" ? "Article changes saved as draft." : "Article updated successfully.")
+                    : (contentStatus === "draft" ? "Article saved as draft." : "Article published successfully."),
                 validate() {
                     requireAdminField(document.getElementById("art-title"), "Title", 2);
                     if (contentStatus === "published") {
-                        requireAdminField(document.getElementById("art-category"), "Category");
+                        if (!editingArticleId) requireAdminField(document.getElementById("art-category"), "Category");
                         requireAdminField(document.getElementById("art-author"), "Author");
                         requireAdminField(document.getElementById("art-content"), "Content", 5);
                     }
@@ -858,14 +888,26 @@ async function handleFormSubmit(event) {
     try {
         // Collect raw form fields
         const rawTitle = document.getElementById("art-title")?.value || "";
-        const rawCategoryId = document.getElementById("art-category")?.value || "";
+        const existingArticle = editingArticleId
+            ? currentArticlesList.find(article => article.id === editingArticleId)
+            : null;
+        const existingCategory = getStoredArticleCategory(existingArticle);
+        const rawCategoryId = document.getElementById("art-category")?.value || (editingArticleId ? existingCategory.id : "");
         const categories = await getCategories();
         const selectedCategory = categories.find(category => category.slug === rawCategoryId);
-        if (!selectedCategory && contentStatus === "published") {
+        const canKeepExistingCategory = Boolean(editingArticleId && (existingCategory.id || categories.length === 0));
+        if (!selectedCategory && contentStatus === "published" && !canKeepExistingCategory) {
             const error = new Error("Select an existing category before publishing.");
             error.field = document.getElementById("art-category");
             throw error;
         }
+        const categoryValue = selectedCategory?.slug ||
+            (editingArticleId ? existingCategory.label || existingCategory.id : rawCategoryId) ||
+            "GENERAL";
+        const categoryIdValue = selectedCategory?.slug ||
+            (editingArticleId
+                ? existingArticle?.categoryId || existingArticle?.categorySlug || existingCategory.id
+                : rawCategoryId);
         const rawAuthor = document.getElementById("art-author")?.value || "";
         const authorId = window.currentUser?.uid || localStorage.getItem("nuqtha_admin_uid") || "admin";
         const rawTranscription = document.getElementById("art-transcription")?.value || "";
@@ -918,16 +960,12 @@ async function handleFormSubmit(event) {
         if (!resolvedBookSlug && rawBookName) {
             resolvedBookSlug = slugifyText(rawBookName);
         }
-        const existingArticle = editingArticleId
-            ? currentArticlesList.find(article => article.id === editingArticleId)
-            : null;
-
         // STRICT SCHEMA VALIDATION & SANITIZATION
         const sanitized = validateAndSanitizeArticleForSave({
             title: rawTitle,
             slug: articleSlug,
-            category: selectedCategory?.slug || "GENERAL",
-            categoryId: selectedCategory?.slug || "",
+            category: categoryValue,
+            categoryId: categoryIdValue || "",
             author: rawAuthor,
             authorId,
             transcription: rawTranscription,
@@ -975,7 +1013,19 @@ async function handleFormSubmit(event) {
             const articleRef = doc(db, "articles", editingArticleId);
             const updatePayload = {
                 ...sanitized,
-                category: sanitized.categoryId || sanitized.category,
+                category: selectedCategory?.slug || existingCategory.label || sanitized.category,
+                categoryId: selectedCategory?.slug ||
+                    existingArticle?.categoryId ||
+                    existingArticle?.categorySlug ||
+                    existingCategory.id ||
+                    sanitized.categoryId,
+                ...(selectedCategory
+                    ? { categorySlug: selectedCategory.slug }
+                    : existingArticle?.categorySlug
+                        ? { categorySlug: existingArticle.categorySlug }
+                        : existingCategory.id
+                            ? { categorySlug: existingCategory.id }
+                            : {}),
                 hasCustomExcerpt: Boolean(typedExcerpt),
                 storedExcerpt: typedExcerpt,
                 excerpt: typedExcerpt,
@@ -1006,8 +1056,9 @@ async function handleFormSubmit(event) {
             showGlobalStatus(contentStatus === "draft"
                 ? "ലേഖനത്തിലെ മാറ്റങ്ങൾ ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു."
                 : "ലേഖനം വിജയകരമായി പ്രസിദ്ധീകരിച്ചു! ✨", "success");
-            exitEditMode();
-            switchAdminTab("published");
+            const editTitleDisplay = document.getElementById("edit-title-display");
+            if (editTitleDisplay) editTitleDisplay.textContent = sanitized.title;
+            setSubmitButtonFeedback(event?.submitter, contentStatus === "draft" ? "Saved" : "Updated");
         } else {
             // CREATE NEW ARTICLE IN FIRESTORE
             await setDoc(doc(db, "articles", targetArticleId), {
@@ -1041,11 +1092,20 @@ async function handleFormSubmit(event) {
 }
 
 function setSubmitButtonsLoading(isLoading) {
+    if (isLoading) clearSubmitButtonFeedback();
     document.querySelectorAll(".submit-article-btn").forEach(btn => {
         btn.disabled = isLoading;
         if (isLoading) {
             btn.innerHTML = `<span class="inline-block animate-spin mr-1">⏳</span> <span>പ്രോസസ്സ് ചെയ്യുന്നു...</span>`;
+        } else if (btn.dataset.saveFeedback) {
+            btn.textContent = btn.dataset.saveFeedback;
+            btn.style.backgroundColor = "#059669";
+            btn.style.borderColor = "#047857";
+            btn.style.color = "#ffffff";
         } else {
+            btn.style.removeProperty("background-color");
+            btn.style.removeProperty("border-color");
+            btn.style.removeProperty("color");
             const isEdit = Boolean(editingArticleId);
             const isDraft = btn.value === "draft";
             if (isDraft) {
@@ -1057,6 +1117,33 @@ function setSubmitButtonsLoading(isLoading) {
             }
         }
     });
+}
+
+function clearSubmitButtonFeedback() {
+    window.clearTimeout(submitButtonFeedbackTimer);
+    submitButtonFeedbackTimer = 0;
+    document.querySelectorAll(".submit-article-btn").forEach(button => {
+        delete button.dataset.saveFeedback;
+        button.style.removeProperty("background-color");
+        button.style.removeProperty("border-color");
+        button.style.removeProperty("color");
+    });
+}
+
+function setSubmitButtonFeedback(button, message) {
+    if (!(button instanceof HTMLElement)) return;
+    clearSubmitButtonFeedback();
+    button.dataset.saveFeedback = message;
+    button.style.backgroundColor = "#059669";
+    button.style.borderColor = "#047857";
+    button.style.color = "#ffffff";
+    submitButtonFeedbackTimer = window.setTimeout(() => {
+        delete button.dataset.saveFeedback;
+        button.style.removeProperty("background-color");
+        button.style.removeProperty("border-color");
+        button.style.removeProperty("color");
+        setSubmitButtonsLoading(false);
+    }, 3000);
 }
 
 function resetFormFields() {
@@ -1126,6 +1213,7 @@ function resetFormFields() {
 
 function exitEditMode() {
     editingArticleId = null;
+    clearSubmitButtonFeedback();
     resetFormFields();
 
     const formHeading = document.getElementById("form-heading");
@@ -1148,6 +1236,7 @@ window.startEditArticle = function (id) {
     }
 
     editingArticleId = id;
+    clearSubmitButtonFeedback();
     originalArticleImages = {
         imageUrl: art.imageUrl || art.coverUrl || art.coverImage || art.image || "",
         thumbnailUrl: art.thumbnailUrl || "",
@@ -1173,7 +1262,8 @@ window.startEditArticle = function (id) {
         if (art.slug) slugInput.dataset.touched = "true";
         else delete slugInput.dataset.touched;
     }
-    if (catInput) void populateCategoryControls(getArticleCategoryId(art));
+    const storedCategory = getStoredArticleCategory(art);
+    if (catInput) void populateCategoryControls(storedCategory.id, storedCategory.label);
     if (authorInput) authorInput.value = art.author || "";
     if (transcriptionInput) transcriptionInput.value = art.transcription || "";
     if (excerptInput) {
@@ -3889,7 +3979,7 @@ function listenToFirestoreArticles() {
     const cacheLimitBytes = 256 * 1024;
     const cacheFields = [
         "title", "bookTitle", "name", "author", "authorId", "date", "createdAt", "updatedAt",
-        "type", "category", "status", "slug", "bookSlug", "bookId", "parentBookId", "bookName",
+        "type", "category", "categoryId", "categorySlug", "status", "slug", "bookSlug", "bookId", "parentBookId", "bookName",
         "playlistName", "volume", "issue", "order", "priority", "placement", "showOnTable",
         "isBook", "isChapter", "isPremium", "price", "visible", "excerpt", "introduction",
         "thumbnailUrl", "imageUrl", "ogImage", "coverUrl", "coverImage"
@@ -3955,6 +4045,8 @@ function listenToFirestoreArticles() {
                     author: String(item.author || "").slice(0, 120),
                     type: item.type || "",
                     category: item.category || "",
+                    categoryId: item.categoryId || "",
+                    categorySlug: item.categorySlug || "",
                     slug: item.slug || "",
                     bookId: item.bookId || "",
                     parentBookId: item.parentBookId || "",
@@ -3973,6 +4065,7 @@ function listenToFirestoreArticles() {
 
         const items = rawItems.map(d => ({
             ...normalizeArticleDoc(d, d?.id),
+            categorySlug: String(d?.categorySlug || ""),
             __adminCollection: d?.__adminCollection === "books" ? "books" : "articles"
         }));
 
@@ -4069,11 +4162,14 @@ function listenToFirestoreArticles() {
 
         const items = latestArticles.map(articleDoc => {
             const raw = articleDoc.data() || {};
-            return normalizeArticleDoc({
-                ...raw,
-                title: raw.title || raw.bookTitle || raw.name,
-                id: articleDoc.id
-            }, articleDoc.id);
+            return {
+                ...normalizeArticleDoc({
+                    ...raw,
+                    title: raw.title || raw.bookTitle || raw.name,
+                    id: articleDoc.id
+                }, articleDoc.id),
+                categorySlug: String(raw.categorySlug || "")
+            };
         });
         const seenIds = new Set(items.map(item => String(item.id || "")));
         const bookItems = latestBooks.flatMap(bookDoc => {
@@ -4096,7 +4192,7 @@ function listenToFirestoreArticles() {
             );
             if (articleBookMatch) return [];
             seenIds.add(String(id));
-            return [{ ...normalized, __adminCollection: "books" }];
+            return [{ ...normalized, categorySlug: String(raw.categorySlug || ""), __adminCollection: "books" }];
         });
         processArticlesData([...items, ...bookItems]);
     };

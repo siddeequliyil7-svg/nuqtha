@@ -9,6 +9,8 @@ describe("Article category IDs", () => {
         expect(getArticleCategoryId({ categoryId: "STUDY" })).to.equal("study");
         expect(getArticleCategoryId({ category: "ചരിത്രം" })).to.equal("history");
         expect(getArticleCategoryId({ categoryId: "legacy-history", category: "History" })).to.equal("history");
+        expect(getArticleCategoryId({ categorySlug: "special-edition" })).to.equal("special-edition");
+        expect(getArticleCategoryId({ categoryId: "old category", categorySlug: "special-edition" })).to.equal("special-edition");
     });
 
     it("preserves custom IDs and defaults uncategorized records to general", () => {

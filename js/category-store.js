@@ -24,14 +24,17 @@ function normalizeStandardCategory(value) {
 }
 
 export function getArticleCategoryId(article) {
-    const categoryId = String(article?.categoryId || "").trim();
-    const normalizedId = normalizeStandardCategory(categoryId);
+    const categoryIds = [article?.categoryId, article?.categorySlug]
+        .map(value => String(value || "").trim())
+        .filter(Boolean);
+    const normalizedId = categoryIds.map(normalizeStandardCategory).find(Boolean);
     if (normalizedId) return normalizedId;
     const category = String(article?.category || "").trim();
     const normalizedCategory = normalizeStandardCategory(category);
     if (normalizedCategory) return normalizedCategory;
-    if (categoryId && CATEGORY_ID_PATTERN.test(categoryId.toLowerCase())) return categoryId.toLowerCase();
-    return slugifyCategory(category) || "general";
+    const validCategoryId = categoryIds.find(value => CATEGORY_ID_PATTERN.test(value.toLowerCase()));
+    if (validCategoryId) return validCategoryId.toLowerCase();
+    return slugifyCategory(category || categoryIds[0]) || "general";
 }
 
 function normalizeCategory(snapshot) {
