@@ -16,6 +16,38 @@ import {
 import { runAction } from "./js/admin-actions.js";
 import { addDoc, setDoc, updateDoc, deleteDoc, uploadImageDataUrl, uploadFile, getAdminWriteErrorMessage } from "./js/admin-write-guard.js";
 
+function getUsableImageFallback(imageUrl) {
+    const value = typeof imageUrl === "string" ? imageUrl.trim() : "";
+    return /^(data:|blob:|file:)/i.test(value) ? "" : value;
+}
+
+async function uploadOptionalAdminImage(imageData, path, fallbackUrl, label, failures) {
+    try {
+        return await uploadImageDataUrl(imageData, path);
+    } catch (error) {
+        console.error(`[NUQTHA ADMIN] ${label} upload failed; continuing without the new image.`, error);
+        failures.push({ label, error });
+        return getUsableImageFallback(fallbackUrl);
+    }
+}
+
+function showOptionalImageUploadWarning(failures, recordLabel) {
+    if (!failures.length) return;
+    const networkFailure = failures.some(({ error }) => {
+        const detail = `${error?.code || ""} ${error?.message || error}`;
+        return error?.name === "TypeError" ||
+            /cors|network|offline|failed to fetch|load failed|timeout|retry-limit-exceeded|network-request-failed|storage\/unknown/i.test(detail);
+    });
+    const labels = failures.map(({ label }) => label).join(", ");
+    const reason = networkFailure
+        ? " A Firebase Storage network or CORS error may have caused this."
+        : "";
+    showGlobalStatus(
+        `${recordLabel} metadata was saved, but the ${labels} upload failed.${reason} Existing image URLs were kept where available.`,
+        "error"
+    );
+}
+
 function isExplicitChapterRecord(art) {
     if (!art) return false;
     return art.isChapter === true ||
@@ -883,6 +915,7 @@ if (typeof window !== "undefined") {
 
 async function handleFormSubmit(event) {
     const contentStatus = event?.submitter?.value === "draft" ? "draft" : "published";
+    const imageUploadFailures = [];
     setSubmitButtonsLoading(true);
 
     try {
@@ -992,7 +1025,13 @@ async function handleFormSubmit(event) {
         const targetArticleId = editingArticleId || doc(collection(db, "articles")).id;
         const shouldPersistCover = articleImageChanged || !editingArticleId || /^data:/i.test(effectiveCover);
         const storedCover = shouldPersistCover
-            ? await uploadImageDataUrl(sanitized.imageUrl, `articles/${targetArticleId}/cover`)
+            ? await uploadOptionalAdminImage(
+                sanitized.imageUrl,
+                `articles/${targetArticleId}/cover`,
+                originalArticleImages.imageUrl,
+                "cover image",
+                imageUploadFailures
+            )
             : effectiveCover || "";
         const shouldPersistThumbnail = articleThumbnailChanged || !editingArticleId || /^data:/i.test(effectiveThumb);
         const storedThumbnail = articleThumbnailChanged && !selectedBase64Thumbnail
@@ -1000,7 +1039,13 @@ async function handleFormSubmit(event) {
             : shouldPersistThumbnail
                 ? sanitized.thumbnailUrl === sanitized.imageUrl
                     ? storedCover
-                    : await uploadImageDataUrl(sanitized.thumbnailUrl, `articles/${targetArticleId}/thumbnail`)
+                    : await uploadOptionalAdminImage(
+                        sanitized.thumbnailUrl,
+                        `articles/${targetArticleId}/thumbnail`,
+                        originalArticleImages.thumbnailUrl,
+                        "thumbnail image",
+                        imageUploadFailures
+                    )
                 : effectiveThumb || effectiveOgImage || "";
         sanitized.imageUrl = storedCover;
         sanitized.coverImage = storedCover;
@@ -1082,6 +1127,7 @@ async function handleFormSubmit(event) {
             syncContentStatusFilters("[data-article-status-filter]", "articleStatusFilter", articleStatusFilter);
             switchAdminTab("published");
         }
+        showOptionalImageUploadWarning(imageUploadFailures, "Article");
     } catch (err) {
         console.error("[NUQTHA ADMIN] Save failed:", err?.code || "", err?.message || err);
         showGlobalStatus(getAdminWriteErrorMessage(err, "Article save"), "error");
@@ -2073,9 +2119,11 @@ async function handleSaveBookStep1(e) {
         ));
 
     // Keep an empty cover on the shared neutral static placeholder.
-    let coverImage = selectedBookCoverBase64 || (existing
+    const existingCoverImage = existing
         ? existing.imageUrl || existing.coverUrl || existing.coverImage || existing.thumbnailUrl || existing.ogImage || existing.image
-        : "") || "/cover-placeholder.svg";
+        : "";
+    let coverImage = selectedBookCoverBase64 || existingCoverImage || "/cover-placeholder.svg";
+    const imageUploadFailures = [];
 
     const saveButtons = [
         document.getElementById("publish-book-cover-btn"),
@@ -2100,7 +2148,13 @@ async function handleSaveBookStep1(e) {
         const priceVal = parseFloat(document.getElementById("book-meta-price")?.value) || 0;
         const apkUrlVal = (document.getElementById("book-meta-apk-url")?.value || "").trim();
         const targetBookId = existing?.id || doc(collection(db, "articles")).id;
-        const storedCover = await uploadImageDataUrl(coverImage, `books/${targetBookId}/cover`);
+        const storedCover = await uploadOptionalAdminImage(
+            coverImage,
+            `books/${targetBookId}/cover`,
+            existingCoverImage || "/cover-placeholder.svg",
+            "book cover",
+            imageUploadFailures
+        );
 
         const payload = {
             title: name,
@@ -2222,6 +2276,7 @@ async function handleSaveBookStep1(e) {
                 step2Wrapper.scrollIntoView({ behavior: "smooth", block: "start" });
             }, 80);
         }
+        showOptionalImageUploadWarning(imageUploadFailures, "Book");
 
     } catch (err) {
         console.error("Save book error:", err?.code || "", err?.message || err);
@@ -2845,22 +2900,26 @@ function initChapterWriter() {
             const chapter = editingChapterId
                 ? (currentArticlesList.find(article => article.id === editingChapterId) || {})
                 : {};
-            const imageUrl = await uploadImageDataUrl(
-                selectedImage ||
-                    chapter.imageUrl ||
-                    chapter.coverUrl ||
-                    chapter.coverImage ||
-                    chapter.thumbnailUrl ||
-                    chapter.ogImage ||
-                    chapter.image ||
-                    targetBookDoc.imageUrl ||
-                    targetBookDoc.coverUrl ||
-                    targetBookDoc.coverImage ||
-                    targetBookDoc.thumbnailUrl ||
-                    targetBookDoc.ogImage ||
-                    targetBookDoc.image ||
-                    "",
-                `articles/${chapterId}/cover`
+            const chapterImageFallback = chapter.imageUrl ||
+                chapter.coverUrl ||
+                chapter.coverImage ||
+                chapter.thumbnailUrl ||
+                chapter.ogImage ||
+                chapter.image ||
+                targetBookDoc.imageUrl ||
+                targetBookDoc.coverUrl ||
+                targetBookDoc.coverImage ||
+                targetBookDoc.thumbnailUrl ||
+                targetBookDoc.ogImage ||
+                targetBookDoc.image ||
+                "";
+            const chapterImageUploadFailures = [];
+            const imageUrl = await uploadOptionalAdminImage(
+                selectedImage || chapterImageFallback,
+                `articles/${chapterId}/cover`,
+                chapterImageFallback,
+                "chapter cover image",
+                chapterImageUploadFailures
             );
 
             // Sequential order number
@@ -3017,6 +3076,7 @@ function initChapterWriter() {
                 showChapterInlineMsg(`✨ അധ്യായം '${title}' (#${nextOrder}) വിജയകരമായി ചേർത്തു!`, "success");
                 showGlobalStatus(`✨ അധ്യായം '${title}' (#${nextOrder}) വിജയകരമായി ചേർത്തു! ഘട്ടം 3-ലേക്ക് നീങ്ങി.`, "success");
             }
+            showOptionalImageUploadWarning(chapterImageUploadFailures, "Chapter");
 
             // Clear inputs
             if (titleInput) {
