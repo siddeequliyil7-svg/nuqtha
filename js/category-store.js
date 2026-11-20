@@ -25,9 +25,13 @@ function normalizeStandardCategory(value) {
 
 export function getArticleCategoryId(article) {
     const categoryId = String(article?.categoryId || "").trim();
-    if (categoryId) return normalizeStandardCategory(categoryId) || categoryId;
+    const normalizedId = normalizeStandardCategory(categoryId);
+    if (normalizedId) return normalizedId;
     const category = String(article?.category || "").trim();
-    return normalizeStandardCategory(category) || slugifyCategory(category) || "general";
+    const normalizedCategory = normalizeStandardCategory(category);
+    if (normalizedCategory) return normalizedCategory;
+    if (categoryId && CATEGORY_ID_PATTERN.test(categoryId.toLowerCase())) return categoryId.toLowerCase();
+    return slugifyCategory(category) || "general";
 }
 
 function normalizeCategory(snapshot) {

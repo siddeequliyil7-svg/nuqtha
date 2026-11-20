@@ -1,5 +1,5 @@
 import { safeInit } from "./js/ui-safe.js";
-import { FALLBACK_ARTICLES, FALLBACK_BOOKS, FALLBACK_ARTICLE_ITEMS } from './fallback-data.js';
+import { FALLBACK_ARTICLES, FALLBACK_BOOKS } from './fallback-data.js';
 export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
 /**
  * NUQTHA — Frosted Glass Feed Engine
@@ -122,7 +122,7 @@ try {
 
 // Pre-fill with normalized fallback articles so feed is NEVER empty, broken, or stuck on skeletons
 if (!Array.isArray(allArticles) || allArticles.length === 0) {
-    allArticles = FALLBACK_ARTICLE_ITEMS.map(a => normalizeArticleDoc(a, a.id));
+    allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
     safeCacheArticles(allArticles);
 }
 
@@ -921,7 +921,7 @@ export function initAppData() {
             return restoreFallbackFields(book, fallbacksById, bookData);
         });
 
-        const fallbackItems = hasFirestoreContent ? [] : FALLBACK_ARTICLE_ITEMS;
+        const fallbackItems = FALLBACK_ARTICLES;
         const combined = fallbackItems.map(article => normalizeArticleDoc(article, article.id));
         rawArticlesList.forEach(article => {
             const existingIndex = combined.findIndex(item => item.id === article.id || (article.slug && item.slug === article.slug));
@@ -942,7 +942,7 @@ export function initAppData() {
     })().catch(error => {
         console.error("[NUQTHA App] Could not load articles and books.", error);
         if (allArticles.length === 0) {
-            allArticles = FALLBACK_ARTICLE_ITEMS.map(article => normalizeArticleDoc(article, article.id));
+            allArticles = FALLBACK_ARTICLES.map(article => normalizeArticleDoc(article, article.id));
         }
         renderFeed();
     });
@@ -1178,8 +1178,8 @@ function renderLazyHomeCategorySection(section, category, categoryArticles) {
 
     const theme = getCategoryTheme();
     const [featuredArt, ...subsequentArticles] = selected;
-    const initialGridArticles = subsequentArticles.slice(0, 2);
-    const remainingArticles = subsequentArticles.slice(2);
+    const initialGridArticles = subsequentArticles.slice(0, 4);
+    const remainingArticles = subsequentArticles.slice(4);
     const gridId = `home-category-grid-${String(category.slug).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
     section.innerHTML = `
         ${buildCategorySectionHeader(category.slug, false, false, theme)}
@@ -1255,7 +1255,7 @@ function renderHomeFeed(container) {
                 renderEmpty("നിലവിൽ പ്രസിദ്ധീകരിച്ച ലേഖനങ്ങളോ പുസ്തകങ്ങളോ ഇല്ല.");
                 return;
             }
-            allArticles = FALLBACK_ARTICLE_ITEMS.map(a => normalizeArticleDoc(a, a.id));
+            allArticles = FALLBACK_ARTICLES.map(a => normalizeArticleDoc(a, a.id));
             renderHomeFeed(container);
             return;
         }

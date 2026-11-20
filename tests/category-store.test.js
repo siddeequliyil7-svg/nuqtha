@@ -8,6 +8,7 @@ describe("Article category IDs", () => {
         expect(getArticleCategoryId({ category: "HISTORY" })).to.equal("history");
         expect(getArticleCategoryId({ categoryId: "STUDY" })).to.equal("study");
         expect(getArticleCategoryId({ category: "ചരിത്രം" })).to.equal("history");
+        expect(getArticleCategoryId({ categoryId: "legacy-history", category: "History" })).to.equal("history");
     });
 
     it("preserves custom IDs and defaults uncategorized records to general", () => {
