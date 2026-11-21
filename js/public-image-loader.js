@@ -530,9 +530,7 @@ function observeImage(image) {
         }
         return;
     }
-    if (!observer) return;
-    observer.observe(image);
-    if (image.loading === "eager" || isNearViewport(image)) enqueueImage(image);
+    enqueueImage(image);
 }
 
 function scanImages(node) {
