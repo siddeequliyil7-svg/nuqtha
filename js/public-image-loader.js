@@ -1,0 +1,610 @@
+import { collection, db, firebaseConfig, getDocsFromCache } from "../firebase-config.js";
+import { getArticleImageUrl } from "../schema-validator.js";
+import { filterPublicCollections } from "./public-status.js";
+
+const REST_BASE = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(firebaseConfig.projectId)}/databases/(default)/documents`;
+const IMAGE_FIELDS = ["imageUrl", "coverUrl", "coverImage", "cover", "image", "thumbnail", "thumbnailUrl", "ogImage"];
+const MAX_ACTIVE_REQUESTS = 3;
+const IMAGE_RETRY_DELAYS_MS = [300, 900, 1800];
+const IMAGE_DB_NAME = "nuqtha-image-cache";
+const IMAGE_DB_VERSION = 1;
+const IMAGE_STORE_NAME = "images";
+const activeObjectUrls = new Map();
+const imageSourcePromises = new Map();
+const queue = [];
+let activeRequests = 0;
+let imageDatabasePromise;
+let observer;
+let mutationObserver;
+let publicCollectionsPromise;
+let publicCollectionsCache;
+
+const listFields = [
+    "title", "author", "authorName", "authorId", "authorPhoto",
+    "category", "categoryId", "status", "type", "isBook", "isChapter",
+    "isPremium", "bookType", "price", "priority", "placement", "order", "date",
+    "publishDate", "createdAt", "updatedAt", "slug", "bookSlug", "bookId",
+    "parentBookId", "bookName", "bookTitle", "book", "playlistName", "chapterIndex", "volume", "issue",
+    "excerpt", "storedExcerpt", "hasCustomExcerpt", "transcription",
+    "visible", "description", "introduction", "intro", "summary", "pages", "color", "tags",
+    "chapters", "articleIds", "titleColor", "contentColor",
+    "readTime", "accessType", "leadTitle", "featuredTitle", "apkUrl", "fontSize"
+];
+
+function decodeValue(value) {
+    if (!value || typeof value !== "object") return value;
+    if ("nullValue" in value) return null;
+    if ("stringValue" in value) return value.stringValue;
+    if ("integerValue" in value) return Number(value.integerValue);
+    if ("doubleValue" in value) return Number(value.doubleValue);
+    if ("booleanValue" in value) return value.booleanValue;
+    if ("timestampValue" in value) return value.timestampValue;
+    if ("referenceValue" in value) return value.referenceValue;
+    if ("arrayValue" in value) return (value.arrayValue.values || []).map(decodeValue);
+    if ("mapValue" in value) return decodeFields(value.mapValue.fields || {});
+    return value;
+}
+
+function decodeFields(fields) {
+    return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, decodeValue(value)]));
+}
+
+export function stripListHeavyFields(value) {
+    if (Array.isArray(value)) return value.map(stripListHeavyFields);
+    if (!value || typeof value !== "object") return value;
+    return Object.fromEntries(Object.entries(value)
+        .filter(([key]) => !IMAGE_FIELDS.includes(key) && key !== "content" && key !== "body")
+        .map(([key, child]) => [key, stripListHeavyFields(child)]));
+}
+
+async function fetchCollection(collectionName, signal) {
+    const documents = [];
+    let offset = 0;
+    const pageSize = 1000;
+
+    while (true) {
+        const structuredQuery = {
+            from: [{ collectionId: collectionName }],
+            select: { fields: listFields.map(fieldPath => ({ fieldPath })) },
+            where: {
+                fieldFilter: {
+                    field: { fieldPath: "status" },
+                    op: "EQUAL",
+                    value: { stringValue: "published" }
+                }
+            },
+            limit: pageSize,
+            offset
+        };
+        const response = await fetch(`${REST_BASE}:runQuery?key=${encodeURIComponent(firebaseConfig.apiKey)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ structuredQuery }),
+            signal
+        });
+        if (!response.ok) throw new Error(`Firestore list read failed (${response.status}) for ${collectionName}.`);
+        const results = await response.json();
+        const pageDocuments = (results || []).map(result => result.document).filter(Boolean);
+
+        for (const document of pageDocuments) {
+            const id = document.name.split("/").pop();
+            const data = stripListHeavyFields(decodeFields(document.fields || {}));
+            documents.push({
+                ...data,
+                id,
+                _imageCollection: collectionName,
+                _imageDocId: id
+            });
+        }
+        offset += pageDocuments.length;
+        if (pageDocuments.length < pageSize) break;
+    }
+
+    return documents;
+}
+
+async function fetchCollectionWithCache(collectionName, signal) {
+    try {
+        return await fetchCollection(collectionName, signal);
+    } catch (error) {
+        console.warn(`[NUQTHA Data] ${collectionName} list read failed; checking the local cache.`, error);
+        try {
+            const snapshot = await getDocsFromCache(collection(db, collectionName));
+            return snapshot.docs.map(document => {
+                const data = stripListHeavyFields(document.data());
+                return {
+                    ...data,
+                    id: document.id,
+                    _imageCollection: collectionName,
+                    _imageDocId: document.id
+                };
+            });
+        } catch (cacheError) {
+            console.warn(`[NUQTHA Data] ${collectionName} is unavailable in the local cache.`, cacheError);
+            throw error;
+        }
+    }
+}
+
+export async function fetchPublicCollections() {
+    if (publicCollectionsCache) return publicCollectionsCache;
+    if (publicCollectionsPromise) return publicCollectionsPromise;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    publicCollectionsPromise = Promise.allSettled([
+        fetchCollectionWithCache("articles", controller.signal),
+        fetchCollectionWithCache("books", controller.signal)
+    ]).then(results => {
+        const [articlesResult, booksResult] = results;
+        const articles = articlesResult.status === "fulfilled" ? articlesResult.value : [];
+        const books = booksResult.status === "fulfilled" ? booksResult.value : [];
+        if (articlesResult.status === "rejected") {
+            console.warn("[NUQTHA Data] Articles are unavailable; continuing with the remaining public data.", articlesResult.reason);
+        }
+        if (booksResult.status === "rejected") {
+            console.warn("[NUQTHA Data] Books are unavailable; continuing with the remaining public data.", booksResult.reason);
+        }
+        publicCollectionsCache = {
+            ...filterPublicCollections(articles, books),
+            hasFirestoreContent: articles.length > 0 || books.length > 0
+        };
+        return publicCollectionsCache;
+    }).finally(() => {
+        clearTimeout(timeout);
+        publicCollectionsPromise = null;
+    });
+    return publicCollectionsPromise;
+}
+
+export async function fetchArticleSearchContent() {
+    const results = new Map();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    let offset = 0;
+    const pageSize = 1000;
+
+    try {
+        while (true) {
+            const response = await fetch(`${REST_BASE}:runQuery?key=${encodeURIComponent(firebaseConfig.apiKey)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    structuredQuery: {
+                        from: [{ collectionId: "articles" }],
+                        select: { fields: ["content", "body"].map(fieldPath => ({ fieldPath })) },
+                        where: {
+                            fieldFilter: {
+                                field: { fieldPath: "status" },
+                                op: "EQUAL",
+                                value: { stringValue: "published" }
+                            }
+                        },
+                        limit: pageSize,
+                        offset
+                    }
+                }),
+                signal: controller.signal
+            });
+            if (!response.ok) throw new Error(`Firestore article search read failed (${response.status}).`);
+            const pageDocuments = (await response.json() || []).map(result => result.document).filter(Boolean);
+            for (const document of pageDocuments) {
+                const id = document.name.split("/").pop();
+                const fields = decodeFields(document.fields || {});
+                results.set(id, fields.content || fields.body || "");
+            }
+            offset += pageDocuments.length;
+            if (pageDocuments.length < pageSize) break;
+        }
+
+        return results;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function openImageDatabase() {
+    if (imageDatabasePromise) return imageDatabasePromise;
+    imageDatabasePromise = new Promise((resolve, reject) => {
+        if (!("indexedDB" in window)) {
+            reject(new Error("IndexedDB is unavailable."));
+            return;
+        }
+        const request = indexedDB.open(IMAGE_DB_NAME, IMAGE_DB_VERSION);
+        request.onupgradeneeded = () => {
+            const database = request.result;
+            if (!database.objectStoreNames.contains(IMAGE_STORE_NAME)) {
+                database.createObjectStore(IMAGE_STORE_NAME);
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error("Could not open the image cache."));
+    });
+    return imageDatabasePromise;
+}
+
+async function readCachedBlob(key) {
+    const database = await openImageDatabase();
+    return new Promise((resolve, reject) => {
+        const request = database.transaction(IMAGE_STORE_NAME, "readonly")
+            .objectStore(IMAGE_STORE_NAME).get(key);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error || new Error("Could not read the image cache."));
+    });
+}
+
+async function cacheBlob(key, blob) {
+    const database = await openImageDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = database.transaction(IMAGE_STORE_NAME, "readwrite");
+        transaction.objectStore(IMAGE_STORE_NAME).put(blob, key);
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error || new Error("Could not write the image cache."));
+        transaction.onabort = () => reject(transaction.error || new Error("Image cache write was aborted."));
+    });
+}
+
+async function getObjectUrl(key, dataUrl) {
+    const existing = activeObjectUrls.get(key);
+    if (existing) return existing;
+
+    let blob = null;
+    try {
+        blob = await readCachedBlob(key);
+    } catch (error) {
+        console.warn("[NUQTHA Images] Could not read the IndexedDB image cache.", error);
+    }
+    if (!blob) {
+        const response = await fetch(dataUrl);
+        if (!response.ok) throw new Error("Could not decode the image data.");
+        blob = await response.blob();
+        try {
+            await cacheBlob(key, blob);
+        } catch (error) {
+            console.warn("[NUQTHA Images] Could not persist an image in IndexedDB.", error);
+        }
+    }
+
+    const url = URL.createObjectURL(blob);
+    activeObjectUrls.set(key, url);
+    return url;
+}
+
+function fetchImageFromDocument(collectionName, documentId) {
+    if (!collectionName || !documentId) return "";
+    const cacheKey = `${collectionName}:${documentId}`;
+    if (imageSourcePromises.has(cacheKey)) return imageSourcePromises.get(cacheKey);
+
+    const imageRequest = (async () => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        try {
+            const mask = IMAGE_FIELDS.map(field => `mask.fieldPaths=${encodeURIComponent(field)}`).join("&");
+            const url = `${REST_BASE}/${encodeURIComponent(collectionName)}/${encodeURIComponent(documentId)}?key=${encodeURIComponent(firebaseConfig.apiKey)}&${mask}`;
+            const response = await fetch(url, { signal: controller.signal });
+            if (!response.ok) throw new Error(`Firestore image read failed (${response.status}).`);
+            const document = await response.json();
+            return getArticleImageUrl(decodeFields(document.fields || {}), "");
+        } finally {
+            clearTimeout(timeout);
+        }
+    })();
+
+    imageSourcePromises.set(cacheKey, imageRequest);
+    imageRequest.then(
+        () => {
+            if (imageSourcePromises.get(cacheKey) === imageRequest) imageSourcePromises.delete(cacheKey);
+        },
+        () => {
+            if (imageSourcePromises.get(cacheKey) === imageRequest) imageSourcePromises.delete(cacheKey);
+        }
+    );
+    return imageRequest;
+}
+
+async function fetchImageField(image) {
+    try {
+        const source = await fetchImageFromDocument(
+            image.dataset.nuqthaImageCollection,
+            image.dataset.nuqthaImageDoc
+        );
+        if (source) return source;
+    } catch (error) {
+        if (!image.dataset.nuqthaImageFallbackCollection || !image.dataset.nuqthaImageFallbackDoc) throw error;
+        console.warn("[NUQTHA Images] Primary cover source failed; trying its fallback document.", error);
+    }
+    return fetchImageFromDocument(
+        image.dataset.nuqthaImageFallbackCollection,
+        image.dataset.nuqthaImageFallbackDoc
+    );
+}
+
+function showImagePlaceholder(image) {
+    const placeholder = image.parentElement?.querySelector("[data-nuqtha-image-placeholder]");
+    if (!placeholder) return;
+    placeholder.hidden = false;
+    placeholder.style.removeProperty("display");
+    placeholder.classList.remove("hidden");
+}
+
+function hideImagePlaceholder(image) {
+    const placeholder = image.parentElement?.querySelector("[data-nuqtha-image-placeholder]");
+    if (!placeholder) return;
+    placeholder.hidden = true;
+    placeholder.style.display = "none";
+    placeholder.classList.add("hidden");
+}
+
+function isStaticImageFallback(source) {
+    return /(?:^|\/)cover-placeholder\.svg(?:[?#].*)?$/i.test(String(source || "").trim());
+}
+
+function rememberImageSource(image, source) {
+    if (!source || /^blob:/i.test(source) || isStaticImageFallback(source)) return;
+    image.dataset.nuqthaImageSource = source;
+}
+
+function getKnownImageSource(image) {
+    const source = image.dataset.nuqthaImageSource || image.getAttribute("src") || "";
+    return /^blob:/i.test(source) || isStaticImageFallback(source) ? "" : source;
+}
+
+function scheduleImageRetry(image, retry) {
+    const attempt = Number.parseInt(image.dataset.nuqthaImageRetryCount || "0", 10) || 0;
+    if (attempt >= IMAGE_RETRY_DELAYS_MS.length) {
+        image.dataset.nuqthaImageRetryExhausted = "true";
+        return false;
+    }
+
+    image.dataset.nuqthaImageRetryCount = String(attempt + 1);
+    window.setTimeout(() => {
+        if (image.isConnected) retry();
+    }, IMAGE_RETRY_DELAYS_MS[attempt]);
+    return true;
+}
+
+function retryKnownImage(image, source) {
+    return scheduleImageRetry(image, () => {
+        image.removeAttribute("src");
+        revealImage(image, source);
+    });
+}
+
+function retryDeferredImage(image) {
+    return scheduleImageRetry(image, () => {
+        image.dataset.nuqthaImageQueued = "false";
+        enqueueImage(image);
+    });
+}
+
+function useStaticImageFallback(image) {
+    if (!image?.isConnected || image.dataset.nuqthaStaticFallbackAttempted === "true") return;
+    image.dataset.nuqthaStaticFallbackAttempted = "true";
+    revealImage(image, "/cover-placeholder.svg");
+}
+
+function handleImageError(image) {
+    if (!image?.isConnected || image.dataset.nuqthaStaticFallbackAttempted === "true") return;
+    showImagePlaceholder(image);
+    const source = getKnownImageSource(image);
+    const hasFallbackDocument = image.dataset.nuqthaImageFallbackCollection &&
+        image.dataset.nuqthaImageFallbackDoc;
+    if (image.dataset.nuqthaImageFallbackAttempted !== "true" && hasFallbackDocument) {
+        image.dataset.nuqthaImageFallbackAttempted = "true";
+        fetchImageFromDocument(
+            image.dataset.nuqthaImageFallbackCollection,
+            image.dataset.nuqthaImageFallbackDoc
+        ).then(fallbackSource => {
+            if (fallbackSource && image.isConnected) {
+                revealImage(image, fallbackSource);
+                return;
+            }
+            if (source) retryKnownImage(image, source);
+            else if (!retryDeferredImage(image)) {
+                console.warn("[NUQTHA Images] Could not resolve a cover URL after retries.");
+            }
+        }).catch(error => {
+            console.warn("[NUQTHA Images] Could not load the fallback image.", error);
+            if (source) retryKnownImage(image, source);
+            else if (!retryDeferredImage(image)) {
+                console.warn("[NUQTHA Images] Could not resolve a cover URL after retries.");
+            }
+        });
+        return;
+    }
+
+    if (source) {
+        retryKnownImage(image, source);
+        return;
+    }
+    if (image.dataset.nuqthaImageCollection && image.dataset.nuqthaImageDoc) {
+        if (!retryDeferredImage(image)) {
+            console.warn("[NUQTHA Images] Could not resolve a cover URL after retries.");
+        }
+        return;
+    }
+    useStaticImageFallback(image);
+}
+
+function revealImage(image, source) {
+    image.addEventListener("load", () => {
+        image.dataset.nuqthaImageRetryCount = "0";
+        delete image.dataset.nuqthaImageRetryExhausted;
+        image.classList.add("nuqtha-image-loaded");
+        image.style.opacity = "1";
+        hideImagePlaceholder(image);
+    }, { once: true });
+    image.addEventListener("error", () => handleImageError(image), { once: true });
+    rememberImageSource(image, source);
+    image.src = source;
+}
+
+function enqueueImage(image) {
+    if (!image?.isConnected || image.dataset.nuqthaImageQueued === "true") return;
+    image.dataset.nuqthaImageQueued = "true";
+    image.loading = "eager";
+    observer?.unobserve(image);
+    queue.push(image);
+    processNext();
+}
+
+function isNearViewport(image) {
+    const rect = image.getBoundingClientRect();
+    const margin = 300;
+    return rect.width > 0 && rect.height > 0 &&
+        rect.bottom >= -margin && rect.top <= window.innerHeight + margin;
+}
+
+function processNext() {
+    while (activeRequests < MAX_ACTIVE_REQUESTS && queue.length) {
+        const image = queue.shift();
+        if (!image?.isConnected) continue;
+        activeRequests += 1;
+        (async () => {
+            try {
+                const source = await fetchImageField(image);
+                if (!source || !image.isConnected) {
+                    if (image.isConnected) {
+                        showImagePlaceholder(image);
+                        useStaticImageFallback(image);
+                    }
+                    return;
+                }
+                rememberImageSource(image, source);
+                let resolvedSource = source;
+                if (/^data:image\//i.test(source)) {
+                    const key = `${image.dataset.nuqthaImageCollection}:${image.dataset.nuqthaImageDoc}:${image.dataset.nuqthaImageUpdated || ""}`;
+                    resolvedSource = await getObjectUrl(key, source);
+                }
+                if (image.isConnected) revealImage(image, resolvedSource);
+            } catch (error) {
+                if (image.isConnected) {
+                    showImagePlaceholder(image);
+                    if (!retryDeferredImage(image)) {
+                        console.warn("[NUQTHA Images] Could not load a card image after retries.", error);
+                    }
+                }
+            } finally {
+                activeRequests -= 1;
+                processNext();
+            }
+        })();
+    }
+}
+
+function observeImage(image) {
+    const source = image.getAttribute("src") || "";
+    const hasDeferredSource = Boolean(
+        image.dataset.nuqthaImageCollection && image.dataset.nuqthaImageDoc
+    );
+    if (!source && !hasDeferredSource) return;
+    if (image.dataset.nuqthaImageObserved === "true" &&
+        image.dataset.nuqthaImageObservedSource === source) return;
+    if (source && image.dataset.nuqthaImageObservedSource &&
+        !isStaticImageFallback(source)) {
+        image.dataset.nuqthaImageRetryCount = "0";
+        delete image.dataset.nuqthaImageRetryExhausted;
+        delete image.dataset.nuqthaStaticFallbackAttempted;
+        delete image.dataset.nuqthaImageFallbackAttempted;
+    }
+    image.dataset.nuqthaImageObserved = "true";
+    image.dataset.nuqthaImageObservedSource = source;
+    if (source) {
+        rememberImageSource(image, source);
+        const reveal = () => {
+            if (image.getAttribute("src") !== source) return;
+            image.dataset.nuqthaImageRetryCount = "0";
+            delete image.dataset.nuqthaImageRetryExhausted;
+            image.classList.add("nuqtha-image-loaded");
+            image.style.opacity = "1";
+            hideImagePlaceholder(image);
+        };
+        if (image.complete) {
+            if (image.naturalWidth > 0) reveal();
+            else handleImageError(image);
+        }
+        else {
+            image.addEventListener("load", reveal, { once: true });
+            image.addEventListener("error", () => {
+                if (image.getAttribute("src") === source) handleImageError(image);
+            }, { once: true });
+        }
+        return;
+    }
+    if (!observer) return;
+    observer.observe(image);
+    if (image.loading === "eager" || isNearViewport(image)) enqueueImage(image);
+}
+
+function scanImages(node) {
+    if (!(node instanceof Element)) return;
+    if (node.matches("img[data-nuqtha-cover], img[data-nuqtha-image-doc]")) observeImage(node);
+    node.querySelectorAll("img[data-nuqtha-cover], img[data-nuqtha-image-doc]").forEach(observeImage);
+}
+
+export function installLazyFirestoreImages() {
+    if (observer || typeof window === "undefined") return;
+    if ("IntersectionObserver" in window) {
+        observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                enqueueImage(entry.target);
+            });
+        }, { rootMargin: "300px" });
+    } else {
+        observer = {
+            observe(image) {
+                queue.push(image);
+                processNext();
+            },
+            unobserve() {}
+        };
+    }
+
+    const start = () => {
+        scanImages(document.body);
+        if ("MutationObserver" in window) {
+            mutationObserver = new MutationObserver(records => {
+                records.forEach(record => {
+                    if (record.type === "childList") {
+                        record.addedNodes.forEach(scanImages);
+                    } else if (record.type === "attributes" &&
+                        record.attributeName === "src" &&
+                        record.target instanceof HTMLImageElement) {
+                        observeImage(record.target);
+                    }
+                });
+                const attachedKeys = new Set(Array.from(document.querySelectorAll("img[data-nuqtha-image-doc]"), image =>
+                    `${image.dataset.nuqthaImageCollection}:${image.dataset.nuqthaImageDoc}:${image.dataset.nuqthaImageUpdated || ""}`
+                ));
+                for (const [key, url] of activeObjectUrls) {
+                    if (!attachedKeys.has(key)) {
+                        URL.revokeObjectURL(url);
+                        activeObjectUrls.delete(key);
+                    }
+                }
+            });
+            if (document.body) {
+                mutationObserver.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ["src"]
+                });
+            }
+        }
+    };
+    if (document.body) start();
+    else document.addEventListener("DOMContentLoaded", start, { once: true });
+}
+
+export function getDeferredImageAttributes(item) {
+    if (!item?._imageCollection || !item?._imageDocId) return "";
+    const updatedAt = String(item.updatedAt || item.createdAt || "");
+    const escape = value => String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[char]));
+    const fallbackAttributes = item._imageFallbackCollection && item._imageFallbackDocId
+        ? `data-nuqtha-image-fallback-collection="${escape(item._imageFallbackCollection)}" data-nuqtha-image-fallback-doc="${escape(item._imageFallbackDocId)}"`
+        : "";
+    return `data-nuqtha-image-doc="${escape(item._imageDocId)}" data-nuqtha-image-collection="${escape(item._imageCollection)}" data-nuqtha-image-updated="${escape(updatedAt)}" ${fallbackAttributes}`;
+}

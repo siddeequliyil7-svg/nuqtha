@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800" role="img" aria-labelledby="title">
+  <title id="title">NUQTHA book cover placeholder</title>
+  <defs>
+    <linearGradient id="sand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6ead7"/>
+      <stop offset="1" stop-color="#e4c7a6"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b4532c"/>
+      <stop offset="1" stop-color="#7d3219"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="800" fill="url(#sand)"/>
+  <circle cx="300" cy="345" r="152" fill="none" stroke="#b4532c" stroke-opacity=".16" stroke-width="2"/>
+  <circle cx="300" cy="345" r="126" fill="none" stroke="#b4532c" stroke-opacity=".2" stroke-width="2"/>
+  <rect x="208" y="235" width="184" height="224" rx="14" fill="url(#accent)"/>
+  <path d="M300 255v174M300 272c-22-20-47-21-68-15v142c24-7 47-5 68 13m0-140c22-20 47-21 68-15v142c-24-7-47-5-68 13" fill="none" stroke="#fff8ee" stroke-linecap="round" stroke-linejoin="round" stroke-width="10"/>
+  <text x="300" y="535" fill="#573624" font-family="sans-serif" font-size="36" font-weight="800" letter-spacing="8" text-anchor="middle">NUQTHA</text>
+  <text x="300" y="575" fill="#74563f" font-family="sans-serif" font-size="16" font-weight="600" letter-spacing="4" text-anchor="middle">BOOK COVER</text>
+</svg>
