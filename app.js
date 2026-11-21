@@ -2546,6 +2546,11 @@ window.openFullScreenReader = function(id) {
     if (!art) return;
     window.currentActiveArticle = art;
 
+    const storyUrl = getStoryUrl(art);
+    try {
+        history.pushState({ readerOpen: true, articleId: id }, "", storyUrl);
+    } catch (e) {}
+
     const overlay = document.getElementById("fullscreen-reader-overlay");
     if (!overlay) return;
 
@@ -2563,7 +2568,7 @@ window.openFullScreenReader = function(id) {
         catEl.href = categoryUrl(art.category);
         catEl.onclick = (e) => {
             e.preventDefault();
-            closeReaderView();
+            window.closeFullScreenReader(true);
             switchToCategory((art.category || 'GENERAL').toUpperCase());
         };
     }
@@ -2593,11 +2598,27 @@ window.openFullScreenReader = function(id) {
     document.body.style.overflow = "hidden";
 };
 
-window.closeFullScreenReader = function() {
+window.closeFullScreenReader = function(triggerHistoryBack = false) {
     const overlay = document.getElementById("fullscreen-reader-overlay");
     if (overlay) overlay.classList.add("hidden");
     document.body.style.overflow = "auto";
+    if (triggerHistoryBack) {
+        try {
+            if (history.state && history.state.readerOpen) {
+                history.back();
+            }
+        } catch (e) {}
+    }
 };
+
+window.addEventListener("popstate", (e) => {
+    const overlay = document.getElementById("fullscreen-reader-overlay");
+    if (overlay && !overlay.classList.contains("hidden")) {
+        if (!e.state || !e.state.readerOpen) {
+            window.closeFullScreenReader(false);
+        }
+    }
+});
 
 window.shareArticle = function(platform) {
     let url = "";
