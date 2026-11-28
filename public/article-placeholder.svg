@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500" role="img" aria-labelledby="title">
+  <title id="title">NUQTHA article illustration</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c45d33"/>
+      <stop offset="55%" stop-color="#9f411d"/>
+      <stop offset="100%" stop-color="#6e2911"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="72%" cy="24%" r="60%">
+      <stop offset="0%" stop-color="#f6d3b3" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#f6d3b3" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bg)"/>
+  <rect width="800" height="500" fill="url(#glow)"/>
+  <circle cx="400" cy="250" r="158" fill="none" stroke="#fff7ec" stroke-opacity="0.14" stroke-width="1.5"/>
+  <circle cx="400" cy="250" r="118" fill="none" stroke="#fff7ec" stroke-opacity="0.2" stroke-width="1.5"/>
+  <rect x="336" y="176" width="128" height="148" rx="18" fill="#fff7ec" fill-opacity="0.12" stroke="#fff7ec" stroke-opacity="0.32" stroke-width="2"/>
+  <path d="M366 220h68M366 248h68M366 276h46" stroke="#fff7ec" stroke-opacity="0.88" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="430" cy="276" r="4" fill="#fff7ec" fill-opacity="0.9"/>
+</svg>

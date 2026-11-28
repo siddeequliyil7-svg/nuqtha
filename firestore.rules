@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isApprovedAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          'sayyidsalman314@gmail.com',
+          'aboobakersiddeequliyil@gmail.com',
+          'admin@nuqtha.com',
+          'nuqtha.editor@gmail.com'
+        ];
+    }
+
+    function isPublished() {
+      return resource.data.get('status', '') == 'published';
+    }
+
+    match /articles/{articleId} {
+      allow read: if isApprovedAdmin() || isPublished();
+      allow create, update, delete: if isApprovedAdmin();
+
+      match /comments/{commentId} {
+        function parentIsPublished() {
+          return get(/databases/$(database)/documents/articles/$(articleId))
+            .data.get('status', '') == 'published';
+        }
+
+        allow read: if isApprovedAdmin() || parentIsPublished();
+        allow create: if parentIsPublished()
+          && request.auth != null
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.keys().hasOnly([
+            'name', 'email', 'avatar', 'uid', 'comment', 'articleId', 'createdAt'
+          ]);
+        allow update, delete: if isApprovedAdmin();
+      }
+    }
+
+    match /books/{bookId} {
+      allow read: if isApprovedAdmin() || isPublished();
+      allow create, update, delete: if isApprovedAdmin();
+    }
+
+    match /authors/{authorId} {
+      allow read: if true;
+      allow write: if isApprovedAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isApprovedAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isApprovedAdmin();
+    }
+
+    match /users/{userId} {
+      allow read, write: if isApprovedAdmin()
+        || (request.auth != null && request.auth.uid == userId);
+    }
+
+    match /reading_history/{entryId} {
+      allow create: if true;
+      allow read, update, delete: if isApprovedAdmin();
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if isApprovedAdmin()
+        || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isApprovedAdmin();
+    }
+  }
+}
