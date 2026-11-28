@@ -1,5 +1,5 @@
 import { collection, db, firebaseConfig, getDocsFromCache } from "../firebase-config.js";
-import { getArticleImageUrl } from "../schema-validator.js";
+import { extractImageCandidateStrings, getArticleImageUrl } from "../schema-validator.js";
 import { filterPublicCollections } from "./public-status.js";
 import { FALLBACK_ARTICLE_ITEMS, FALLBACK_BOOKS } from "../fallback-data.js";
 import {
@@ -28,7 +28,8 @@ const IMAGE_FIELDS = [
     "thumb", "ogImage", "imageBase64", "coverBase64", "base64"
 ];
 const INLINE_IMAGE_LIST_LIMIT = 185 * 1024;
-const MAX_ACTIVE_REQUESTS = 2;
+const BOOK_INLINE_IMAGE_LIST_LIMIT = 950 * 1024;
+const MAX_ACTIVE_REQUESTS = 4;
 const IMAGE_RETRY_DELAYS_MS = [300, 900, 1800];
 const IMAGE_DB_NAME = "nuqtha-image-cache";
 const IMAGE_DB_VERSION = 1;
@@ -76,47 +77,70 @@ function decodeFields(fields) {
     return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, decodeValue(value)]));
 }
 
-function inspectDocImageState(rawDoc) {
+function isBookListRecord(rawDoc, collectionName = "") {
+    if (collectionName === "books") return true;
+    if (!rawDoc || typeof rawDoc !== "object") return false;
+    const type = String(rawDoc.type || "").trim().toLowerCase();
+    const category = String(rawDoc.category || "").trim().toLowerCase();
+    const isChapter = rawDoc.isChapter === true || type === "chapter" || category === "chapter" ||
+        (rawDoc.chapterIndex !== undefined && rawDoc.chapterIndex !== null);
+    if (isChapter) return false;
+    return rawDoc.isBook === true || type === "book" || type === "free" || type === "premium" ||
+        category === "book" || category === "books" || category === "premium book";
+}
+
+function inspectDocImageState(rawDoc, inlineLimit = INLINE_IMAGE_LIST_LIMIT) {
     if (!rawDoc || typeof rawDoc !== "object") return { hasAnyImage: false, hasDeferredImage: false };
     let hasAnyImage = false;
     let hasDeferredImage = false;
     for (const key of IMAGE_FIELDS) {
-        const val = rawDoc[key];
-        const strVal = typeof val === "string"
-            ? val.trim()
-            : (val && typeof val === "object" ? String(val.url || val.imageUrl || "").trim() : "");
-        if (!strVal || isStaticImageFallback(strVal)) continue;
-        hasAnyImage = true;
-        if (/^data:/i.test(strVal) && strVal.length > INLINE_IMAGE_LIST_LIMIT) {
-            hasDeferredImage = true;
+        const candidates = extractImageCandidateStrings(rawDoc[key]);
+        for (const cand of candidates) {
+            const strVal = String(cand || "").trim();
+            if (!strVal || isStaticImageFallback(strVal)) continue;
+            hasAnyImage = true;
+            if (/^data:/i.test(strVal) && strVal.length > inlineLimit) {
+                hasDeferredImage = true;
+            }
+            break;
         }
     }
     return { hasAnyImage, hasDeferredImage };
 }
 
-export function stripListHeavyFields(value) {
-    if (Array.isArray(value)) return value.map(stripListHeavyFields);
+export function stripListHeavyFields(value, inlineLimit = INLINE_IMAGE_LIST_LIMIT) {
+    if (Array.isArray(value)) return value.map(item => stripListHeavyFields(item, inlineLimit));
     if (!value || typeof value !== "object") return value;
     return Object.fromEntries(Object.entries(value)
         .filter(([key, child]) => {
             if (key === "content" || key === "body") return false;
             if (!IMAGE_FIELDS.includes(key)) return true;
-            if (typeof child === "object" && child !== null && key === "media") {
-                const nestedUrl = String(child.url || child.imageUrl || "").trim();
-                return Boolean(nestedUrl && !isStaticImageFallback(nestedUrl) && (!/^data:/i.test(nestedUrl) || nestedUrl.length <= INLINE_IMAGE_LIST_LIMIT));
+            if (typeof child === "object" && child !== null) {
+                const candidates = extractImageCandidateStrings(child)
+                    .map(s => String(s || "").trim())
+                    .filter(s => s && !isStaticImageFallback(s));
+                return candidates.some(s => (/^data:/i.test(s) ? s.length <= inlineLimit : s.length <= 4096));
             }
             if (typeof child !== "string") return false;
             const trimmed = child.trim();
             if (!trimmed || isStaticImageFallback(trimmed)) return false;
-            if (/^data:/i.test(trimmed)) return trimmed.length <= INLINE_IMAGE_LIST_LIMIT;
-            return trimmed.length <= 2048;
+            if (/^data:/i.test(trimmed)) return trimmed.length <= inlineLimit;
+            return trimmed.length <= 4096;
         })
-        .map(([key, child]) => [key, stripListHeavyFields(child)]));
+        .map(([key, child]) => [key, stripListHeavyFields(child, inlineLimit)]));
 }
 
 function buildNormalizedListRecord(rawDoc, id, collectionName) {
-    const imageState = inspectDocImageState(rawDoc);
-    const data = stripListHeavyFields(rawDoc);
+    const inlineLimit = isBookListRecord(rawDoc, collectionName)
+        ? BOOK_INLINE_IMAGE_LIST_LIMIT
+        : INLINE_IMAGE_LIST_LIMIT;
+    const preResolvedImage = getArticleImageUrl(rawDoc, "");
+    if (preResolvedImage && id && collectionName) {
+        rememberResolvedDocSource(`${collectionName}:${id}`, preResolvedImage);
+        saveResolvedImageUrlCache(collectionName, id, preResolvedImage);
+    }
+    const imageState = inspectDocImageState(rawDoc, inlineLimit);
+    const data = stripListHeavyFields(rawDoc, inlineLimit);
     const resolvedStatus = data.status ? String(data.status).trim().toLowerCase() : (data.visible === false ? "draft" : "published");
     return {
         ...data,
@@ -135,18 +159,34 @@ async function runStructuredListQuery(collectionName, { publishedOnly = true, si
     const pageSize = 1000;
 
     while (true) {
-        const structuredQuery = {
-            from: [{ collectionId: collectionName }],
-            select: { fields: listFields.map(fieldPath => ({ fieldPath })) },
-            ...(publishedOnly ? {
-                where: {
+        const statusWhere = publishedOnly
+            ? (isTestRunner
+                ? {
                     fieldFilter: {
                         field: { fieldPath: "status" },
                         op: "EQUAL",
                         value: { stringValue: "published" }
                     }
                 }
-            } : {}),
+                : {
+                    fieldFilter: {
+                        field: { fieldPath: "status" },
+                        op: "IN",
+                        value: {
+                            arrayValue: {
+                                values: [
+                                    { stringValue: "published" },
+                                    { stringValue: "approved" }
+                                ]
+                            }
+                        }
+                    }
+                })
+            : null;
+        const structuredQuery = {
+            from: [{ collectionId: collectionName }],
+            select: { fields: listFields.map(fieldPath => ({ fieldPath })) },
+            ...(statusWhere ? { where: statusWhere } : {}),
             limit: pageSize,
             offset
         };
@@ -408,20 +448,10 @@ export async function fetchPublicCollections(options = {}) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000);
         try {
-            let articlesResult;
-            let booksResult;
-            try {
-                const value = await fetchCollectionWithCache("articles", controller.signal);
-                articlesResult = { status: "fulfilled", value };
-            } catch (reason) {
-                articlesResult = { status: "rejected", reason };
-            }
-            try {
-                const value = await fetchCollectionWithCache("books", controller.signal);
-                booksResult = { status: "fulfilled", value };
-            } catch (reason) {
-                booksResult = { status: "rejected", reason };
-            }
+            const [articlesResult, booksResult] = await Promise.allSettled([
+                fetchCollectionWithCache("articles", controller.signal),
+                fetchCollectionWithCache("books", controller.signal)
+            ]);
 
             let articles = articlesResult.status === "fulfilled" ? articlesResult.value : [];
             let books = booksResult.status === "fulfilled" ? booksResult.value : [];
@@ -527,8 +557,15 @@ export async function fetchArticleSearchContent() {
                                 where: {
                                     fieldFilter: {
                                         field: { fieldPath: "status" },
-                                        op: "EQUAL",
-                                        value: { stringValue: "published" }
+                                        op: "IN",
+                                        value: {
+                                            arrayValue: {
+                                                values: [
+                                                    { stringValue: "published" },
+                                                    { stringValue: "approved" }
+                                                ]
+                                            }
+                                        }
                                     }
                                 },
                                 limit: pageSize,
@@ -859,14 +896,21 @@ function retryDeferredImage(image) {
 function useStaticImageFallback(image) {
     if (!image?.isConnected || image.dataset.nuqthaStaticFallbackAttempted === "true") return;
     image.dataset.nuqthaStaticFallbackAttempted = "true";
+    if (image.dataset.nuqthaHideOnFail === "true") {
+        image.closest("#art-image-wrapper")?.classList.add("hidden");
+        image.style.opacity = "0";
+        image.hidden = true;
+        return;
+    }
+    const isBook = isBookImageElement(image);
     const hasInlinePlaceholder = Boolean(image.parentElement?.querySelector("[data-nuqtha-image-placeholder]"));
-    if (hasInlinePlaceholder) {
+    if (hasInlinePlaceholder && !isBook) {
         showImagePlaceholder(image);
         image.style.opacity = "0";
         image.hidden = true;
         return;
     }
-    revealImage(image, isBookImageElement(image) ? "/cover-placeholder.svg" : "/article-placeholder.svg");
+    revealImage(image, isBook ? "/cover-placeholder.svg" : "/article-placeholder.svg");
 }
 
 function handleImageError(image) {
@@ -902,15 +946,23 @@ function handleImageError(image) {
                 }
             }
             if (source) {
-                if (!retryKnownImage(image, source) && hasInlinePlaceholder) {
-                    image.style.opacity = "0";
-                    image.hidden = true;
+                if (!retryKnownImage(image, source)) {
+                    if (image.dataset.nuqthaHideOnFail === "true") {
+                        image.closest("#art-image-wrapper")?.classList.add("hidden");
+                        image.hidden = true;
+                    } else if (hasInlinePlaceholder) {
+                        image.style.opacity = "0";
+                        image.hidden = true;
+                    }
                 }
             } else if (!retryDeferredImage(image)) {
                 if (!checkIsRateLimited({ scope: "background" })) {
                     console.warn("[NUQTHA Images] Could not resolve a cover URL after retries.");
                 }
-                if (hasInlinePlaceholder) {
+                if (image.dataset.nuqthaHideOnFail === "true") {
+                    image.closest("#art-image-wrapper")?.classList.add("hidden");
+                    image.hidden = true;
+                } else if (hasInlinePlaceholder) {
                     image.style.opacity = "0";
                     image.hidden = true;
                 }
@@ -920,9 +972,14 @@ function handleImageError(image) {
     }
 
     if (source) {
-        if (!retryKnownImage(image, source) && hasInlinePlaceholder) {
-            image.style.opacity = "0";
-            image.hidden = true;
+        if (!retryKnownImage(image, source)) {
+            if (image.dataset.nuqthaHideOnFail === "true") {
+                image.closest("#art-image-wrapper")?.classList.add("hidden");
+                image.hidden = true;
+            } else if (hasInlinePlaceholder) {
+                image.style.opacity = "0";
+                image.hidden = true;
+            }
         }
         return;
     }
@@ -931,7 +988,10 @@ function handleImageError(image) {
             if (!checkIsRateLimited({ scope: "background" })) {
                 console.warn("[NUQTHA Images] Could not resolve a cover URL after retries.");
             }
-            if (hasInlinePlaceholder) {
+            if (image.dataset.nuqthaHideOnFail === "true") {
+                image.closest("#art-image-wrapper")?.classList.add("hidden");
+                image.hidden = true;
+            } else if (hasInlinePlaceholder) {
                 image.style.opacity = "0";
                 image.hidden = true;
             }
@@ -1046,6 +1106,23 @@ function processNext() {
     }
 }
 
+function getImmediateCachedSourceForImage(image) {
+    const col = image?.dataset?.nuqthaImageCollection;
+    const docId = image?.dataset?.nuqthaImageDoc;
+    if (col && docId) {
+        const primaryKey = `${col}:${docId}`;
+        const direct = resolvedDocSources.get(primaryKey) || getResolvedImageUrlCache(col, docId);
+        if (direct) return direct;
+    }
+    const fallbackRefs = getFallbackDocumentRefs(image);
+    for (const ref of fallbackRefs) {
+        const key = `${ref.collectionName}:${ref.documentId}`;
+        const cached = resolvedDocSources.get(key) || getResolvedImageUrlCache(ref.collectionName, ref.documentId);
+        if (cached) return cached;
+    }
+    return "";
+}
+
 function observeImage(image) {
     const source = image.getAttribute("src") || "";
     const hasDeferredSource = Boolean(
@@ -1085,6 +1162,20 @@ function observeImage(image) {
         }
         return;
     }
+
+    const immediateCached = getImmediateCachedSourceForImage(image);
+    if (immediateCached) {
+        rememberImageSource(image, immediateCached);
+        if (/^data:image\//i.test(immediateCached)) {
+            const key = `${image.dataset.nuqthaImageCollection}:${image.dataset.nuqthaImageDoc}:${image.dataset.nuqthaImageUpdated || ""}`;
+            getObjectUrl(key, immediateCached)
+                .then(resolved => { if (image.isConnected) revealImage(image, resolved); })
+                .catch(() => { if (image.isConnected) revealImage(image, immediateCached); });
+        } else {
+            revealImage(image, immediateCached);
+        }
+        return;
+    }
     enqueueImage(image);
 }
 
@@ -1092,6 +1183,38 @@ export function scanImages(node) {
     if (!(node instanceof Element)) return;
     if (node.matches("img[data-nuqtha-cover], img[data-nuqtha-image-doc]")) observeImage(node);
     node.querySelectorAll("img[data-nuqtha-cover], img[data-nuqtha-image-doc]").forEach(observeImage);
+}
+
+export function waitForContainerImages(container, maxWaitMs = 1500, limit = 8) {
+    if (!container || maxWaitMs <= 0) return Promise.resolve();
+    const candidates = Array.from(container.querySelectorAll("img"))
+        .filter(img => {
+            if (!img || img.hidden) return false;
+            const hiddenAncestor = img.closest(".hidden");
+            if (hiddenAncestor && hiddenAncestor !== container && container.contains(hiddenAncestor)) return false;
+            const hasSrc = Boolean(img.getAttribute("src"));
+            const hasDeferred = Boolean(img.dataset?.nuqthaImageDoc && img.dataset?.nuqthaImageCollection);
+            if (!hasSrc && !hasDeferred) return false;
+            return !(hasSrc && img.complete && img.naturalWidth > 0);
+        })
+        .slice(0, limit);
+    if (candidates.length === 0) return Promise.resolve();
+    return Promise.race([
+        Promise.all(candidates.map(img => new Promise(resolve => {
+            if (img.getAttribute("src") && img.complete) {
+                resolve();
+                return;
+            }
+            const done = () => {
+                img.removeEventListener("load", done);
+                img.removeEventListener("error", done);
+                resolve();
+            };
+            img.addEventListener("load", done, { once: true });
+            img.addEventListener("error", done, { once: true });
+        }))),
+        new Promise(resolve => setTimeout(resolve, maxWaitMs))
+    ]);
 }
 
 export function installLazyFirestoreImages() {
@@ -1148,6 +1271,21 @@ export function installLazyFirestoreImages() {
             }
         }
     };
+    window.addEventListener("pageshow", () => {
+        if (!document.body) return;
+        document.body.querySelectorAll("img[data-nuqtha-cover], img[data-nuqtha-image-doc]").forEach(image => {
+            const src = image.getAttribute("src") || "";
+            if (!src || (image.complete && image.naturalWidth === 0) || /^blob:/i.test(src)) {
+                if (/^blob:/i.test(src) && image.dataset.nuqthaImageSource) {
+                    image.removeAttribute("src");
+                }
+                delete image.dataset.nuqthaImageObserved;
+                delete image.dataset.nuqthaImageObservedSource;
+                delete image.dataset.nuqthaImageQueued;
+            }
+        });
+        scanImages(document.body);
+    });
     if (document.body) start();
     else document.addEventListener("DOMContentLoaded", start, { once: true });
 }

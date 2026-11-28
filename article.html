@@ -638,7 +638,7 @@
         import { syncReadingBg } from "/reading-theme.js";
         import { FALLBACK_ARTICLES, FALLBACK_BOOKS } from "/fallback-data.js";
         import { initHeaderAuthUI } from "/js/auth-ui.js";
-        import { normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, getArticleImageUrl, cleanUrlPart, sanitizeCategory, sanitizeImageUrl } from "/schema-validator.js";
+        import { extractImageCandidateStrings, normalizeArticleDoc, parseTimestampMillis, formatDateSafe, slugifyText, slugifyMalayalamRaw, transliterateMalayalam, getStoryUrl, getArticleImageUrl, cleanUrlPart, sanitizeCategory, sanitizeImageUrl } from "/schema-validator.js";
         import { getBookChapters, isArticleInBook, filterAndSortChapters, countBookChapters, getRelatedBooks, saveBookPageLightCache, saveBookChapterListCache, readBookChapterListCache, parseFirestoreRestDoc, areSameBookByTitle, hasConflictingExplicitBook } from "/js/book-data.js";
         import { getBookChapterIds } from "/book-data.js";
         import { getAuthorsMap, getAuthorPhoto, slugifyAuthor, safeDecodeParam } from "/js/author-service.js";
@@ -646,7 +646,7 @@
         import { getArticleCategoryId, getCachedCategoryName, getCategories } from "/js/category-store.js";
         import { filterPublicCollections, isExcludedPublicRecord, isPubliclyPublished } from "/js/public-status.js";
         import { trackReadingActivity } from "/js/analytics-tracker.js";
-        import { fetchPublicCollections, getDeferredImageAttributes, installLazyFirestoreImages, scanImages } from "/js/public-image-loader.js";
+        import { fetchPublicCollections, getDeferredImageAttributes, installLazyFirestoreImages, scanImages, waitForContainerImages } from "/js/public-image-loader.js";
         import { isBookPurchased, isUserUnlockedForBook, isUserAdmin, isAppInstalledConfirmed, showPaywallModal, getDevicePlatform } from "/js/paywall-service.js";
         import { isPremiumBook, showPremiumBookUnavailableModal } from "/js/book-notice.js";
         import {
@@ -678,27 +678,38 @@
 
         function buildDeferredImageMarkup(item, source, alt, className, width, height, loading = "lazy") {
             const deferredAttributes = getDeferredImageAttributes(item);
-            const deferInlineImage = Boolean(item?._hasDeferredImage && deferredAttributes);
-            const imageUrl = deferInlineImage ? "" : (source || "");
+            const safeSource = String(source || "").trim();
+            const isBook = isBookEntity(item) || isBookEditionDoc(item);
+            const imageUrl = safeSource || (!deferredAttributes && isBook ? "/cover-placeholder.svg" : "");
             if (!imageUrl && !deferredAttributes) return "";
             const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
-            const styleAttribute = deferredAttributes && deferInlineImage
-                ? 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"'
-                : (imageUrl ? 'style="opacity:1;transition:opacity .25s ease;"' : 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"');
+            const styleAttribute = imageUrl
+                ? 'style="opacity:1;transition:opacity .25s ease;"'
+                : 'style="position:absolute;inset:0;opacity:0;transition:opacity .25s ease;"';
             const priorityAttribute = loading === "eager" ? 'fetchpriority="high"' : "";
-            return `<img ${sourceAttribute} ${deferredAttributes} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" loading="${loading}" ${priorityAttribute} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
+            const entityAttribute = `data-nuqtha-entity="${isBook ? "book" : "article"}"`;
+            return `<img ${sourceAttribute} ${deferredAttributes} ${entityAttribute} alt="${escapeHtml(alt)}" class="${className}" width="${width}" height="${height}" loading="${loading}" ${priorityAttribute} decoding="async" ${styleAttribute} data-nuqtha-cover="true">`;
         }
 
         function stripInlineImageData(item) {
             const clean = { ...(item || {}) };
-            const inlineLimit = 185 * 1024;
+            const isBook = isBookEntity(clean) || isBookEditionDoc(clean);
+            const inlineLimit = isBook ? 950 * 1024 : 185 * 1024;
             for (const field of [
                 "imageUrl", "coverUrl", "coverImage", "cover", "coverPhoto", "featuredImage",
-                "image", "photo", "banner", "thumbnail", "thumbnailUrl", "thumbUrl", "thumb",
+                "image", "photo", "banner", "media", "thumbnail", "thumbnailUrl", "thumbUrl", "thumb",
                 "ogImage", "imageBase64", "coverBase64", "base64"
             ]) {
-                if (typeof clean[field] === "string" && /^data:image\//i.test(clean[field]) && clean[field].length > inlineLimit) {
+                const rawVal = clean[field];
+                if (!rawVal) continue;
+                const candidates = extractImageCandidateStrings(rawVal);
+                if (candidates.length > 0) {
+                    clean._hasAnyImageField = true;
+                }
+                const hasOversizedInline = candidates.some(s => /^data:image\//i.test(s) && s.length > inlineLimit);
+                if (hasOversizedInline || (typeof rawVal === "string" && /^data:image\//i.test(rawVal) && rawVal.length > inlineLimit)) {
                     clean._hasDeferredImage = true;
+                    clean._hasAnyImageField = true;
                     delete clean[field];
                 }
             }
@@ -1229,7 +1240,7 @@
                                     <span class="book-v2-ribbon" aria-hidden="true"></span>
                                     <span class="book-v2-spine" aria-hidden="true"></span>
                                     <div class="book-v2-cover">
-                                        ${hasCover ? `${coverMarkup}                                        <div class="book-v2-cover-fallback${hasCoverSource ? " hidden" : ""}" data-nuqtha-image-placeholder aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>` : `<div class="book-v2-cover-fallback" aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>`}
+                                        ${hasCover ? coverMarkup : `<img src="/cover-placeholder.svg" alt="${title} cover" class="book-v2-cover-img" width="300" height="400" loading="eager" decoding="async">`}
                                     </div>
                                 </div>
                             </div>
@@ -1410,6 +1421,7 @@
             const cleanId = safeDecodeParam(id);
             const forceRetry = Boolean(options.forceRetry);
 
+            let fallbackPersistedHit = null;
             if (!forceRetry) {
                 const memHit = memoryCache.get(`doc_${cleanId}`) || memoryCache.get(`doc_${id}`);
                 if (memHit && (hasUsableBody(memHit) || isBookEntity(memHit))) {
@@ -1417,9 +1429,14 @@
                 }
                 const persistedHit = getCachedArticleDoc(cleanId);
                 if (persistedHit && isPubliclyPublished(persistedHit) && (hasUsableBody(persistedHit) || isBookEntity(persistedHit))) {
-                    memoryCache.set(`doc_${cleanId}`, persistedHit);
-                    memoryCache.set(`doc_${id}`, persistedHit);
-                    return persistedHit;
+                    const needsDeferredBookCover = (isBookEntity(persistedHit) || isBookEditionDoc(persistedHit)) &&
+                        !getArticleImageUrl(persistedHit, "") && persistedHit._hasDeferredImage;
+                    if (!needsDeferredBookCover || checkIsRateLimited({ scope: "foreground" })) {
+                        memoryCache.set(`doc_${cleanId}`, persistedHit);
+                        memoryCache.set(`doc_${id}`, persistedHit);
+                        return persistedHit;
+                    }
+                    fallbackPersistedHit = persistedHit;
                 }
             }
 
@@ -1498,7 +1515,7 @@
                 if (saw429) {
                     lastFetchErrorState.rateLimited = true;
                 }
-                return localHit || null;
+                return localHit || fallbackPersistedHit || null;
             });
         }
 
@@ -1508,6 +1525,7 @@
             const decodedId = safeDecodeParam(identifier);
             const forceRetry = Boolean(options.forceRetry);
 
+            let fallbackDocHit = null;
             if (!forceRetry) {
                 const memHit = memoryCache.get(`doc_${decodedId}`) || memoryCache.get(`doc_${identifier}`);
                 const memIsFallback = memHit?._isFallback === true || SYNTHETIC_FALLBACK_APP_IDS.has(String(memHit?.id || "").trim());
@@ -1517,9 +1535,14 @@
                 const docHit = getCachedArticleDoc(decodedId) || getCachedArticleDoc(identifier);
                 const docIsFallback = docHit?._isFallback === true || SYNTHETIC_FALLBACK_APP_IDS.has(String(docHit?.id || "").trim());
                 if (docHit && !docIsFallback && isPubliclyPublished(docHit) && (hasUsableBody(docHit) || isBookEntity(docHit))) {
-                    memoryCache.set(`doc_${decodedId}`, docHit);
-                    memoryCache.set(`doc_${identifier}`, docHit);
-                    return docHit;
+                    const needsDeferredBookCover = (isBookEntity(docHit) || isBookEditionDoc(docHit)) &&
+                        !getArticleImageUrl(docHit, "") && docHit._hasDeferredImage;
+                    if (!needsDeferredBookCover || checkIsRateLimited({ scope: "foreground" })) {
+                        memoryCache.set(`doc_${decodedId}`, docHit);
+                        memoryCache.set(`doc_${identifier}`, docHit);
+                        return docHit;
+                    }
+                    fallbackDocHit = docHit;
                 }
             }
 
@@ -1599,8 +1622,15 @@
                                     {
                                         fieldFilter: {
                                             field: { fieldPath: "status" },
-                                            op: "EQUAL",
-                                            value: { stringValue: "published" }
+                                            op: "IN",
+                                            value: {
+                                                arrayValue: {
+                                                    values: [
+                                                        { stringValue: "published" },
+                                                        { stringValue: "approved" }
+                                                    ]
+                                                }
+                                            }
                                         }
                                     }
                                 ]
@@ -1615,7 +1645,7 @@
                             structuredQuery: {
                                 from: [{ collectionId: col }],
                                 where,
-                                limit: withStatusFilter ? 1 : 5
+                                limit: withStatusFilter ? 3 : 5
                             }
                         })
                     }, {
@@ -1635,7 +1665,7 @@
                         for (const docItem of docs) {
                             const docId = docItem.name.split("/").pop();
                             const parsedDoc = parseFirestoreRestDoc(docItem, docId);
-                            if (withStatusFilter || isPubliclyPublished(parsedDoc)) {
+                            if (isPubliclyPublished(parsedDoc)) {
                                 const normalized = normalizeRestDoc(parsedDoc, docId, col);
                                 return { rateLimited: false, doc: normalized, docId };
                             }
@@ -1707,7 +1737,7 @@
                     }
                 }
 
-                return localHit || null;
+                return localHit || fallbackDocHit || null;
             });
         }
 
@@ -1802,6 +1832,8 @@
                     }, "") || getArticleImageUrl({
                         imageUrl: secondary.thumbnailUrl, coverUrl: secondary.thumbnail, thumbUrl: secondary.thumbUrl, thumb: secondary.thumb, coverImage: secondary.ogImage
                     }, "") || coverUrl;
+                    const preferSecondaryImageSource = !coverUrl && !primary._hasAnyImageField &&
+                        Boolean(secondary._hasAnyImageField || secondary._hasDeferredImage);
                     return {
                         ...secondary,
                         ...primary,
@@ -1811,10 +1843,20 @@
                         coverUrl,
                         thumbnailUrl,
                         ogImage: thumbnailUrl,
-                        _imageCollection: primary._imageCollection || "books",
-                        _imageDocId: primary._imageDocId || primary.id,
-                        _imageFallbackCollection: secondary._imageCollection || "",
-                        _imageFallbackDocId: secondary._imageDocId || secondary.id || "",
+                        _imageCollection: preferSecondaryImageSource
+                            ? (secondary._imageCollection || primary._imageCollection || "books")
+                            : (primary._imageCollection || secondary._imageCollection || "books"),
+                        _imageDocId: preferSecondaryImageSource
+                            ? (secondary._imageDocId || secondary.id || primary._imageDocId || primary.id)
+                            : (primary._imageDocId || primary.id || secondary._imageDocId || secondary.id),
+                        _imageFallbackCollection: preferSecondaryImageSource
+                            ? (primary._imageCollection || "")
+                            : (secondary._imageCollection || ""),
+                        _imageFallbackDocId: preferSecondaryImageSource
+                            ? (primary._imageDocId || primary.id || "")
+                            : (secondary._imageDocId || secondary.id || ""),
+                        _hasAnyImageField: Boolean(coverUrl || primary._hasAnyImageField || secondary._hasAnyImageField),
+                        _hasDeferredImage: Boolean(!coverUrl && (primary._hasDeferredImage || secondary._hasDeferredImage)),
                         type: "BOOK",
                         isBook: true,
                         isChapter: false
@@ -1831,7 +1873,11 @@
                         .filter(item => item?.id && !isExcludedReaderRecord(item));
                     const bookList = (Array.isArray(rawBooks) ? rawBooks : [])
                         .map(item => {
-                            const normalized = stripInlineImageData(normalizeArticleDoc(item, item?.id));
+                            const baseNormalized = normalizeArticleDoc(item, item?.id);
+                            baseNormalized.type = "BOOK";
+                            baseNormalized.isBook = true;
+                            baseNormalized.isChapter = false;
+                            const normalized = stripInlineImageData(baseNormalized);
                             normalized._imageCollection = normalized._imageCollection || "books";
                             normalized._imageDocId = normalized._imageDocId || normalized.id;
                             normalized.type = "BOOK";
@@ -1951,6 +1997,20 @@
             });
         }
 
+        async function revealReaderContainer({ showEl, hideEl, skeletonEl, errorContainerEl, isBookView = false, maxWaitMs = 1500 }) {
+            if (showEl) {
+                scanImages(showEl);
+                await waitForContainerImages(showEl, maxWaitMs, isBookView ? 6 : 8);
+            }
+            if (hideEl) hideEl.classList.add("hidden");
+            if (showEl) showEl.classList.remove("hidden");
+            if (skeletonEl) skeletonEl.classList.add("hidden");
+            if (errorContainerEl) {
+                errorContainerEl.classList.add("hidden");
+                errorContainerEl.innerHTML = "";
+            }
+        }
+
         // ═══════════ MAIN LOADING ORCHESTRATOR ═══════════
         async function loadArticle() {
             if (!articleId && !querySlug && !editionParam && !targetIdentifier) {
@@ -1963,7 +2023,7 @@
             const bookContainerEl = document.getElementById("book-edition-container");
             const errorContainerEl = document.getElementById("page-error-container");
 
-            // 1. FAST CACHE PATH (Instant Paint in 0ms)
+            // 1. FAST CACHE PATH (Only reveal immediately when cache already has full book+chapters or full standalone body)
             let cachedBook = null;
             let cachedChapters = null;
             let cachedLightBook = null;
@@ -1974,7 +2034,7 @@
                     const lightCacheText = sessionStorage.getItem(`nuqtha_cache_book_${pathBookSlug}_v5`);
                     const parsedLightCache = lightCacheText ? JSON.parse(lightCacheText) : null;
                     if (parsedLightCache && parsedLightCache.slug === pathBookSlug &&
-                        isPubliclyPublished(parsedLightCache) && !/^data:/i.test(parsedLightCache.coverUrl || "")) {
+                        isPubliclyPublished(parsedLightCache)) {
                         cachedLightBook = parsedLightCache;
                         cachedChapters = readBookChapterListCache(pathBookSlug);
                     }
@@ -2006,13 +2066,12 @@
 
                 if (cachedLightBook) {
                     cachedBook = {
-                        id: cachedLightBook.slug,
+                        id: cachedLightBook.id || cachedLightBook.slug,
                         slug: cachedLightBook.slug,
                         title: cachedLightBook.title,
                         author: cachedLightBook.author,
                         date: cachedLightBook.date,
                         status: cachedLightBook.status,
-                        type: cachedLightBook.type,
                         bookType: cachedLightBook.bookType,
                         category: cachedLightBook.category,
                         isPremium: cachedLightBook.isPremium,
@@ -2029,7 +2088,24 @@
                     };
                 }
 
-                if (cachedBook && ((cachedBook.type || "").toUpperCase() === "BOOK" || cachedBook.isBook === true || hasUsableBody(cachedBook))) {
+                const isCachedBook = Boolean(cachedBook && ((cachedBook.type || "").toUpperCase() === "BOOK" || cachedBook.isBook === true));
+                const cachedBookChapters = isCachedBook
+                    ? (Array.isArray(cachedChapters) && cachedChapters.length > 0
+                        ? cachedChapters
+                        : (Array.isArray(cachedBook?.chapters) ? cachedBook.chapters : []))
+                    : [];
+                const canFastRevealBook = isCachedBook && !cachedBook?.__lightCache && cachedBookChapters.length > 0;
+                const canFastRevealArticle = Boolean(
+                    cachedBook &&
+                    !isCachedBook &&
+                    hasUsableBody(cachedBook) &&
+                    !isChapter(cachedBook) &&
+                    !cachedBook.bookId &&
+                    !cachedBook.parentBookId &&
+                    !cachedBook.bookSlug
+                );
+
+                if (canFastRevealBook || canFastRevealArticle) {
                     hasRenderedContent = true;
                     const cleanCachedUrl = getStoryUrl(cachedBook);
                     try {
@@ -2037,31 +2113,32 @@
                             window.history.replaceState(null, '', cleanCachedUrl);
                         }
                     } catch (e) {}
-                    if (skeletonEl) skeletonEl.classList.add("hidden");
-                    if (errorContainerEl) {
-                        errorContainerEl.classList.add("hidden");
-                        errorContainerEl.innerHTML = "";
-                    }
-                    if ((cachedBook.type || "").toUpperCase() === "BOOK" || cachedBook.isBook === true) {
-                        if (articleViewEl) articleViewEl.classList.add("hidden");
+                    if (canFastRevealBook) {
                         if (bookContainerEl) {
-                            bookContainerEl.classList.remove("hidden");
-                            if (cachedLightBook) {
-                                renderBookLightCache(cachedLightBook, bookContainerEl, cachedChapters);
-                                if (cachedLightBook.coverUrl) preloadCoverImage(cachedLightBook.coverUrl);
-                            } else {
-                                const bookChaps = cachedChapters || cachedBook.chapters || [];
-                                await renderBookIndex(cachedBook, bookContainerEl, bookChaps);
-                            }
+                            await renderBookIndex(cachedBook, bookContainerEl, cachedBookChapters);
+                            const cachedCoverUrl = getArticleImageUrl(cachedBook, "");
+                            if (cachedCoverUrl) preloadCoverImage(cachedCoverUrl);
+                            await revealReaderContainer({
+                                showEl: bookContainerEl,
+                                hideEl: articleViewEl,
+                                skeletonEl,
+                                errorContainerEl,
+                                isBookView: true,
+                                maxWaitMs: 1200
+                            });
                         }
-                        if (!cachedLightBook && cachedBook.imageUrl) preloadCoverImage(cachedBook.imageUrl);
-                        if (!cachedLightBook) initComments(cachedBook.id);
+                        initComments(cachedBook.id);
                     } else {
-                        if (bookContainerEl) bookContainerEl.classList.add("hidden");
-                        if (articleViewEl) articleViewEl.classList.remove("hidden");
-                        await renderArticle(cachedBook, [], {
-                            skipBodyFetch: !hasUsableBody(cachedBook),
-                            isPendingBodyLoad: !hasUsableBody(cachedBook)
+                        await renderArticle(cachedBook, [], { skipBodyFetch: true });
+                        const cachedCoverUrl = getArticleImageUrl(cachedBook, "");
+                        if (cachedCoverUrl) preloadCoverImage(cachedCoverUrl);
+                        await revealReaderContainer({
+                            showEl: articleViewEl,
+                            hideEl: bookContainerEl,
+                            skeletonEl,
+                            errorContainerEl,
+                            isBookView: false,
+                            maxWaitMs: 1200
                         });
                         markArticleAsRead(cachedBook.id);
                         initComments(cachedBook.id);
@@ -2109,6 +2186,8 @@
                 const allArticlesPromise = fetchLightweightArticles(controller.signal);
 
                 if (currentDoc && isBookEntity(currentDoc)) {
+                    const currentCoverUrl = getArticleImageUrl(currentDoc, "");
+                    if (currentCoverUrl) preloadCoverImage(currentCoverUrl);
                     earlyBookChaptersPromise = Promise.allSettled([
                         getBookChapters(currentDoc.id, {
                             articlesPool: [currentDoc],
@@ -2116,35 +2195,7 @@
                             skipBookFetch: true
                         })
                     ]);
-                    const provisionalCover = getArticleImageUrl(currentDoc, "");
-                    const lightBook = {
-                        slug: pathBookSlug || currentDoc.slug || currentDoc.bookSlug || currentDoc.id,
-                        title: currentDoc.title || "",
-                        author: currentDoc.author || "",
-                        date: typeof currentDoc.date === "string" ? currentDoc.date : (currentDoc.date ? formatDateSafe(currentDoc.date) : ""),
-                        type: currentDoc.type || "",
-                        bookType: currentDoc.bookType || "",
-                        category: currentDoc.category || "",
-                        isPremium: currentDoc.isPremium === true,
-                        price: currentDoc.price,
-                        coverUrl: provisionalCover || "",
-                        _imageCollection: currentDoc._imageCollection || (currentDoc.isBook || currentDoc.type === "BOOK" ? "books" : "articles"),
-                        _imageDocId: currentDoc._imageDocId || currentDoc.id || "",
-                        _imageFallbackCollection: currentDoc._imageFallbackCollection || (currentDoc.isBook || currentDoc.type === "BOOK" ? "articles" : "books"),
-                        _imageFallbackDocId: currentDoc._imageFallbackDocId || currentDoc.id || "",
-                        _hasDeferredImage: currentDoc._hasDeferredImage || Boolean(currentDoc.coverImage || currentDoc.imageUrl || currentDoc.thumbnailUrl),
-                        _hasAnyImageField: currentDoc._hasAnyImageField || Boolean(currentDoc.coverImage || currentDoc.imageUrl || currentDoc.thumbnailUrl),
-                        intro: currentDoc.introduction || currentDoc.intro || currentDoc.excerpt || "",
-                        chapterCount: 0
-                    };
-                    if (skeletonEl) skeletonEl.classList.add("hidden");
-                    if (articleViewEl) articleViewEl.classList.add("hidden");
-                    if (bookContainerEl) {
-                        bookContainerEl.classList.remove("hidden");
-                        renderBookLightCache(lightBook, bookContainerEl);
-                    }
-                    if (lightBook.coverUrl) preloadCoverImage(lightBook.coverUrl);
-
+                    // Keep #page-skeleton-loader visible until chapters + cover + thumbnails finish rendering cleanly
                     earlyBookRenderPromise = earlyBookChaptersPromise.then(async ([earlyResult]) => {
                         if (earlyResult.status !== "fulfilled") return null;
                         const chapters = (Array.isArray(earlyResult.value)
@@ -2207,28 +2258,45 @@
                         : fallbackDoc;
                 }
 
-                if (currentDoc && (currentDoc.type === "BOOK" || currentDoc.isBook === true || isBookEditionDoc(currentDoc)) &&
-                    !getArticleImageUrl(currentDoc, "")) {
+                if (currentDoc && (currentDoc.type === "BOOK" || currentDoc.isBook === true || isBookEditionDoc(currentDoc))) {
                     const articleBook = allArticles.find(item =>
                         item.id === currentDoc.id ||
                         (currentDoc.slug && item.slug === currentDoc.slug) ||
                         (currentDoc.bookSlug && item.bookSlug === currentDoc.bookSlug) ||
                         (isBookEntity(item) && areSameBookByTitle(item, currentDoc))
                     );
-                    const coverUrl = getArticleImageUrl(articleBook, "");
-                    if (coverUrl) {
-                        const thumbnailUrl = getArticleImageUrl(articleBook, "") || coverUrl;
-                        currentDoc = {
-                            ...currentDoc,
-                            imageUrl: coverUrl,
-                            coverImage: coverUrl,
-                            coverUrl,
-                            thumbnailUrl,
-                            ogImage: thumbnailUrl
-                        };
-                    } else if (articleBook?._imageCollection && articleBook?._imageDocId) {
-                        currentDoc._imageFallbackCollection = articleBook._imageCollection;
-                        currentDoc._imageFallbackDocId = articleBook._imageDocId;
+                    if (!getArticleImageUrl(currentDoc, "")) {
+                        const coverUrl = getArticleImageUrl(articleBook, "");
+                        if (coverUrl) {
+                            const thumbnailUrl = getArticleImageUrl({
+                                imageUrl: articleBook?.thumbnailUrl,
+                                coverUrl: articleBook?.thumbnail,
+                                thumbUrl: articleBook?.thumbUrl,
+                                thumb: articleBook?.thumb,
+                                coverImage: articleBook?.ogImage
+                            }, "") || coverUrl;
+                            currentDoc = {
+                                ...currentDoc,
+                                imageUrl: coverUrl,
+                                coverImage: coverUrl,
+                                coverUrl,
+                                thumbnailUrl,
+                                ogImage: thumbnailUrl,
+                                _hasDeferredImage: false,
+                                _hasAnyImageField: true
+                            };
+                        }
+                    }
+                    const primaryCollection = currentDoc._imageCollection || "books";
+                    currentDoc._imageCollection = primaryCollection;
+                    currentDoc._imageDocId = currentDoc._imageDocId || currentDoc.id || "";
+                    if (!currentDoc._imageFallbackCollection) {
+                        currentDoc._imageFallbackCollection = articleBook?._imageCollection && articleBook._imageCollection !== primaryCollection
+                            ? articleBook._imageCollection
+                            : (primaryCollection === "books" ? "articles" : "books");
+                    }
+                    if (!currentDoc._imageFallbackDocId) {
+                        currentDoc._imageFallbackDocId = articleBook?._imageDocId || articleBook?.id || currentDoc.id || "";
                     }
                 }
 
@@ -2442,9 +2510,6 @@
                 if (currentCoverUrl) preloadCoverImage(currentCoverUrl);
 
                 if (isBookEntity(currentDoc)) {
-                    if (articleViewEl) articleViewEl.classList.add("hidden");
-                    if (bookContainerEl) bookContainerEl.classList.remove("hidden");
-
                     let bookChapters = [];
                     try {
                         if (earlyBookRenderPromise) {
@@ -2482,14 +2547,17 @@
                     if (!earlyBookRendered || bookChapters.length !== renderedChapterCount) {
                         await renderBookIndex(currentDoc, bookContainerEl, bookChapters);
                     }
-                    hasRenderedContent = true;
                     renderRelatedBooks(currentDoc, allArticles);
                     initComments(currentDoc.id);
-                    if (skeletonEl) skeletonEl.classList.add("hidden");
-                    if (errorContainerEl) {
-                        errorContainerEl.classList.add("hidden");
-                        errorContainerEl.innerHTML = "";
-                    }
+                    await revealReaderContainer({
+                        showEl: bookContainerEl,
+                        hideEl: articleViewEl,
+                        skeletonEl,
+                        errorContainerEl,
+                        isBookView: true,
+                        maxWaitMs: 1500
+                    });
+                    hasRenderedContent = true;
 
                 } else {
                     // Check if chapter belongs to a book and requires login / paywall
@@ -2497,7 +2565,15 @@
                         currentDoc.bookTitle || currentDoc.bookSlug || currentDoc.book || currentDoc.isChapter ||
                         (currentDoc.type || "").toUpperCase() === "CHAPTER");
                     if (hasParentBook) {
-                        const parentBook = allArticles.find(a => isBookEntity(a) && isArticleInBook(currentDoc, a));
+                        const parentIdCandidate = String(currentDoc.bookId || currentDoc.parentBookId || "").trim();
+                        let parentBook = allArticles.find(a => isBookEntity(a) && isArticleInBook(currentDoc, a)) ||
+                            (parentIdCandidate ? searchLocalArticlesPool(parentIdCandidate) : null);
+                        if (!parentBook && parentIdCandidate) {
+                            const fetchedParent = await fetchTargetDocument(parentIdCandidate, controller.signal).catch(() => null);
+                            if (fetchedParent && (isBookEntity(fetchedParent) || isBookEditionDoc(fetchedParent))) {
+                                parentBook = fetchedParent;
+                            }
+                        }
                         if (parentBook) {
                             let isUnlocked = false;
                             try {
@@ -2518,21 +2594,20 @@
                         }
                     }
 
-                    if (bookContainerEl) bookContainerEl.classList.add("hidden");
-                    if (articleViewEl) articleViewEl.classList.remove("hidden");
-
-                    // Guarantee complete article body content is loaded without duplicate concurrent fetches
+                    // Guarantee complete article body content is loaded before dismissing skeleton
                     let attemptedBodyFetch = Boolean(currentDoc.id);
                     if (!hasUsableBody(currentDoc) && currentDoc.id) {
                         try {
                             const fullDoc = await fetchTargetDocument(currentDoc.id, controller.signal);
-                            if (fullDoc && hasUsableBody(fullDoc)) {
-                                currentDoc.content = fullDoc.content;
+                            if (fullDoc) {
+                                if (hasUsableBody(fullDoc)) currentDoc.content = fullDoc.content;
                                 const fullCoverUrl = getArticleImageUrl(fullDoc, "");
                                 if (fullCoverUrl && !getArticleImageUrl(currentDoc, "")) {
                                     currentDoc.imageUrl = fullCoverUrl;
                                     currentDoc.coverImage = fullCoverUrl;
                                     currentDoc.coverUrl = fullCoverUrl;
+                                    currentDoc._hasDeferredImage = false;
+                                    currentDoc._hasAnyImageField = true;
                                 }
                                 if (fullDoc.transcription && !currentDoc.transcription) currentDoc.transcription = fullDoc.transcription;
                             }
@@ -2540,15 +2615,20 @@
                     }
 
                     await renderArticle(currentDoc, allArticles, { skipBodyFetch: attemptedBodyFetch });
-                    hasRenderedContent = true;
+                    const resolvedCoverUrl = getArticleImageUrl(currentDoc, "");
+                    if (resolvedCoverUrl) preloadCoverImage(resolvedCoverUrl);
                     markArticleAsRead(currentDoc.id);
                     loadRelatedArticlesFromList(currentDoc, allArticles);
                     initComments(currentDoc.id);
-                    if (skeletonEl) skeletonEl.classList.add("hidden");
-                    if (errorContainerEl) {
-                        errorContainerEl.classList.add("hidden");
-                        errorContainerEl.innerHTML = "";
-                    }
+                    await revealReaderContainer({
+                        showEl: articleViewEl,
+                        hideEl: bookContainerEl,
+                        skeletonEl,
+                        errorContainerEl,
+                        isBookView: false,
+                        maxWaitMs: 1500
+                    });
+                    hasRenderedContent = true;
                 }
 
             } catch (err) {
@@ -2605,22 +2685,28 @@
                 }
                 if (localDoc) {
                     hasRenderedContent = true;
-                    if (skeletonEl) skeletonEl.classList.add("hidden");
-                    if (errorContainerEl) {
-                        errorContainerEl.classList.add("hidden");
-                        errorContainerEl.innerHTML = "";
-                    }
                     if ((localDoc.type || "").toUpperCase() === "BOOK" || localDoc.isBook === true) {
-                        if (articleViewEl) articleViewEl.classList.add("hidden");
                         if (bookContainerEl) {
-                            bookContainerEl.classList.remove("hidden");
-                            if (cachedLightBook && localDoc.__lightCache) renderBookLightCache(cachedLightBook, bookContainerEl, cachedChapters);
-                            else await renderBookIndex(localDoc, bookContainerEl, localDoc.chapters || []);
+                            await renderBookIndex(localDoc, bookContainerEl, localDoc.chapters || []);
+                            await revealReaderContainer({
+                                showEl: bookContainerEl,
+                                hideEl: articleViewEl,
+                                skeletonEl,
+                                errorContainerEl,
+                                isBookView: true,
+                                maxWaitMs: 1000
+                            });
                         }
                     } else {
-                        if (bookContainerEl) bookContainerEl.classList.add("hidden");
-                        if (articleViewEl) articleViewEl.classList.remove("hidden");
                         await renderArticle(localDoc);
+                        await revealReaderContainer({
+                            showEl: articleViewEl,
+                            hideEl: bookContainerEl,
+                            skeletonEl,
+                            errorContainerEl,
+                            isBookView: false,
+                            maxWaitMs: 1000
+                        });
                     }
                 } else {
                     showErrorWithRetry("There was a problem loading this content.");
@@ -2749,15 +2835,7 @@
                                         <span class="book-v2-ribbon" aria-hidden="true"></span>
                                         <span class="book-v2-spine" aria-hidden="true"></span>
                                         <div class="book-v2-cover">
-                                        ${hasCover ? `
-                                            ${coverMarkup}
-                                            <div class="book-v2-cover-fallback${hasCoverSource ? " hidden" : ""}" data-nuqtha-image-placeholder aria-hidden="true"><span>📚</span><span translate="no">NUQTHA EDITION</span></div>
-                                        ` : `
-                                            <div class="book-v2-cover-fallback">
-                                                <span class="text-4xl" aria-hidden="true">📚</span>
-                                                <span translate="no">NUQTHA EDITION</span>
-                                            </div>
-                                        `}
+                                        ${hasCover ? coverMarkup : `<img src="/cover-placeholder.svg" alt="${cleanTitle} Cover" class="book-v2-cover-img" width="300" height="400" loading="eager" decoding="async">`}
                                         </div>
                                     </div>
                                 </div>
@@ -2967,7 +3045,7 @@
                 }
                 const hasImageSource = Boolean(effectiveImg || getDeferredImageAttributes(effectiveDocForImage));
                 const chapterImage = hasImageSource
-                    ? buildDeferredImageMarkup(effectiveDocForImage, effectiveImg, cleanArtTitle, "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500", 400, 300)
+                    ? buildDeferredImageMarkup(effectiveDocForImage, effectiveImg, cleanArtTitle, "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500", 400, 300, idx < 4 ? "eager" : "lazy")
                     : "";
                 let targetUrl = isLocked ? "#book-unlock-card" : "#";
                 if (!isLocked) {
@@ -3129,6 +3207,7 @@
             }).join('');
 
             section.classList.remove("hidden");
+            scanImages(grid);
         }
 
         // ═══════════ STANDARD ARTICLE RENDERER ═══════════
@@ -3272,14 +3351,61 @@
 
             const articleImageEl = document.getElementById('art-image');
             const articleImageWrapper = document.getElementById('art-image-wrapper');
-            if (articleImageEl && articleImageUrl) {
-                articleImageEl.onerror = () => {
+            if (articleImageEl) {
+                delete articleImageEl.dataset.nuqthaImageDoc;
+                delete articleImageEl.dataset.nuqthaImageCollection;
+                delete articleImageEl.dataset.nuqthaImageUpdated;
+                delete articleImageEl.dataset.nuqthaImageFallbackCollection;
+                delete articleImageEl.dataset.nuqthaImageFallbackDoc;
+                delete articleImageEl.dataset.nuqthaImageFallbacks;
+                delete articleImageEl.dataset.nuqthaImageObserved;
+                delete articleImageEl.dataset.nuqthaImageObservedSource;
+                delete articleImageEl.dataset.nuqthaImageQueued;
+                delete articleImageEl.dataset.nuqthaImageSource;
+                delete articleImageEl.dataset.nuqthaStaticFallbackAttempted;
+                delete articleImageEl.dataset.nuqthaImageFallbackAttempted;
+                delete articleImageEl.dataset.nuqthaImageRetryCount;
+                delete articleImageEl.dataset.nuqthaImageRetryExhausted;
+                articleImageEl.onerror = null;
+                articleImageEl.hidden = false;
+                articleImageEl.loading = "eager";
+                articleImageEl.fetchPriority = "high";
+                articleImageEl.dataset.nuqthaEntity = (isBookEntity(article) || isBookEditionDoc(article)) ? "book" : "article";
+                articleImageEl.dataset.nuqthaHideOnFail = "true";
+
+                const coverCol = article._imageCollection || ((isBookEntity(article) || isBookEditionDoc(article)) ? "books" : "articles");
+                const coverDocId = article._imageDocId || article.id || "";
+                if (coverCol && coverDocId) {
+                    articleImageEl.dataset.nuqthaImageCollection = coverCol;
+                    articleImageEl.dataset.nuqthaImageDoc = coverDocId;
+                    articleImageEl.dataset.nuqthaImageUpdated = String(article.updatedAt || article.createdAt || "");
+                }
+                if (article._imageFallbackCollection && article._imageFallbackDocId) {
+                    articleImageEl.dataset.nuqthaImageFallbackCollection = article._imageFallbackCollection;
+                    articleImageEl.dataset.nuqthaImageFallbackDoc = article._imageFallbackDocId;
+                }
+                if (Array.isArray(article._imageFallbacks) && article._imageFallbacks.length > 0) {
+                    articleImageEl.dataset.nuqthaImageFallbacks = article._imageFallbacks.join(",");
+                }
+
+                const hasDeferredCover = Boolean((article._hasDeferredImage || article._hasAnyImageField) && coverCol && coverDocId);
+                if (articleImageUrl) {
+                    articleImageEl.style.opacity = "1";
+                    articleImageEl.src = articleImageUrl;
+                    articleImageEl.alt = article.title || "Article cover";
+                    articleImageWrapper?.classList.remove('hidden');
+                    if (articleImageWrapper) scanImages(articleImageWrapper);
+                } else if (hasDeferredCover) {
+                    articleImageEl.removeAttribute('src');
+                    articleImageEl.style.opacity = "0";
+                    articleImageEl.alt = article.title || "Article cover";
+                    articleImageWrapper?.classList.remove('hidden');
+                    if (articleImageWrapper) scanImages(articleImageWrapper);
+                } else {
+                    articleImageEl.removeAttribute('src');
                     articleImageWrapper?.classList.add('hidden');
-                };
-                articleImageEl.src = articleImageUrl;
-                articleImageWrapper?.classList.remove('hidden');
+                }
             } else {
-                if (articleImageEl) articleImageEl.removeAttribute('src');
                 articleImageWrapper?.classList.add('hidden');
             }
 
@@ -3407,8 +3533,14 @@
                             article.coverUrl = fullCoverUrl;
                             articleImageUrl = fullCoverUrl;
                             const imageEl = document.getElementById("art-image");
-                            if (imageEl) imageEl.src = fullCoverUrl;
-                            document.getElementById("art-image-wrapper")?.classList.remove("hidden");
+                            const imageWrapper = document.getElementById("art-image-wrapper");
+                            if (imageEl) {
+                                imageEl.hidden = false;
+                                imageEl.style.opacity = "1";
+                                imageEl.src = fullCoverUrl;
+                            }
+                            imageWrapper?.classList.remove("hidden");
+                            if (imageWrapper) scanImages(imageWrapper);
                         }
                         if (fullDoc.transcription && !article.transcription) article.transcription = fullDoc.transcription;
                     }
@@ -3417,14 +3549,6 @@
 
             const bodyContent = (article.content || "").trim();
             if (!bodyContent) {
-                if (options.isPendingBodyLoad) {
-                    contentEl.innerHTML = `
-                        <div class="my-6 p-6 rounded-2xl bg-white/60 dark:bg-white/5 border border-[var(--border)] dark:border-white/10 text-center space-y-2.5 animate-pulse">
-                            <p class="text-sm font-bold text-[#7a6758] dark:text-slate-300 font-english">Loading article content...</p>
-                        </div>
-                    `;
-                    return;
-                }
 
                 const isRateLimited = lastFetchErrorState.rateLimited || checkIsRateLimited({ scope: "foreground" });
                 const heading = isRateLimited
@@ -3599,7 +3723,7 @@
                         if (!url) return "";
                         return `
                             <figure class="article-image-wrap my-6">
-                                <img src="${escapeHtml(url)}" alt="${escapeHtml(caption)}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" width="1200" height="800" style="aspect-ratio:3/2;object-fit:contain;background:var(--surface)" loading="lazy">
+                                <img src="${escapeHtml(url)}" alt="${escapeHtml(caption)}" class="w-full h-auto rounded-2xl mx-auto block shadow-sm" width="1200" height="800" style="aspect-ratio:3/2;object-fit:contain;background:var(--surface)" loading="eager" fetchpriority="high" decoding="async">
                                 ${caption && caption !== "ചിത്രം" ? `<figcaption class="p-2 text-center text-xs text-[#8c7a6b] dark:text-[#94a3b8]">${escapeHtml(caption)}</figcaption>` : ''}
                             </figure>
                         `;

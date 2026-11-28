@@ -66,7 +66,7 @@ export function isPubliclyPublished(record) {
     if (!record || typeof record !== "object") return false;
     if (isExcludedPublicRecord(record)) return false;
     if (record.status !== undefined && record.status !== null && String(record.status).trim() !== "") {
-        return String(record.status).trim().toLowerCase() === "published";
+        return ["published", "approved"].includes(String(record.status).trim().toLowerCase());
     }
     return record.visible !== false;
 }

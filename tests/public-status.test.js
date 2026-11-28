@@ -4,9 +4,11 @@ const { describe, it } = window;
 const { expect } = window.chai;
 
 describe("Public draft visibility", () => {
-    it("keeps published records and legacy status-less records (visible !== false) visible, but hides drafts", () => {
+    it("keeps published/approved records and legacy status-less records (visible !== false) visible, but hides drafts", () => {
         expect(isPubliclyPublished({ status: "published" })).to.equal(true);
         expect(isPubliclyPublished({ status: "PUBLISHED" })).to.equal(true);
+        expect(isPubliclyPublished({ status: "approved" })).to.equal(true);
+        expect(isPubliclyPublished({ status: "APPROVED" })).to.equal(true);
         expect(isPubliclyPublished({})).to.equal(true);
         expect(isPubliclyPublished({ visible: true })).to.equal(true);
         expect(isPubliclyPublished({ visible: false })).to.equal(false);

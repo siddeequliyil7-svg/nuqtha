@@ -49,4 +49,53 @@ describe("Admin image upload fallbacks", () => {
             { content: "x".repeat(900 * 1024) }
         )).to.equal("/cover-placeholder.svg");
     });
+
+    it("stores large inline data covers once on imageUrl without 10x alias duplication", () => {
+        const inlineCover = `data:image/webp;base64,${"B".repeat(140 * 1024)}`;
+        const fields = getAdminImageFields(inlineCover);
+
+        expect(fields.imageUrl).to.equal(inlineCover);
+        expect(fields.coverImage).to.equal("");
+        expect(fields.coverUrl).to.equal("");
+        expect(fields.thumbnailUrl).to.equal("");
+        expect(fields.ogImage).to.equal("");
+
+        const multiChapterBook = {
+            title: "ഉമവിയ്യ ഖിലാഫത്ത്",
+            chapters: Array.from({ length: 26 }, (_, idx) => `chapter-${idx + 1}`),
+            ...fields
+        };
+        expect(resolveAdminImageFallback(inlineCover, "", multiChapterBook)).to.equal(inlineCover);
+    });
+
+    it("ignores legacy 10x duplicate base64 aliases and placeholder strings when preserving an inline cover", () => {
+        const inlineCover = `data:image/jpeg;base64,${"C".repeat(120 * 1024)}`;
+        const legacyMultiAliasBook = {
+            title: "ഖിലാഫത്തുർറാശിദ",
+            imageUrl: inlineCover,
+            coverImage: inlineCover,
+            coverUrl: inlineCover,
+            cover: inlineCover,
+            image: inlineCover,
+            thumbnailUrl: inlineCover,
+            thumbnail: inlineCover,
+            thumbUrl: inlineCover,
+            thumb: inlineCover,
+            ogImage: inlineCover
+        };
+
+        expect(resolveAdminImageFallback(inlineCover, "/cover-placeholder.svg", legacyMultiAliasBook))
+            .to.equal(inlineCover);
+    });
+
+    it("keeps a distinct inline thumbnail on thumbnailUrl without duplicating cover aliases", () => {
+        const inlineCover = `data:image/webp;base64,${"D".repeat(90 * 1024)}`;
+        const inlineThumb = `data:image/webp;base64,${"E".repeat(45 * 1024)}`;
+        const fields = getAdminImageFields(inlineCover, inlineThumb);
+
+        expect(fields.imageUrl).to.equal(inlineCover);
+        expect(fields.thumbnailUrl).to.equal(inlineThumb);
+        expect(fields.coverImage).to.equal("");
+        expect(fields.ogImage).to.equal("");
+    });
 });

@@ -8,7 +8,7 @@ export { FALLBACK_ARTICLES, FALLBACK_BOOKS };
  */
 import { db, doc, getDoc } from "./firebase-config.js";
 import { normalizeArticleDoc, parseTimestampMillis, getStoryUrl, getArticleImageUrl, sanitizeCategory } from "./schema-validator.js";
-import { fetchArticleSearchContent, fetchPublicCollections, getDeferredImageAttributes, installLazyFirestoreImages, stripListHeavyFields } from "./js/public-image-loader.js";
+import { fetchArticleSearchContent, fetchPublicCollections, getDeferredImageAttributes, installLazyFirestoreImages, scanImages, stripListHeavyFields, waitForContainerImages } from "./js/public-image-loader.js";
 import { filterPublicCollections, isExcludedPublicRecord, isPubliclyPublished } from "./js/public-status.js";
 import { syncReadingBg } from "./reading-theme.js";
 import { getBookChapterIds } from "./book-data.js";
@@ -53,19 +53,16 @@ installLazyFirestoreImages();
 
 function buildCardImageMarkup(item, className, alt, width, height, eager = false, fallbackUrl = "") {
     const isBook = isBookEntity(item);
-    const safeFallback = !isBook && /(?:^|\/)cover-placeholder\.svg(?:[?#].*)?$/i.test(String(fallbackUrl || ""))
-        ? ""
-        : fallbackUrl;
     const rawUrl = getArticleImageUrl(item, "");
     const deferredAttributes = getDeferredImageAttributes(item);
-    const deferInlineImage = Boolean(item?._hasDeferredImage && deferredAttributes);
-    const imageUrl = deferInlineImage
-        ? ""
-        : rawUrl || (deferredAttributes ? "" : safeFallback);
+    const safeFallback = isBook
+        ? (fallbackUrl || "/cover-placeholder.svg")
+        : (/(?:^|\/)cover-placeholder\.svg(?:[?#].*)?$/i.test(String(fallbackUrl || "")) ? "" : fallbackUrl);
+    const imageUrl = rawUrl || (deferredAttributes ? "" : safeFallback);
     if (!imageUrl && !deferredAttributes) return "";
 
     const sourceAttribute = imageUrl ? `src="${escapeHtml(imageUrl)}"` : "";
-    const opacity = (imageUrl && !deferInlineImage) ? "1" : "0";
+    const opacity = imageUrl ? "1" : "0";
     const styleAttribute = `style="position:absolute;inset:0;opacity:${opacity};transition:opacity .25s ease;"`;
     const priority = eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
     const entityAttribute = `data-nuqtha-entity="${isBook ? "book" : "article"}"`;
@@ -73,8 +70,7 @@ function buildCardImageMarkup(item, className, alt, width, height, eager = false
 }
 
 function hasImmediateCardImage(item) {
-    const url = getArticleImageUrl(item, "");
-    return Boolean(url && !(item?._hasDeferredImage && getDeferredImageAttributes(item)));
+    return Boolean(getArticleImageUrl(item, ""));
 }
 
 function hasBookCoverSource(book) {
@@ -94,17 +90,25 @@ function safeCacheArticles(articles) {
                 thumb: a.thumb,
                 coverImage: a.ogImage
             }, "") || imageUrl;
-            const copy = stripListHeavyFields(a);
+            const itemLimit = isBookEntity(a) ? 350 * 1024 : inlineLimit;
+            const copy = stripListHeavyFields(a, itemLimit);
             delete copy.content;
             delete copy.transcription;
-            if (typeof a._hasAnyImageField === "boolean") copy._hasAnyImageField = a._hasAnyImageField;
-            if (typeof a._hasDeferredImage === "boolean") copy._hasDeferredImage = a._hasDeferredImage;
-            if (imageUrl && (!/^data:image\//i.test(imageUrl) || imageUrl.length <= inlineLimit)) {
+            const keptImageUrl = imageUrl && (!/^data:image\//i.test(imageUrl) || imageUrl.length <= itemLimit);
+            const strippedCover = Boolean(imageUrl && !keptImageUrl);
+            if (keptImageUrl) {
                 copy.imageUrl = imageUrl;
             }
-            if (thumbnailUrl && (!/^data:image\//i.test(thumbnailUrl) || thumbnailUrl.length <= inlineLimit)) {
+            if (thumbnailUrl && (!/^data:image\//i.test(thumbnailUrl) || thumbnailUrl.length <= itemLimit)) {
                 copy.thumbnailUrl = thumbnailUrl;
             }
+            copy._hasAnyImageField = Boolean(imageUrl || a._hasAnyImageField);
+            copy._hasDeferredImage = Boolean(strippedCover || (!keptImageUrl && a._hasDeferredImage));
+            if (a._imageCollection) copy._imageCollection = a._imageCollection;
+            if (a._imageDocId) copy._imageDocId = a._imageDocId;
+            if (a._imageFallbackCollection) copy._imageFallbackCollection = a._imageFallbackCollection;
+            if (a._imageFallbackDocId) copy._imageFallbackDocId = a._imageFallbackDocId;
+            if (Array.isArray(a._imageFallbacks) && a._imageFallbacks.length) copy._imageFallbacks = a._imageFallbacks;
             return copy;
         });
         writeArticlesListCache(lightweight);
@@ -320,16 +324,8 @@ function waitForInitialHomeImages(maxWaitMs) {
     if (maxWaitMs <= 0) return Promise.resolve();
     const container = document.getElementById("feed-container");
     if (!container) return Promise.resolve();
-    const imgs = Array.from(container.querySelectorAll('img[data-nuqtha-cover="true"][src]')).slice(0, 6);
-    const pending = imgs.filter(img => img.getAttribute("src") && !img.complete);
-    if (pending.length === 0) return Promise.resolve();
-    return Promise.race([
-        Promise.all(pending.map(img => new Promise(resolve => {
-            img.addEventListener("load", resolve, { once: true });
-            img.addEventListener("error", resolve, { once: true });
-        }))),
-        new Promise(resolve => setTimeout(resolve, maxWaitMs))
-    ]);
+    scanImages(container);
+    return waitForContainerImages(container, maxWaitMs, 8);
 }
 
 window.addEventListener("pagehide", () => {
@@ -1325,10 +1321,20 @@ export function initAppData() {
                 thumbnailUrl,
                 chapters
             }, primary.id || secondary.id);
-            merged._imageCollection = primary._imageCollection || secondary._imageCollection || "books";
-            merged._imageDocId = primary._imageDocId || primary.id || secondary._imageDocId || secondary.id;
-            merged._imageFallbackCollection = secondary._imageCollection || "";
-            merged._imageFallbackDocId = secondary._imageDocId || secondary.id || "";
+            const preferSecondaryImageSource = !coverUrl && !primary._hasAnyImageField &&
+                Boolean(secondary._hasAnyImageField || secondary._hasDeferredImage);
+            merged._imageCollection = preferSecondaryImageSource
+                ? (secondary._imageCollection || primary._imageCollection || "books")
+                : (primary._imageCollection || secondary._imageCollection || "books");
+            merged._imageDocId = preferSecondaryImageSource
+                ? (secondary._imageDocId || secondary.id || primary._imageDocId || primary.id)
+                : (primary._imageDocId || primary.id || secondary._imageDocId || secondary.id);
+            merged._imageFallbackCollection = preferSecondaryImageSource
+                ? (primary._imageCollection || "")
+                : (secondary._imageCollection || "");
+            merged._imageFallbackDocId = preferSecondaryImageSource
+                ? (primary._imageDocId || primary.id || "")
+                : (secondary._imageDocId || secondary.id || "");
             merged._hasAnyImageField = Boolean(coverUrl || primary._hasAnyImageField || secondary._hasAnyImageField);
             merged._hasDeferredImage = Boolean(!coverUrl && (primary._hasDeferredImage || secondary._hasDeferredImage));
             merged._isFallback = Boolean(primary._isFallback && secondary._isFallback);
@@ -1365,7 +1371,7 @@ export function initAppData() {
                     _imageCollection: article._imageCollection || "articles",
                     _imageDocId: article._imageDocId || article.id,
                     _hasAnyImageField: typeof article._hasAnyImageField === "boolean" ? article._hasAnyImageField : Boolean(getArticleImageUrl(article, "")),
-                    _hasDeferredImage: Boolean(article._hasDeferredImage)
+                    _hasDeferredImage: Boolean(!getArticleImageUrl(normalized, "") && article._hasDeferredImage)
                 };
             });
 
@@ -1387,7 +1393,7 @@ export function initAppData() {
                 bookItem._imageCollection = bookData._imageCollection || "books";
                 bookItem._imageDocId = bookData._imageDocId || bookData.id;
                 bookItem._hasAnyImageField = typeof bookData._hasAnyImageField === "boolean" ? bookData._hasAnyImageField : Boolean(getArticleImageUrl(bookData, ""));
-                bookItem._hasDeferredImage = Boolean(bookData._hasDeferredImage);
+                bookItem._hasDeferredImage = Boolean(!getArticleImageUrl(bookItem, "") && bookData._hasDeferredImage);
                 if (!bookItem.isChapter) {
                     bookItem.type = "BOOK";
                     bookItem.isBook = true;
@@ -1455,7 +1461,7 @@ export function initAppData() {
                 (isBookEntity(article) && areSameBookByTitle(article, book))
             );
             if (existingIndex < 0) combined.push(book);
-            else combined[existingIndex] = { ...combined[existingIndex], ...book };
+            else combined[existingIndex] = mergeRichBookRecord(combined[existingIndex], book);
         });
 
         const publishedCombined = combined.filter(item =>
@@ -1575,6 +1581,7 @@ function renderFeed() {
         renderCategoryFeed(container, currentCategory);
     }
 
+    scanImages(container);
     attachCardListeners();
     attachShowMoreListeners();
     setupCarousel();
@@ -1624,7 +1631,7 @@ function renderSavedFeed(container) {
         </div>
         `;
     } else {
-        html += buildFeaturedCard(matched[0]);
+        html += buildFeaturedCard(matched[0], true);
         if (matched.length > 1) {
             html += `<div class="category-cards-list space-y-3 mt-4">`;
             matched.slice(1).forEach(art => {
@@ -1683,7 +1690,7 @@ function renderSearchFeed(container, query) {
         </div>
         `;
     } else {
-        html += buildFeaturedCard(matched[0]);
+        html += buildFeaturedCard(matched[0], true);
         if (matched.length > 1) {
             html += `<div class="category-cards-list space-y-3 mt-4">`;
             matched.slice(1).forEach(art => {
@@ -2061,7 +2068,7 @@ function renderHomeFeed(container) {
     // 2. HERO FEATURED MAIN CARD (DIRECTLY BELOW CAROUSEL)
     // ═══════════════════════════════════════════════════════════
     if (heroArticle) {
-        html += buildFeaturedCard(heroArticle);
+        html += buildFeaturedCard(heroArticle, true);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -2197,7 +2204,7 @@ function renderCategoryFeed(container, category) {
     `;
 
     // Hero card is the latest article in this category
-    html += buildFeaturedCard(filtered[0]);
+    html += buildFeaturedCard(filtered[0], true);
 
     if (filtered.length > 1) {
         const rest = filtered.slice(1);
@@ -2545,7 +2552,7 @@ function buildCategoryFeaturedCard(art, theme = null) {
 }
 
 /* ═══════════ 1. Featured Article Card (Reference Design) ═══════════ */
-function buildFeaturedCard(art) {
+function buildFeaturedCard(art, eager = false) {
     if (!art) return "";
     const dateStr = art.date || formatDate(art.createdAt);
     const cleanTitle = stripMarkdown(art.title);
@@ -2559,7 +2566,7 @@ function buildFeaturedCard(art) {
     const authorInitial = authorName.trim().charAt(0) || "N";
     const authorPhoto = (art && art.authorPhoto) || getAuthorPhoto(authorName, siteAuthorsMap) || "";
     const categoryMalayalam = categoryLabel(art.category);
-    const featuredImage = buildCardImageMarkup(art, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 1200, 750, false, "");
+    const featuredImage = buildCardImageMarkup(art, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 1200, 750, eager, "");
     const hasFeaturedImage = hasImmediateCardImage(art);
 
     return `
@@ -2748,7 +2755,7 @@ function buildCarouselCard(art, index = 0) {
     const cleanTitle = stripMarkdown(art.title);
     const authorName = art.author || "NUQTHA";
 
-    const cardImg = buildCardImageMarkup(art, "carousel-card-img", cleanTitle, 400, 300, index === 0, "");
+    const cardImg = buildCardImageMarkup(art, "carousel-card-img", cleanTitle, 400, 300, index < 4, "");
     const hasCardImage = hasImmediateCardImage(art);
     const imagePlaceholder = '<div class="carousel-card-img-placeholder" style="display:' + (hasCardImage ? 'none' : 'flex') + ';background: linear-gradient(135deg, #2a201c, #4a3328); align-items:center; justify-content:center; color:rgba(255,255,255,0.7); font-weight:bold; font-size:12px;" data-nuqtha-image-placeholder><span style=\"font-family: \'Anek Malayalam\', sans-serif;\">' + escapeHtml(catLabel || 'ലേഖനം') + '</span></div>';
     const imgHtml = hasCardImage ? cardImg + imagePlaceholder : imagePlaceholder + cardImg;
@@ -3089,20 +3096,13 @@ function buildBookCard(book, articles) {
     const cleanTitle = stripMarkdown(book.title);
     const count = articles.length;
     const dateStr = book.date || formatDate(book.createdAt);
-    const coverImage = buildCardImageMarkup(book, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", `${cleanTitle} cover`, 600, 800);
-    const hasCoverSource = hasBookCoverSource(book);
+    const coverImage = buildCardImageMarkup(book, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", `${cleanTitle} cover`, 600, 800, false, "/cover-placeholder.svg");
 
     return `
     <div class="book-glass-card group cursor-pointer overflow-hidden transition-all duration-300 flex flex-col" data-id="${book.id}">
         <!-- Cover Image Container (Vertical Magazine Style) -->
         <div class="relative w-full aspect-[3/4] overflow-hidden bg-[#1e1b18]">
-            ${hasCoverSource ? `
-                ${coverImage}
-                ${buildBookCoverPlaceholder(book, 0, false, true)}
-            ` : `
-                ${buildBookCoverPlaceholder(book)}
-                ${coverImage}
-            `}
+            ${coverImage}
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
         </div>
         <!-- Bottom Risala-Style Banner -->
@@ -3331,23 +3331,6 @@ function getBookArticleCount(book, articles) {
     }).length;
 }
 
-function buildBookCoverPlaceholder(book, index = 0, premium = false, hidden = false) {
-    const title = escapeHtml(stripMarkdown(book?.title || "Untitled Book").trim());
-    const author = escapeHtml((book?.author || book?.authorName || "NUQTHA").trim());
-    const classes = ["book-cover-placeholder", `book-cover-placeholder--${index % 4}`];
-    if (premium) classes.push("premium-book-placeholder");
-    return `
-        <div class="${classes.join(" ")}"${hidden ? ' style="display:none;"' : ""} data-nuqtha-image-placeholder role="img" aria-label="Book cover: ${title}">
-            <span class="book-cover-brand" translate="no">NUQTHA EDITION</span>
-            <span class="book-cover-rule" aria-hidden="true"></span>
-            <span class="book-cover-symbol" aria-hidden="true">✦</span>
-            <span class="book-cover-title">${title}</span>
-            <span class="book-cover-rule" aria-hidden="true"></span>
-            <span class="book-cover-author">${author}</span>
-        </div>
-    `;
-}
-
 /* ═══════════ 1. HOME PAGE BOOK SHOWCASE / PREMIUM BOOK SHELF ═══════════ */
 function buildBookShowcaseSection(bookCovers, allArticles) {
     const buildBooksHeading = includeShowMore => `
@@ -3401,8 +3384,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
         const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
         const isFree = !isPremium || price === 0;
 
-        const bookCoverMarkup = buildCardImageMarkup(book, "premium-book-img", cleanTitle, 300, 400);
-        const hasCoverSource = hasBookCoverSource(book);
+        const bookCoverMarkup = buildCardImageMarkup(book, "premium-book-img", cleanTitle, 300, 400, idx < 4, "/cover-placeholder.svg");
         const bookId = book.id || '';
         const bookHref = bookId ? getStoryUrl(book) : '#';
 
@@ -3418,13 +3400,7 @@ function buildBookShowcaseSection(bookCovers, allArticles) {
                         ` : `
                             <span class="premium-book-ribbon" translate="no">₹${price} • PREMIUM</span>
                         `}
-                        ${hasCoverSource ? `
-                            ${bookCoverMarkup}
-                            ${buildBookCoverPlaceholder(book, idx, true, true)}
-                        ` : `
-                            ${buildBookCoverPlaceholder(book, idx, true)}
-                            ${bookCoverMarkup}
-                        `}
+                        ${bookCoverMarkup}
                     </div>
                 </div>
                 <div class="premium-book-info">
@@ -3514,8 +3490,7 @@ function renderBooksCategoryFeed(container) {
                 const rawPrice = Number(book.price);
                 const price = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : (isPremium ? 49 : 0);
                 const isFree = !isPremium || price === 0;
-                const bookCoverMarkup = buildCardImageMarkup(book, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 600, 800);
-                const hasCoverSource = hasBookCoverSource(book);
+                const bookCoverMarkup = buildCardImageMarkup(book, "w-full h-full object-cover transition-transform duration-700 group-hover:scale-105", cleanTitle, 600, 800, index < 4, "/cover-placeholder.svg");
                         const volumeText = String(book.volume || "");
                         const issueText = String(book.issue || "");
                         const volumeLabel = volumeText
@@ -3532,13 +3507,7 @@ function renderBooksCategoryFeed(container) {
                         <span class="absolute top-2.5 right-2.5 z-10 px-2.5 py-1 rounded-full text-[10px] font-black uppercase font-english ${isFree ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-300 dark:border-green-700 shadow-md' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-md'}">
                             ${isFree ? 'FREE' : 'PREMIUM'}
                         </span>
-                        ${hasCoverSource ? `
-                            ${bookCoverMarkup}
-                            ${buildBookCoverPlaceholder(book, index, false, true)}
-                        ` : `
-                            ${buildBookCoverPlaceholder(book, index)}
-                            ${bookCoverMarkup}
-                        `}
+                        ${bookCoverMarkup}
                         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
                             <span class="text-[11px] font-bold text-white uppercase font-english tracking-wider flex items-center gap-1 bg-[#b4532c] px-3 py-1 rounded-full shadow">
                                 <span>തുറക്കുക</span>

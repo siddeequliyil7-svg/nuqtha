@@ -13,7 +13,7 @@ service cloud.firestore {
     }
 
     function isPublished() {
-      return resource.data.get('status', '') == 'published';
+      return resource.data.get('status', '') in ['published', 'approved'];
     }
 
     match /articles/{articleId} {
@@ -23,7 +23,7 @@ service cloud.firestore {
       match /comments/{commentId} {
         function parentIsPublished() {
           return get(/databases/$(database)/documents/articles/$(articleId))
-            .data.get('status', '') == 'published';
+            .data.get('status', '') in ['published', 'approved'];
         }
 
         allow read: if isApprovedAdmin() || parentIsPublished();

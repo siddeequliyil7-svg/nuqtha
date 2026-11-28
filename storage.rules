@@ -15,7 +15,7 @@ service firebase.storage {
     function isPublishedDocument(collectionName, documentId) {
       let documentPath = /databases/(default)/documents/$(collectionName)/$(documentId);
       return firestore.exists(documentPath)
-        && firestore.get(documentPath).data.status == 'published';
+        && firestore.get(documentPath).data.status in ['published', 'approved'];
     }
 
     match /articles/{articleId}/{fileName} {

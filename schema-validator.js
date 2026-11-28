@@ -368,7 +368,7 @@ export function sanitizeImageUrl(url) {
     const trimmed = url.trim();
     if (trimmed.length === 0) return "";
 
-    if (/^data:image\/(jpeg|jpg|png|webp|gif|avif);base64,/i.test(trimmed)) {
+    if (/^data:image\/(jpeg|jpg|pjpeg|png|webp|gif|avif)(?:;[^;,=]+=[^;,]+)*;base64,/i.test(trimmed)) {
         const commaIndex = trimmed.indexOf(",");
         const header = trimmed.slice(0, commaIndex + 1);
         const payload = trimmed.slice(commaIndex + 1).replace(/\s+/g, "");
@@ -419,10 +419,33 @@ function isCoverPlaceholder(url) {
     return typeof url === "string" && /(?:^|\/)(?:cover|article)-placeholder\.svg(?:[?#].*)?$/i.test(url.trim());
 }
 
+export function extractImageCandidateStrings(value, depth = 0) {
+    if (!value || depth > 2) return [];
+    if (typeof value === "string") return [value];
+    if (Array.isArray(value)) {
+        return value.flatMap(entry => extractImageCandidateStrings(entry, depth + 1));
+    }
+    if (typeof value === "object") {
+        const keys = [
+            "url", "imageUrl", "coverUrl", "coverImage", "cover",
+            "src", "downloadURL", "downloadUrl", "secure_url",
+            "thumbnailUrl", "thumbnail", "thumbUrl", "thumb",
+            "path", "href", "imageBase64", "coverBase64", "base64"
+        ];
+        const collected = [];
+        for (const key of keys) {
+            if (value[key]) {
+                collected.push(...extractImageCandidateStrings(value[key], depth + 1));
+            }
+        }
+        return collected;
+    }
+    return [];
+}
+
 export function getArticleImageUrl(item, fallback = "/cover-placeholder.svg") {
     if (item && typeof item === "object") {
-        const mediaUrl = typeof item.media === "string" ? item.media : (item.media?.url || item.media?.imageUrl || "");
-        const candidates = [
+        const candidateFields = [
             item.imageUrl,
             item.coverUrl,
             item.coverImage,
@@ -432,7 +455,7 @@ export function getArticleImageUrl(item, fallback = "/cover-placeholder.svg") {
             item.image,
             item.photo,
             item.banner,
-            mediaUrl,
+            item.media,
             item.thumbnail,
             item.thumbnailUrl,
             item.thumbUrl,
@@ -442,6 +465,7 @@ export function getArticleImageUrl(item, fallback = "/cover-placeholder.svg") {
             item.coverBase64,
             item.base64
         ];
+        const candidates = candidateFields.flatMap(val => extractImageCandidateStrings(val));
         for (const allowDataUri of [false, true]) {
             for (const candidate of candidates) {
                 if (typeof candidate !== "string" || isCoverPlaceholder(candidate)) continue;
@@ -572,12 +596,17 @@ export function validateAndSanitizeArticleForSave(raw, options = {}) {
 
     // 6. Cover image
     const imageUrl = [
-        raw.imageUrl, raw.coverUrl, raw.coverImage, raw.cover, raw.image,
+        raw.imageUrl, raw.coverUrl, raw.coverImage, raw.cover, raw.coverPhoto,
+        raw.featuredImage, raw.image, raw.photo, raw.banner, raw.media,
         raw.imageBase64, raw.coverBase64, raw.base64
-    ].map(sanitizeImageUrl).find(url => url && !isCoverPlaceholder(url)) || "";
+    ].flatMap(val => extractImageCandidateStrings(val))
+        .map(sanitizeImageUrl)
+        .find(url => url && !isCoverPlaceholder(url)) || "";
     const thumbnailUrl = [
         raw.thumbnailUrl, raw.thumbnail, raw.thumbUrl, raw.thumb, raw.ogImage, imageUrl
-    ].map(sanitizeImageUrl).find(url => url && !isCoverPlaceholder(url)) || imageUrl;
+    ].flatMap(val => extractImageCandidateStrings(val))
+        .map(sanitizeImageUrl)
+        .find(url => url && !isCoverPlaceholder(url)) || imageUrl;
 
     // 7. Colors & Font Size
     const titleColor = sanitizeColor(raw.titleColor, "#1e1b18");
@@ -734,7 +763,8 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
     const author = sanitizeString(rawDoc.author, 100, "NUQTHA");
     const authorId = sanitizeString(rawDoc.authorId || "", 100, "");
     const transcription = sanitizeString(rawDoc.transcription, 100, "");
-    const firstSafeCoverUrl = candidates => {
+    const firstSafeCoverUrl = fields => {
+        const candidates = fields.flatMap(val => extractImageCandidateStrings(val));
         for (const allowDataUri of [false, true]) {
             for (const candidate of candidates) {
                 if (typeof candidate !== "string" || isCoverPlaceholder(candidate)) continue;
@@ -745,11 +775,10 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         }
         return "";
     };
-    const mediaUrl = typeof rawDoc.media === "string" ? rawDoc.media : (rawDoc.media?.url || rawDoc.media?.imageUrl || "");
     const imageUrl = firstSafeCoverUrl([
         rawDoc.imageUrl, rawDoc.coverUrl, rawDoc.coverImage, rawDoc.cover,
         rawDoc.coverPhoto, rawDoc.featuredImage, rawDoc.image, rawDoc.photo,
-        rawDoc.banner, mediaUrl, rawDoc.thumbnailUrl, rawDoc.thumbnail,
+        rawDoc.banner, rawDoc.media, rawDoc.thumbnailUrl, rawDoc.thumbnail,
         rawDoc.thumbUrl, rawDoc.thumb, rawDoc.ogImage,
         rawDoc.imageBase64, rawDoc.coverBase64, rawDoc.base64
     ]) || "/cover-placeholder.svg";
@@ -757,7 +786,7 @@ export function normalizeArticleDoc(rawDoc, docId = "") {
         rawDoc.thumbnailUrl, rawDoc.thumbnail, rawDoc.thumbUrl, rawDoc.thumb,
         rawDoc.ogImage, rawDoc.imageUrl, rawDoc.coverUrl, rawDoc.coverImage,
         rawDoc.cover, rawDoc.coverPhoto, rawDoc.featuredImage, rawDoc.image,
-        rawDoc.photo, rawDoc.banner, mediaUrl,
+        rawDoc.photo, rawDoc.banner, rawDoc.media,
         rawDoc.imageBase64, rawDoc.coverBase64, rawDoc.base64
     ]) || imageUrl;
     const slug = sanitizeString(rawDoc.slug || slugifyText(title), 200, "");

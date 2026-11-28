@@ -15,7 +15,13 @@ import {
 } from "./js/auth-system.js";
 import { runAction } from "./js/admin-actions.js";
 import { addDoc, setDoc, updateDoc, deleteDoc, uploadImageDataUrl, uploadFile, getAdminWriteErrorMessage } from "./js/admin-write-guard.js";
-import { getAdminImageFields, resolveAdminImageFallback } from "./js/admin-image-fallback.js";
+import {
+    getAdminImageFields,
+    resolveAdminImageFallback,
+    isPlaceholderImageUrl,
+    estimateFirestoreDocumentBytes,
+    MAX_SAFE_FIRESTORE_DOCUMENT_BYTES
+} from "./js/admin-image-fallback.js";
 import { FALLBACK_ARTICLES } from "./fallback-data.js";
 import { readArticlesListCache, writeArticlesListCache } from "./js/firestore-cache.js";
 
@@ -24,8 +30,11 @@ const ADMIN_IMAGE_UPLOAD_TIMEOUT_MS = 6000;
 function purgePublicCaches() {
     try {
         const staticKeys = [
+            "nuqtha_cached_articles_v15",
             "nuqtha_cached_articles_v12",
             "nuqtha_cached_articles",
+            "nuqtha_public_collections_v1",
+            "nuqtha_slug_id_map_v1",
             "nuqtha:categories:v1",
             "nuqtha:library:v5",
             "nuqtha:library:v1",
@@ -36,12 +45,20 @@ function purgePublicCaches() {
             sessionStorage.removeItem(key);
             localStorage.removeItem(key);
         });
-        for (let i = sessionStorage.length - 1; i >= 0; i--) {
-            const key = sessionStorage.key(i);
-            if (key && key.startsWith("nuqtha_cache_book_")) {
-                sessionStorage.removeItem(key);
+        [sessionStorage, localStorage].forEach(storage => {
+            for (let i = storage.length - 1; i >= 0; i--) {
+                const key = storage.key(i);
+                if (
+                    key &&
+                    (key.startsWith("nuqtha_cache_book_") ||
+                        key.startsWith("nuqtha_cached_articles_") ||
+                        key.startsWith("nuqtha_article_doc_") ||
+                        key.startsWith("nuqtha_resolved_img_"))
+                ) {
+                    storage.removeItem(key);
+                }
             }
-        }
+        });
     } catch (_) {}
 }
 
@@ -76,6 +93,79 @@ function showOptionalImageUploadWarning(failures, recordLabel) {
         `${recordLabel} metadata was saved, but the ${labels} upload failed.${reason} A safe selected image or existing image URL was kept where available.`,
         "info"
     );
+}
+
+const ADMIN_INLINE_IMAGE_FIELDS = [
+    "imageUrl", "coverImage", "coverUrl", "cover", "image",
+    "thumbnailUrl", "thumbnail", "thumbUrl", "thumb", "ogImage",
+    "imageBase64", "coverBase64", "base64", "coverPhoto", "featuredImage"
+];
+
+function isAdminPublishedStatus(status) {
+    const normalized = String(status || "").trim().toLowerCase();
+    return normalized === "published" || normalized === "approved";
+}
+
+function stripInlineImageAliasData(docObj) {
+    const clone = { ...(docObj || {}) };
+    ADMIN_INLINE_IMAGE_FIELDS.forEach(field => {
+        if (typeof clone[field] === "string" && /^data:/i.test(clone[field])) {
+            clone[field] = "";
+        }
+    });
+    return clone;
+}
+
+function fitInlineImageDataUrl(dataUrl, maxChars = 140 * 1024) {
+    if (typeof dataUrl !== "string" || !/^data:image\//i.test(dataUrl) || dataUrl.length <= maxChars) {
+        return Promise.resolve(dataUrl);
+    }
+    if (typeof Image === "undefined" || typeof document === "undefined") {
+        return Promise.resolve(dataUrl);
+    }
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onerror = () => resolve(dataUrl);
+        img.onload = () => {
+            try {
+                const canvas = document.createElement("canvas");
+                const context = canvas.getContext("2d");
+                if (!context) {
+                    resolve(dataUrl);
+                    return;
+                }
+                const dimensionSteps = [1200, 900, 680, 480, 360, 280];
+                const qualitySteps = [0.78, 0.65, 0.52, 0.40, 0.30];
+                let bestResult = dataUrl;
+                for (const dim of dimensionSteps) {
+                    const maxSide = Math.max(img.naturalWidth || 1, img.naturalHeight || 1);
+                    const scale = Math.min(1, dim / maxSide);
+                    canvas.width = Math.max(1, Math.round((img.naturalWidth || dim) * scale));
+                    canvas.height = Math.max(1, Math.round((img.naturalHeight || dim) * scale));
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    context.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    for (const quality of qualitySteps) {
+                        let candidate = canvas.toDataURL("image/webp", quality);
+                        const jpegCandidate = canvas.toDataURL("image/jpeg", quality);
+                        if (!candidate.startsWith("data:image/webp") || jpegCandidate.length < candidate.length) {
+                            candidate = jpegCandidate;
+                        }
+                        if (candidate.length < bestResult.length) {
+                            bestResult = candidate;
+                        }
+                        if (candidate.length <= maxChars) {
+                            resolve(candidate);
+                            return;
+                        }
+                    }
+                }
+                resolve(bestResult);
+            } catch (_) {
+                resolve(dataUrl);
+            }
+        };
+        img.src = dataUrl;
+    });
 }
 
 function isExplicitChapterRecord(art) {
@@ -1277,19 +1367,25 @@ async function handleFormSubmit(event) {
         const rawBookName = document.getElementById("art-playlist-name")?.value || "";
         const isBookCover = document.getElementById("art-is-book")?.checked || false;
 
+        const cleanExistingArticleCover = isPlaceholderImageUrl(originalArticleImages.imageUrl) ? "" : originalArticleImages.imageUrl;
+        const cleanExistingArticleThumb = isPlaceholderImageUrl(originalArticleImages.thumbnailUrl) ? "" : originalArticleImages.thumbnailUrl;
+        const cleanExistingArticleOg = isPlaceholderImageUrl(originalArticleImages.ogImage) ? "" : originalArticleImages.ogImage;
+        const cleanSelectedArticleCover = isPlaceholderImageUrl(selectedBase64Image) ? "" : selectedBase64Image;
+        const cleanSelectedArticleThumb = isPlaceholderImageUrl(selectedBase64Thumbnail) ? "" : selectedBase64Thumbnail;
+
         const effectiveCover = articleImageChanged
-            ? selectedBase64Image
-            : (editingArticleId ? originalArticleImages.imageUrl : selectedBase64Image);
+            ? cleanSelectedArticleCover
+            : (editingArticleId ? cleanExistingArticleCover : cleanSelectedArticleCover);
         const effectiveThumb = articleThumbnailChanged
-            ? selectedBase64Thumbnail
+            ? cleanSelectedArticleThumb
             : (editingArticleId
-                ? originalArticleImages.thumbnailUrl
-                : (selectedBase64Thumbnail || selectedBase64Image));
+                ? cleanExistingArticleThumb
+                : (cleanSelectedArticleThumb || cleanSelectedArticleCover));
         const effectiveOgImage = articleThumbnailChanged
-            ? selectedBase64Thumbnail
+            ? cleanSelectedArticleThumb
             : (editingArticleId
-                ? originalArticleImages.ogImage
-                : (selectedBase64Thumbnail || selectedBase64Image));
+                ? cleanExistingArticleOg
+                : (cleanSelectedArticleThumb || cleanSelectedArticleCover));
         const customSlugEl = document.getElementById("customSlug");
         const customSlugVal = customSlugEl ? customSlugEl.value.trim() : "";
         const articleSlug = cleanCustomPath(customSlugVal, rawTitle);
@@ -1344,47 +1440,82 @@ async function handleFormSubmit(event) {
         }, { imageWillBeUploaded: articleImageChanged || !editingArticleId });
 
         const targetArticleId = editingArticleId || doc(collection(db, "articles")).id;
-        const fallbackImageDocument = {
+        const baseArticleImageDoc = stripInlineImageAliasData({
             ...(existingArticle || {}),
             ...sanitized,
             category: selectedCategory?.slug || existingCategory.label || sanitized.category,
             hasCustomExcerpt: Boolean(typedExcerpt),
             storedExcerpt: typedExcerpt,
-            excerpt: typedExcerpt,
-            ...getAdminImageFields(sanitized.imageUrl, sanitized.thumbnailUrl)
+            excerpt: typedExcerpt
+        });
+        const baseArticleBytes = estimateFirestoreDocumentBytes(baseArticleImageDoc);
+        const maxCombinedImageChars = Math.max(32 * 1024, MAX_SAFE_FIRESTORE_DOCUMENT_BYTES - baseArticleBytes - 8192);
+        const hasDistinctInlineThumb = Boolean(
+            sanitized.thumbnailUrl &&
+            sanitized.thumbnailUrl !== sanitized.imageUrl &&
+            /^data:image\//i.test(sanitized.thumbnailUrl)
+        );
+        const coverBudget = hasDistinctInlineThumb ? Math.floor(maxCombinedImageChars * 0.6) : maxCombinedImageChars;
+        const fittedCoverInput = /^data:image\//i.test(sanitized.imageUrl) && sanitized.imageUrl.length > coverBudget
+            ? await fitInlineImageDataUrl(sanitized.imageUrl, coverBudget)
+            : sanitized.imageUrl;
+        const thumbBudget = Math.max(20 * 1024, maxCombinedImageChars - (/^data:image\//i.test(fittedCoverInput) ? fittedCoverInput.length : 0));
+        const fittedThumbInput = sanitized.thumbnailUrl === sanitized.imageUrl
+            ? fittedCoverInput
+            : (/^data:image\//i.test(sanitized.thumbnailUrl) && sanitized.thumbnailUrl.length > thumbBudget
+                ? await fitInlineImageDataUrl(sanitized.thumbnailUrl, thumbBudget)
+                : sanitized.thumbnailUrl);
+
+        const fallbackImageDocument = {
+            ...baseArticleImageDoc,
+            ...getAdminImageFields(fittedCoverInput, fittedThumbInput)
         };
         const shouldPersistCover = articleImageChanged || !editingArticleId;
         const coverUpload = shouldPersistCover
-            ? uploadOptionalAdminImage(
-                sanitized.imageUrl,
-                `articles/${targetArticleId}/cover`,
-                originalArticleImages.imageUrl || "/cover-placeholder.svg",
-                "cover image",
-                imageUploadFailures,
-                fallbackImageDocument,
-                ["imageUrl", "coverImage", "coverUrl", "cover", "image"]
-            )
-            : Promise.resolve(effectiveCover || "");
+            ? (fittedCoverInput
+                ? uploadOptionalAdminImage(
+                    fittedCoverInput,
+                    `articles/${targetArticleId}/cover`,
+                    cleanExistingArticleCover,
+                    "cover image",
+                    imageUploadFailures,
+                    fallbackImageDocument,
+                    ["imageUrl", "coverImage", "coverUrl", "cover", "image"]
+                )
+                : Promise.resolve(""))
+            : Promise.resolve(
+                fittedCoverInput
+                    ? resolveAdminImageFallback("", fittedCoverInput, fallbackImageDocument, ["imageUrl", "coverImage", "coverUrl", "cover", "image"])
+                    : ""
+            );
         const shouldPersistThumbnail = articleThumbnailChanged || !editingArticleId;
-        const thumbnailUpload = articleThumbnailChanged && !selectedBase64Thumbnail
+        const thumbnailUpload = articleThumbnailChanged && !cleanSelectedArticleThumb
             ? Promise.resolve("")
             : shouldPersistThumbnail
-                ? sanitized.thumbnailUrl === sanitized.imageUrl
+                ? (fittedThumbInput === fittedCoverInput
                     ? coverUpload
-                    : uploadOptionalAdminImage(
-                        sanitized.thumbnailUrl,
-                        `articles/${targetArticleId}/thumbnail`,
-                        originalArticleImages.thumbnailUrl ||
-                            originalArticleImages.ogImage ||
-                            originalArticleImages.imageUrl ||
-                            "/cover-placeholder.svg",
-                        "thumbnail image",
-                        imageUploadFailures,
-                        fallbackImageDocument,
-                        ["thumbnailUrl", "thumbnail", "ogImage"]
-                    )
-                : Promise.resolve(effectiveThumb || effectiveOgImage || "");
-        const [storedCover, storedThumbnail] = await Promise.all([coverUpload, thumbnailUpload]);
+                    : (fittedThumbInput
+                        ? uploadOptionalAdminImage(
+                            fittedThumbInput,
+                            `articles/${targetArticleId}/thumbnail`,
+                            cleanExistingArticleThumb || cleanExistingArticleOg || cleanExistingArticleCover,
+                            "thumbnail image",
+                            imageUploadFailures,
+                            fallbackImageDocument,
+                            ["thumbnailUrl", "thumbnail", "ogImage"]
+                        )
+                        : Promise.resolve("")))
+                : Promise.resolve(
+                    (fittedThumbInput || effectiveOgImage)
+                        ? resolveAdminImageFallback("", fittedThumbInput || effectiveOgImage, fallbackImageDocument, ["thumbnailUrl", "thumbnail", "ogImage"])
+                        : ""
+                );
+        const [rawStoredCover, rawStoredThumbnail] = await Promise.all([coverUpload, thumbnailUpload]);
+        const storedCover = isPlaceholderImageUrl(rawStoredCover) ? "" : rawStoredCover;
+        const storedThumbnail = isPlaceholderImageUrl(rawStoredThumbnail) ? "" : rawStoredThumbnail;
+        if (articleImageChanged && cleanSelectedArticleCover && !storedCover) {
+            throw new Error("തിരഞ്ഞെടുത്ത കവർ ചിത്രം സേവ് ചെയ്യാനുള്ള പരിധി കവിയുന്നു. ചെറിയ ചിത്രം തിരഞ്ഞെടുത്ത് വീണ്ടും ശ്രമിക്കുക.");
+        }
         Object.assign(sanitized, getAdminImageFields(storedCover, storedThumbnail));
 
         if (editingArticleId) {
@@ -1442,8 +1573,6 @@ async function handleFormSubmit(event) {
                 hasCustomExcerpt: Boolean(typedExcerpt),
                 storedExcerpt: typedExcerpt,
                 excerpt: typedExcerpt,
-                thumbnailUrl: storedThumbnail,
-                ogImage: storedThumbnail,
                 publishedAt: contentStatus === "published" ? serverTimestamp() : null,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
@@ -2133,7 +2262,7 @@ function initColorCustomizer() {
 /* ═══════════════════════════════════════════════════════════
    5. COVER IMAGE UPLOAD & COMPRESSION
    ═══════════════════════════════════════════════════════════ */
-function compressAdminImage(file, maxDimension = 1200, maxTargetChars = 150 * 1024) {
+function compressAdminImage(file, maxDimension = 1200, maxTargetChars = 140 * 1024) {
     return new Promise((resolve, reject) => {
         const objectUrl = URL.createObjectURL(file);
         const img = new Image();
@@ -2147,9 +2276,9 @@ function compressAdminImage(file, maxDimension = 1200, maxTargetChars = 150 * 10
                 const canvas = document.createElement("canvas");
                 const context = canvas.getContext("2d");
                 if (!context) throw new Error("Image compression is unavailable in this browser.");
-                const dimensionSteps = [maxDimension, Math.min(maxDimension, 900), 680, 480]
+                const dimensionSteps = [maxDimension, Math.min(maxDimension, 900), 680, 480, 360]
                     .filter((dim, idx, arr) => dim > 0 && arr.indexOf(dim) === idx);
-                const qualitySteps = [0.82, 0.72, 0.62, 0.50];
+                const qualitySteps = [0.82, 0.72, 0.62, 0.50, 0.38];
                 let bestResult = "";
                 for (const dim of dimensionSteps) {
                     const scale = Math.min(1, dim / Math.max(img.naturalWidth, img.naturalHeight));
@@ -2508,11 +2637,13 @@ async function handleSaveBookStep1(e) {
             normalizeStringClean(a.title) === normalizeStringClean(name)
         ));
 
-    // Keep an empty cover on the shared neutral static placeholder.
-    const existingCoverImage = getArticleImageUrl(existing, "");
-    const coverImage = bookCoverChanged
-        ? selectedBookCoverBase64 || "/cover-placeholder.svg"
-        : existingCoverImage || selectedBookCoverBase64 || "/cover-placeholder.svg";
+    const rawExistingCoverImage = getArticleImageUrl(existing, "");
+    const existingCoverImage = isPlaceholderImageUrl(rawExistingCoverImage) ? "" : rawExistingCoverImage;
+    const rawSelectedBookCover = sanitizeImageUrl(selectedBookCoverBase64);
+    const cleanSelectedBookCover = isPlaceholderImageUrl(rawSelectedBookCover) ? "" : rawSelectedBookCover;
+    let coverImage = bookCoverChanged
+        ? cleanSelectedBookCover
+        : (existingCoverImage || cleanSelectedBookCover);
     const imageUploadFailures = [];
 
     const saveButtons = [
@@ -2547,8 +2678,7 @@ async function handleSaveBookStep1(e) {
                     ? Number(existing.priority)
                     : 1));
         const targetBookId = existing?.id || doc(collection(db, "articles")).id;
-        const coverImageFields = Object.keys(getAdminImageFields(coverImage));
-        const fallbackImageDocument = {
+        const baseBookDocument = stripInlineImageAliasData({
             ...(existing || {}),
             title: name,
             bookName: name,
@@ -2558,7 +2688,6 @@ async function handleSaveBookStep1(e) {
             categorySlug: tagId,
             slug: bookSlug,
             bookSlug,
-            ...getAdminImageFields(coverImage),
             introduction: intro,
             description: intro,
             excerpt: intro,
@@ -2575,24 +2704,48 @@ async function handleSaveBookStep1(e) {
             priority: resolvedOrder,
             order: resolvedOrder,
             date: dateVal,
+            visible: existing?.visible !== false,
             status: contentStatus
+        });
+        const baseBookBytes = estimateFirestoreDocumentBytes(baseBookDocument);
+        const availableCoverChars = Math.max(24 * 1024, MAX_SAFE_FIRESTORE_DOCUMENT_BYTES - baseBookBytes - 8192);
+        if (coverImage && /^data:image\//i.test(coverImage) && coverImage.length > availableCoverChars) {
+            coverImage = await fitInlineImageDataUrl(coverImage, availableCoverChars);
+        }
+
+        const coverImageFields = Object.keys(getAdminImageFields(coverImage));
+        const fallbackImageDocument = {
+            ...baseBookDocument,
+            ...getAdminImageFields(coverImage)
         };
-        const storedCover = bookCoverChanged && selectedBookCoverBase64
+        const selectedForUpload = bookCoverChanged ? coverImage : "";
+        let storedCover = selectedForUpload
             ? await uploadOptionalAdminImage(
-                selectedBookCoverBase64,
+                selectedForUpload,
                 `books/${targetBookId}/cover`,
-                existingCoverImage || "/cover-placeholder.svg",
+                existingCoverImage,
                 "book cover",
                 imageUploadFailures,
                 fallbackImageDocument,
                 coverImageFields
             )
-            : resolveAdminImageFallback(
-                "",
-                coverImage,
-                fallbackImageDocument,
-                coverImageFields
-            );
+            : (coverImage
+                ? resolveAdminImageFallback(
+                    "",
+                    coverImage,
+                    fallbackImageDocument,
+                    coverImageFields
+                )
+                : "");
+        if (isPlaceholderImageUrl(storedCover)) storedCover = "";
+
+        const hadExplicitCoverInput = Boolean(
+            (bookCoverChanged && cleanSelectedBookCover) ||
+            (!bookCoverChanged && (existingCoverImage || cleanSelectedBookCover))
+        );
+        if (hadExplicitCoverInput && !storedCover) {
+            throw new Error("പുസ്തകത്തിന്റെ കവർ ചിത്രം സേവ് ചെയ്യാനുള്ള പരിധി കവിയുന്നു. ചെറിയ ചിത്രം തിരഞ്ഞെടുത്ത് വീണ്ടും ശ്രമിക്കുക.");
+        }
 
         const payload = {
             title: name,
@@ -2626,7 +2779,12 @@ async function handleSaveBookStep1(e) {
 
         const savedDocId = existing ? existing.id : targetBookId;
         const articleWritePromise = existing
-            ? updateDoc(getBookDocumentRef(existing), payload)
+            ? (getBookDocumentCollection(existing) === "articles"
+                ? updateDoc(doc(db, "articles", savedDocId), payload)
+                : updateDoc(doc(db, "articles", savedDocId), payload).catch(err => {
+                    if (err?.code === "not-found") return null;
+                    throw err;
+                }))
             : setDoc(doc(db, "articles", targetBookId), {
                 ...payload,
                 createdAt: serverTimestamp()
@@ -2663,14 +2821,20 @@ async function handleSaveBookStep1(e) {
         }, { merge: true });
 
         await Promise.all([articleWritePromise, booksCollectionWritePromise]);
+        bookCoverChanged = false;
+        selectedBookCoverBase64 = storedCover;
+        invalidateAdminArticleCache();
 
         if (existing) {
             Object.assign(existing, payload, { updatedAt: new Date() });
+            activeBookCoverDoc = existing;
             showGlobalStatus(contentStatus === "draft"
                 ? `📚 '${name}' ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു.`
                 : `✨ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
         } else {
-            currentArticlesList.unshift({ id: savedDocId, __adminCollection: "articles", ...payload, updatedAt: new Date() });
+            const newBookEntry = { id: savedDocId, __adminCollection: "articles", ...payload, updatedAt: new Date() };
+            currentArticlesList.unshift(newBookEntry);
+            activeBookCoverDoc = newBookEntry;
             showGlobalStatus(contentStatus === "draft"
                 ? `📚 പുതിയ പുസ്തകം '${name}' ഡ്രാഫ്റ്റായി സേവ് ചെയ്തു.`
                 : `📚 പുതിയ പുസ്തകം '${name}' വിജയകരമായി പ്രസിദ്ധീകരിച്ചു!`, "success");
@@ -3008,7 +3172,8 @@ function selectActiveBook(bookName, bookId = "") {
     const apkUrlInput = document.getElementById("book-meta-apk-url");
     if (apkUrlInput) apkUrlInput.value = bookCover?.apkUrl || "";
 
-    const activeCoverUrl = bookCover ? getArticleImageUrl(bookCover) : "";
+    const rawActiveCoverUrl = bookCover ? getArticleImageUrl(bookCover, "") : "";
+    const activeCoverUrl = isPlaceholderImageUrl(rawActiveCoverUrl) ? "" : rawActiveCoverUrl;
     bookCoverChanged = false;
     if (previewImg && previewContainer && placeholder) {
         if (activeCoverUrl) {
@@ -3379,27 +3544,43 @@ function initChapterWriter() {
             const chapter = editingChapterId
                 ? (currentArticlesList.find(article => article.id === editingChapterId) || {})
                 : {};
-            const chapterImageFallback = getArticleImageUrl(chapter, "") ||
+            const rawChapterFallback = getArticleImageUrl(chapter, "") ||
                 getArticleImageUrl(targetBookDoc, "");
+            const chapterImageFallback = isPlaceholderImageUrl(rawChapterFallback) ? "" : rawChapterFallback;
             const chapterImageUploadFailures = [];
-            const chapterSelectedOrFallback = selectedImage || chapterImageFallback;
-            const chapterFallbackDoc = {
+            const cleanSelectedChapterImage = isPlaceholderImageUrl(selectedImage) ? "" : selectedImage;
+            let chapterSelectedOrFallback = cleanSelectedChapterImage || chapterImageFallback;
+            const baseChapterFallbackDoc = stripInlineImageAliasData({
                 ...chapter,
                 title,
                 content,
                 excerpt,
-                transcription,
+                transcription
+            });
+            const baseChapterBytes = estimateFirestoreDocumentBytes(baseChapterFallbackDoc);
+            const availableChapterChars = Math.max(24 * 1024, MAX_SAFE_FIRESTORE_DOCUMENT_BYTES - baseChapterBytes - 8192);
+            if (chapterSelectedOrFallback && /^data:image\//i.test(chapterSelectedOrFallback) && chapterSelectedOrFallback.length > availableChapterChars) {
+                chapterSelectedOrFallback = await fitInlineImageDataUrl(chapterSelectedOrFallback, availableChapterChars);
+            }
+            const chapterFallbackDoc = {
+                ...baseChapterFallbackDoc,
                 ...getAdminImageFields(chapterSelectedOrFallback)
             };
-            const imageUrl = await uploadOptionalAdminImage(
-                chapterSelectedOrFallback,
-                `articles/${chapterId}/cover`,
-                chapterImageFallback,
-                "chapter cover image",
-                chapterImageUploadFailures,
-                chapterFallbackDoc,
-                Object.keys(getAdminImageFields(chapterSelectedOrFallback))
-            );
+            const rawResolvedChapterImage = chapterSelectedOrFallback
+                ? await uploadOptionalAdminImage(
+                    chapterSelectedOrFallback,
+                    `articles/${chapterId}/cover`,
+                    chapterImageFallback,
+                    "chapter cover image",
+                    chapterImageUploadFailures,
+                    chapterFallbackDoc,
+                    Object.keys(getAdminImageFields(chapterSelectedOrFallback))
+                )
+                : "";
+            const imageUrl = isPlaceholderImageUrl(rawResolvedChapterImage) ? "" : rawResolvedChapterImage;
+            if (cleanSelectedChapterImage && !imageUrl) {
+                throw new Error("അധ്യായത്തിന്റെ ചിത്രം സേവ് ചെയ്യാനുള്ള പരിധി കവിയുന്നു. ചെറിയ ചിത്രം തിരഞ്ഞെടുത്ത് വീണ്ടും ശ്രമിക്കുക.");
+            }
 
             // Sequential order number
             const nextOrder = (activeBookChapters && activeBookChapters.length > 0)
@@ -3435,9 +3616,7 @@ function initChapterWriter() {
                     order: chapterOrder,
                     priority: chapterOrder,
                     content,
-                    imageUrl,
-                    thumbnailUrl: imageUrl,
-                    ogImage: imageUrl,
+                    ...getAdminImageFields(imageUrl),
                     bookId: activeBookId,
                     parentBookId: activeBookId,
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
@@ -3457,6 +3636,7 @@ function initChapterWriter() {
                     publishedAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
                 });
+                invalidateAdminArticleCache();
 
                 const updatedArt = {
                     ...(currentArticlesList.find(article => article.id === editingChapterId) || {}),
@@ -3497,9 +3677,7 @@ function initChapterWriter() {
                     order: nextOrder,
                     priority: nextOrder,
                     content,
-                    imageUrl,
-                    thumbnailUrl: imageUrl,
-                    ogImage: imageUrl,
+                    ...getAdminImageFields(imageUrl),
                     bookId: activeBookId,
                     bookName: targetBookDoc.bookName || targetBookDoc.title || activeBookName,
                     status: "published",
@@ -3521,6 +3699,7 @@ function initChapterWriter() {
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
                 });
+                invalidateAdminArticleCache();
 
                 console.log("[ChapterWriter] Chapter saved to Firestore with ID:", docRef.id);
 
@@ -4349,7 +4528,7 @@ function renderAdminBooksTab(articles) {
 
     const pool = Array.isArray(articles) ? articles : (currentArticlesList || []);
     const books = sortAdminBooks(dedupeAdminRecords(pool.filter(isBookCatalogRecord)));
-    const publishedBooks = books.filter(book => getAdminContentStatus(book) === "published").length;
+    const publishedBooks = books.filter(book => isAdminPublishedStatus(getAdminContentStatus(book))).length;
     const draftBooks = books.filter(book => getAdminContentStatus(book) === "draft").length;
 
     const totalBooks = books.length;
@@ -4365,7 +4544,10 @@ function renderAdminBooksTab(articles) {
     if (!gridEl) return;
 
     const visibleBooks = books.filter(book =>
-        bookStatusFilter === "all" || getAdminContentStatus(book) === bookStatusFilter
+        bookStatusFilter === "all" ||
+        (bookStatusFilter === "published"
+            ? isAdminPublishedStatus(getAdminContentStatus(book))
+            : getAdminContentStatus(book) === bookStatusFilter)
     );
 
     if (visibleBooks.length === 0) {
@@ -4961,7 +5143,7 @@ export function renderAdminPublishedList(items) {
     // Exclude book cover documents but keep article documents attached to books.
     const sourceList = Array.isArray(items) ? items : (Array.isArray(currentArticlesList) ? currentArticlesList : []);
     const articles = dedupeAdminRecords(sourceList.filter(isPublishedArticle));
-    const publishedCount = articles.filter(article => getAdminContentStatus(article) === "published").length;
+    const publishedCount = articles.filter(article => isAdminPublishedStatus(getAdminContentStatus(article))).length;
     const draftCount = articles.filter(article => getAdminContentStatus(article) === "draft").length;
     updateArticleCounters(articles.length);
     const publishedCountEl = document.getElementById("article-status-published-count");
@@ -4974,7 +5156,8 @@ export function renderAdminPublishedList(items) {
     const category = document.getElementById("filter-published-category")?.value || "ALL";
     const visibleArticles = articles.filter(article => {
         const status = getAdminContentStatus(article);
-        const matchesStatus = articleStatusFilter === "all" || status === articleStatusFilter;
+        const matchesStatus = articleStatusFilter === "all" ||
+            (articleStatusFilter === "published" ? isAdminPublishedStatus(status) : status === articleStatusFilter);
         const matchesQuery = !queryText ||
             String(article.title || "").toLowerCase().includes(queryText) ||
             String(article.author || "").toLowerCase().includes(queryText) ||
@@ -6478,12 +6661,13 @@ async function runImageMigration({ dryRun = false } = {}) {
                 const resolvedCover = resolveAdminImageFallback(
                     syncedFields.imageUrl,
                     raw.imageUrl,
-                    { ...raw, ...syncedFields },
+                    { ...stripInlineImageAliasData(raw), ...syncedFields },
                     Object.keys(syncedFields)
                 );
-                const finalFields = /^data:image\//i.test(resolvedCover) && resolvedCover !== "/cover-placeholder.svg"
-                    ? getAdminImageFields(resolvedCover, syncedFields.thumbnailUrl === syncedFields.imageUrl ? resolvedCover : syncedFields.thumbnailUrl)
-                    : syncedFields;
+                const cleanResolvedCover = isPlaceholderImageUrl(resolvedCover) ? "" : resolvedCover;
+                const finalFields = cleanResolvedCover && /^data:image\//i.test(cleanResolvedCover)
+                    ? getAdminImageFields(cleanResolvedCover, syncedFields.thumbnailUrl === syncedFields.imageUrl ? cleanResolvedCover : syncedFields.thumbnailUrl)
+                    : (cleanResolvedCover ? syncedFields : getAdminImageFields(""));
 
                 const needsUpdate = legacyImageKeys.some(key => {
                     const currentVal = typeof raw[key] === "string" ? raw[key].trim() : "";

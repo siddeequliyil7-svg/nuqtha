@@ -28,8 +28,8 @@ const BG_COOLDOWN_KEY = "nuqtha_fs_bg_cooldown_until_v1";
 const NORMAL_COOLDOWN_KEY = "nuqtha_fs_normal_cooldown_until_v1";
 const FG_COOLDOWN_KEY = "nuqtha_fs_fg_cooldown_until_v1";
 const MAX_CACHED_ARTICLE_DOCS = 15;
-const MAX_CONCURRENT_REQUESTS = 2;
-const MAX_CONCURRENT_BACKGROUND = 1;
+const MAX_CONCURRENT_REQUESTS = 4;
+const MAX_CONCURRENT_BACKGROUND = 2;
 
 const sharedState = (typeof globalThis !== "undefined" ? globalThis : {});
 const memoryTtlCache = sharedState.__NUQTHA_TTL_MEMORY__ || new Map();
@@ -228,9 +228,30 @@ export function writeTtlCache(key, data, {
 const INLINE_CACHE_LIMIT_BYTES = 185 * 1024;
 const CACHE_IMAGE_FIELDS = [
     "imageUrl", "coverUrl", "coverImage", "cover", "coverPhoto", "featuredImage",
-    "image", "photo", "banner", "thumbnail", "thumbnailUrl", "thumbUrl", "thumb",
-    "ogImage", "imageBase64", "coverBase64", "base64"
+    "image", "photo", "banner", "media", "thumbnail", "thumbnailUrl", "thumbUrl",
+    "thumb", "ogImage", "imageBase64", "coverBase64", "base64"
 ];
+
+function extractCacheImageUrl(val, depth = 0) {
+    if (!val || depth > 2) return "";
+    if (typeof val === "string") return val;
+    if (Array.isArray(val)) {
+        for (const entry of val) {
+            const found = extractCacheImageUrl(entry, depth + 1);
+            if (found) return found;
+        }
+        return "";
+    }
+    if (typeof val === "object") {
+        for (const k of ["url", "imageUrl", "coverUrl", "coverImage", "cover", "src", "downloadURL", "downloadUrl", "secure_url", "thumbnailUrl", "thumbnail", "thumbUrl", "thumb", "path", "href", "imageBase64", "coverBase64", "base64"]) {
+            if (val[k]) {
+                const found = extractCacheImageUrl(val[k], depth + 1);
+                if (found) return found;
+            }
+        }
+    }
+    return "";
+}
 
 export function compactListItemForCache(item, maxInlineChars = INLINE_CACHE_LIMIT_BYTES) {
     if (!item || typeof item !== "object") return item;
@@ -243,9 +264,20 @@ export function compactListItemForCache(item, maxInlineChars = INLINE_CACHE_LIMI
             copy[textField] = copy[textField].slice(0, 220);
         }
     }
+    let strippedInlineImage = false;
     for (const imgField of CACHE_IMAGE_FIELDS) {
-        if (typeof copy[imgField] === "string" && /^data:/i.test(copy[imgField]) && copy[imgField].length > maxInlineChars) {
+        const urlStr = extractCacheImageUrl(copy[imgField]);
+        if (urlStr && /^data:/i.test(urlStr) && urlStr.length > maxInlineChars) {
             delete copy[imgField];
+            strippedInlineImage = true;
+        }
+    }
+    if (strippedInlineImage) {
+        copy._hasDeferredImage = true;
+        copy._hasAnyImageField = true;
+        if (!copy._imageDocId && copy.id) copy._imageDocId = copy.id;
+        if (!copy._imageCollection) {
+            copy._imageCollection = (String(copy.type || "").toUpperCase() === "BOOK" || copy.isBook === true) ? "books" : "articles";
         }
     }
     return copy;
@@ -341,7 +373,8 @@ function stripOversizedDataFields(docObj) {
     const copy = { ...docObj };
     let hadStripped = false;
     for (const field of CACHE_IMAGE_FIELDS) {
-        if (typeof copy[field] === "string" && /^data:image\//i.test(copy[field]) && copy[field].length > INLINE_CACHE_LIMIT_BYTES) {
+        const urlStr = extractCacheImageUrl(copy[field]);
+        if (urlStr && /^data:image\//i.test(urlStr) && urlStr.length > INLINE_CACHE_LIMIT_BYTES) {
             delete copy[field];
             hadStripped = true;
         }
